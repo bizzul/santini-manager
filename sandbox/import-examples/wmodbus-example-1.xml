@@ -1,0 +1,2660 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MeterTelegramme>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>64656424</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>33</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 06:33 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>18425000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>7144,9</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>17866000</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>17207000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>16722000</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>16601000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>16601000</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>16601000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>16600000</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>16600000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>16514000</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>16348000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>16019000</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>15584000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>14853000</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>14148000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>13801000</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>54886090</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>MAD</value>
+		</Data>
+		<Data attr="ID">
+			<value>19114139</value>
+		</Data>
+		<Data attr="Version">
+			<value>50h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>205</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>10,235</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:57 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,,FabricationNo">
+			<value>12205082</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>10,122</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>10,122</value>
+		</Data>
+		<Data attr="IV,2,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="MaxV,3,0,0,m^3/h,VolFlow">
+			<value>0,734</value>
+		</Data>
+		<Data attr="IV,3,0,0,,Date/Time">
+			<value>09.12.2020 14:57 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,8,0,0,m(s),StorageInterval">
+			<value>1</value>
+		</Data>
+		<Data attr="IV,8,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>10,122</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>10,062</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>9,980</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>9,927</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>9,869</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>9,828</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>9,783</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>9,712</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>9,663</value>
+		</Data>
+		<Data attr="IV,17,0,0,m^3,Vol">
+			<value>9,613</value>
+		</Data>
+		<Data attr="IV,18,0,0,m^3,Vol">
+			<value>9,553</value>
+		</Data>
+		<Data attr="IV,19,0,0,m^3,Vol">
+			<value>9,506</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>90201791</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>15571055</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>252</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>142,016</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>142,016</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>139,390</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>137,510</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>135,262</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>133,369</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>131,171</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>129,003</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>126,064</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>124,091</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>121,682</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>119,313</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>117,107</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>114,595</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>112,520</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>110,175</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:00 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>143,962</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>81055488</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>62</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:56 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>15151000</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>4536,887</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>1000000b</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>14134000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>14134000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>12736000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>11710000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>11149000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>11148000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>11148000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>11148000</value>
+		</Data>
+		<Data attr="IV,17,0,0,Wh,E">
+			<value>11147000</value>
+		</Data>
+		<Data attr="IV,19,0,0,Wh,E">
+			<value>10911000</value>
+		</Data>
+		<Data attr="IV,21,0,0,Wh,E">
+			<value>10481000</value>
+		</Data>
+		<Data attr="IV,23,0,0,Wh,E">
+			<value>9568000</value>
+		</Data>
+		<Data attr="IV,25,0,0,Wh,E">
+			<value>8379000</value>
+		</Data>
+		<Data attr="IV,27,0,0,Wh,E">
+			<value>6470000</value>
+		</Data>
+		<Data attr="IV,29,0,0,Wh,E">
+			<value>6319000</value>
+		</Data>
+		<Data attr="IV,31,0,0,Wh,E">
+			<value>6319000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4369</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>MAD</value>
+		</Data>
+		<Data attr="ID">
+			<value>19114138</value>
+		</Data>
+		<Data attr="Version">
+			<value>50h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>199</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>22,989</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:58 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>100000000000000b</value>
+		</Data>
+		<Data attr="IV,0,0,0,,FabricationNo">
+			<value>18193284</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>20,800</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>20,800</value>
+		</Data>
+		<Data attr="IV,2,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="MaxV,3,0,0,m^3/h,VolFlow">
+			<value>1,028</value>
+		</Data>
+		<Data attr="IV,3,0,0,,Date/Time">
+			<value>05.01.2022 12:43 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,8,0,0,m(s),StorageInterval">
+			<value>1</value>
+		</Data>
+		<Data attr="IV,8,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>20,800</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>20,736</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,17,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,18,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+		<Data attr="IV,19,0,0,m^3,Vol">
+			<value>20,735</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>64656423</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>55</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 06:03 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>7056000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>4609,6</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>6750000</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>6372000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>6085000</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>6005000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>6005000</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>6005000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>6005000</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>6005000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>5959000</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>5857000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>5663000</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>5438000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>4984000</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>4564000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>4333000</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>90201776</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>16794854</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>207</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>17,867</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>17,867</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>17,442</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>17,193</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>16,811</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>16,656</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>16,497</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>16,302</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>16,045</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>15,706</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>15,225</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>14,937</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>14,649</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>14,320</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>14,126</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>13,901</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:43 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>18,234</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>83800390</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>16794853</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>212</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>93,669</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>93,669</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>92,641</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>92,059</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>91,895</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>91,761</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>91,484</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>90,954</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>90,559</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>90,158</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>89,924</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>89,455</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>88,171</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>85,750</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>83,959</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>81,059</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:05 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>93,799</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>91200653</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>12097082</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>111</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>66,646</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>66,646</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>65,483</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>64,675</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>63,584</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>62,791</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>61,729</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>60,874</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>59,810</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>59,172</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>58,144</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>57,263</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>56,390</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>55,388</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>54,754</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>53,842</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:01 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>67,488</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>64656413</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>191</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 05:39 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>2014,3</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>9610000</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>02901973</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>14642261</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>163</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>205,937</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>205,937</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>202,821</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>202,087</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>198,318</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>194,582</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>190,559</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>185,781</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>182,121</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>180,437</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>177,150</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>173,121</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>168,843</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>165,605</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>162,602</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>161,617</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:01 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>208,855</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>54886091</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>54886093</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>169</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 04:10 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>12584000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>1748,5</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>12108000</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>11413000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>10804000</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>10475000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>10475000</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>10474000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>10474000</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>10473000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>10280000</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>9993000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>9247000</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>8315000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>7673000</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>6971000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>6545000</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>MAD</value>
+		</Data>
+		<Data attr="ID">
+			<value>19114140</value>
+		</Data>
+		<Data attr="Version">
+			<value>50h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>195</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>44,748</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:58 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,,FabricationNo">
+			<value>14642297</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>44,692</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>44,692</value>
+		</Data>
+		<Data attr="IV,2,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="MaxV,3,0,0,m^3/h,VolFlow">
+			<value>0,87</value>
+		</Data>
+		<Data attr="IV,3,0,0,,Date/Time">
+			<value>29.05.2021 13:22 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,8,0,0,m(s),StorageInterval">
+			<value>1</value>
+		</Data>
+		<Data attr="IV,8,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>44,692</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>44,646</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>44,567</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>44,536</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>44,505</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>44,456</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>44,409</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>44,358</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>44,301</value>
+		</Data>
+		<Data attr="IV,17,0,0,m^3,Vol">
+			<value>44,274</value>
+		</Data>
+		<Data attr="IV,18,0,0,m^3,Vol">
+			<value>44,252</value>
+		</Data>
+		<Data attr="IV,19,0,0,m^3,Vol">
+			<value>44,228</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>90201786</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>17086353</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>198</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>107,316</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>107,316</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>104,651</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>100,934</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>97,807</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>96,066</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>92,438</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>89,601</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>86,473</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>83,037</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>79,408</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>75,332</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>71,894</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>68,686</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>65,114</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>62,294</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:58 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>110,066</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>85100013</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>17400589</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>30</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>73,408</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>73,408</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>72,360</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>70,175</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>67,755</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>65,559</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>64,202</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>62,523</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>60,735</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>58,212</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>55,657</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>52,246</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>49,353</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>47,948</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>45,898</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>42,006</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:03 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>74,799</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>74152680</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>63</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:56 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>12805000</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>2932,331</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>11938000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>11938000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>11073000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>10405000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>10074000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>10074000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>10074000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>10073000</value>
+		</Data>
+		<Data attr="IV,17,0,0,Wh,E">
+			<value>10072000</value>
+		</Data>
+		<Data attr="IV,19,0,0,Wh,E">
+			<value>9820000</value>
+		</Data>
+		<Data attr="IV,21,0,0,Wh,E">
+			<value>9468000</value>
+		</Data>
+		<Data attr="IV,23,0,0,Wh,E">
+			<value>8670000</value>
+		</Data>
+		<Data attr="IV,25,0,0,Wh,E">
+			<value>7795000</value>
+		</Data>
+		<Data attr="IV,27,0,0,Wh,E">
+			<value>6568000</value>
+		</Data>
+		<Data attr="IV,29,0,0,Wh,E">
+			<value>5384000</value>
+		</Data>
+		<Data attr="IV,31,0,0,Wh,E">
+			<value>4575000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4369</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>94900073</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>16794931</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>18</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>238,912</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>238,912</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>234,215</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>233,926</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>229,070</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>225,901</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>222,740</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>219,072</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>215,953</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>214,249</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>207,666</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>202,839</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>197,713</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>192,665</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>188,169</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>186,962</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:58 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>243,681</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>72281284</value>
+		</Data>
+		<Data attr="Version">
+			<value>01h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat/CoolM</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>184</value>
+		</Data>
+		<Data attr="Status">
+			<value>04h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 06:34 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>72281284</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat/CoolM</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>185</value>
+		</Data>
+		<Data attr="Status">
+			<value>05h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>0</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>83803754</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>17008195</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>192</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>53,396</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>53,396</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>50,584</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>46,356</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>42,634</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>39,690</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>37,904</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>35,481</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>33,261</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>29,483</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>25,823</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>20,876</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>16,911</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>11,224</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>10,946</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>10,946</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:07 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>53,824</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>64656414</value>
+		</Data>
+		<Data attr="Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>Heat</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>37</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>5</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 06:37 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,Wh,E">
+			<value>16129000</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>4177,9</value>
+		</Data>
+		<Data attr="IV,1,0,0,Wh,E">
+			<value>15221000</value>
+		</Data>
+		<Data attr="IV,2,0,0,Wh,E">
+			<value>14118000</value>
+		</Data>
+		<Data attr="IV,3,0,0,Wh,E">
+			<value>13377000</value>
+		</Data>
+		<Data attr="IV,4,0,0,Wh,E">
+			<value>13259000</value>
+		</Data>
+		<Data attr="IV,5,0,0,Wh,E">
+			<value>13259000</value>
+		</Data>
+		<Data attr="IV,6,0,0,Wh,E">
+			<value>13259000</value>
+		</Data>
+		<Data attr="IV,7,0,0,Wh,E">
+			<value>13259000</value>
+		</Data>
+		<Data attr="IV,8,0,0,Wh,E">
+			<value>13259000</value>
+		</Data>
+		<Data attr="IV,9,0,0,Wh,E">
+			<value>13176000</value>
+		</Data>
+		<Data attr="IV,10,0,0,Wh,E">
+			<value>13003000</value>
+		</Data>
+		<Data attr="IV,11,0,0,Wh,E">
+			<value>12610000</value>
+		</Data>
+		<Data attr="IV,12,0,0,Wh,E">
+			<value>12097000</value>
+		</Data>
+		<Data attr="IV,13,0,0,Wh,E">
+			<value>11289000</value>
+		</Data>
+		<Data attr="IV,14,0,0,Wh,E">
+			<value>10530000</value>
+		</Data>
+		<Data attr="IV,15,0,0,Wh,E">
+			<value>10159000</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>83803755</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>16794852</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>201</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>80,925</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>80,925</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>79,210</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>77,886</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>76,064</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>74,916</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>73,690</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>72,670</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>71,628</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>70,671</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>69,367</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>68,282</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>67,079</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>65,371</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>63,884</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>62,329</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:52 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>82,012</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>83803769</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>16794862</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>226</value>
+		</Data>
+		<Data attr="Status">
+			<value>0Bh</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>50,412</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>1000b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>50,412</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>49,647</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>49,395</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>48,117</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>47,346</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>46,113</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>44,626</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>44,062</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>43,692</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>42,514</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>40,980</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>39,191</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>38,271</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>37,502</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>37,362</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:04 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>51,301</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>91200644</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>16577787</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>ColdWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>105</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>117,164</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>117,164</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>116,452</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>115,621</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>115,424</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>115,164</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>114,468</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>113,353</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>112,171</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>111,320</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>110,907</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>110,187</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>108,662</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>106,122</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>104,500</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>101,957</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 12:02 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>117,469</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>90201782</value>
+		</Data>
+		<Data attr="Version">
+			<value>03h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=L,M-Bus</value>
+		</Data>
+		<Data attr="Meter ID">
+			<value>17400575</value>
+		</Data>
+		<Data attr="Meter Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="Meter Version">
+			<value>00h</value>
+		</Data>
+		<Data attr="Meter Device Type">
+			<value>WWater</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>67</value>
+		</Data>
+		<Data attr="Status">
+			<value>00h</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,m^3,Vol">
+			<value>52,019</value>
+		</Data>
+		<Data attr="IV,0,0,0,,ErrorFlags(binary)(deviceType specific)">
+			<value>0b</value>
+		</Data>
+		<Data attr="IV,2,0,0,m^3,Vol">
+			<value>52,019</value>
+		</Data>
+		<Data attr="IV,3,0,0,m^3,Vol">
+			<value>49,974</value>
+		</Data>
+		<Data attr="IV,4,0,0,m^3,Vol">
+			<value>49,262</value>
+		</Data>
+		<Data attr="IV,5,0,0,m^3,Vol">
+			<value>49,262</value>
+		</Data>
+		<Data attr="IV,6,0,0,m^3,Vol">
+			<value>47,333</value>
+		</Data>
+		<Data attr="IV,7,0,0,m^3,Vol">
+			<value>44,843</value>
+		</Data>
+		<Data attr="IV,8,0,0,m^3,Vol">
+			<value>44,484</value>
+		</Data>
+		<Data attr="IV,9,0,0,m^3,Vol">
+			<value>44,484</value>
+		</Data>
+		<Data attr="IV,10,0,0,m^3,Vol">
+			<value>44,484</value>
+		</Data>
+		<Data attr="IV,11,0,0,m^3,Vol">
+			<value>43,267</value>
+		</Data>
+		<Data attr="IV,12,0,0,m^3,Vol">
+			<value>43,267</value>
+		</Data>
+		<Data attr="IV,13,0,0,m^3,Vol">
+			<value>41,028</value>
+		</Data>
+		<Data attr="IV,14,0,0,m^3,Vol">
+			<value>37,145</value>
+		</Data>
+		<Data attr="IV,15,0,0,m^3,Vol">
+			<value>34,171</value>
+		</Data>
+		<Data attr="IV,16,0,0,m^3,Vol">
+			<value>31,388</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 11:49 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,m^3,Vol">
+			<value>52,728</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Model/Version">
+			<value>2163458</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Parameter set ident">
+			<value>4353</value>
+		</Data>
+	</MeterData>
+	<MeterData>
+		<Data attr="Frame Type">
+			<value>SND_NR</value>
+		</Data>
+		<Data attr="Manufacturer">
+			<value>EFE</value>
+		</Data>
+		<Data attr="ID">
+			<value>83010102</value>
+		</Data>
+		<Data attr="Version">
+			<value>25h</value>
+		</Data>
+		<Data attr="Device Type">
+			<value>HCA</value>
+		</Data>
+		<Data attr="TPL-Config">
+			<value>Response,Uplink,TPL=S,M-Bus</value>
+		</Data>
+		<Data attr="Access Number">
+			<value>153</value>
+		</Data>
+		<Data attr="Status">
+			<value>0Bh</value>
+		</Data>
+		<Data attr="Encryption">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Date/Time">
+			<value>28.01.2022 13:03 invalid 0 summer time 0</value>
+		</Data>
+		<Data attr="IV,0,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Date">
+			<value>31.12.21</value>
+		</Data>
+		<Data attr="IV,1,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,2,0,0,,Date">
+			<value>31.10.20</value>
+		</Data>
+		<Data attr="IV,2,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,3,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,4,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,5,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,6,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,7,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,8,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,9,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,10,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,11,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,12,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,13,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,14,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,15,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,16,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,17,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,18,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,19,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,20,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,21,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,22,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,23,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,24,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,25,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,26,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,27,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,28,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,29,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,30,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="IV,31,0,0,,Units HCA">
+			<value>0</value>
+		</Data>
+		<Data attr="ErrorV,0,0,0,,ManufacturerSpecific">
+			<value>8</value>
+		</Data>
+		<Data attr="ErrorV,0,0,0,,Date/Time">
+			<value>31.03.2021 13:30 invalid 0 summer time 0</value>
+		</Data>
+	</MeterData>
+</MeterTelegramme>

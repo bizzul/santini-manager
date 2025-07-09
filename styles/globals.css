@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+@layer components{
+.form-input{
+    @apply appearance-none border-[1.5px] w-full py-2 px-3 text-gray-700 leading-tight rounded-md border-slate-400 disabled:bg-slate-200 disabled:text-slate-300
+}
+.form-label{
+    @apply block text-gray-700 text-sm font-bold mb-2
+}
+}
