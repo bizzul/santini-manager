@@ -35,7 +35,7 @@ import { usePathname } from "next/navigation";
 import { NavUser } from "./nav-user";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import KanbanManagementModal from "./kanbans/KanbanManagementModal";
-import { saveKanban } from "@/app/(user)/kanban/actions/save-kanban.action";
+import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { useToast } from "./ui/use-toast";
 import { useKanbanStore } from "../store/kanban-store";
 import { Kanban } from "../store/kanban-store";
@@ -52,113 +52,146 @@ type menuItem = {
   customComponent?: React.ReactNode;
 };
 
-const operatorItems: menuItem[] = [
-  {
-    label: "Dashboard",
-    icon: faWaveSquare,
-    alert: true,
-    href: "/",
-  },
-  {
-    label: "Kanban",
-    icon: faTable,
-    href: "/kanban",
-    alert: true,
-  },
-  {
-    label: "Progetti",
-    icon: faTable,
-    href: "/projects",
-    alert: false,
-  },
-  {
-    label: "Calendario",
-    icon: faClock,
-    href: "/calendar",
-    alert: false,
-  },
-  {
-    label: "Clienti",
-    icon: faUser,
-    href: "/clients",
-    alert: false,
-  },
-  {
-    label: "Errori",
-    icon: faExclamation,
-    href: "/errortracking",
-    alert: false,
-  },
-  {
-    label: "Ore",
-    icon: faClock,
-    href: "/timetracking",
-    alert: false,
-  },
-  {
-    label: "Reports",
-    icon: faSquarePollVertical,
-    href: "/reports",
-    alert: false,
-    items: [
-      {
-        label: "Quality Control",
-        icon: faCheckSquare,
-        href: "/qualityControl",
-        alert: false,
-      },
-      {
-        label: "Effettua QC",
-        icon: faCheckSquare,
-        href: "/qualityControl/edit",
-        alert: false,
-      },
-      {
-        label: "Imballaggio",
-        icon: faBox,
-        href: "/boxing",
-        alert: false,
-      },
-      {
-        label: "Effettua imballaggio",
-        icon: faBox,
-        href: "/boxing/edit",
-        alert: false,
-      },
-    ],
-  },
+// Function to get menu items based on current context
+const getMenuItems = (pathname: string): menuItem[] => {
+  // Check if we're on a site domain (sites/[domain] route)
+  const isOnSiteDomain = pathname.includes("/sites/");
 
-  {
-    label: "Inventario",
-    icon: faBox,
-    href: "/inventory",
-    alert: false,
-  },
-  {
-    label: "Prodotti",
-    icon: faBox,
-    href: "/products",
-    alert: false,
-  },
-  {
-    label: "Fornitori",
-    icon: faHelmetSafety,
-    href: "/suppliers",
-    alert: false,
-  },
-  {
-    label: "Categorie",
-    icon: faTable,
-    href: "/categories",
-    alert: false,
-  },
-  {
-    label: "Utenti",
-    icon: faUsers,
-    href: "/users",
-    alert: false,
-  },
-];
+  // Extract domain from pathname if on site domain
+  const domain = isOnSiteDomain
+    ? pathname.split("/sites/")[1]?.split("/")[0]
+    : null;
+
+  // Base path for site-specific routes
+  const basePath = isOnSiteDomain ? `/sites/${domain}` : "";
+
+  const siteSpecificItems: menuItem[] = [
+    {
+      label: "Dashboard",
+      icon: faWaveSquare,
+      alert: true,
+      href: `${basePath}/dashboard`,
+    },
+    {
+      label: "Kanban",
+      icon: faTable,
+      href: `${basePath}/kanban`,
+      alert: true,
+    },
+    {
+      label: "Progetti",
+      icon: faTable,
+      href: `${basePath}/projects`,
+      alert: false,
+    },
+    // {
+    //   label: "Calendario",
+    //   icon: faClock,
+    //   href: `${basePath}/calendar`,
+    //   alert: false,
+    // },
+    {
+      label: "Clienti",
+      icon: faUser,
+      href: `${basePath}/clients`,
+      alert: false,
+    },
+    // {
+    //   label: "Errori",
+    //   icon: faExclamation,
+    //   href: `${basePath}/errortracking`,
+    //   alert: false,
+    // },
+    // {
+    //   label: "Ore",
+    //   icon: faClock,
+    //   href: `${basePath}/timetracking`,
+    //   alert: false,
+    // },
+    // {
+    //   label: "Reports",
+    //   icon: faSquarePollVertical,
+    //   href: `${basePath}/reports`,
+    //   alert: false,
+    //   items: [
+    //     {
+    //       label: "Quality Control",
+    //       icon: faCheckSquare,
+    //       href: `${basePath}/qualityControl`,
+    //       alert: false,
+    //     },
+    //     {
+    //       label: "Effettua QC",
+    //       icon: faCheckSquare,
+    //       href: `${basePath}/qualityControl/edit`,
+    //       alert: false,
+    //     },
+    //     {
+    //       label: "Imballaggio",
+    //       icon: faBox,
+    //       href: `${basePath}/boxing`,
+    //       alert: false,
+    //     },
+    //     {
+    //       label: "Effettua imballaggio",
+    //       icon: faBox,
+    //       href: `${basePath}/boxing/edit`,
+    //       alert: false,
+    //     },
+    //   ],
+    // },
+    {
+      label: "Inventario",
+      icon: faBox,
+      href: `${basePath}/inventory`,
+      alert: false,
+    },
+    {
+      label: "Prodotti",
+      icon: faBox,
+      href: `${basePath}/products`,
+      alert: false,
+    },
+    {
+      label: "Fornitori",
+      icon: faHelmetSafety,
+      href: `${basePath}/suppliers`,
+      alert: false,
+    },
+    {
+      label: "Categorie",
+      icon: faTable,
+      href: `${basePath}/categories`,
+      alert: false,
+    },
+  ];
+
+  // Add admin-only items if not on site domain
+  if (!isOnSiteDomain) {
+    siteSpecificItems.push(
+      {
+        label: "Utenti",
+        icon: faUsers,
+        href: "/users",
+        alert: false,
+      },
+      {
+        label: "Sites",
+        icon: faTable,
+        href: "/sites",
+        alert: false,
+      },
+      {
+        label: "Settings",
+        icon: faWrench,
+        href: "/settings",
+        alert: false,
+      }
+    );
+  }
+
+  return siteSpecificItems;
+};
 
 const UserSection = memo(function UserSection({
   user,
@@ -177,8 +210,26 @@ export function AppSidebar() {
   }>({});
   const [isLoadingKanbans, setIsLoadingKanbans] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [organizationName, setOrganizationName] = useState<string>("");
   const { toast } = useToast();
   const { isOnline, lastOnlineTime } = useOnlineStatus();
+
+  // Function to fetch organization name
+  const fetchOrganizationName = useCallback(async (organizationId: string) => {
+    try {
+      const response = await fetch(`/api/organizations/${organizationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrganizationName(data.name);
+      } else {
+        console.error("Failed to fetch organization name");
+        setOrganizationName("Organization");
+      }
+    } catch (error) {
+      console.error("Error fetching organization name:", error);
+      setOrganizationName("Organization");
+    }
+  }, []);
 
   // Handle online/offline status changes
   useEffect(() => {
@@ -200,14 +251,32 @@ export function AppSidebar() {
           const data = await response.json();
           if (data.user) {
             setUser(data.user);
+            // Fetch organization name if we have organizationId
+            if (data.organizationId) {
+              fetchOrganizationName(data.organizationId);
+            }
           }
         } catch (error) {
           console.error("Error fetching user data:", error);
         }
       };
       fetchUserData();
+    } else {
+      // If user is already loaded, fetch organization name
+      const fetchOrgName = async () => {
+        try {
+          const response = await fetch("/api/auth/me");
+          const data = await response.json();
+          if (data.organizationId) {
+            fetchOrganizationName(data.organizationId);
+          }
+        } catch (error) {
+          console.error("Error fetching organization data:", error);
+        }
+      };
+      fetchOrgName();
     }
-  }, [userWithLocal, setUser]);
+  }, [userWithLocal, setUser, fetchOrganizationName]);
 
   useEffect(() => {
     if (kanbans.length === 0 && isOnline) {
@@ -310,8 +379,16 @@ export function AppSidebar() {
   );
 
   const menuItems = useMemo(() => {
-    return operatorItems.map((item) => {
+    const items = getMenuItems(pathname);
+    return items.map((item: menuItem) => {
       if (item.label === "Kanban") {
+        // Get the base path for kanban routes
+        const isOnSiteDomain = pathname.includes("/sites/");
+        const domain = isOnSiteDomain
+          ? pathname.split("/sites/")[1]?.split("/")[0]
+          : null;
+        const basePath = isOnSiteDomain ? `/sites/${domain}` : "";
+
         return {
           ...item,
           items: [
@@ -338,7 +415,7 @@ export function AppSidebar() {
               : kanbans.map((kanban) => ({
                   label: kanban.title,
                   icon: faTable,
-                  href: `/kanban?name=${kanban.identifier}`,
+                  href: `${basePath}/kanban?name=${kanban.identifier}`,
                   alert: false,
                 }))),
             {
@@ -353,7 +430,14 @@ export function AppSidebar() {
       }
       return item;
     });
-  }, [kanbans, isLoadingKanbans, isOnline, lastSyncTime, refreshKanbans]);
+  }, [
+    kanbans,
+    isLoadingKanbans,
+    isOnline,
+    lastSyncTime,
+    refreshKanbans,
+    pathname,
+  ]);
 
   const toggleMenu = useCallback((label: string) => {
     setCollapsedMenus((prev) => ({
@@ -385,10 +469,12 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Baccialegno manager</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {organizationName || "Organization"}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {menuItems.map((item: menuItem) => (
                 <React.Fragment key={item.label}>
                   <SidebarMenuItem>
                     <SidebarMenuButton
@@ -428,7 +514,7 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                   {item.items && !collapsedMenus[item.label] && (
                     <div className="pl-4">
-                      {item.items.map((subItem) => (
+                      {item.items.map((subItem: menuItem) => (
                         <SidebarMenuItem key={subItem.label}>
                           {subItem.customComponent ? (
                             <KanbanManagementModal

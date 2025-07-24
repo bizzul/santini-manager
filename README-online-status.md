@@ -1,6 +1,6 @@
 # Online/Offline Status Management
 
-This document describes the online/offline status management system implemented in the Baccialegno application.
+This document describes the online/offline status management system implemented in the  application.
 
 ## Features
 

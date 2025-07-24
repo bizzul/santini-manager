@@ -1,21 +1,48 @@
-import "/styles/date-picker.css";
-import "./globals.css";
-//Font-awesome
-import "@fortawesome/fontawesome-svg-core/styles.css";
-import { config } from "@fortawesome/fontawesome-svg-core";
-config.autoAddCss = false; // Tell Font Awesome to skip adding the CSS automatically since it's being imported above
+import "@/styles/globals.css";
+import { cal, inter } from "@/styles/fonts";
+import { Analytics } from "@vercel/analytics/react";
+import { Providers } from "./providers";
+import { Metadata } from "next";
+import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/toaster";
 
-export default async function RootLayout({
+const title = "Reactive Manager";
+const description = "A B2B Saas Platform";
+const image = "https://vercel.pub/thumbnail.png";
+
+export const metadata: Metadata = {
+  title,
+  description,
+  icons: ["https://vercel.pub/favicon.ico"],
+  openGraph: {
+    title,
+    description,
+    images: [image],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: [image],
+    creator: "@vercel",
+  },
+  metadataBase: new URL("https://vercel.app"),
+};
+
+export default function RootLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
-  params: any;
 }) {
   return (
-    <html lang="it" className="dark" suppressHydrationWarning>
-      <head />
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body className={cn(cal.variable, inter.variable)}>
+        <Providers>
+          {children}
+          <Toaster />
+          <Analytics />
+        </Providers>
+      </body>
     </html>
   );
 }

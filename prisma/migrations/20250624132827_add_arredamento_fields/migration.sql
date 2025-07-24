@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "Task" ADD COLUMN     "altro" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "legno" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "vernice" BOOLEAN NOT NULL DEFAULT false;

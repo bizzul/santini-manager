@@ -1,10 +1,9 @@
-import { User } from "auth0";
+import { User } from "@supabase/supabase-js";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface UserDrawerType extends User {
-  sub: string;
-  picture: string;
+  picture?: string;
 }
 
 type UserStore = {
@@ -22,6 +21,6 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: "user-storage",
-    }
-  )
+    },
+  ),
 );

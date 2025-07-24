@@ -246,7 +246,7 @@ export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {
   useEffect(() => {
     const fetchData = async () => {
       if (user && userWithLocal === undefined) {
-        await get(user.sub);
+        await get(user.id);
       }
     };
     fetchData();
@@ -345,8 +345,12 @@ export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {
           >
             {userWithLocal !== null && userWithLocal !== undefined && (
               <Image
-                src={userWithLocal.picture}
-                alt={userWithLocal?.family_name!}
+                src={userWithLocal.picture || ""}
+                alt={
+                  userWithLocal?.user_metadata?.full_name ||
+                  userWithLocal?.email ||
+                  ""
+                }
                 width={20}
                 height={20}
                 className="rounded-md h-10 w-10"
@@ -359,9 +363,7 @@ export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {
             >
               <div className="leading-4">
                 <h4 className="font-semibold">
-                  {user?.given_name && user?.family_name
-                    ? `${user?.given_name} ${user?.family_name}`
-                    : user && user.name && `${user.name}`}
+                  {user?.user_metadata?.full_name || user?.email}
                 </h4>
                 <span className="text-xs">{user?.email && user.email}</span>
               </div>

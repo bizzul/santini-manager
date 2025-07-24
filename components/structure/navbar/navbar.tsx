@@ -2,7 +2,7 @@ import { FC, useEffect } from "react";
 import { Fragment, useState } from "react";
 import { FontawesomeObject, IconProp } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { User } from "auth0";
+import { User } from "@supabase/supabase-js";
 import { faBell } from "@fortawesome/free-solid-svg-icons";
 import { NotificationDrawer } from "./notification-drawer";
 import { Task } from "@prisma/client";
@@ -10,8 +10,7 @@ import { onlyTaskLateWithDaysRemaining } from "../../../package/utils/various/ca
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export interface UserDrawerType extends User {
-  sub: string;
-  picture: string;
+  picture?: string;
 }
 type Props = {
   user?: UserDrawerType | null;

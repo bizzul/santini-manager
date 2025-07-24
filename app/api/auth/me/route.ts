@@ -1,29 +1,22 @@
-import { getSession } from "@auth0/nextjs-auth0";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getUserContext } from "@/lib/auth-utils";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
+    const userContext = await getUserContext();
 
-    if (!session?.user) {
+    if (!userContext) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Return the user data from the session
-    return NextResponse.json({
-      user: {
-        ...session.user,
-        sub: session.user.sub,
-        picture: session.user.picture || null,
-      },
-    });
+    return NextResponse.json(userContext);
   } catch (error) {
-    console.error("Error fetching user data:", error);
+    console.error("Error fetching user context:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

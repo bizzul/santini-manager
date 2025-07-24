@@ -3,13 +3,14 @@ const path = require("path");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   images: {
     domains: [
       "https://flagcdn.com/",
       "flagcdn.com",
       "s.gravatar.com",
       "res.cloudinary.com",
+      "reactive-manager.vercel.app",
+      "avatar.vercel.sh",
     ],
   },
   webpack: (config) => {
