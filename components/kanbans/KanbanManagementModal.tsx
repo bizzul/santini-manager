@@ -265,7 +265,7 @@ export default function KanbanManagementModal({
                 className="w-20 h-10 p-1"
               />
               <div
-                className="w-8 h-8 rounded border"
+                className="w-8 h-8 rounded-sm border"
                 style={{ backgroundColor: color }}
               />
             </div>

@@ -19,12 +19,12 @@ async function ImpersonationBanner({
     window.location.reload();
   };
   return (
-    <div className="fixed top-0 left-0 w-full z-50 bg-yellow-200 text-yellow-900 flex items-center justify-center py-3 shadow">
+    <div className="fixed top-0 left-0 w-full z-50 bg-yellow-200 text-yellow-900 flex items-center justify-center py-3 shadow-sm">
       <span className="font-semibold mr-4">
         You are impersonating: {impersonatedUser?.email || impersonatedUser?.id}
       </span>
       <button
-        className="bg-red-600 text-white px-3 py-1 rounded"
+        className="bg-red-600 text-white px-3 py-1 rounded-sm"
         onClick={handleLeave}
       >
         Leave impersonation
@@ -113,7 +113,7 @@ export default async function SiteLayout({
             originalSuperadminId={originalSuperadminId}
           />
         )}
-        <div className="flex mt-12">
+        <div className="flex">
           <AppSidebar />
 
           <SidebarTrigger />

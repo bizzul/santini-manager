@@ -131,7 +131,7 @@ export const CreateModal: FC<Props> = ({ open, setOpen, setOpenModal }) => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {error && (
               <div className="px-6 pt-5">
-                <div className="w-full p-4 rounded bg-red-500 text-white flex-row items-middle">
+                <div className="w-full p-4 rounded-sm bg-red-500 text-white flex-row items-middle">
                   <FontAwesomeIcon icon={faWarning} className="mr-2" />
                   {error}
                 </div>
@@ -450,7 +450,7 @@ export const CreateModal: FC<Props> = ({ open, setOpen, setOpenModal }) => {
               )}
 
               {loading && (
-                <div className="rounded-md border shadow-sm flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
+                <div className="rounded-md border shadow-xs flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
                   <div
                     className="w-5 h-5 
                   border-4

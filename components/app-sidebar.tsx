@@ -211,6 +211,7 @@ export function AppSidebar() {
   const [isLoadingKanbans, setIsLoadingKanbans] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [siteName, setSiteName] = useState<string>("");
   const { toast } = useToast();
   const { isOnline, lastOnlineTime } = useOnlineStatus();
 
@@ -230,6 +231,28 @@ export function AppSidebar() {
       setOrganizationName("Organization");
     }
   }, []);
+
+  // Function to fetch site name
+  const fetchSiteName = useCallback(
+    async (domain: string) => {
+      try {
+        const response = await fetch(`/api/sites/${domain}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSiteName(data.name);
+          // Optionally, fetch org name if not already set
+          if (data.organization_id && !organizationName) {
+            fetchOrganizationName(data.organization_id);
+          }
+        } else {
+          setSiteName("");
+        }
+      } catch (error) {
+        setSiteName("");
+      }
+    },
+    [organizationName, fetchOrganizationName]
+  );
 
   // Handle online/offline status changes
   useEffect(() => {
@@ -361,6 +384,17 @@ export function AppSidebar() {
     return () => clearInterval(interval);
   }, [isOnline, lastSyncTime, refreshKanbans]);
 
+  useEffect(() => {
+    // If on a site domain, fetch site name
+    const isOnSiteDomain = pathname.includes("/sites/");
+    if (isOnSiteDomain) {
+      const domain = pathname.split("/sites/")[1]?.split("/")[0];
+      if (domain) {
+        fetchSiteName(domain);
+      }
+    }
+  }, [pathname, fetchSiteName]);
+
   const isActive = useCallback(
     (href: string) => {
       // Handle query parameters
@@ -470,7 +504,9 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            {organizationName || "Organization"}
+            {organizationName && siteName
+              ? `${organizationName} - ${siteName}`
+              : organizationName || "Organization"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -520,7 +556,7 @@ export function AppSidebar() {
                             <KanbanManagementModal
                               onSave={handleSaveKanban}
                               trigger={
-                                <div className="w-full flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent rounded">
+                                <div className="w-full flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent rounded-sm">
                                   <FontAwesomeIcon icon={subItem.icon} />
                                   <span>{subItem.label}</span>
                                 </div>

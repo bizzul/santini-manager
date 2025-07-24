@@ -89,7 +89,7 @@ export const CreateModal: FC<Props> = ({
         <form onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <div className="px-6 pt-5">
-              <div className="w-full p-4 rounded bg-red-500 text-white flex-row items-middle">
+              <div className="w-full p-4 rounded-sm bg-red-500 text-white flex-row items-middle">
                 <FontAwesomeIcon icon={faWarning} className="mr-2" />
                 {error}
               </div>
@@ -111,7 +111,7 @@ export const CreateModal: FC<Props> = ({
                     <div>
                       <select
                         {...register("productCategoryId", { required: true })}
-                        className="form-input block py-2.5 px-2 w-full text-md text-gray-500 bg-transparent  border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-gray-200 peer"
+                        className="form-input block py-2.5 px-2 w-full text-md text-gray-500 bg-transparent  border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-hidden focus:ring-0 focus:border-gray-200 peer"
                         disabled={loading || isSubmitting}
                       >
                         {category?.map((category: any) => {
@@ -136,7 +136,7 @@ export const CreateModal: FC<Props> = ({
                     <div className="w-1/2 mt-2"> </div>
                     <select
                       {...register(`supplierId`, { required: true })}
-                      className="form-input block py-2.5 px-2 w-full text-md text-gray-500 bg-transparent  border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-gray-200 peer"
+                      className="form-input block py-2.5 px-2 w-full text-md text-gray-500 bg-transparent  border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-hidden focus:ring-0 focus:border-gray-200 peer"
                       disabled={loading || isSubmitting}
                     >
                       {supplier?.map((supplier: Supplier) => (
@@ -272,14 +272,14 @@ export const CreateModal: FC<Props> = ({
             {!loading && (
               <button
                 type="submit"
-                className=" justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 sm:ml-3 sm:w-auto sm:text-sm"
+                className=" justify-center rounded-md border border-transparent shadow-xs px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-green-500 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-green-600 sm:ml-3 sm:w-auto sm:text-sm"
               >
                 <FontAwesomeIcon icon={faSave} className="mr-2" /> Salva
               </button>
             )}
 
             {loading && (
-              <div className="rounded-md border shadow-sm flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
+              <div className="rounded-md border shadow-xs flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
                 <div
                   className="w-5 h-5 
             border-4

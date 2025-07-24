@@ -57,7 +57,7 @@ export const SendChangePasswordModal: FC<Props> = ({
         </div>
         {error && (
           <div className="px-6 pt-5">
-            <div className="w-full p-4 rounded bg-red-500 text-white flex-row items-middle">
+            <div className="w-full p-4 rounded-sm bg-red-500 text-white flex-row items-middle">
               <FontAwesomeIcon icon={faWarning} className="mr-2" />
               {error}
             </div>

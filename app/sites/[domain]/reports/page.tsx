@@ -43,7 +43,7 @@ async function Page() {
   return (
     // <SWRProvider>
     <>
-      <div className="p-4 h-[100vh]">
+      <div className="p-4 h-screen">
         <h1 className="text-2xl font-bold  pb-12">
           Crea i documenti di reportistica
         </h1>

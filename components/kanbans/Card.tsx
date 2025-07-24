@@ -478,7 +478,7 @@ export default function Card({
                             e.stopPropagation();
                             handleLegnoCheck(!legnoCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             legnoCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -494,7 +494,7 @@ export default function Card({
                             e.stopPropagation();
                             handleFerramentaCheck(!ferramentaCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             ferramentaCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -510,7 +510,7 @@ export default function Card({
                             e.stopPropagation();
                             handleVerniceCheck(!verniceCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             verniceCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -526,7 +526,7 @@ export default function Card({
                             e.stopPropagation();
                             handleAltroCheck(!altroCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             altroCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -545,7 +545,7 @@ export default function Card({
                             e.stopPropagation();
                             handleFerramentaCheck(!ferramentaCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             ferramentaCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -561,7 +561,7 @@ export default function Card({
                             e.stopPropagation();
                             handleMetalliCheck(!metalliCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             metalliCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -578,7 +578,7 @@ export default function Card({
                               e.stopPropagation();
                               handleStoccatoCheck(!stoccatoCheck);
                             }}
-                            className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-sm transition-colors duration-150${
+                            className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                               stoccatoCheck
                                 ? " bg-orange-500 text-white border-white"
                                 : ""
@@ -720,7 +720,7 @@ export default function Card({
             )}
           </div>
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="max-w-[57rem] max-h-[90%] overflow-scroll">
+            <DialogContent className="max-w-228 max-h-[90%] overflow-scroll">
               <DialogHeader>
                 <DialogTitle>Modifica {data.unique_code}</DialogTitle>
                 {/* <DialogDescription>Crea un prodotto nuovo</DialogDescription> */}

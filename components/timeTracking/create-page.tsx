@@ -555,7 +555,7 @@ const CreatePage = ({
               <select
                 name="descriptionCat"
                 value={row.descriptionCat}
-                className="border rounded-sm  py-2 px-4"
+                className="border rounded-xs  py-2 px-4"
                 onChange={(event) => handleInputChange(event, index)}
               >
                 <option value="">Nessuna</option>

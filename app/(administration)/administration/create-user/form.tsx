@@ -31,7 +31,7 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           name="email"
           id="email"
           required
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         />
       </div>
 
@@ -47,7 +47,7 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           name="name"
           id="name"
           required
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         />
       </div>
 
@@ -63,7 +63,7 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           name="last_name"
           id="last_name"
           required
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         />
       </div>
 
@@ -78,7 +78,7 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           name="organization"
           id="organization"
           required
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         >
           <option value="">Select an organization</option>
           {organizations?.map((org) => (
@@ -100,7 +100,7 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           name="role"
           id="role"
           required
-          className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         >
           {roles.map((role) => (
             <option key={role} value={role}>
@@ -112,7 +112,7 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
 
       <button
         type="submit"
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
         Create User
       </button>

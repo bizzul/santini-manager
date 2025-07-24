@@ -106,7 +106,7 @@ export default function GoogleAutocomplete({ setValue, type }) {
       <div>
         <input
           onKeyDown={handleKeyDown}
-          className="form-input block py-2.5 px-2 w-full text-md text-gray-500 bg-transparent  border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-none focus:ring-0 focus:border-gray-200 peer"
+          className="form-input block py-2.5 px-2 w-full text-md text-gray-500 bg-transparent  border-b-2 border-gray-200 appearance-none dark:text-gray-400 dark:border-gray-700 focus:outline-hidden focus:ring-0 focus:border-gray-200 peer"
           type="text"
           placeholder="Cercare luogo..."
           ref={materialRef}

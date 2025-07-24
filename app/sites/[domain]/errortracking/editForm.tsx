@@ -415,8 +415,8 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             >
               Foto
             </label>
-            <div className="mt-1 flex flex-row gap-4 rounded-md shadow-sm">
-              <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <div className="mt-1 flex flex-row gap-4 rounded-md shadow-xs">
+              <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                 <CldUploadButton
                   className="z-50"
                   uploadPreset="uploadpdf"

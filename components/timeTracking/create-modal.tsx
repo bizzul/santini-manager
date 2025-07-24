@@ -100,7 +100,7 @@ export const CreateModal: FC<Props> = ({
         <form onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <div className="px-6 pt-5">
-              <div className="w-full p-4 rounded bg-red-500 text-white flex-row items-middle">
+              <div className="w-full p-4 rounded-sm bg-red-500 text-white flex-row items-middle">
                 <FontAwesomeIcon icon={faWarning} className="mr-2" />
                 {error}
               </div>
@@ -147,7 +147,7 @@ export const CreateModal: FC<Props> = ({
                                 <input
                                   type="checkbox"
                                   value={role.id}
-                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
                                   {...register("roles")}
                                 />
                                 <span className="ml-2">{role.name}</span>
@@ -203,14 +203,14 @@ export const CreateModal: FC<Props> = ({
             {!loading && (
               <button
                 type="submit"
-                className=" justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 sm:ml-3 sm:w-auto sm:text-sm"
+                className=" justify-center rounded-md border border-transparent shadow-xs px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-green-500 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-green-600 sm:ml-3 sm:w-auto sm:text-sm"
               >
                 <FontAwesomeIcon icon={faSave} className="mr-2" /> Salva
               </button>
             )}
 
             {loading && (
-              <div className="rounded-md border shadow-sm flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
+              <div className="rounded-md border shadow-xs flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
                 <div
                   className="w-5 h-5 
             border-4

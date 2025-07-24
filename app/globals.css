@@ -1,9 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-body {
-  @apply antialiased;
+@config '../tailwind.config.js';
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@layer utilities {
+  body {
+    @apply antialiased;
+  }
 }
 
 @layer base {
@@ -23,26 +43,48 @@ body:has(.home-gradient-bg) {
   @apply bg-transparent;
 }
 
-.stripe-gradient-bg {
+.glass-gradient-bg {
   position: absolute;
   width: 100vw;
   height: 100vh;
   top: 0;
   left: 0;
   z-index: 0;
-  background: repeating-linear-gradient(
-    120deg,
-    rgba(127, 90, 240, 0.3) 0px,
-    rgba(127, 90, 240, 0.3) 40px,
-    rgba(44, 182, 125, 0.3) 40px,
-    rgba(44, 182, 125, 0.3) 80px,
-    rgba(251, 191, 36, 0.3) 80px,
-    rgba(251, 191, 36, 0.3) 120px,
-    rgba(255, 107, 107, 0.3) 120px,
-    rgba(255, 107, 107, 0.3) 160px
+  background: linear-gradient(
+    135deg,
+    #7f5af0 0%,
+    #2cb67d 40%,
+    #fbbf24 70%,
+    #ff6b6b 100%
   );
-  background-size: 400% 400%;
-  animation: stripeMove 12s linear infinite;
+  filter: blur(32px);
+  opacity: 0.7;
+  background-size: 200% 200%;
+  animation: glassMove 20s ease-in-out infinite alternate;
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass-gradient-bg {
+    background: linear-gradient(
+      135deg,
+      #2d235a 0%,
+      #144c3c 40%,
+      #bfa524 70%,
+      #7f2323 100%
+    );
+    opacity: 0.85;
+    background-size: 200% 200%;
+    animation: glassMove 20s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes glassMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,6 +100,8 @@ body:has(.home-gradient-bg) {
       rgba(255, 107, 107, 0.3) 120px,
       rgba(255, 107, 107, 0.3) 160px
     );
+    background-size: 400% 400%;
+    animation: stripeMove 12s linear infinite;
   }
 }
 

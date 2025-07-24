@@ -137,7 +137,7 @@ export default async function AdminDashboardPage() {
         {content.cards.map((card, index) => (
           <Card
             key={index}
-            className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-[12rem]"
+            className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-48"
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
@@ -178,7 +178,7 @@ export default async function AdminDashboardPage() {
             {sites?.map((site) => (
               <Card
                 key={site.id}
-                className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-[18rem]"
+                className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-72"
               >
                 <CardHeader>
                   <CardTitle className="text-lg">{site.name}</CardTitle>

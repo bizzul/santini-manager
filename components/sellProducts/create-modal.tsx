@@ -82,7 +82,7 @@ export const CreateModal: FC<Props> = ({ open, setOpen }) => {
         <form onSubmit={handleSubmit(onSubmit)}>
           {error && (
             <div className="px-6 pt-5">
-              <div className="w-full p-4 rounded bg-red-500 text-white flex-row items-middle">
+              <div className="w-full p-4 rounded-sm bg-red-500 text-white flex-row items-middle">
                 <FontAwesomeIcon icon={faWarning} className="mr-2" />
                 {error}
               </div>
@@ -133,14 +133,14 @@ export const CreateModal: FC<Props> = ({ open, setOpen }) => {
             {!loading && (
               <button
                 type="submit"
-                className=" justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600 sm:ml-3 sm:w-auto sm:text-sm"
+                className=" justify-center rounded-md border border-transparent shadow-xs px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-green-500 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-green-600 sm:ml-3 sm:w-auto sm:text-sm"
               >
                 <FontAwesomeIcon icon={faSave} className="mr-2" /> Salva
               </button>
             )}
 
             {loading && (
-              <div className="rounded-md border shadow-sm flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
+              <div className="rounded-md border shadow-xs flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
                 <div
                   className="w-5 h-5 
             border-4

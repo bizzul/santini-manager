@@ -103,20 +103,20 @@ export const List: FC<Props> = ({
                     handleRowClick(i.id);
                   }}
                 >
-                  <td className="border-1 p-2 h-14">{i.inventoryId}</td>
-                  <td className="border-1 p-2 h-14">
+                  <td className="border p-2 h-14">{i.inventoryId}</td>
+                  <td className="border p-2 h-14">
                     {i.product_category?.name}
                   </td>
-                  <td className="border-1 p-2 h-14">{i.name}</td>
-                  <td className="border-1 p-2 h-14">{i.description}</td>
-                  <td className="border-1 p-2 h-14">{i.supplierInfo?.name}</td>
-                  <td className="border-1 p-2 h-14">
+                  <td className="border p-2 h-14">{i.name}</td>
+                  <td className="border p-2 h-14">{i.description}</td>
+                  <td className="border p-2 h-14">{i.supplierInfo?.name}</td>
+                  <td className="border p-2 h-14">
                     {i.width}x{i.height}x{i.length}
                   </td>
-                  <td className="border-1 p-2 h-14">{i.quantity}</td>
-                  <td className="border-1 p-2 h-14">{i.unit_price}</td>
-                  <td className="border-1 p-2 h-14">{roundedPrice}</td>
-                  <td className="border-1 p-2 h-14">
+                  <td className="border p-2 h-14">{i.quantity}</td>
+                  <td className="border p-2 h-14">{i.unit_price}</td>
+                  <td className="border p-2 h-14">{roundedPrice}</td>
+                  <td className="border p-2 h-14">
                     {(() => {
                       const mostRecentItem = [...i.Action].sort((a, b) => {
                         // @ts-ignore
@@ -152,7 +152,7 @@ export const List: FC<Props> = ({
                   <td onClick={(e) => e.stopPropagation()}>
                     <Menu as="div" className="relative inline-block text-left">
                       <div>
-                        <Menu.Button className="justify-center w-full flex  rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
+                        <Menu.Button className="justify-center w-full flex  rounded-md border border-gray-300 shadow-xs px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 focus:ring-indigo-500">
                           Azioni
                           <FontAwesomeIcon
                             icon={faChevronDown}
@@ -170,7 +170,7 @@ export const List: FC<Props> = ({
                         leaveFrom="transform opacity-100 scale-100"
                         leaveTo="transform opacity-0 scale-95"
                       >
-                        <Menu.Items className="origin-top-right absolute z-30 right-0 mt-2 w-96 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none">
+                        <Menu.Items className="origin-top-right absolute z-30 right-0 mt-2 w-96 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-hidden">
                           <div className="py-1 text-slate-600">
                             {actionMenu.map((item) => (
                               <Menu.Item
@@ -186,7 +186,7 @@ export const List: FC<Props> = ({
                                     }
                                   }}
                                   className={`block px-4 py-2 hover:bg-gray-100  ${
-                                    i.separatorBefore && `border-t-[1px]`
+                                    i.separatorBefore && `border-t`
                                   } ${item.class}`}
                                 >
                                   <FontAwesomeIcon

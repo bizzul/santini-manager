@@ -17,7 +17,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
     >
       {pending ? "Creating..." : "Create Site"}
     </button>
@@ -57,7 +57,7 @@ export function CreateSiteForm() {
           id="name"
           name="name"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         />
       </div>
       <div>
@@ -72,7 +72,7 @@ export function CreateSiteForm() {
           id="subdomain"
           name="subdomain"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         />
       </div>
       <div>
@@ -86,7 +86,7 @@ export function CreateSiteForm() {
           id="description"
           name="description"
           rows={3}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         />
       </div>
       <div>
@@ -101,7 +101,7 @@ export function CreateSiteForm() {
           name="organizations"
           multiple
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         >
           {organizations.map((org: any) => (
             <option key={org.id} value={org.id}>

@@ -48,7 +48,7 @@ export const Navbar: FC<Props> = ({
   return (
     <div
       className={`h-12 z-50 fixed w-screen transition-all duration-500  dark:bg-dark-tremor-background-muted bg-tremor-background-muted   flex justify-between align-middle items-center text-slate-400 border-b-2  border-opacity-20 ${
-        !slim ? "ml-2 pr-[17rem]" : "ml-0 pr-24"
+        !slim ? "ml-2 pr-68" : "ml-0 pr-24"
       } "overflow-hidden"`}
     >
       <div className="  flex items-center pl-8 text-lg font-bold">

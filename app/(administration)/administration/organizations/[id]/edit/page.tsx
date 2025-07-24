@@ -52,7 +52,7 @@ export default async function EditOrganizationPage({
                 name="name"
                 type="text"
                 defaultValue={organization.name}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
                 required
               />
             </div>
@@ -65,7 +65,7 @@ export default async function EditOrganizationPage({
                 name="domain"
                 type="text"
                 defaultValue={organization.domain || ""}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
               />
             </div> */}
             <div>
@@ -77,7 +77,7 @@ export default async function EditOrganizationPage({
                 name="code"
                 type="text"
                 defaultValue={organization.code || ""}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
               />
             </div>
             <div className="flex gap-2">

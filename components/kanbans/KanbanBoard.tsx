@@ -265,7 +265,7 @@ const Column = ({
           )}
         </div>
         <div
-          className={`h-full min-h-[40rem] p-1   ${
+          className={`h-full min-h-160 p-1   ${
             isOver && canDrop ? "bg-green-500 border border-zinc-400" : ""
           }`}
           //@ts-ignore
@@ -774,7 +774,7 @@ function KanbanBoard({
             </h4>
 
             <div
-              className={`top-[9rem] left-[19rem] fixed flex justify-start gap-2 ${
+              className={`top-36 left-76 fixed flex justify-start gap-2 ${
                 isTimelineOpen ? "opacity-0" : "opacity-100"
               } transition-all duration-300`}
             >

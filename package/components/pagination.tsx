@@ -45,16 +45,16 @@ export const Pagination: FC<Props> = ({
           size === "sm" ? classNames.sm.text : classNames.md.text
         }`}
         activeClassName="bg-primary-100 text-white"
-        previousClassName={`bg-white rounded-l-md border-[1px] border-slate-100 ${
+        previousClassName={`bg-white rounded-l-md border border-slate-100 ${
           size === "sm" ? classNames.sm.p : classNames.md.p
         }`}
-        nextClassName={`bg-white rounded-r-md border-[1px] border-slate-100 ${
+        nextClassName={`bg-white rounded-r-md border border-slate-100 ${
           size === "sm" ? classNames.sm.p : classNames.md.p
         }`}
-        pageClassName={`bg-white border-[1px] border-l-0 border-slate-100 ${
+        pageClassName={`bg-white border border-l-0 border-slate-100 ${
           size === "sm" ? classNames.sm.p : classNames.md.p
         }`}
-        breakClassName={`bg-white border-[1px] border-slate-100 ${
+        breakClassName={`bg-white border border-slate-100 ${
           size === "sm" ? classNames.sm.p : classNames.md.p
         }`}
         forcePage={page - 1}

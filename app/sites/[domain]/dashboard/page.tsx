@@ -28,7 +28,7 @@ export default async function SiteDashboardPage({
   const site = siteData.data;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 w-full">
+    <div className="space-y-4 p-4 md:p-8 w-full">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">
           {site.name} Dashboard
@@ -43,7 +43,7 @@ export default async function SiteDashboardPage({
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Quick Stats Cards */}
-        <div className="rounded-xl border bg-card text-card-foreground shadow">
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">
               Active Projects
@@ -54,7 +54,7 @@ export default async function SiteDashboardPage({
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card text-card-foreground shadow">
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">Open Tasks</h3>
           </div>
@@ -63,7 +63,7 @@ export default async function SiteDashboardPage({
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card text-card-foreground shadow">
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">Team Members</h3>
           </div>
@@ -72,7 +72,7 @@ export default async function SiteDashboardPage({
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card text-card-foreground shadow">
+        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">Site Status</h3>
           </div>
@@ -84,7 +84,7 @@ export default async function SiteDashboardPage({
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         {/* Quick Actions */}
-        <div className="col-span-4 rounded-xl border bg-card text-card-foreground shadow">
+        <div className="col-span-4 rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">
               Quick Actions
@@ -94,19 +94,19 @@ export default async function SiteDashboardPage({
             <div className="space-y-2">
               <a
                 href={`/sites/${domain}/kanban`}
-                className="block p-3 bg-blue-50 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                className="block p-3 bg-blue-50 dark:bg-blue-900/20 text-black rounded-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
               >
                 View Kanban Boards
               </a>
               <a
                 href={`/sites/${domain}/projects`}
-                className="block p-3 bg-green-50 dark:bg-green-900/20 rounded hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                className="block p-3 bg-green-50 dark:bg-green-900/20 text-black rounded-sm hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
               >
                 Manage Projects
               </a>
               <a
                 href={`/sites/${domain}/inventory`}
-                className="block p-3 bg-orange-50 dark:bg-orange-900/20 rounded hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                className="block p-3 bg-orange-50 dark:bg-orange-900/20 text-black rounded-sm hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
               >
                 Check Inventory
               </a>
@@ -115,7 +115,7 @@ export default async function SiteDashboardPage({
         </div>
 
         {/* Recent Activity */}
-        <div className="col-span-3 rounded-xl border bg-card text-card-foreground shadow">
+        <div className="col-span-3 rounded-xl border bg-card text-card-foreground shadow-sm">
           <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
             <h3 className="tracking-tight text-sm font-medium">
               Recent Activity
@@ -143,7 +143,7 @@ export default async function SiteDashboardPage({
       </div>
 
       {/* Site Info */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow">
+      <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
         <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
           <h3 className="tracking-tight text-sm font-medium">
             Site Information

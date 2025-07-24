@@ -90,7 +90,7 @@ export const DetailModal: FC<Props> = ({
         <div className="pr-4 pt-2">
           <Menu as="div" className="relative inline-block text-left">
             <div>
-              <Menu.Button className="inline-flex w-full justify-center align-baseline rounded-md bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100">
+              <Menu.Button className="inline-flex w-full justify-center align-baseline rounded-md bg-white px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-100">
                 <FontAwesomeIcon
                   icon={faEllipsis}
                   className="text-gray-300 text-3xl cursor-pointer "
@@ -107,7 +107,7 @@ export const DetailModal: FC<Props> = ({
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-hidden">
                 <div className="py-1">
                   <Menu.Item>
                     {({ active }) => (

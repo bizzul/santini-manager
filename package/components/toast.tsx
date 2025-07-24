@@ -25,7 +25,7 @@ function Toast({ show, icon, text }: { show: any; icon: any; text: string }) {
       >
         <div
           id="toast-simple"
-          className="flex translate-x- items-center w-full max-w-xs p-4 space-x-4 text-gray-500 bg-white divide-x divide-gray-200 rounded-lg shadow dark:text-gray-400 dark:divide-gray-700 space-x dark:bg-gray-800"
+          className="flex translate-x- items-center w-full max-w-xs p-4 space-x-4 text-gray-500 bg-white divide-x divide-gray-200 rounded-lg shadow-sm dark:text-gray-400 dark:divide-gray-700 space-x dark:bg-gray-800"
           role="alert"
         >
           <FontAwesomeIcon

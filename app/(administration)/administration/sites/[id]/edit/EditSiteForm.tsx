@@ -9,7 +9,7 @@ function SubmitButton({ pending }: { pending: boolean }) {
     <button
       type="submit"
       disabled={pending}
-      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
     >
       {pending ? "Saving..." : "Save Changes"}
     </button>
@@ -85,7 +85,7 @@ export default function EditSiteForm({
           value={form.name}
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         />
       </div>
       <div>
@@ -104,7 +104,7 @@ export default function EditSiteForm({
             setForm((f) => ({ ...f, subdomain: e.target.value }))
           }
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         />
       </div>
       <div>
@@ -122,7 +122,7 @@ export default function EditSiteForm({
           onChange={(e) =>
             setForm((f) => ({ ...f, description: e.target.value }))
           }
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         />
       </div>
       <div>
@@ -140,7 +140,7 @@ export default function EditSiteForm({
             setForm((f) => ({ ...f, organization_id: e.target.value }))
           }
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
         >
           {organizations.map((org: any) => (
             <option key={org.id} value={org.id}>
@@ -172,7 +172,7 @@ export default function EditSiteForm({
       </div>
       <SubmitButton pending={pending} />
       {message && (
-        <div className="mt-4 p-4 rounded bg-green-100 text-green-700">
+        <div className="mt-4 p-4 rounded-sm bg-green-100 text-green-700">
           {message}
         </div>
       )}

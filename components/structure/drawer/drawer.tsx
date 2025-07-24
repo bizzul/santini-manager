@@ -255,7 +255,7 @@ export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {
   return (
     <>
       <aside className="h-screen fixed z-20 bg-tremor-background dark:bg-dark-tremor-background">
-        <nav className="h-full flex flex-col border-r shadow-sm overflow-y-scroll overflow-x-hidden">
+        <nav className="h-full flex flex-col border-r shadow-xs overflow-y-scroll overflow-x-hidden">
           <div className="p-4 pb-2 flex justify-between items-center">
             <Image
               src={Logo}

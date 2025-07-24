@@ -91,7 +91,7 @@ export const DeleteModal: FC<Props> = ({
               onClick={() => {
                 remove();
               }}
-              className="bg-red-500 p-2 rounded text-white font-semibold "
+              className="bg-red-500 p-2 rounded-sm text-white font-semibold "
             >
               <FontAwesomeIcon icon={faTrash} className="mr-2" />
               Elimina definitivamente
@@ -105,7 +105,7 @@ export const DeleteModal: FC<Props> = ({
               onClick={() => {
                 setOpen(false);
               }}
-              className="bg-primary-500 p-2 rounded text-white font-semibold"
+              className="bg-primary-500 p-2 rounded-sm text-white font-semibold"
             >
               <FontAwesomeIcon icon={faTimes} className="mr-2" /> Annulla
             </button>

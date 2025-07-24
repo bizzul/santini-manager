@@ -339,7 +339,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                       alt={item.User?.given_name || "User"}
                     />
                   </span>
-                  <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-sm sm:flex dark:bg-gray-700 dark:border-gray-600">
+                  <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
                     <time className="mb-1 text-xs font-normal text-gray-400 sm:order-last sm:mb-0">
                       {item.createdAt !== null &&
                         DateManager.formatEUDateTime(item.createdAt)}
@@ -402,7 +402,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
           ) : (
             <ol className="relative border-l border-gray-200 dark:border-gray-700">
               <li className="mb-10 ml-6">
-                <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-sm sm:flex dark:bg-gray-700 dark:border-gray-600">
+                <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
                   <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
                     Nessun dato storico trovato
                   </div>
@@ -598,7 +598,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                 taskSuppliers.map((ts) => (
                   <div
                     key={ts.id}
-                    className="flex items-center gap-4 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+                    className="flex items-center gap-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-sm"
                   >
                     <span className="font-medium w-32">{ts.supplier.name}</span>
                     <Input

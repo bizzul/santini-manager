@@ -37,7 +37,7 @@ export default function TimelineClient({
                 activeSnapshot?.getTime() ===
                 new Date(snapshot.timestamp).getTime()
                   ? "default"
-                  : "outline"
+                  : "outline-solid"
               }
               size="sm"
               onClick={() => handleSelectSnapshot(new Date(snapshot.timestamp))}

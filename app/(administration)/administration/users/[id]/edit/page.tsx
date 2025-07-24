@@ -45,7 +45,7 @@ export default async function UserEditPage({
                 name="email"
                 type="email"
                 defaultValue={user.email}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
               />
             </div>
             <div>
@@ -54,7 +54,7 @@ export default async function UserEditPage({
                 name="given_name"
                 type="text"
                 defaultValue={user.given_name}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
               />
             </div>
             <div>
@@ -63,7 +63,7 @@ export default async function UserEditPage({
                 name="family_name"
                 type="text"
                 defaultValue={user.family_name}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
               />
             </div>
             <div>
@@ -71,7 +71,7 @@ export default async function UserEditPage({
               <select
                 name="role"
                 defaultValue={user.role}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border rounded-sm px-3 py-2"
               >
                 <option value="user">User</option>
                 <option value="admin">Admin</option>

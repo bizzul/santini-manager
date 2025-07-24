@@ -36,7 +36,7 @@ export const StructureKanban: FC<Props> = ({
       </div>
       <div
         className={`relative w-full transition-all duration-500 overflow-scroll ${
-          slim ? "ml-24" : "ml-[17rem]"
+          slim ? "ml-24" : "ml-68"
         } ${menubar === "false" && "ml-0"}`}
       >
         <Navbar
@@ -45,7 +45,7 @@ export const StructureKanban: FC<Props> = ({
           slim={slim}
           user={user}
         />
-        <div className={`min-w-full min-h-screen pt-12 ml-[1.5rem] `}>
+        <div className={`min-w-full min-h-screen pt-12 ml-6 `}>
           {children}
         </div>
       </div>

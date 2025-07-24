@@ -138,7 +138,7 @@ function MobilePage({
           <p className="mt-4 text-lg ">Form per la segnalazione errori</p>
           {error && (
             <div className="px-6 pt-5">
-              <div className="w-full p-4 rounded bg-red-500  flex-row items-middle">
+              <div className="w-full p-4 rounded-sm bg-red-500  flex-row items-middle">
                 <FontAwesomeIcon icon={faWarning} className="mr-2" />
                 {error}
               </div>
@@ -327,7 +327,7 @@ function MobilePage({
                 <Button
                   type="button"
                   onClick={onNextStep}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
                   Prossimo
                 </Button>
@@ -370,8 +370,8 @@ function MobilePage({
                       >
                         Foto
                       </label>
-                      <div className="mt-1 flex flex-row gap-4 rounded-md shadow-sm">
-                        <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                      <div className="mt-1 flex flex-row gap-4 rounded-md shadow-xs">
+                        <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                           <CldUploadButton
                             uploadPreset="uploadpdf"
                             onUpload={(result: any) => handleUpload(result)}
@@ -407,7 +407,7 @@ function MobilePage({
                 <div className="px-4 py-3  text-right sm:px-6">
                   <Button
                     type="button"
-                    className="inline-flex justify-center py-2 px-4 border  bg-transparent shadow-sm text-sm font-medium rounded-md   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="inline-flex justify-center py-2 px-4 border  bg-transparent shadow-xs text-sm font-medium rounded-md   focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     onClick={() => setStep(1)}
                   >
                     Precedente
@@ -415,7 +415,7 @@ function MobilePage({
                   <Button
                     onClick={onNextStep}
                     type="button"
-                    className="ml-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="ml-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     Prossimo
                   </Button>
@@ -504,14 +504,14 @@ function MobilePage({
             <div className="mt-6  px-4 py-5 sm:px-6 sm:flex sm:flex-row-reverse ">
               <button
                 type="submit"
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium  hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-xs px-4 py-2 bg-indigo-600 text-base font-medium  hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                 onClick={form.handleSubmit(onSubmit)}
               >
                 Conferma e concludi
               </button>
               <button
                 type="button"
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 bg-transparent shadow-sm px-4 py-2  text-base font-medium  hover: focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 bg-transparent shadow-xs px-4 py-2  text-base font-medium  hover: focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 onClick={() => setStep(2)}
               >
                 Indietro
