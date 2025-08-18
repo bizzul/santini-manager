@@ -1,41 +1,31 @@
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { Auth0ManagementApi } from "../../../../core/auth/auth0-management-api";
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
+  try {
+    const supabase = await createClient();
 
-  if (session) {
-    try {
-      //Managing token
-      await Auth0ManagementApi.manageToken(session);
-
-      // Get all roles
-      const getAllRoles = await fetch(
-        `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/roles`,
-        {
-          headers: new Headers({
-            //@ts-ignore
-            Authorization: `Bearer ${session.managementToken}`,
-            "Content-Type": "application/json",
-          }),
-        }
-      );
-      if (getAllRoles.ok) {
-        const data = await getAllRoles.json();
-        const roles = data.map((role: any) => {
-          return { id: role.id, name: role.name };
-        });
-        return NextResponse.json({ roles, status: 200 });
-      } else {
-        throw new Error("failed to get roles");
-      }
-    } catch (error: any) {
-      console.error(error);
-      const errorMessage = error.message || "An error occurred";
-      return NextResponse.json({ error: errorMessage, status: 400 });
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-  } else {
-    return NextResponse.json({ error: "Unauthorized", status: 401 });
+
+    // Get all roles from Supabase
+    const { data: roles, error: rolesError } = await supabase
+      .from("roles")
+      .select("id, name");
+
+    if (rolesError) throw rolesError;
+
+    const formattedRoles = roles.map((role: any) => {
+      return { id: role.id, name: role.name };
+    });
+
+    return NextResponse.json({ roles: formattedRoles, status: 200 });
+  } catch (error: any) {
+    console.error(error);
+    const errorMessage = error.message || "An error occurred";
+    return NextResponse.json({ error: errorMessage, status: 400 });
   }
 }

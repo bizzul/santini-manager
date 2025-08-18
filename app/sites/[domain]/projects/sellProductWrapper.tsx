@@ -1,5 +1,4 @@
 "use client";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import React from "react";
 import { DataTable } from "./table";
 import { columns } from "./columns";

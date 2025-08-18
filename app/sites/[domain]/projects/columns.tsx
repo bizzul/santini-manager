@@ -1,18 +1,17 @@
 "use client";
 
-import { SellProduct, Task } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../../../components/ui/tooltip";
+} from "@/components/ui/tooltip";
 import Image from "next/image";
 
-export const columns: ColumnDef<Task>[] = [
+export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "unique_code",
     header: ({ column }) => (

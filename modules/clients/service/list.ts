@@ -5,51 +5,39 @@ import {
   ServiceResponse,
 } from "../../../package/service";
 import { ReqPaginator } from "../../../package/utils/api/req-paginator";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "../../../utils/supabase/client";
+
 export const list = async (
   pagination: any,
-  filters: any
+  filters: any,
 ): Promise<ServiceResponse> => {
   try {
-    let whereQ = undefined;
-    if (filters.q) {
-      whereQ = {
-        OR: [
-          {
-            individualFirstName: {
-              contains: filters.q,
-              mode: "insensitive",
-            },
-          },
-          {
-            individualLastName: {
-              contains: filters.q,
-              mode: "insensitive",
-            },
-          },
-          {
-            city: {
-              contains: filters.q,
-              mode: "insensitive",
-            },
-          },
-        ],
-      };
-    }
-    const [items, items_total] = await prisma.$transaction([
-      prisma.client.findMany({
-        skip: pagination.skip,
-        take: pagination.take,
-        //@ts-ignore
-        where: whereQ,
+    const supabase = createClient();
 
-        orderBy: { businessName: "asc" },
-      }),
-      prisma.client.count({
-        //@ts-ignore
-        where: whereQ,
-      }),
-    ]);
+    let query = supabase
+      .from("client")
+      .select("*", { count: "exact" });
+
+    if (filters.q) {
+      // Use OR logic for multiple field search
+      query = query.or(
+        `individualFirstName.ilike.%${filters.q}%,individualLastName.ilike.%${filters.q}%,city.ilike.%${filters.q}%`,
+      );
+    }
+
+    // Apply pagination
+    query = query.range(pagination.skip, pagination.skip + pagination.take - 1);
+
+    // Apply ordering
+    query = query.order("businessName", { ascending: true });
+
+    const { data: items, error, count } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    const items_total = count || 0;
 
     return new ServiceResponse({
       success: true,
@@ -59,11 +47,11 @@ export const list = async (
         //Returning readable pagination results
         pagination: ReqPaginator.forResponse({
           pagination: pagination,
-          items_in_page: items.length,
+          items_in_page: items?.length || 0,
           items_total: items_total,
         }),
         //The found items
-        items: items,
+        items: items || [],
       },
     });
   } catch (e: any) {

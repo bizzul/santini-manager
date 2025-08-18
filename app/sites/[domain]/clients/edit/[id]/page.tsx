@@ -1,50 +1,53 @@
-import { getSession } from "@auth0/nextjs-auth0";
+import { getUserContext } from "@/lib/auth-utils";
 import { Product } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { prisma } from "../../../../../prisma-global";
-import MobilePage from "../../../../../components/inventory/MobilePage";
-async function getData(id: number): Promise<Product> {
+import { createClient } from "@/utils/server";
+import MobilePage from "@/components/inventory/MobilePage";
+
+type DataResult = Product | { error: { message: string } };
+
+async function getData(id: number): Promise<DataResult> {
   try {
     // Fetch data from your API here.
-    const product = await prisma.product.findUniqueOrThrow({
-      where: {
-        inventoryId: Number(id),
-      },
-      include: {
-        product_category: true,
-        supplierInfo: true,
-        Action: { include: { User: true } },
-      },
-    });
+    const supabase = await createClient();
+    const { data: product, error } = await supabase
+      .from("product")
+      .select("*")
+      .eq("inventoryId", Number(id))
+      .single();
+
+    if (error || !product) {
+      console.error("Error fetching product:", error);
+      return { error: { message: "no Product Found" } };
+    }
 
     return product;
   } catch (err) {
-    //@ts-ignore
-    return { error: "no Product Found" };
+    return { error: { message: "no Product Found" } };
   }
 }
 
-async function Page({ params }: { params: { id: number } }) {
+async function Page({ params }: { params: Promise<{ id: number }> }) {
+  const { id } = await params;
   //get initial data
-  const data = await getData(params.id);
+  const data = await getData(id);
 
-  const session = await getSession();
+  const userContext = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!userContext) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
 
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext.user;
 
-  //@ts-ignore
-  if (data.error) {
+  if ("error" in data) {
     return (
       <div className="flex justify-center w-screen h-screen flex-col items-center align-middle  text-slate-200 bg-[#1A2027]">
         <h1 className="font-bold text-3xl text-center">
-          Nessun prodotto con questo ID: {params.id}
+          Nessun prodotto con questo ID: {id}
         </h1>
       </div>
     );

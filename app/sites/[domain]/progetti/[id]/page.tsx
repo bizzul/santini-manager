@@ -1,57 +1,50 @@
 import React from "react";
-import Image from "next/image";
-import {
-  Action,
-  Client,
-  File,
-  Kanban,
-  KanbanColumn,
-  PackingControl,
-  QualityControl,
-  SellProduct,
-  Task,
-  User,
-} from "@prisma/client";
-//import brand from "../../public/brand-navbar.svg";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "@/utils/server";
 import { redirect } from "next/navigation";
-import { getSession } from "@auth0/nextjs-auth0";
+import { getUserContext } from "@/lib/auth-utils";
 
-async function getData(id: number): Promise<Task | any> {
+async function getData(id: number): Promise<any | any> {
   // Fetch data from your API here.
-  const task = await prisma.task.findUnique({
-    where: {
-      id,
-    },
-    include: {
-      client: true,
-      column: true,
-      kanban: true,
-      User: true,
-      sellProduct: true,
-      PackingControl: true,
-      QualityControl: true,
-      files: true,
-      Action: { include: { User: true } },
-    },
-  });
-
+  const supabase = await createClient();
+  const { data: task, error: taskError } = await supabase
+    .from("task")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (taskError) {
+    console.error("Error fetching task:", taskError);
+    throw new Error("Failed to fetch task");
+  }
+  const { data: client, error: clientError } = await supabase
+    .from("client")
+    .select("*")
+    .eq("id", task.clientId)
+    .single();
+  if (clientError) {
+    console.error("Error fetching client:", clientError);
+    throw new Error("Failed to fetch client");
+  }
   return task;
 }
 
-export default async function Page({ params }: { params: { id: number } }) {
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: number }>;
+}) {
+  const { id } = await params;
   //get initial data
-  const data = await getData(params.id);
+  const data = await getData(id);
 
-  const session = await getSession();
+  const session = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.id) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = session.user;
   // console.log(data);
   const update = new Date(data.updated_at);
   const created = new Date(data.created_at);

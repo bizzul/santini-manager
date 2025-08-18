@@ -1,14 +1,19 @@
-import { prisma } from "../../../prisma-global";
+import { createClient } from "../../../utils/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
+    const supabase = await createClient();
+
     // Prima otteniamo tutti i fornitori
-    const suppliers = await prisma.supplier.findMany({
-      orderBy: {
-        name: "asc", // Ordiniamo solo per nome
-      },
-    });
+    const { data: suppliers, error } = await supabase
+      .from("suppliers")
+      .select("*")
+      .order("name", { ascending: true });
+
+    if (error) {
+      throw error;
+    }
 
     // Poi riordiniamo manualmente mettendo i default prima
     const orderedSuppliers = suppliers.sort((a, b) => {
@@ -27,7 +32,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { error: "Error fetching suppliers" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

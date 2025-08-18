@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "../../../components/ui/select";
 import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
-import { CountryCombo } from "../../../app/(user)/clients/countryCombo";
+import { CountryCombo } from "@/app/sites/[domain]/clients/countryCombo";
 
 type FormData = z.infer<typeof validation>;
 
@@ -92,7 +92,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue  />
+                      <SelectValue />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -110,11 +110,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               <FormItem>
                 <FormLabel>Nome</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    
-                    disabled={isSubmitting}
-                  />
+                  <Input {...field} disabled={isSubmitting} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -126,11 +122,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               <FormItem>
                 <FormLabel>Cognome</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    
-                    disabled={isSubmitting}
-                  />
+                  <Input {...field} disabled={isSubmitting} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -147,11 +139,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
             <FormItem>
               <FormLabel>Nome azienda</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  
-                  disabled={isSubmitting}
-                />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -173,7 +161,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -200,11 +188,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                   Indirizzo <span className="text-red-500">*</span>
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    
-                    {...field}
-                    disabled={isSubmitting}
-                  />
+                  <Input {...field} disabled={isSubmitting} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -235,7 +219,6 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                   <FormControl>
                     <Input
                       type="number"
-                      
                       {...field}
                       disabled={isSubmitting}
                       onChange={(e) => {
@@ -258,11 +241,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                   Città <span className="text-red-500">*</span>
                 </FormLabel>
                 <FormControl>
-                  <Input
-                    
-                    {...field}
-                    disabled={isSubmitting}
-                  />
+                  <Input {...field} disabled={isSubmitting} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

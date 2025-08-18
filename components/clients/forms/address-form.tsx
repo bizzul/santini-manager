@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "../../../components/ui/select";
 import { Checkbox } from "../../../components/ui/checkbox";
-import { CountryCombo } from "../../../app/(user)/clients/countryCombo";
+import { CountryCombo } from "@/app/sites/[domain]/clients/countryCombo";
 //@ts-ignore
 import GoogleAutocomplete from "../google-autocomplete.js";
 import { jobsType } from "../jobs";
@@ -95,7 +95,7 @@ export const AddressForm: FC<AddressFormProps> = ({
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue  />
+                      <SelectValue />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>

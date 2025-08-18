@@ -1,12 +1,8 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { faBox, faUser } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
+import { getUserContext } from "@/lib/auth-utils";
 import { Client, SellProduct, Task } from "@prisma/client";
 import DialogCreate from "./dialogCreate";
-import { dehydrate } from "@tanstack/react-query";
-import getQueryClient from "../../getQueryClient";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "@/utils/server";
 import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
 
@@ -18,39 +14,36 @@ export type Data = {
 };
 
 async function getData(): Promise<Data> {
-  const clients = await prisma.client.findMany({});
-  const activeProducts = await prisma.sellProduct.findMany({
-    where: {
-      active: true,
-    },
-  });
-  const kanbans = await prisma.kanban.findMany({
-    include: {
-      columns: {
-        orderBy: {
-          position: "asc",
-        },
-      },
-    },
-    orderBy: {
-      title: "asc",
-    },
-  });
-  const tasks = await prisma.task.findMany({
-    include: {
-      client: true,
-      column: true,
-      kanban: true,
-      errortracking: true,
-      PackingControl: true,
-      QualityControl: true,
-      sellProduct: true,
-      Action: true,
-    },
-    orderBy: {
-      unique_code: "asc",
-    },
-  });
+  const supabase = await createClient();
+  const { data: clients, error: clientsError } = await supabase
+    .from("client")
+    .select("*");
+  if (clientsError) {
+    console.error("Error fetching clients:", clientsError);
+    throw new Error("Failed to fetch clients");
+  }
+  const { data: activeProducts, error: activeProductsError } = await supabase
+    .from("sell_product")
+    .select("*")
+    .eq("active", true);
+  if (activeProductsError) {
+    console.error("Error fetching active products:", activeProductsError);
+    throw new Error("Failed to fetch active products");
+  }
+  const { data: kanbans, error: kanbansError } = await supabase
+    .from("kanban")
+    .select("*");
+  if (kanbansError) {
+    console.error("Error fetching kanbans:", kanbansError);
+    throw new Error("Failed to fetch kanbans");
+  }
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select("*");
+  if (tasksError) {
+    console.error("Error fetching tasks:", tasksError);
+    throw new Error("Failed to fetch tasks");
+  }
 
   return { clients, activeProducts, kanbans, tasks };
 }
@@ -59,15 +52,15 @@ async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
+  const session = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.id) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = session.user || {};
 
   return (
     // <SWRProvider>

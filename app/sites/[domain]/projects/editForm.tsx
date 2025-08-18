@@ -12,28 +12,28 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { validation } from "../../../validation/task/create";
-import { useToast } from "../../../components/ui/use-toast";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { validation } from "@/validation/task/create";
+import { useToast } from "@/components/ui/use-toast";
 import { Client, SellProduct, Task, Kanban } from "@prisma/client";
 import { editItem } from "./actions/edit-item.action";
-import { Button } from "../../../components/ui/button";
-import { Textarea } from "../../../components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
-import { Calendar } from "../../../components/ui/calendar";
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../../components/ui/popover";
-import { cn } from "../../../lib/utils";
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 
@@ -105,7 +105,6 @@ const EditForm = ({ handleClose, data }: Props) => {
   }, []);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    //@ts-expect-error
     const response = await editItem(d, data?.id);
     if (response?.error) {
       toast({
@@ -130,7 +129,7 @@ const EditForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Codice Identificativo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -145,7 +144,7 @@ const EditForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -166,7 +165,7 @@ const EditForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -200,7 +199,7 @@ const EditForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -229,7 +228,7 @@ const EditForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -316,7 +315,7 @@ const EditForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Commenti</FormLabel>
               <FormControl>
-                <Textarea {...field}  />
+                <Textarea {...field} />
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />

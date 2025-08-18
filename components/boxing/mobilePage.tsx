@@ -1,7 +1,5 @@
 "use client";
 import React, { useState } from "react";
-import { Session } from "@auth0/nextjs-auth0";
-import { PackingControl, Task } from "@prisma/client";
 import { useToast } from "../ui/use-toast";
 
 import { Input } from "../ui/input";
@@ -16,6 +14,18 @@ import {
 } from "../../components/ui/card";
 
 import { useRouter } from "next/navigation";
+
+// Define types based on Supabase schema
+interface PackingControl {
+  id: number;
+  passed: string;
+  task?: {
+    unique_code?: string;
+    sellProduct?: {
+      name?: string;
+    };
+  };
+}
 
 export const statusText = (status: string) => {
   let statusText;
@@ -40,7 +50,7 @@ const TaskCard = ({
   onClick,
 }: {
   packing: PackingControl;
-  onClick: any;
+  onClick: (packing: PackingControl) => void;
 }) => {
   return (
     <Card
@@ -48,11 +58,9 @@ const TaskCard = ({
       className="hover:bg-tremor-background-emphasis pointer-events-auto select-none w-64 h-32"
     >
       <CardHeader>
-        {/* @ts-ignore */}
         <CardTitle>{packing.task?.unique_code}</CardTitle>
         <CardDescription>
           <span className="text-sm font-light">
-            {/* @ts-ignore */}
             {packing.task?.sellProduct?.name}{" "}
           </span>
         </CardDescription>

@@ -1,37 +1,35 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { faBox } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
 import { Product_category } from "@prisma/client";
 import DialogCreate from "./dialogCreate";
-import { prisma } from "../../../prisma-global";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
+import { createClient } from "@/utils/server";
+import { getUserContext } from "@/lib/auth-utils";
 
 async function getData(): Promise<Product_category[]> {
   // Fetch data from your API here.
-  const category = await prisma.product_category.findMany({
-    orderBy: {
-      name: "asc",
-    },
-  });
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("product_category")
+    .select("*")
+    .order("name", { ascending: true });
 
-  return category;
+  return data || [];
 }
 
 async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
+  const userContext = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext;
 
   return (
     // <SWRProvider>

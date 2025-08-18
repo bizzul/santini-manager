@@ -1,35 +1,34 @@
 import { DateManager } from "../../../../package/utils/dates/date-manager";
-import { Timetracking, User } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
 
 function filterTimetrackings(
-  timeTrackingsData: Timetracking[],
+  timeTrackingsData: any[],
   userId: string,
   from: Date,
-  to: Date
+  to: Date,
 ) {
   return timeTrackingsData.filter(
-    (item: Timetracking) =>
+    (item: any) =>
       //@ts-ignore
-      item.user.authId === userId &&
+      item.users?.id === userId &&
       item.created_at >= from &&
-      item.created_at <= to
+      item.created_at <= to,
   );
 }
 
-function getTotalHours(timetrackings: Timetracking[]) {
+function getTotalHours(timetrackings: any[]) {
   const total = timetrackings.reduce((acc, cur) => {
-    return acc + Number(cur.totalTime);
+    return acc + Number(cur.total_time);
   }, 0);
 
   return Number(total.toFixed(2));
 }
 
-function getUserTasks(timetrackings: Timetracking[]) {
+function getUserTasks(timetrackings: any[]) {
   const taskMap = new Map();
   timetrackings.forEach((item) => {
     const taskId = item.task_id;
@@ -39,13 +38,13 @@ function getUserTasks(timetrackings: Timetracking[]) {
         date: item.updated_at,
         description: item.description,
         //@ts-ignore
-        projectCode: item.task?.unique_code
-          ? //@ts-ignore
-            item.task?.unique_code
+        projectCode: item.tasks?.unique_code
+          //@ts-ignore
+          ? item.tasks?.unique_code
           : "nessun codice",
         hours: item.hours,
         minutes: item.minutes,
-        totalTime: item.totalTime,
+        totalTime: item.total_time,
       };
 
       // If taskId already exists in the map, push the task into the array
@@ -80,27 +79,26 @@ function formatDate(date: Date) {
 }
 
 function prepareTimetrackingsData(
-  timeTrackingsData: Timetracking[] | any,
+  timeTrackingsData: any[],
   from: any,
-  to: any
+  to: any,
 ) {
   const filteredData = timeTrackingsData.filter(
-    (item: Timetracking) => item.created_at >= from && item.created_at <= to
+    (item: any) => item.created_at >= from && item.created_at <= to,
   );
 
   // Sort timetrackings by created_at date
   const sortedTimetrackings = filteredData.sort(
     (a: any, b: any) =>
       //@ts-ignore
-      new Date(a.created_at) - new Date(b.created_at)
+      new Date(a.created_at) - new Date(b.created_at),
   );
   // Prepare data for the Excel sheet
   const data = sortedTimetrackings.map((tracking: any) => {
     // Check if there are roles and take the first role's name, if available
-    const roleName =
-      tracking.roles && tracking.roles.length > 0
-        ? tracking.roles[0].name
-        : "No Ruolo";
+    const roleName = tracking.roles && tracking.roles.length > 0
+      ? tracking.roles[0].name
+      : "No Ruolo";
     const totalTime = (tracking.hours + tracking.minutes / 60).toFixed(2);
 
     //const totalTimeInMinutes = tracking.hours * 60 + tracking.minutes;
@@ -108,12 +106,14 @@ function prepareTimetrackingsData(
     // const totalTime = tracking.hours + tracking.minutes / 100;
     return [
       formatDate(tracking.created_at),
-      tracking.user.given_name + " " + tracking.user.family_name,
+      tracking.users?.given_name + " " + tracking.users?.family_name,
       roleName,
       tracking.hours,
       tracking.minutes,
       totalTime,
-      tracking.task?.unique_code ? tracking.task.unique_code : "Nessun codice",
+      tracking.tasks?.unique_code
+        ? tracking.tasks.unique_code
+        : "Nessun codice",
     ];
   });
 
@@ -128,23 +128,38 @@ export const POST = async (req: NextRequest) => {
   console.log("range", from, to);
 
   try {
-    const timeTrackingsData = await prisma.timetracking.findMany({
-      include: { task: true, user: { include: { roles: true } }, roles: true },
-    });
+    const supabase = await createClient();
 
-    const userData = await prisma.user.findMany({
-      include: { Task: true, timetracking: true },
-    });
+    const { data: timeTrackingsData, error: timeTrackingError } = await supabase
+      .from("timetracking")
+      .select(`
+        *,
+        tasks:task_id(*),
+        users:user_id(*),
+        roles:role_id(*)
+      `);
+
+    if (timeTrackingError) throw timeTrackingError;
+
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select(`
+        *,
+        tasks:task_id(*),
+        timetracking:user_id(*)
+      `);
+
+    if (userError) throw userError;
 
     // filter out disabled users
-    const userEnabled = userData.filter((user: User) => user.enabled);
+    const userEnabled = userData.filter((user: any) => user.enabled);
 
-    const newData = userEnabled.map((user: User) => {
+    const newData = userEnabled.map((user: any) => {
       const userTimetrackings = filterTimetrackings(
         timeTrackingsData,
-        user.authId!,
+        user.id,
         from,
-        to
+        to,
       );
 
       const userTotalHours = getTotalHours(userTimetrackings);
@@ -161,12 +176,12 @@ export const POST = async (req: NextRequest) => {
     const projectData = new Map(); // Holds data organized by project
 
     timeTrackingsData.forEach((tracking) => {
-      const projectName = tracking.task?.unique_code
-        ? tracking.task?.unique_code
+      const projectName = tracking.tasks?.unique_code
+        ? tracking.tasks?.unique_code
         : "No Code";
-      const employeeName = tracking.user?.given_name;
+      const employeeName = tracking.users?.given_name;
       const roles = tracking.roles || []; // Assuming roles is an array
-      roles.forEach((role) => {
+      roles.forEach((role: any) => {
         const projectEntry = projectData.get(projectName) || new Map();
         projectData.set(projectName, projectEntry);
 
@@ -179,18 +194,22 @@ export const POST = async (req: NextRequest) => {
           totalHours: 0,
         };
 
-        employeeRoleEntry.totalHours += tracking.totalTime; // Assuming totalTime is a number
+        employeeRoleEntry.totalHours += tracking.total_time; // Assuming total_time is a number
         projectEntry.set(employeeRoleKey, employeeRoleEntry);
       });
     });
 
-    const fileName = `Report_ore_dal_${from.getFullYear()}-${(
-      "0" +
-      (from.getMonth() + 1)
-    ).slice(-2)}-${("0" + from.getDate()).slice(-2)}_al_${to.getFullYear()}-${(
-      "0" +
-      (to.getMonth() + 1)
-    ).slice(-2)}-${("0" + to.getDate()).slice(-2)}`;
+    const fileName = `Report_ore_dal_${from.getFullYear()}-${
+      (
+        "0" +
+        (from.getMonth() + 1)
+      ).slice(-2)
+    }-${("0" + from.getDate()).slice(-2)}_al_${to.getFullYear()}-${
+      (
+        "0" +
+        (to.getMonth() + 1)
+      ).slice(-2)
+    }-${("0" + to.getDate()).slice(-2)}`;
 
     const fileExtension = ".xlsx";
 
@@ -201,7 +220,7 @@ export const POST = async (req: NextRequest) => {
     const allTimetrackingsData = prepareTimetrackingsData(
       timeTrackingsData,
       from,
-      to
+      to,
     );
 
     const allTimetrackingsSheet = XLSX.utils.aoa_to_sheet([
@@ -220,7 +239,7 @@ export const POST = async (req: NextRequest) => {
     XLSX.utils.book_append_sheet(
       workbook,
       allTimetrackingsSheet,
-      "A_Riassunto"
+      "A_Riassunto",
     );
 
     sheetNames.push(`A_Riassunto`);
@@ -237,7 +256,7 @@ export const POST = async (req: NextRequest) => {
           "Tempo totale",
         ],
         // ["Codice Progetto", "Note", "Inizio", "Fine", "Tempo totale"],
-        ...item.tasks.map((task: Timetracking | any) => [
+        ...item.tasks.map((task: any) => [
           { v: formatDate(task.date), t: "s" }, // 's' is for string
           { v: task.projectCode ? task.projectCode : "Nessun Codice", t: "s" }, // assuming projectCode is a string
           { v: task.description, t: "s" },
@@ -257,7 +276,7 @@ export const POST = async (req: NextRequest) => {
         ([date, hours]: any) => [
           { v: formatDate(date), t: "s" },
           { v: Number(hours.toFixed(2)), t: "n" },
-        ]
+        ],
       );
 
       // Creating the totalHoursSheet with explicit types
@@ -276,12 +295,12 @@ export const POST = async (req: NextRequest) => {
       XLSX.utils.book_append_sheet(
         workbook,
         summarySheet,
-        `${item.user} Sommario`
+        `${item.user} Sommario`,
       );
       XLSX.utils.book_append_sheet(
         workbook,
         totalHoursSheet,
-        `${item.user} Giorn.`
+        `${item.user} Giorn.`,
       );
     });
 
@@ -322,7 +341,7 @@ export const POST = async (req: NextRequest) => {
     XLSX.utils.book_append_sheet(
       workbook,
       projectSheet,
-      `Z. Sommario progetti`
+      `Z. Sommario progetti`,
     );
 
     // Reorder the sheets based on sorted sheet names
@@ -332,11 +351,11 @@ export const POST = async (req: NextRequest) => {
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`
+      `attachment; filename="${fileName}${fileExtension}"`,
     );
 
     // Convert workbook to binary to send in response

@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { Skeleton } from "../../../components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -9,12 +8,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
-import { faBox } from "@fortawesome/free-solid-svg-icons";
+} from "@/components/ui/table";
 
 function Loading() {
   return (
-    // <Structure titleIcon={faBox} titleText="Prodotti">
     <div className="container mx-auto ">
       <>
         <div className="flex items-center py-4">

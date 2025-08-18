@@ -1,10 +1,10 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
+import { Structure } from "@/components/structure/structure";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
+import { getUserContext } from "@/lib/auth-utils";
 import { Roles, Task, Timetracking, User } from "@prisma/client";
 import DialogCreate from "./dialogCreate";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
 
@@ -17,30 +17,39 @@ export type Datas = {
 
 async function getData(): Promise<Datas> {
   // Fetch data from your API here.
-  const timetrackings = await prisma.timetracking.findMany({
-    orderBy: {
-      created_at: "desc",
-    },
-    include: {
-      task: true,
-      user: true,
-      roles: true,
-    },
-  });
+  const supabase = await createClient();
+  const { data: timetrackings, error: timetrackingsError } = await supabase
+    .from("timetracking")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-  const tasks = await prisma.task.findMany({
-    orderBy: {
-      unique_code: "asc",
-    },
-    where: { archived: false },
-  });
+  if (timetrackingsError) {
+    console.error("Error fetching timetrackings:", timetrackingsError);
+    return { timetrackings: [], tasks: [], users: [], roles: [] };
+  }
 
-  const users = await prisma.user.findMany({
-    where: { enabled: true },
-    orderBy: { family_name: "asc" },
-  });
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select("*")
+    .order("unique_code", { ascending: true });
 
-  const roles = await prisma.roles.findMany();
+  const { data: users, error: usersError } = await supabase
+    .from("user")
+    .select("*")
+    .eq("enabled", true)
+    .order("family_name", { ascending: true });
+
+  const { data: roles, error: rolesError } = await supabase
+    .from("roles")
+    .select("*");
+
+  if (timetrackingsError || tasksError || usersError || rolesError) {
+    console.error(
+      "Error fetching data:",
+      timetrackingsError || tasksError || usersError || rolesError
+    );
+    return { timetrackings: [], tasks: [], users: [], roles: [] };
+  }
 
   return { timetrackings, tasks, users, roles };
 }
@@ -49,7 +58,7 @@ async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
+  const session = await getUserContext();
 
   if (!session || !session.user) {
     // Handle the absence of a session. Redirect or return an error.

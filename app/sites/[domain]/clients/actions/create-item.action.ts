@@ -1,17 +1,16 @@
 "use server";
 
-import { Client, Product, Product_category } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/clients/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/clients/create";
 
-export async function createItem(props: Client) {
+export async function createItem(props: any) {
   const result = validation.safeParse(props);
-  const session = await getSession();
+  const supabase = await createClient();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (supabase) {
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id;
   }
 
   if (result.success) {
@@ -26,16 +25,15 @@ export async function createItem(props: Client) {
       const generatedCode = firstInitials ? firstInitials + lastInitials : "";
       // Concatenate the initials using the + operator
 
-      const saveData = await prisma.client.create({
-        data: {
-          individualTitle:
-            result.data?.clientType === "INDIVIDUAL"
-              ? result.data?.individualTitle
-              : "",
-          businessName:
-            result.data?.clientType === "BUSINESS"
-              ? result.data?.businessName
-              : "",
+      const { data: saveData, error: createError } = await supabase
+        .from("client")
+        .insert({
+          individualTitle: result.data?.clientType === "INDIVIDUAL"
+            ? result.data?.individualTitle
+            : "",
+          businessName: result.data?.clientType === "BUSINESS"
+            ? result.data?.businessName
+            : "",
           individualFirstName: result.data?.individualFirstName,
           //@ts-ignore
           clientType: result.data.clientType,
@@ -48,25 +46,34 @@ export async function createItem(props: Client) {
           zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
           clientLanguage: result.data?.clientLanguage,
           code: generatedCode,
-        },
-      });
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("Error creating client:", createError);
+        return {
+          message: "Creazione elemento fallita!",
+          error: createError.message,
+        };
+      }
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
-          type: "client_create",
-          data: {
-            clientId: saveData.id,
-          },
-          User: {
-            connect: {
-              authId: userId,
+      if (saveData && userId) {
+        const { error: actionError } = await supabase
+          .from("actions")
+          .insert({
+            type: "client_create",
+            data: {
+              clientId: saveData.id,
             },
-          },
-        },
-      });
+            user_id: userId,
+          });
 
-      console.log(action);
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
       return revalidatePath("/clients");
     } catch (error: any) {

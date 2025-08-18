@@ -8,7 +8,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../../../../../components/ui/card";
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../../../../components/ui/dialog";
-import { Input } from "../../../../../components/ui/input";
-import { Label } from "../../../../../components/ui/label";
-import { Button } from "../../../../../components/ui/button";
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useToast } from "../../../../../components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 const ItemCard = ({
   item,
@@ -191,7 +191,6 @@ function SinglePageComponent({
             <Input
               value={numero}
               onChange={(e) => setCoprisogliaNumero(e.target.value)}
-              
             />
           </div>
           <div>
@@ -204,7 +203,6 @@ function SinglePageComponent({
             <Input
               value={pacchi}
               onChange={(e) => setNumeroPacchi(e.target.value)}
-              
             />
           </div>
           <Button onClick={() => saveData()}>Salva</Button>

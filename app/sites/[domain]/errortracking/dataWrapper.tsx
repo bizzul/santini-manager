@@ -1,9 +1,8 @@
 import React from "react";
 import { DataTable } from "./table";
 import { columns } from "./columns";
-import { Errortracking, Product } from "@prisma/client";
 
-const DataWrapper = ({ data }: { data: Errortracking[] }) => {
+const DataWrapper = ({ data }: { data: any }) => {
   return (
     <div className="container mx-auto ">
       <DataTable columns={columns} data={data} />

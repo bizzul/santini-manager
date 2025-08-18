@@ -1,69 +1,77 @@
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const timestamp = new Date(searchParams.get("timestamp") || "");
 
     // First get all tasks that existed at that time
-    const taskHistories = await prisma.taskHistory.findMany({
-      where: {
-        createdAt: {
-          lte: timestamp,
-        },
-        Task: {
-          archived: false, // Only include histories for non-archived tasks
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      distinct: ["taskId"],
-      include: {
-        Task: {
-          include: {
-            column: true,
-            kanban: true,
-            client: true,
-            suppliers: {
-              include: {
-                supplier: true,
-              },
-            },
-            PackingControl: true,
-            QualityControl: true,
-            sellProduct: true,
-          },
-        },
-      },
-    });
+    const { data: taskHistories, error: historyError } = await supabase
+      .from("task_history")
+      .select(`
+        *,
+        tasks:task_id(
+          *,
+          kanban_columns:column_id(*),
+          kanbans:kanban_id(*),
+          clients:client_id(*),
+          sell_products:sell_product_id(*)
+        )
+      `)
+      .lte("created_at", timestamp)
+      .eq("tasks.archived", false) // Only include histories for non-archived tasks
+      .order("created_at", { ascending: false });
+
+    if (historyError) throw historyError;
 
     // Get all current active tasks
-    const currentTasks = await prisma.task.findMany({
-      where: {
-        archived: false, // Only get non-archived tasks
-      },
-      include: {
-        column: true,
-        kanban: true,
-        client: true,
-        suppliers: {
-          include: {
-            supplier: true,
-          },
-        },
-        PackingControl: true,
-        QualityControl: true,
-        sellProduct: true,
-      },
-    });
+    const { data: currentTasks, error: currentError } = await supabase
+      .from("tasks")
+      .select(`
+        *,
+        kanban_columns:column_id(*),
+        kanbans:kanban_id(*),
+        clients:client_id(*),
+        sell_products:sell_product_id(*)
+      `)
+      .eq("archived", false); // Only get non-archived tasks
+
+    if (currentError) throw currentError;
+
+    // Get suppliers for current tasks
+    const taskIds = currentTasks.map((task) => task.id);
+    const { data: suppliers, error: suppliersError } = await supabase
+      .from("task_suppliers")
+      .select(`
+        *,
+        suppliers:supplier_id(*)
+      `)
+      .in("task_id", taskIds);
+
+    if (suppliersError) throw suppliersError;
+
+    // Get quality control and packing control for current tasks
+    const { data: qualityControl, error: qcError } = await supabase
+      .from("quality_control")
+      .select("*")
+      .in("task_id", taskIds);
+
+    if (qcError) throw qcError;
+
+    const { data: packingControl, error: pcError } = await supabase
+      .from("packing_control")
+      .select("*")
+      .in("task_id", taskIds);
+
+    if (pcError) throw pcError;
 
     // Create a map of tasks from history
     const historicalTasksMap = new Map(
-      taskHistories.map((history) => [history.taskId, history.snapshot])
+      taskHistories.map((history) => [history.task_id, history.snapshot]),
     );
 
     // Combine historical and current tasks
@@ -79,21 +87,28 @@ export async function GET(request: Request) {
             //@ts-ignore
             ...historicalVersion,
             //@ts-ignore
-            kanbanColumnId: historicalVersion.kanbanColumnId,
+            column_id: historicalVersion.kanbanColumnId,
             //@ts-ignore
-            kanbanId: historicalVersion.kanbanId,
+            kanban_id: historicalVersion.kanbanId,
             //@ts-ignore
             column_position: historicalVersion.column_position,
             //@ts-ignore
-            column: historicalVersion.column,
+            kanban_columns: historicalVersion.column,
             //@ts-ignore
-            kanban: historicalVersion.kanban,
+            kanbans: historicalVersion.kanban,
             isPreview: true,
           };
         }
         // If no historical version exists, use current task
         return {
           ...task,
+          suppliers: suppliers.filter((s) => s.task_id === task.id),
+          quality_control: qualityControl.filter((qc) =>
+            qc.task_id === task.id
+          ),
+          packing_control: packingControl.filter((pc) =>
+            pc.task_id === task.id
+          ),
           isPreview: true,
         };
       })
@@ -104,7 +119,7 @@ export async function GET(request: Request) {
     console.error("Error fetching snapshot:", error);
     return NextResponse.json(
       { error: "Failed to fetch snapshot" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

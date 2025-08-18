@@ -1,35 +1,39 @@
-import { getSession } from "@auth0/nextjs-auth0";
-import { prisma } from "../../../../../prisma-global";
+import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import SinglePageComponent from "./singlePageComponent";
+import { createClient } from "@/utils/server";
 
 async function getData(id: number) {
   // Fetch data from your API here.
   // Fetch all the products
-  const qualityControl = await prisma.qualityControl.findUnique({
-    where: {
-      id: Number(id),
-    },
-    include: {
-      items: true,
-      task: {
-        include: {
-          sellProduct: true, // include the sellproduct data from the task
-          client: true,
-        },
-      },
-      user: true,
-    },
-  });
+  const supabase = await createClient();
+  const { data: qualityControl, error: qualityControlError } = await supabase
+    .from("quality_control")
+    .select(
+      `
+    *,
+    items:items(*),
+    task:task(*),
+    user:user(*)
+  `
+    )
+    .eq("id", id)
+    .single();
 
-  return qualityControl;
+  if (qualityControlError) {
+    console.error("Error fetching quality control:", qualityControlError);
+    return { quality: null };
+  }
+
+  return qualityControl[0];
 }
 
-async function Page({ params }: { params: { id: number } }) {
+async function Page({ params }: { params: Promise<{ id: number }> }) {
+  const { id } = await params;
   //get initial data
-  const data = await getData(params.id);
+  const data = await getData(id);
 
-  const session = await getSession();
+  const session = await getUserContext();
 
   if (!session || !session.user) {
     // Handle the absence of a session. Redirect or return an error.

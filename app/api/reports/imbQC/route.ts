@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import * as XLSX from "xlsx";
 import { DateManager } from "../../../../package/utils/dates/date-manager";
 
@@ -7,24 +7,41 @@ export const dynamic = "force-dynamic";
 
 export const GET = async () => {
   try {
-    const qc = await prisma.qualityControl.findMany({
-      include: { items: true, user: true, task: true },
-    });
-    const imballaggio = await prisma.packingControl.findMany({
-      include: { items: true, user: true, task: true },
-    });
+    const supabase = await createClient();
+
+    const { data: qc, error: qcError } = await supabase
+      .from("quality_control")
+      .select(`
+        *,
+        qc_items:quality_control_id(*),
+        users:user_id(*),
+        tasks:task_id(*)
+      `);
+
+    if (qcError) throw qcError;
+
+    const { data: imballaggio, error: imbError } = await supabase
+      .from("packing_control")
+      .select(`
+        *,
+        packing_items:packing_control_id(*),
+        users:user_id(*),
+        tasks:task_id(*)
+      `);
+
+    if (imbError) throw imbError;
 
     const buildExcelDataImb = (data: any) => {
       // Sort the data by date in descending order
       data.sort(
         //@ts-ignore
-        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at)
+        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
       );
       // Create a set of unique item names
       const uniqueItemNames: any = new Set(
         data.flatMap((item: any) =>
-          item.items.map((subItem: any) => subItem.name)
-        )
+          item.packing_items.map((subItem: any) => subItem.name)
+        ),
       );
 
       // Create the header row with "Date", "Project Code", "User", and item names
@@ -43,16 +60,16 @@ export const GET = async () => {
           // Extract the date, project code, and user information
           const row = [
             DateManager.formatEUDate(item.created_at),
-            item.task?.unique_code,
-            item.user?.family_name,
+            item.tasks?.unique_code,
+            item.users?.family_name,
             item.passed === "DONE" ? "SI" : "NO",
           ];
 
           // For each item, mark it with "X" if checked, or leave it blank if not checked
           // For each item, add the number value
           uniqueItemNames.forEach((itemName: any) => {
-            const number = item.items.find(
-              (subItem: any) => subItem.name === itemName
+            const number = item.packing_items.find(
+              (subItem: any) => subItem.name === itemName,
             )?.number;
             row.push(number || ""); // Use the number value or leave it blank if undefined
           });
@@ -68,13 +85,13 @@ export const GET = async () => {
       // Sort the data by date in descending order
       data.sort(
         //@ts-ignore
-        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at)
+        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
       );
       // Create a set of unique item names
       const uniqueItemNames: any = new Set(
         data.flatMap((item: any) =>
-          item.items.map((subItem: any) => subItem.name)
-        )
+          item.qc_items.map((subItem: any) => subItem.name)
+        ),
       );
 
       // Create the header row with "Date", "Project Code", "User", and item names
@@ -93,15 +110,15 @@ export const GET = async () => {
           // Extract the date, project code, and user information
           const row = [
             DateManager.formatEUDate(item.created_at),
-            item.task?.unique_code,
-            item.user?.family_name,
+            item.tasks?.unique_code,
+            item.users?.family_name,
             item.passed === "DONE" ? "SI" : "NO",
           ];
 
           // For each item, mark it with "X" if checked, or leave it blank if not checked
           uniqueItemNames.forEach((itemName: any) => {
-            const checked = item.items.find(
-              (subItem: any) => subItem.name === itemName
+            const checked = item.qc_items.find(
+              (subItem: any) => subItem.name === itemName,
             )?.checked;
 
             row.push(checked ? "X" : "");
@@ -119,9 +136,10 @@ export const GET = async () => {
     const imbExcelData = buildExcelDataImb(imballaggio);
 
     const date = new Date();
-    const fileName = `Rapporto_imballaggio_qc_interno_al_${date.getFullYear()}-${
-      date.getMonth() + 1
-    }-${date.getDate()}`;
+    const fileName =
+      `Rapporto_imballaggio_qc_interno_al_${date.getFullYear()}-${
+        date.getMonth() + 1
+      }-${date.getDate()}`;
     const fileExtension = ".xlsx";
 
     const workbook = XLSX.utils.book_new();
@@ -136,11 +154,11 @@ export const GET = async () => {
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`
+      `attachment; filename="${fileName}${fileExtension}"`,
     );
 
     // Convert workbook to binary to send in response

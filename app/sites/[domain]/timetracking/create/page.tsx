@@ -1,53 +1,68 @@
 import React from "react";
-import { Session, getSession } from "@auth0/nextjs-auth0";
 import { redirect } from "next/navigation";
-import { prisma } from "../../../../prisma-global";
-import { Roles, Task } from "@prisma/client";
-import CreatePage from "../../../../components/timeTracking/create-page";
+import { createClient } from "@/utils/server";
+import CreatePage from "@/components/timeTracking/create-page";
+import { getUserContext } from "@/lib/auth-utils";
+
+// Define types to match what CreatePage expects
+interface Roles {
+  id: number;
+  name: string;
+}
+
+interface Task {
+  id: number;
+  unique_code?: string;
+  client?: {
+    businessName?: string;
+  };
+}
 
 export type Datas = {
   tasks: Task[];
   roles: Roles[];
 };
 
-async function getData(session: Session): Promise<Datas> {
+async function getData(session: any): Promise<Datas> {
   // Fetch data from your API here.
   // Fetch all items that match specified conditions
-  const tasks = await prisma.task.findMany({
-    orderBy: { unique_code: "desc" },
-    include: { client: true, column: true },
-    where: { archived: false, column: { identifier: { not: "SPEDITO" } } },
-  });
+  const supabase = await createClient();
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select("*")
+    .order("unique_code", { ascending: false });
 
-  // Fetch the specific item with ID 9999
-  const specificTask = await prisma.task.findUnique({
-    where: { unique_code: "9999" },
-  });
+  if (tasksError) {
+    console.error("Error fetching tasks:", tasksError);
+    return { tasks: [], roles: [] };
+  }
 
-  // Combine results, ensuring no duplicates
-  const combinedTasks: Task[] | any = tasks.some(
-    (task) => task.unique_code === "9999"
-  )
-    ? tasks
-    : [...tasks, specificTask];
+  const { data: roles, error: rolesError } = await supabase
+    .from("roles")
+    .select("*");
 
-  const roles = await prisma.roles.findMany({
-    where: {
-      user: {
-        some: {
-          authId: {
-            equals: session.user.sub,
-          },
-        },
-      },
-    },
-  });
+  if (rolesError) {
+    console.error("Error fetching roles:", rolesError);
+    return { tasks: [], roles: [] };
+  }
+  
+  // Transform the data to match our local types
+  const transformedTasks: Task[] = (tasks || []).map((task: any) => ({
+    id: task.id,
+    unique_code: task.unique_code || undefined,
+    client: task.client ? { businessName: task.client.businessName } : undefined,
+  }));
 
-  return { tasks: combinedTasks, roles: roles };
+  const transformedRoles: Roles[] = (roles || []).map((role: any) => ({
+    id: role.id,
+    name: role.name,
+  }));
+
+  return { tasks: transformedTasks, roles: transformedRoles };
 }
 
 async function Page() {
-  const session = await getSession();
+  const session = await getUserContext();
 
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
     "/timetracking/create"

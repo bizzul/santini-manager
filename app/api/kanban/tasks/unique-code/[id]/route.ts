@@ -1,32 +1,34 @@
-// pages/api/protected-route.js
-import { withApiAuthRequired, getSession } from "@auth0/nextjs-auth0";
-import { prisma } from "../../../../../../prisma-global";
-import { NextApiRequest, NextApiResponse } from "next";
+import { createClient } from "../../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const taskId = params.id;
+  const { id: taskId } = await params;
 
   try {
-    // Fetch a single client
-    const client = await prisma.task.findUnique({
-      where: {
-        unique_code: taskId,
-      },
-      include: {
-        kanban: true,
-        client: true,
-        User: true,
-        column: true,
-        sellProduct: true,
-      },
-    });
-    // console.log("project", client);
-    if (client) {
-      return NextResponse.json({ client, status: 200 });
+    const supabase = await createClient();
+
+    // Fetch a single task with related data
+    const { data: task, error } = await supabase
+      .from("tasks")
+      .select(`
+        *,
+        kanbans:kanban_id(*),
+        clients:client_id(*),
+        users:user_id(*),
+        kanban_columns:column_id(*),
+        sell_products:sell_product_id(*)
+      `)
+      .eq("unique_code", taskId)
+      .single();
+
+    if (error) throw error;
+
+    // console.log("project", task);
+    if (task) {
+      return NextResponse.json({ client: task, status: 200 });
     } else {
       return NextResponse.json({ message: "Client not found", status: 404 });
     }

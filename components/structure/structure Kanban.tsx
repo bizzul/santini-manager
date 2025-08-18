@@ -1,13 +1,18 @@
 "use client";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
-import { AppMetadata, User, UserMetadata } from "auth0";
 import { FC, useState } from "react";
 import { Drawer } from "./drawer/drawer";
 import { Navbar } from "./navbar/navbar";
 import { useSearchParams } from "next/navigation";
+import { User } from "@supabase/supabase-js";
+
+// Define UserDrawerType to match what the Drawer component expects
+interface UserDrawerType extends User {
+  picture?: string;
+}
 
 type Props = {
-  user?: any;
+  user?: UserDrawerType | null;
   titleIcon?: IconProp;
   titleText?: string;
   children?: React.ReactNode;
@@ -45,9 +50,7 @@ export const StructureKanban: FC<Props> = ({
           slim={slim}
           user={user}
         />
-        <div className={`min-w-full min-h-screen pt-12 ml-6 `}>
-          {children}
-        </div>
+        <div className={`min-w-full min-h-screen pt-12 ml-6 `}>{children}</div>
       </div>
     </div>
   );

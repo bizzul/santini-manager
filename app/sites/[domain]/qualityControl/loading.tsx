@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { Skeleton } from "../../../components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -9,8 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
-import { faBox } from "@fortawesome/free-solid-svg-icons";
+} from "@/components/ui/table";
 
 function Loading() {
   return <div>Caricamento in corso...</div>;

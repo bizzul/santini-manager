@@ -40,7 +40,11 @@ export default async function SelectSitePage() {
                   <Link
                     href={`/sites/${site.domain || site.subdomain || site.id}`}
                   >
-                    <Button size="sm" variant="outline">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="hover:bg-white/20"
+                    >
                       Enter Site
                     </Button>
                   </Link>

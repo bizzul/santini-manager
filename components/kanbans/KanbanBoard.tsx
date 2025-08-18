@@ -38,7 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../components/ui/dialog";
-import CreateProductForm from "../../app/(user)/kanban/createForm";
+import CreateProductForm from "@/app/sites/[domain]/kanban/createForm";
 import { useToast } from "../ui/use-toast";
 import {
   AlertDialog,
@@ -50,10 +50,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import { saveState } from "../../app/(user)/kanban/actions/save-kanban-state.action";
+import { saveState } from "@/app/sites/[domain]/kanban/actions/save-kanban-state.action";
 import TimelineClient from "./TimelineClient";
 import KanbanManagementModal from "./KanbanManagementModal";
-import { saveKanban } from "../../app/(user)/kanban/actions/save-kanban.action";
+import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 

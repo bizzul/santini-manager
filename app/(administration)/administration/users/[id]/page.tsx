@@ -13,15 +13,16 @@ import { Button } from "@/components/ui/button";
 export default async function UserViewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const [users, tenants, profiles, organizations] = await Promise.all([
     getUsers(),
     getTenants(),
     getUserProfiles(),
     getOrganizations(),
   ]);
-  const user = users.find((u: any) => u.id === params.id);
+  const user = users.find((u: any) => u.id === id);
   if (!user) return notFound();
   const tenant = tenants.find((t: any) => t.user_id === user.id);
   const profile = profiles.find((p: any) => p.authId === user.id);

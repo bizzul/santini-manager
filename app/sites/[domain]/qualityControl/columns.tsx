@@ -1,12 +1,11 @@
 "use client";
 
-import { QualityControl, SellProduct } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
-import { Check, CheckCheck, Cross, PauseIcon, X } from "lucide-react";
-import { statusText } from "../../../components/boxing/mobilePage";
-export const columns: ColumnDef<QualityControl>[] = [
+import { Check, PauseIcon, X } from "lucide-react";
+import { statusText } from "@/components/boxing/mobilePage";
+export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "passed",
     header: ({ column }) => (

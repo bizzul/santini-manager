@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
 interface OrganizationPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function OrganizationDetailsPage({

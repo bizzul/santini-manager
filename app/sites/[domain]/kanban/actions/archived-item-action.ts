@@ -1,38 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { getUserContext } from "@/lib/auth-utils";
 
 export async function archiveItem(archived: boolean, id: number) {
-  const session = await getSession();
+  const userContext = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (userContext) {
+    userId = userContext.user.id;
   }
   try {
-    const archiveTask = await prisma.task.update({
-      where: {
-        id: Number(id),
-      },
-      data: {
+    const supabase = await createClient();
+    const { data: archiveTask, error: archiveTaskError } = await supabase
+      .from("task")
+      .update({
         archived: archived,
-      },
-    });
+      })
+      .eq("id", id)
+      .select()
+      .single();
 
     // Create a new Action record to track the user action
-    await prisma.action.create({
+    await supabase.from("action").insert({
+      type: "task_update",
       data: {
-        type: "task_update",
-        data: {
-          task: archiveTask.id,
-        },
-        User: {
-          connect: {
-            authId: userId,
-          },
-        },
+        task: archiveTask.id,
       },
+      user_id: userId,
     });
 
     return revalidatePath("/kanban");

@@ -1,4 +1,7 @@
-import { Data } from "../app/(user)/page";
+// Define the base Data interface locally since the original import path doesn't exist
+interface Data {
+  // Base data properties - can be extended as needed
+}
 
 export interface WeeklyData {
   weekNumber: number;
@@ -38,4 +41,6 @@ export interface DashboardData extends Data {
   totalNonEmptyPositions: { [year: number]: number };
   weeklyData: WeeklyData[];
   monthlyTotals: MonthlyTotals;
+  groupedActiveTasks: any[];
+  stockedTasks: any[];
 }

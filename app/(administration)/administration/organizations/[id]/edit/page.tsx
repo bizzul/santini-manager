@@ -7,13 +7,13 @@ import { ArrowLeft } from "lucide-react";
 import { getOrganizationById, updateOrganization } from "../../../actions";
 
 interface EditOrganizationPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function EditOrganizationPage({
   params,
 }: EditOrganizationPageProps) {
-  const { id } = params;
+  const { id } = await params;
   const organization = await getOrganizationById(id);
   if (!organization) return notFound();
 

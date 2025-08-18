@@ -1,45 +1,59 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 
 export async function GET() {
   try {
-    // Get all kanbans with their columns
-    const kanbans = await prisma.kanban.findMany({
-      include: {
-        columns: {
-          orderBy: {
-            position: "asc",
-          },
-        },
-        Task: {
-          select: {
-            id: true,
-            unique_code: true,
-            title: true,
-          },
-        },
-      },
-      orderBy: {
-        title: "asc",
-      },
-    });
+    const supabase = await createClient();
 
-    // Get database connection info
+    // Get all kanbans
+    const { data: kanbans, error: kanbansError } = await supabase
+      .from("kanbans")
+      .select("*")
+      .order("title", { ascending: true });
+
+    if (kanbansError) throw kanbansError;
+
+    // Get all columns for all kanbans
+    const { data: columns, error: columnsError } = await supabase
+      .from("kanban_columns")
+      .select("*")
+      .order("position", { ascending: true });
+
+    if (columnsError) throw columnsError;
+
+    // Get all tasks for all kanbans
+    const { data: tasks, error: tasksError } = await supabase
+      .from("tasks")
+      .select("id, unique_code, title, kanban_id");
+
+    if (tasksError) throw tasksError;
+
+    // Group columns and tasks by kanban_id
+    const columnsByKanban = columns.reduce((acc, col: any) => {
+      if (!acc[col.kanban_id]) acc[col.kanban_id] = [];
+      acc[col.kanban_id].push(col);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    const tasksByKanban = tasks.reduce((acc, task: any) => {
+      if (!acc[task.kanban_id]) acc[task.kanban_id] = [];
+      acc[task.kanban_id].push(task);
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    // Build the response data
     const dbInfo = {
       kanbanCount: kanbans.length,
-      totalColumns: kanbans.reduce(
-        (acc, kanban) => acc + kanban.columns.length,
-        0
-      ),
-      totalTasks: kanbans.reduce((acc, kanban) => acc + kanban.Task.length, 0),
-      kanbans: kanbans.map((kanban) => ({
+      totalColumns: columns.length,
+      totalTasks: tasks.length,
+      kanbans: kanbans.map((kanban: any) => ({
         id: kanban.id,
         title: kanban.title,
         identifier: kanban.identifier,
         color: kanban.color,
-        columnCount: kanban.columns.length,
-        taskCount: kanban.Task.length,
-        columns: kanban.columns.map((col) => ({
+        columnCount: (columnsByKanban[kanban.id] || []).length,
+        taskCount: (tasksByKanban[kanban.id] || []).length,
+        columns: (columnsByKanban[kanban.id] || []).map((col: any) => ({
           id: col.id,
           title: col.title,
           identifier: col.identifier,
@@ -62,7 +76,7 @@ export async function GET() {
         details: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

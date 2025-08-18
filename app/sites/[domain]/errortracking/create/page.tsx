@@ -1,46 +1,50 @@
-import { getSession } from "@auth0/nextjs-auth0";
-import { Session } from "@auth0/nextjs-auth0";
-import { Roles, Task, Product_category, Supplier } from "@prisma/client";
+import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import React from "react";
-import { prisma } from "../../../../prisma-global";
-import MobilePage from "../../../../components/errorTracking/mobilePage";
+import { createClient } from "@/utils/server";
+import MobilePage from "@/components/errorTracking/mobilePage";
 
-export type DataResult = {
-  roles: Roles[];
-  tasks: Task[];
-  categories: Product_category[];
-  suppliers: Supplier[];
-};
-
-async function getData(): Promise<DataResult> {
-  const tasks = await prisma.task.findMany({
-    orderBy: { created_at: "desc" },
-  });
-  const roles = await prisma.roles.findMany();
-  const suppliers = await prisma.supplier.findMany();
-  const categories = await prisma.product_category.findMany();
+async function getData(): Promise<any> {
+  const supabase = await createClient();
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select("*")
+    .order("created_at", { ascending: false });
+  const { data: roles, error: rolesError } = await supabase
+    .from("roles")
+    .select("*");
+  const { data: suppliers, error: suppliersError } = await supabase
+    .from("supplier")
+    .select("*");
+  const { data: categories, error: categoriesError } = await supabase
+    .from("product_category")
+    .select("*");
 
   return { tasks, roles, suppliers, categories };
 }
 
 async function Page() {
-  const session = await getSession();
+  const userContext = await getUserContext();
+  if (!userContext || !userContext.user) {
+    // Handle the absence of a session. Redirect or return an error.
+    // For example, you might redirect to the login page:
+    return redirect("/login");
+  }
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
     "/errortracking/create"
   )}`;
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect(returnLink);
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext;
 
   //get initial data
   const data = await getData();
 
-  return <MobilePage data={data} session={session} />;
+  return <MobilePage data={data} session={userContext} />;
 }
 
 export default Page;

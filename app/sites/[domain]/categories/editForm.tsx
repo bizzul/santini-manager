@@ -11,11 +11,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
-import { validation } from "../../../validation/productsCategory/create";
-import { useToast } from "../../../components/ui/use-toast";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { validation } from "@/validation/productsCategory/create";
+import { useToast } from "@/hooks/use-toast";
 import { Product_category } from "@prisma/client";
 import { editItem } from "./actions/edit-item.action";
 
@@ -70,7 +70,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input {...field}  disabled={isSubmitting} />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -83,11 +83,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  
-                  disabled={isSubmitting}
-                />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>

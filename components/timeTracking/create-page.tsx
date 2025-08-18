@@ -1,11 +1,29 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Session } from "@auth0/nextjs-auth0";
 //import TasksFilter from "../errorTracking/filterTasks";
-import { Roles, Task } from "@prisma/client";
 import { useToast } from "../ui/use-toast";
 import { Input } from "../ui/input";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
+
+// Define types based on Supabase schema
+interface Roles {
+  id: number;
+  name: string;
+}
+
+interface Task {
+  id: number;
+  unique_code?: string;
+  client?: {
+    businessName?: string;
+  };
+}
+
+interface Session {
+  user: {
+    sub: string;
+  };
+}
 
 const CheckboxGroup = ({
   options,

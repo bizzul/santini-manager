@@ -2,7 +2,7 @@
 
 import { Product } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import Image from "next/image";
 import {
@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../../../components/ui/tooltip";
+} from "@/components/ui/tooltip";
 export const columns: ColumnDef<Product>[] = [
   {
     accessorKey: "inventoryId",

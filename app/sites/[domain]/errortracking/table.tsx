@@ -19,11 +19,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
-import { DataTablePagination } from "../../../components/table/pagination";
-import { DebouncedInput } from "../../../components/debouncedInput";
+import { DataTablePagination } from "@/components/table/pagination";
+import { DebouncedInput } from "@/components/debouncedInput";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -64,7 +64,6 @@ export function DataTable<TData, TValue>({
         <DebouncedInput
           value={globalFilter ?? ""}
           onChange={(value) => setGlobalFilter(String(value))}
-          
           className="max-w-sm"
         />
         {/* <Input

@@ -1,16 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/task/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { validation } from "@/validation/task/create";
+import { getUserContext } from "@/lib/auth-utils";
+import { createClient } from "@/utils/server";
 
 export async function createItem(props: any) {
   const result = validation.safeParse(props.data);
-  const session = await getSession();
+  const userContext = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (userContext) {
+    userId = userContext.user.id;
   }
   // console.log("result", result.error);
   try {
@@ -19,61 +19,54 @@ export async function createItem(props: any) {
       const positions = Array.from(
         { length: 8 },
         //@ts-ignore
-        (_, i) => result.data[`position${i + 1}`] || ""
+        (_, i) => result.data[`position${i + 1}`] || "",
       );
 
-      const taskCreate = await prisma.task.create({
-        //@ts-ignore
-        data: {
+      const supabase = await createClient();
+      const { data: taskCreate, error: taskCreateError } = await supabase
+        .from("task")
+        .insert({
+          //@ts-ignore
           title: "",
-          client: { connect: { id: result.data.clientId! } },
+          clientId: result.data.clientId!,
           deliveryDate: result.data.deliveryDate,
           unique_code: result.data.unique_code,
-          sellProduct: { connect: { id: result.data.productId! } },
-          kanban: { connect: { identifier: "PRODUCTION" } }, // in which KanBan is created
-          column: { connect: { identifier: "TODOPROD" } }, // in which Column is created
+          sellProductId: result.data.productId!,
+          kanbanId: "PRODUCTION", // in which KanBan is created
+          kanbanColumnId: "TODOPROD", // in which Column is created
           sellPrice: result.data.sellPrice,
           other: result.data.other,
-          positions: {
-            set: positions,
-          },
-        },
-      });
+          positions: positions,
+        })
+        .select()
+        .single();
 
-      const defaultSuppliers = await prisma.supplier.findMany({
-        where: {
-          OR: [
-            { name: { contains: "GRE", mode: "insensitive" } },
-            { name: { contains: "Gutmann", mode: "insensitive" } },
-            { name: { contains: "Meas", mode: "insensitive" } },
-          ],
-        },
-      });
+      if (taskCreateError) {
+        console.error("Error creating task:", taskCreateError);
+        throw new Error("Failed to create task");
+      }
+
+      const { data: defaultSuppliers, error: defaultSuppliersError } =
+        await supabase.from("supplier").select("*");
 
       // Crea le relazioni TaskSupplier per ogni fornitore trovato
-      if (defaultSuppliers.length > 0) {
-        await prisma.taskSupplier.createMany({
-          data: defaultSuppliers.map((supplier) => ({
+      if (defaultSuppliers && defaultSuppliers.length > 0) {
+        await supabase.from("task_supplier").insert(
+          defaultSuppliers.map((supplier) => ({
             taskId: taskCreate.id,
             supplierId: supplier.id,
             deliveryDate: null,
           })),
-        });
+        );
       }
 
       // Create a new Action record to track the user action
-      await prisma.action.create({
+      await supabase.from("action").insert({
+        type: "task_create",
         data: {
-          type: "task_create",
-          data: {
-            task: taskCreate.id,
-          },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
+          task: taskCreate.id,
         },
+        user_id: userId,
       });
 
       return revalidatePath("/kanban?name=PRODUCTION");

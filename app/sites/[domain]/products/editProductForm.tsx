@@ -12,15 +12,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "@tremor/react";
-import { validation } from "../../../validation/sellProducts/create";
-import { useToast } from "../../../components/ui/use-toast";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { validation } from "@/validation/sellProducts/create";
+import { useToast } from "@/components/ui/use-toast";
 import { useFormState, useFormStatus } from "react-dom";
 import { SellProduct } from "@prisma/client";
 import { editSellProductAction } from "./actions/edit-item.action";
-import { Checkbox } from "../../../components/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Props = {
   handleClose: any;
@@ -72,7 +72,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormDescription>Il nome del prodotto</FormDescription>
               <FormMessage />
@@ -86,7 +86,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Tipo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormDescription>La descrizione del prodotto</FormDescription>
               <FormMessage />

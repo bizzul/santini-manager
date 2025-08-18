@@ -1,39 +1,41 @@
 // pages/api/protected-route.js
-import { withApiAuthRequired, getSession } from "@auth0/nextjs-auth0";
-import { Auth0ManagementApi } from "../../../../core/auth/auth0-management-api";
+import { createClient } from "../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
+  try {
+    const supabase = await createClient();
 
-  //Managing token
-  await Auth0ManagementApi.manageToken(session);
-
-  const email = await req.json();
-
-  const clientId = process.env.AUTH0_CLIENT_ID;
-  const response = await fetch(
-    `${process.env.AUTH0_ISSUER_BASE_URL}/dbconnections/change_password`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: clientId,
-        email: email,
-        connection: "Username-Password-Authentication",
-      }),
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-  );
-  if (response.status === 200) {
+
+    const email = await req.json();
+
+    // Send password reset email using Supabase
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
+    });
+
+    if (error) {
+      return NextResponse.json({
+        error: `Failed to send password reset email: ${error.message}`,
+        status: 500,
+      });
+    }
+
     return NextResponse.json({
-      reset: "password change succesfully!",
+      reset: "password change successfully!",
       status: 200,
     });
-  } else {
+  } catch (error) {
+    console.error("Error in password change:", error);
     return NextResponse.json({
-      error: `Failed to send password reset email: ${response.status} ${response.statusText}`,
+      error: `Failed to send password reset email: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
       status: 500,
     });
   }

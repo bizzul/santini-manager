@@ -10,8 +10,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Button,
   MultiSelect,
@@ -19,13 +19,13 @@ import {
   Select,
   SelectItem,
 } from "@tremor/react";
-import { validation } from "../../../validation/timeTracking/createManual";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/timeTracking/createManual";
+import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 import { editItem } from "./actions/edit-item.action";
 import { Roles, Task, User, Timetracking } from "@prisma/client";
 import { Typology } from "./createForm";
-import { Skeleton } from "../../../components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function formatDate(date: Date) {
   // Padding function to add leading zeros if necessary
@@ -212,7 +212,6 @@ const EditForm = ({
                       field.onChange(e);
                     }}
                     disabled={isSubmitting}
-                    
                   >
                     {users.map((u: User) => (
                       <SearchSelectItem key={u.id} value={u.id.toString()}>
@@ -247,7 +246,6 @@ const EditForm = ({
                       field.onChange(e);
                     }}
                     disabled={isSubmitting}
-                    
                   >
                     {roles.map((r: Roles) => (
                       <SelectItem key={r.id} value={r.id.toString()}>
@@ -280,7 +278,6 @@ const EditForm = ({
                       field.onChange(e);
                     }}
                     disabled={isSubmitting}
-                    
                   >
                     {tasks.map((t: Task) => (
                       <SearchSelectItem key={t.id} value={t.id.toString()}>
@@ -305,7 +302,7 @@ const EditForm = ({
             <FormItem>
               <FormLabel>Ore</FormLabel>
               <FormControl>
-                <Input  type="number" {...field} />
+                <Input type="number" {...field} />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -320,7 +317,7 @@ const EditForm = ({
             <FormItem>
               <FormLabel>Minuti</FormLabel>
               <FormControl>
-                <Input  type="number" {...field} />
+                <Input type="number" {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -335,7 +332,7 @@ const EditForm = ({
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -358,7 +355,6 @@ const EditForm = ({
                     field.onChange(e);
                   }}
                   disabled={isSubmitting}
-                  
                 >
                   {typology.map((t: Typology, index) => (
                     <SearchSelectItem key={index} value={t.name}>

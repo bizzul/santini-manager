@@ -1,13 +1,12 @@
 import React from "react";
-import { faBox, faCheckSquare } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
-import { PackingControl } from "@prisma/client";
-import { prisma } from "../../../../prisma-global";
 import { redirect } from "next/navigation";
 import MobilePage from "@/components/boxing/mobilePage";
-import { revalidatePath } from "next/cache";
+
+import { createClient } from "@/utils/server";
+import { getUserContext } from "@/lib/auth-utils";
+
 interface Data {
-  packing: PackingControl[];
+  packing: any[];
 }
 
 export const revalidate = 0;
@@ -15,32 +14,18 @@ async function getSellProducts(): Promise<Data> {
   // Fetch data from your API here.
   // Fetch all the products
 
-  const data = await prisma.packingControl.findMany({
-    include: {
-      items: true,
-      task: { include: { column: true, sellProduct: true } },
-      user: true,
-    },
-    where: {
-      AND: [
-        {
-          task: {
-            archived: false,
-            column: {
-              identifier: {
-                not: "SPEDITO",
-              },
-            },
-          },
-        },
-      ],
-    },
-    orderBy: {
-      task: {
-        unique_code: "asc",
-      },
-    },
-  });
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("packing_control")
+    .select("*")
+    .eq("task.archived", false)
+    .not("task.column.identifier", "eq", "SPEDITO");
+
+  if (error) {
+    console.error("Error fetching packing control:", error);
+    return { packing: [] };
+  }
 
   return { packing: data };
 }
@@ -49,17 +34,17 @@ async function Page() {
   //get initial data
   const data = await getSellProducts();
 
-  const session = await getSession();
+  const userContext = await getUserContext();
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
     "/boxing/edit"
   )}`;
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect(returnLink);
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext;
 
   return <MobilePage data={data} session={user} />;
 }

@@ -74,15 +74,17 @@ export async function getUserContext(): Promise<UserContext | null> {
     if (!userToUse) {
         return null;
     }
-    // Get user's tenant information
+    // Get user's tenant information including role
     const { data: tenantData } = await supabase
         .from("tenants")
         .select("role, organization_id")
         .eq("user_id", userToUse.id)
         .single();
+
     if (!tenantData) {
         return null;
     }
+
     const role = tenantData.role as UserRole;
     const organizationId = tenantData.organization_id;
     const isSuperAdmin = role === "superadmin";

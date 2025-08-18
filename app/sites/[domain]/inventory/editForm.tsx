@@ -7,24 +7,23 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button } from "@tremor/react";
-import { validation } from "../../../validation/products/create";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/products/create";
+import { useToast } from "@/components/ui/use-toast";
 import { useFormState, useFormStatus } from "react-dom";
-import { Product, Product_category, Supplier } from "@prisma/client";
+import { Product_category, Supplier } from "@prisma/client";
 import { editItem } from "./actions/edit-item.action";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 
 type Props = {
   handleClose: any;
-  data: Product;
+  data: any;
 };
 
 const EditProductForm = ({ handleClose, data }: Props) => {
@@ -93,7 +92,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   }, [data, setValue]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    //@ts-expect-error
     const response = await editItem(d, data?.id);
     if (response?.error) {
       toast({
@@ -127,11 +125,9 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     field.onChange(e);
                   }}
                   disabled={isSubmitting}
-                  
                 >
                   {categories.map((cat: Product_category) => (
-                    //@ts-expect-error
-                    <SearchSelectItem key={cat.id} value={cat.id}>
+                    <SearchSelectItem key={cat.id} value={cat.id.toString()}>
                       {cat.name}
                     </SearchSelectItem>
                   ))}
@@ -155,7 +151,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     field.onChange(e);
                   }}
                   disabled={isSubmitting}
-                  
                 >
                   {suppliers.map((sup: Supplier) => (
                     //@ts-expect-error
@@ -179,7 +174,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -194,7 +189,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Tipo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -209,7 +204,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Num. Articolo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -225,7 +220,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel>Larghezza</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -240,7 +235,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel>Altezza</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -255,7 +250,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel>Lunghezza</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -302,7 +297,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel>Unità</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />

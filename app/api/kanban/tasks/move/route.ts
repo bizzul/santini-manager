@@ -1,48 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../../prisma-global";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "../../../../../utils/supabase/server";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-
-  const body = await req.json();
-  const { id, column, columnName } = body;
-  let userId: string = "";
-  if (session) {
-    userId = session.user.sub;
-  }
-  const now = new Date();
-
-  console.log("Move card request:", { id, column, columnName, userId });
-
   try {
-    const task = await prisma.task.findUnique({
-      where: { id: id },
-      include: {
-        column: true,
-        PackingControl: true,
-        QualityControl: true,
-      },
+    const supabase = await createClient();
+
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { id, column, columnName } = body;
+    const now = new Date();
+
+    console.log("Move card request:", {
+      id,
+      column,
+      columnName,
+      userId: user.id,
     });
 
-    if (!task) {
+    const { data: task, error: findError } = await supabase
+      .from("tasks")
+      .select(`
+        *,
+        kanban_columns:column_id(*),
+        quality_control:task_id(*),
+        packing_control:task_id(*)
+      `)
+      .eq("id", id)
+      .single();
+
+    if (findError || !task) {
       console.error("Task not found:", id);
       return NextResponse.json({ error: "Task not found", status: 404 });
     }
 
     console.log("Found task:", {
       taskId: task.id,
-      currentColumn: task.column?.identifier,
+      currentColumn: task.kanban_columns?.identifier,
     });
 
-    const prevColumn = task?.column?.identifier;
+    const prevColumn = task?.kanban_columns?.identifier;
 
     // Get the target column's position
-    const targetColumn = await prisma.kanbanColumn.findUnique({
-      where: { id: column },
-    });
+    const { data: targetColumn, error: columnError } = await supabase
+      .from("kanban_columns")
+      .select("*")
+      .eq("id", column)
+      .single();
 
-    if (!targetColumn) {
+    if (columnError || !targetColumn) {
       console.error("Target column not found:", column);
       return NextResponse.json({
         error: "Target column not found",
@@ -56,21 +66,28 @@ export async function POST(req: NextRequest) {
     });
 
     // Get the total number of columns in the kanban to calculate progress percentage
-    const totalColumns = await prisma.kanbanColumn.count({
-      where: {
-        kanbanId: task?.kanbanId || undefined,
-      },
-    });
+    const countRes = await supabase
+      .from("kanban_columns")
+      .select("*", { count: "exact", head: true })
+      .eq("kanban_id", task?.kanban_id);
+
+    if (countRes.error) throw countRes.error;
+
+    const totalColumns = countRes.count ?? 0;
 
     // Calculate progress based on target column position
     // First column (position 1) should always be 0%
     // For other columns, we calculate progress based on their position relative to total columns
     let progress = 0;
-    if (targetColumn?.position && targetColumn.position > 1) {
+    if (
+      targetColumn?.position &&
+      targetColumn.position > 1 &&
+      totalColumns > 1
+    ) {
       // Subtract 1 from position and totalColumns to make the calculation start from 0
       // This ensures first column is 0% and last column is 100%
       progress = Math.round(
-        ((targetColumn.position - 1) * 100) / (totalColumns - 1)
+        ((targetColumn.position - 1) * 100) / (totalColumns - 1),
       );
     }
 
@@ -85,117 +102,127 @@ export async function POST(req: NextRequest) {
     // Cap progress at 100%
     progress = Math.min(progress, 100);
 
-    let response;
     let qcControlResult;
     let packingControlResult;
+
     //create the packing control and qualityControl objects
-
     if (columnName === "QCPROD" && task) {
-      const qcMasterItems = await prisma.qcMasterItem.findMany();
+      const { data: qcMasterItems, error: qcMasterError } = await supabase
+        .from("qc_master_items")
+        .select("*");
 
-      if (task?.QualityControl.length === 0) {
+      if (qcMasterError) throw qcMasterError;
+
+      if (task?.quality_control?.length === 0) {
         // Create QualityControl if it doesn't exist
-        qcControlResult = await prisma.$transaction(async (prisma) => {
-          const qcPromises = task.positions
-            .filter((position) => position !== "") // Filter out empty positions
-            .map(async (position) => {
-              // Create Quality Control entry
-              const qcControl = await prisma.qualityControl.create({
-                data: {
-                  task: { connect: { id: task.id } },
-                  user: { connect: { authId: userId } },
-                  position_nr: position,
-                },
-              });
+        const qcPromises = task.positions
+          .filter((position: any) => position !== "") // Filter out empty positions
+          .map(async (position: any) => {
+            // Create Quality Control entry
+            const { data: qcControl, error: qcControlError } = await supabase
+              .from("quality_control")
+              .insert({
+                task_id: task.id,
+                user_id: user.id,
+                position_nr: position,
+              })
+              .select()
+              .single();
 
-              // For each standard QC item, create a QC item linked to the new QC entry
-              const qcItemPromises = qcMasterItems.map((item) =>
-                prisma.qc_item.create({
-                  data: {
-                    name: item.name,
-                    qualityControlId: qcControl.id, // Link to the newly created QC entry
-                  },
+            if (qcControlError) throw qcControlError;
+
+            // For each standard QC item, create a QC item linked to the new QC entry
+            const qcItemPromises = qcMasterItems.map((item) =>
+              supabase
+                .from("qc_items")
+                .insert({
+                  name: item.name,
+                  quality_control_id: qcControl.id, // Link to the newly created QC entry
                 })
-              );
+            );
 
-              // Return all QC Item creation promises for this particular QC entry
-              return Promise.all(qcItemPromises);
-            });
+            // Return all QC Item creation promises for this particular QC entry
+            return Promise.all(qcItemPromises);
+          });
 
-          // Execute all promises for QC entries and their items
-          return Promise.all(qcPromises.flat());
-        });
-
-        // Handle the results
+        // Execute all promises for QC entries and their items
+        qcControlResult = await Promise.all(qcPromises.flat());
       }
     }
 
     if (columnName === "IMBALLAGGIO" && task) {
-      const packingMasterItems = await prisma.packingMasterItem.findMany();
+      const { data: packingMasterItems, error: packingMasterError } =
+        await supabase
+          .from("packing_master_items")
+          .select("*");
 
-      if (task?.PackingControl.length === 0) {
-        // Create PackingCOntrol if it doesn't exist
-        packingControlResult = await prisma.$transaction(async (prisma) => {
-          // Create Quality Control entry
-          const packingControl = await prisma.packingControl.create({
-            data: {
-              task: { connect: { id: task.id } },
-              user: { connect: { authId: userId } },
-            },
-          });
+      if (packingMasterError) throw packingMasterError;
 
-          // For each standard QC item, create a QC item linked to the new QC entry
-          const packingItemPromises = packingMasterItems.map((item) =>
-            prisma.packingItem.create({
-              data: {
-                name: item.name,
-                packingControlId: packingControl.id, // Link to the newly created QC entry
-              },
+      if (task?.packing_control?.length === 0) {
+        // Create PackingControl if it doesn't exist
+        const { data: packingControl, error: packingControlError } =
+          await supabase
+            .from("packing_control")
+            .insert({
+              task_id: task.id,
+              user_id: user.id,
             })
-          );
+            .select()
+            .single();
 
-          // Execute all promises for QC entries and their items
-          return Promise.all(packingItemPromises);
-        });
+        if (packingControlError) throw packingControlError;
 
-        // Handle the results
+        // For each standard packing item, create a packing item linked to the new packing entry
+        const packingItemPromises = packingMasterItems.map((item) =>
+          supabase
+            .from("packing_items")
+            .insert({
+              name: item.name,
+              packing_control_id: packingControl.id, // Link to the newly created packing entry
+            })
+        );
+
+        // Execute all promises for packing entries and their items
+        packingControlResult = await Promise.all(packingItemPromises);
       }
     }
 
-    response = await prisma.task.update({
-      where: { id },
-      data: {
-        kanbanColumnId: column,
+    const { data: response, error: updateError } = await supabase
+      .from("tasks")
+      .update({
+        column_id: column,
         updated_at: now,
-        percentStatus: progress,
-      },
-      include: {
-        column: true,
-      },
-    });
+        percent_status: progress,
+      })
+      .eq("id", id)
+      .select(`
+        *,
+        kanban_columns:column_id(*)
+      `)
+      .single();
+
+    if (updateError) throw updateError;
 
     if (response) {
       // Create a new Action record to track the user action
-      const newAction = await prisma.action.create({
-        data: {
+      const { data: newAction, error: actionError } = await supabase
+        .from("actions")
+        .insert({
           type: "move_task",
           data: {
             taskId: id,
             fromColumn: prevColumn,
-            toColumn: response.column?.title,
+            toColumn: response.kanban_columns?.title,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-          Task: {
-            connect: {
-              id: id,
-            },
-          },
-        },
-      });
+          user_id: user.id,
+          task_id: id,
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Error creating action:", actionError);
+      }
 
       return NextResponse.json({
         data: response,

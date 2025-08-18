@@ -1,28 +1,31 @@
 // pages/api/protected-route.js
-import { getSession } from "@auth0/nextjs-auth0";
-import { prisma } from "../../../../../prisma-global";
+import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getSession();
-    let userId = null;
-    if (session) {
-      userId = session.user.sub;
+    const supabase = await createClient();
+
+    // Get the current user from Supabase auth
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    //@ts-ignore
-    const id = params.id;
+
+    const { id } = await params;
     const quantity = await req.json();
 
-    //Fetch a single client address
-    const product = await prisma.product.findUnique({
-      where: {
-        inventoryId: Number(id),
-      },
-    });
+    //Fetch a single product
+    const { data: product, error: findError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("inventory_id", Number(id))
+      .single();
+
+    if (findError) throw findError;
 
     if (product) {
       // Calculate new total price based on changes to unit price or quantity
@@ -31,33 +34,37 @@ export async function PATCH(
         totalPrice = product.unit_price * Number(quantity);
       }
 
-      const productData = await prisma.product.update({
-        where: {
-          inventoryId: Number(id),
-        },
-        data: {
+      const { data: productData, error: updateError } = await supabase
+        .from("products")
+        .update({
           quantity: Number(quantity),
           total_price: totalPrice,
-        },
-      });
+        })
+        .eq("inventory_id", Number(id))
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
 
       // Create a new Action record to track the user action
-      const newAction = await prisma.action.create({
-        data: {
+      const { data: newAction, error: actionError } = await supabase
+        .from("actions")
+        .insert({
           type: "edit_product",
           data: {
             name: productData.name,
             prevQuantity: product.quantity,
             newQuantity: productData.quantity,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-          Product: { connect: { id: productData.id } },
-        },
-      });
+          user_id: user.id,
+          product_id: productData.id,
+        })
+        .select()
+        .single();
+
+      if (actionError) {
+        console.error("Error creating action:", actionError);
+      }
 
       if (newAction) {
         return NextResponse.json({ client: productData, status: 200 });

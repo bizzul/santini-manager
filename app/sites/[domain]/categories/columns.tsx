@@ -2,7 +2,7 @@
 
 import { Product_category } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 
 export const columns: ColumnDef<Product_category>[] = [

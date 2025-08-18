@@ -1,12 +1,10 @@
 "use client";
 import React, { useState } from "react";
-import { Session } from "@auth0/nextjs-auth0";
 import { faWarning } from "@fortawesome/free-solid-svg-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { validation } from "../../validation/errorTracking/create";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Product_category, Roles, Supplier, Task } from "@prisma/client";
 import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
 import { useToast } from "../ui/use-toast";
@@ -23,6 +21,35 @@ import {
 import { z } from "zod";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
+
+// Define types based on Supabase schema
+interface Task {
+  id: number;
+  unique_code?: string;
+}
+
+interface Roles {
+  id: number;
+  name: string;
+}
+
+interface Supplier {
+  id: number;
+  name: string;
+  category?: string;
+}
+
+interface Product_category {
+  id: number;
+  name: string;
+}
+
+interface Session {
+  user: {
+    sub: string;
+    given_name?: string;
+  };
+}
 
 function MobilePage({
   session,
@@ -167,7 +194,6 @@ function MobilePage({
                               field.onChange(e);
                             }}
                             disabled={isSubmitting}
-                            
                           >
                             <SearchSelectItem value="fornitore">
                               Fornitore
@@ -198,7 +224,6 @@ function MobilePage({
                               field.onChange(e);
                             }}
                             disabled={isSubmitting}
-                            
                           >
                             {data.tasks.map((t: Task) => (
                               <SearchSelectItem
@@ -232,7 +257,6 @@ function MobilePage({
                               field.onChange(e);
                             }}
                             disabled={isSubmitting}
-                            
                           >
                             {form.watch("errorCategory") === "fornitore"
                               ? data.categories.map(
@@ -280,7 +304,6 @@ function MobilePage({
                                 field.onChange(e);
                               }}
                               disabled={isSubmitting}
-                              
                             >
                               {data.suppliers
                                 .filter(
@@ -351,10 +374,7 @@ function MobilePage({
                       <FormItem>
                         <FormLabel>Descrizione</FormLabel>
                         <FormControl>
-                          <Textarea
-                            {...field}
-                            
-                          />
+                          <Textarea {...field} />
                         </FormControl>
                         {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                         <FormMessage />

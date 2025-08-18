@@ -1,32 +1,33 @@
 "use server";
 
-import { SellProduct } from "@prisma/client";
-import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/sellProducts/create";
+import { validation } from "@/validation/sellProducts/create";
 
-export async function createSellProduct(props: SellProduct) {
+import { createClient } from "@/utils/server";
+
+export async function createSellProduct(props: any) {
   const result = validation.safeParse(props);
 
   if (result.success) {
-    const sellProduct = await prisma.sellProduct.create({
-      data: {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("packing_control")
+      .insert({
         name: props.name,
         type: props.type,
-      },
-    });
-    return { success: true, data: sellProduct };
-  } else if (!result.success) {
-    return { success: false, error: result.error.format() };
+      })
+      .select();
+    return { success: true, data: data };
   }
+  return { success: false, error: result.error.format() };
 }
 
-export async function createSellProductAction(props: SellProduct) {
+export async function createSellProductAction(props: any) {
   //console.log("props", props);
   try {
     const response = await createSellProduct(props);
-    if (response!.success === true) {
-      return revalidatePath("/products");
+    if (response.success === true) {
+      return { success: true, data: response.data };
     }
   } catch (e) {
     return { message: "Creazione elemento fallita!", error: e };

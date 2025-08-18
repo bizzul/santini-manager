@@ -1,46 +1,34 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { faBox, faCrosshairs } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
-import {
-  Errortracking,
-  Product,
-  Product_category,
-  Roles,
-  Supplier,
-  Task,
-  User,
-} from "@prisma/client";
+import { getUserContext } from "@/lib/auth-utils";
+
 import DialogCreate from "./dialogCreate";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
 
-export type DataResult = {
-  roles: Roles[];
-  tasks: Task[];
-  categories: Product_category[];
-  suppliers: Supplier[];
-  errors: Errortracking[];
-  users: User[];
-};
+async function getData(): Promise<any> {
+  const supabase = await createClient();
+  const { data: errors, error: errorsError } = await supabase
+    .from("errortracking")
+    .select("*");
 
-async function getData(): Promise<DataResult> {
-  const errors = await prisma.errortracking.findMany({
-    include: {
-      supplier: true,
-      task: true,
-      files: true,
-      user: true,
-    },
-  });
-  const tasks = await prisma.task.findMany({
-    orderBy: { created_at: "desc" },
-  });
-  const users = await prisma.user.findMany({ orderBy: { family_name: "asc" } });
-  const roles = await prisma.roles.findMany();
-  const suppliers = await prisma.supplier.findMany();
-  const categories = await prisma.product_category.findMany();
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select("*")
+    .order("created_at", { ascending: false });
+  const users = await supabase
+    .from("user")
+    .select("*")
+    .order("family_name", { ascending: true });
+  const { data: roles, error: rolesError } = await supabase
+    .from("roles")
+    .select("*");
+  const { data: suppliers, error: suppliersError } = await supabase
+    .from("supplier")
+    .select("*");
+  const { data: categories, error: categoriesError } = await supabase
+    .from("product_category")
+    .select("*");
 
   return { tasks, roles, suppliers, categories, errors, users };
 }
@@ -49,15 +37,13 @@ async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
-
-  if (!session || !session.user) {
+  const userContext = await getUserContext();
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
 
   return (
     //  <Structure titleIcon={faCrosshairs} titleText="ErrorTracking" user={user}>

@@ -8,19 +8,33 @@ import {
   Timetracking,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/timeTracking/createManual";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/timeTracking/createManual";
+import { getUserContext } from "@/lib/auth-utils";
 
 export async function createItem(props: Timetracking) {
   const result = validation.safeParse(props);
-  const session = await getSession();
+  const session = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (session && session.user && session.user.id) {
+    // Get the integer user ID from the User table using the authId
+    const supabase = await createClient();
+    const { data: userData, error: userError } = await supabase
+      .from("User")
+      .select("id")
+      .eq("authId", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching user data:", userError);
+      return { error: true, message: "Errore nel recupero dei dati utente!" };
+    }
+
+    userId = userData?.id;
   }
   if (result.success) {
     try {
+      const supabase = await createClient();
       const totalTimeInHours = result.data.hours + result.data.minutes / 60;
       //const roundedTotalTime = Math.round(totalTimeInHours * 2) / 2; // round to nearest half hour
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
@@ -32,8 +46,9 @@ export async function createItem(props: Timetracking) {
         useCNC = false;
       }
 
-      const resultSave = await prisma.timetracking.create({
-        data: {
+      const { data: timetracking, error: timetrackingError } = await supabase
+        .from("timetracking")
+        .insert({
           created_at: new Date(result.data.date),
           description: result.data.description,
           description_type: result.data.descriptionCat,
@@ -44,30 +59,40 @@ export async function createItem(props: Timetracking) {
           minutes: result.data.minutes,
           totalTime: roundedTotalTime, // total time in hours rounded to half
           use_cnc: useCNC,
-          roles: {
-            connect: {
-              id: Number(result.data.roles),
-            },
-          },
-          task: { connect: { id: Number(result.data.task) } },
-          user: { connect: { id: Number(result.data.userId) } },
-        },
-      });
+          roles: Number(result.data.roles),
+          task_id: Number(result.data.task),
+          employee_id: Number(result.data.userId),
+        })
+        .select()
+        .single();
+
+      if (timetrackingError) {
+        console.error("Error creating timetracking:", timetrackingError);
+        return {
+          message: "Creazione elemento fallita!",
+          error: timetrackingError.message,
+        };
+      }
+
+      const resultSave = timetracking;
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
-          type: "timetracking_create",
-          data: {
-            timetrackingId: resultSave.id,
-          },
-          User: {
-            connect: {
-              authId: userId,
+      if (timetracking && userId) {
+        const { error: actionError } = await supabase
+          .from("Action")
+          .insert({
+            type: "timetracking_create",
+            data: {
+              timetrackingId: resultSave.id,
             },
-          },
-        },
-      });
+            User: {
+              connect: {
+                authId: userId,
+              },
+            },
+            userId: userId,
+          });
+      }
 
       // return revalidatePath("/suppliers");
       return resultSave;

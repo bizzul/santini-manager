@@ -1,18 +1,11 @@
 "use client";
 
-import { Product, Supplier } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import Image from "next/image";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../../../components/ui/tooltip";
-import Link from "next/link";
-export const columns: ColumnDef<Supplier>[] = [
+
+export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => (

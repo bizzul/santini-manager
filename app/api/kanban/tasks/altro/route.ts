@@ -1,61 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../../prisma-global";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "../../../../../utils/supabase/server";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  const body = await req.json();
-  const { id, altroStatus } = body;
-  let userId = null;
-  if (session) {
-    userId = session.user.sub;
-  }
   try {
-    const task = await prisma.task.findUnique({
-      where: { id },
-    });
+    const supabase = await createClient();
+
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { id, altroStatus } = body;
+
+    const { data: task, error: findError } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (findError) throw findError;
+
     if (task) {
-      let response;
+      let updateData: any = { altro: altroStatus };
+
       if (altroStatus === true && task.altro === false) {
-        response = await prisma.task.update({
-          where: { id },
-          data: {
-            altro: altroStatus,
-            percentStatus: (task.percentStatus! += 15),
-          },
-        });
+        updateData.percent_status = (task.percent_status || 0) + 15;
       } else if (altroStatus === false && task.altro === true) {
-        response = await prisma.task.update({
-          where: { id },
-          data: {
-            altro: altroStatus,
-            percentStatus: (task.percentStatus! -= 15),
-          },
-        });
-      } else {
-        response = await prisma.task.update({
-          where: { id },
-          data: {
-            altro: altroStatus,
-          },
-        });
+        updateData.percent_status = (task.percent_status || 0) - 15;
       }
+
+      const { data: response, error: updateError } = await supabase
+        .from("tasks")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
       if (response) {
-        const newAction = await prisma.action.create({
-          data: {
+        const { data: newAction, error: actionError } = await supabase
+          .from("actions")
+          .insert({
             type: "updated_task",
             data: {
               taskId: id,
               altro: response.altro,
             },
-            User: {
-              connect: { authId: userId },
-            },
-            Task: {
-              connect: { id: id },
-            },
-          },
-        });
+            user_id: user.id,
+            task_id: id,
+          })
+          .select()
+          .single();
+
+        if (actionError) {
+          console.error("Error creating action:", actionError);
+        }
+
         return NextResponse.json({
           data: response,
           history: newAction,

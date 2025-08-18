@@ -9,10 +9,11 @@ import { validation } from "@/validation/users/editInfo";
 export default async function UserEditPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const users = await getUsers();
-  const user = users.find((u: any) => u.id === params.id);
+  const user = users.find((u: any) => u.id === id);
 
   if (!user) return notFound();
 
@@ -24,13 +25,13 @@ export default async function UserEditPage({
       // Optionally, handle error (e.g., show toast or set state)
       return;
     }
-    await updateUser(params.id, parsed.data);
-    redirect(`/administration/users/${params.id}`);
+    await updateUser(id, parsed.data);
+    redirect(`/administration/users/${id}`);
   }
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-lg mx-auto">
-      <Link href={`/administration/users/${params.id}`}>
+      <Link href={`/administration/users/${id}`}>
         <Button variant="outline">Back to User</Button>
       </Link>
       <Card>

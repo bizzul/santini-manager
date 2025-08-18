@@ -1,8 +1,6 @@
-// pages/api/protected-route.js
-import { withApiAuthRequired, getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "../../../../utils/supabase/server";
 import { NextApiRequest, NextApiResponse } from "next";
 import { promises as fs } from "fs";
-import { prisma } from "../../../../prisma-global";
 import { NextRequest, NextResponse } from "next/server";
 
 function sanitizeFilename(filename: string): string {
@@ -10,18 +8,26 @@ function sanitizeFilename(filename: string): string {
 }
 
 export async function POST(req: NextRequest, res: NextResponse, context: any) {
-  // const subfolder = context.params.subfolder;
-  // Extract the URL from the request object
-  const url = new URL(req.url);
-  // Parse the pathname to get the dynamic segment
-  const pathnameArray = url.pathname.split("/");
-  const subfolder = pathnameArray[pathnameArray.indexOf("local-upload") + 1];
-
-  const formData = await req.formData();
-  const file = formData.get("image") as File;
-  const id = formData.get("id") as string;
-
   try {
+    const supabase = await createClient();
+
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // const subfolder = context.params.subfolder;
+    // Extract the URL from the request object
+    const url = new URL(req.url);
+    // Parse the pathname to get the dynamic segment
+    const pathnameArray = url.pathname.split("/");
+    const subfolder = pathnameArray[pathnameArray.indexOf("local-upload") + 1];
+
+    const formData = await req.formData();
+    const file = formData.get("image") as File;
+    const id = formData.get("id") as string;
+
     const data = await file.arrayBuffer();
     const filename = sanitizeFilename(file.name);
     console.log("filename sanitized", filename);
@@ -31,45 +37,51 @@ export async function POST(req: NextRequest, res: NextResponse, context: any) {
 
     //store path in DB
     if (subfolder === "supplier") {
-      const supplier = await prisma.supplier.update({
-        where: {
-          id: Number(id),
-        },
-        data: {
+      const { data: supplier, error: supplierError } = await supabase
+        .from("suppliers")
+        .update({
           supplier_image: pathToRead,
-        },
-      });
+        })
+        .eq("id", Number(id))
+        .select()
+        .single();
+
+      if (supplierError) throw supplierError;
+
       if (supplier) {
         return NextResponse.json(
           { message: "image uploaded!", path: supplier.supplier_image },
-          { status: 200 }
+          { status: 200 },
         );
       } else {
         return NextResponse.json(
           { error: "Errore nel salvataggio in db!" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
     //store path in DB
     if (subfolder === "user") {
-      const user = await prisma.user.update({
-        where: {
-          authId: id,
-        },
-        data: {
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .update({
           picture: pathToRead,
-        },
-      });
-      if (user) {
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (userError) throw userError;
+
+      if (userData) {
         return NextResponse.json(
-          { message: "image changed", path: user.picture },
-          { status: 200 }
+          { message: "image changed", path: userData.picture },
+          { status: 200 },
         );
       } else {
         return NextResponse.json(
           { error: "Errore nel salvataggio in db!" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }

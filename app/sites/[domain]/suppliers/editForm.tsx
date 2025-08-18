@@ -11,15 +11,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button } from "@tremor/react";
-import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/supplier/edit";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/supplier/edit";
+import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 import { Product_category, Supplier } from "@prisma/client";
-import ImageUploader from "../../../components/uploaders/ImageUploader";
+import ImageUploader from "@/components/uploaders/ImageUploader";
 import Image from "next/image";
 import { editItem } from "./actions/edit-item.action";
 
@@ -171,7 +170,6 @@ const EditProductForm = ({
                       field.onChange(e);
                     }}
                     disabled={isSubmitting}
-                    
                   >
                     {categories.map((cat: Product_category) => (
                       <SearchSelectItem key={cat.id} value={cat.name}>
@@ -194,7 +192,7 @@ const EditProductForm = ({
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -209,7 +207,7 @@ const EditProductForm = ({
             <FormItem>
               <FormLabel>Nome Corto</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -224,7 +222,7 @@ const EditProductForm = ({
             <FormItem>
               <FormLabel>P. di Contatto</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -239,7 +237,7 @@ const EditProductForm = ({
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -255,7 +253,7 @@ const EditProductForm = ({
               <FormItem>
                 <FormLabel>Indirizzo</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -270,7 +268,7 @@ const EditProductForm = ({
               <FormItem>
                 <FormLabel>CAP</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -285,7 +283,7 @@ const EditProductForm = ({
               <FormItem>
                 <FormLabel>Località</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -302,7 +300,7 @@ const EditProductForm = ({
               <FormItem>
                 <FormLabel>Website</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -317,11 +315,7 @@ const EditProductForm = ({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input
-                    type="email"
-                    
-                    {...field}
-                  />
+                  <Input type="email" {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -336,7 +330,7 @@ const EditProductForm = ({
               <FormItem>
                 <FormLabel>Telefono</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />

@@ -1,5 +1,4 @@
 import { ReactNode, Suspense } from "react";
-import Profile from "@/components/profile";
 import RoleBasedNav from "@/components/role-based-nav";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
@@ -34,7 +33,7 @@ async function RoleBasedLayoutContent({
     <div>
       <RoleBasedNav userRole={userContext.role}>
         <Suspense fallback={<div>Loading...</div>}>
-          <Profile />
+          {/* Profile component removed - not implemented */}
         </Suspense>
       </RoleBasedNav>
       <div className="min-h-screen sm:pl-60 dark:bg-black">{children}</div>

@@ -1,18 +1,11 @@
 "use client";
-import { Qc_item, QualityControl } from "@prisma/client";
 import React, { useEffect, useState } from "react";
-import { Button } from "../../../../../components/ui/button";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useToast } from "../../../../../components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "flowbite-react";
 
-function SinglePageComponent({
-  data,
-  user,
-}: {
-  data: QualityControl;
-  user: any;
-}) {
+function SinglePageComponent({ data, user }: { data: any; user: any }) {
   const router = useRouter();
   const { toast } = useToast();
 

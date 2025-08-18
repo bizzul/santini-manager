@@ -3,70 +3,57 @@ import { redirect } from "next/navigation";
 import { Action, SellProduct, Task } from "@prisma/client";
 import ContentPage from "@/components/kanbans/ContentPage";
 import { getAvailableSnapshots } from "./actions/get-available-snapshots.action";
-
-export interface Data {
-  clients: Client[];
-  products: SellProduct[];
-  history: Action[];
-}
+import { createClient } from "@/utils/server";
+import { getUserContext } from "@/lib/auth-utils";
 
 export const revalidate = 0;
 
-async function getData(): Promise<Data | any> {
-  const clients = await prisma.client.findMany({});
-  const products = await prisma.sellProduct.findMany({
-    include: {
-      Task: true,
-    },
-    where: {
-      active: true,
-    },
-  });
+async function getData(): Promise<any> {
+  const supabase = await createClient();
+  const { data: clients, error: clientsError } = await supabase
+    .from("client")
+    .select("*");
+  const { data: products, error: productsError } = await supabase
+    .from("sell_product")
+    .select("*");
+  const { data: history, error: historyError } = await supabase
+    .from("action")
+    .select("*");
 
-  const history = await prisma.action.findMany({
-    include: {
-      Client: true,
-      Task: true,
-      User: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select("*");
 
-  return { clients, products, history };
+  return { clients, products, history, tasks };
 }
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
+  const supabase = await createClient();
   const data = await getData();
-  const session = await getSession();
+  const userContext = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     return redirect("/login");
   }
 
-  const { user } = session;
-  let kanName = searchParams.name;
+  const { user } = userContext;
+  const sp = await searchParams;
+  let kanName = sp.name;
 
-  if (typeof name === "string") {
-    kanName = searchParams.name!.toUpperCase();
+  if (typeof kanName === "string") {
+    kanName = kanName.toUpperCase();
   }
 
   // Fetch kanban data server-side
-  const kanban = await prisma.kanban.findFirst({
-    where: {
-      identifier: kanName,
-    },
-    include: {
-      columns: {
-        orderBy: {
-          position: "asc",
-        },
-      },
-    },
-  });
+  const kanban = await supabase
+    .from("kanban")
+    .select("*")
+    .eq("identifier", kanName)
+    .single();
 
   // Fetch initial tasks server-side
   const initialTasks = await fetch(

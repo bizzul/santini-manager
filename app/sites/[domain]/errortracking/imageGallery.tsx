@@ -2,15 +2,15 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@tremor/react";
-import { Card, CardContent } from "../../../components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "../../../components/ui/carousel";
-import { Dialog, DialogContent } from "../../../components/ui/dialog";
+} from "@/components/ui/carousel";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 function ImageGallery({ files }: { files: any }) {
   const [currentImage, setCurrentImage] = useState(0);
   const [open, setOpen] = useState(false);

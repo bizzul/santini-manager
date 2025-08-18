@@ -1,43 +1,40 @@
-import { getSession } from "@auth0/nextjs-auth0";
-import { prisma } from "../../../../../prisma-global";
 import { redirect } from "next/navigation";
 import SinglePageComponent from "./singlePageComponent";
+import { getUserContext } from "@/lib/auth-utils";
+import { createClient } from "@/utils/server";
 
 async function getData(id: number) {
   // Fetch data from your API here.
-  // Fetch all the products
-  const qualityControl = await prisma.packingControl.findUnique({
-    where: {
-      id: Number(id),
-    },
-    include: {
-      items: true,
-      task: {
-        include: {
-          sellProduct: true, // include the sellproduct data from the task
-          client: true,
-        },
-      },
-      user: true,
-    },
-  });
+  const supabase = await createClient();
 
-  return qualityControl;
+  const { data, error } = await supabase
+    .from("packing_control")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) {
+    console.error("Error fetching packing control:", error);
+    return null;
+  }
+
+  return data;
 }
 
-async function Page({ params }: { params: { id: number } }) {
+async function Page({ params }: { params: Promise<{ id: number }> }) {
   //get initial data
-  const data = await getData(params.id);
+  const { id } = await params;
+  const data = await getData(id);
 
-  const session = await getSession();
+  const userContext = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext;
 
   return (
     <>

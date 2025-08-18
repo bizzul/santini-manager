@@ -12,29 +12,29 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
-import { Textarea } from "../../../components/ui/textarea";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
-import { Calendar } from "../../../components/ui/calendar";
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../../components/ui/popover";
+} from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "../../../lib/utils";
+import { cn } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/task/create";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/task/create";
+import { useToast } from "@/components/ui/use-toast";
 import { Data } from "./page";
 import { Client, SellProduct, Task, Kanban } from "@prisma/client";
 
@@ -110,7 +110,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Codice Identificativo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -124,7 +124,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -144,7 +144,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -175,7 +175,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -209,7 +209,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -235,7 +235,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
-                      variant={"outline-solid"}
+                      variant={"outline"}
                       className={cn(
                         "w-full pl-3 text-left font-normal",
                         !field.value && "text-muted-foreground"
@@ -296,11 +296,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Commenti</FormLabel>
               <FormControl>
-                <Textarea
-                  {...field}
-                  
-                  disabled={isSubmitting}
-                />
+                <Textarea {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>

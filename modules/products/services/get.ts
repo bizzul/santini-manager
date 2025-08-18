@@ -3,15 +3,22 @@ import {
   ServiceError,
   ServiceResponse,
 } from "../../../package/service";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "../../../utils/supabase/client";
+
 export const get = async (id: number): Promise<ServiceResponse> => {
   try {
-    const result = await prisma.product.findUnique({
-      where: {
-        id: id,
-      },
-      include: { product_category: true, supplierInfo: true },
-    });
+    const supabase = createClient();
+
+    const { data: result, error } = await supabase
+      .from("product")
+      .select("*, product_category(*), supplierInfo(*)")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
     if (result) {
       //[R200] Reading Found and returned
       return new ServiceResponse({

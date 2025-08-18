@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 
 export const GET = async () => {
   try {
-    const suppliers = await prisma.supplier.findMany();
+    const supabase = await createClient();
+
+    const { data: suppliers, error } = await supabase
+      .from("suppliers")
+      .select("*");
+
+    if (error) throw error;
 
     return NextResponse.json(suppliers);
   } catch (err: any) {

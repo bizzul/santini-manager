@@ -1,31 +1,28 @@
 "use server";
 
-import { Product, SellProduct } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/products/create";
-import { getSession } from "@auth0/nextjs-auth0";
-export async function editItem(formData: Product, id: number) {
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/products/create";
+import { getUserContext } from "@/lib/auth-utils";
+export async function editItem(formData: any, id: number) {
   const result = validation.safeParse(formData);
-  const session = await getSession();
+  const userContext = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (userContext) {
+    userId = userContext.user.id;
   }
 
   if (result.success) {
     try {
       const totalPrice = formData.unit_price * formData.quantity;
 
-      const result = await prisma.product.update({
-        where: {
-          id,
-        },
-        data: {
-          //@ts-ignore
-          product_category: { connect: { id: formData.productCategoryId } },
+      const supabase = await createClient();
+      const { data: updatedProduct, error: updateError } = await supabase
+        .from("product")
+        .update({
+          product_category_id: formData.productCategoryId,
           name: formData.name,
-          supplierInfo: { connect: { id: formData.supplierId! } },
+          supplier_id: formData.supplierId,
           unit_price: formData.unit_price,
           description: formData.description,
           height: formData.height,
@@ -35,28 +32,30 @@ export async function editItem(formData: Product, id: number) {
           total_price: totalPrice,
           type: formData.type,
           unit: formData.unit,
-        },
-      });
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating product:", updateError);
+        return { error: "Modifica elemento fallita!" };
+      }
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
+      if (updatedProduct && userId) {
+        const { error: actionError } = await supabase.from("action").insert({
           type: "product_update",
           data: {
-            inventoryId: result.inventoryId,
+            inventoryId: updatedProduct.id,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-          Product: {
-            connect: {
-              id: result.id,
-            },
-          },
-        },
-      });
+          user_id: userId,
+        });
+
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
       return revalidatePath("/inventory");
     } catch (e) {

@@ -11,27 +11,25 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
-import { Textarea } from "../../../components/ui/textarea";
-import { DatePicker } from "../../../components/ui/date-picker";
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker } from "@/components/ui/date-picker";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/task/create";
-import { useToast } from "../../../components/ui/use-toast";
-import { Data } from "./page";
-import { Client, SellProduct } from "@prisma/client";
+import { validation } from "@/validation/task/create";
+import { useToast } from "@/components/ui/use-toast";
 
 type Props = {
   handleClose: any;
-  data: Data;
+  data: any;
 };
 
 const CreateProductForm = ({ handleClose, data }: Props) => {
@@ -86,7 +84,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Codice Identificativo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -107,11 +105,11 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {(data.clients as Client[]).map((client) => (
+                  {(data.clients as any[]).map((client) => (
                     <SelectItem key={client.id} value={client.id.toString()}>
                       {client.businessName ||
                         (client.individualFirstName
@@ -140,11 +138,11 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {(data.products as SellProduct[]).map((product) => (
+                  {(data.products as any[]).map((product) => (
                     <SelectItem key={product.id} value={product.id.toString()}>
                       {product.name}
                     </SelectItem>
@@ -207,7 +205,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Commenti</FormLabel>
               <FormControl>
-                <Textarea {...field}  />
+                <Textarea {...field} />
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />

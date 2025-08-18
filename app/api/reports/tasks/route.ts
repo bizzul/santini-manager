@@ -1,28 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import * as XLSX from "xlsx";
-import { Task } from "@prisma/client";
 import { calculateCurrentValue } from "../../../../package/utils/various/calculateCurrentValue";
 
 export const dynamic = "force-dynamic";
-function filterOpenProjects(tasks: Task[]) {
-  return tasks.filter((task: Task) => {
+
+function filterOpenProjects(tasks: any[]) {
+  return tasks.filter((task: any) => {
     return (
       !task.archived &&
       task.unique_code !== "9999" &&
       //@ts-ignore
-      task.column.identifier !== "SPEDITO"
+      task.kanban_columns?.identifier !== "SPEDITO"
     );
   });
 }
 
 export const GET = async () => {
   try {
+    const supabase = await createClient();
     const date = new Date();
 
-    const tasks = await prisma.task.findMany({
-      include: { client: true, sellProduct: true, column: true, kanban: true },
-    });
+    const { data: tasks, error: tasksError } = await supabase
+      .from("tasks")
+      .select(`
+        *,
+        clients:client_id(*),
+        sell_products:sell_product_id(*),
+        kanban_columns:column_id(*),
+        kanbans:kanban_id(*)
+      `);
+
+    if (tasksError) throw tasksError;
 
     const filteredTasks = filterOpenProjects(tasks);
 
@@ -34,31 +43,33 @@ export const GET = async () => {
     const workbook = XLSX.utils.book_new();
 
     //Add inventories to the worksheet
-    const taskDataSubset = filteredTasks.map((item: Task) => {
+    const taskDataSubset = filteredTasks.map((item: any) => {
       const created = new Date(item.created_at);
-      const delivery = item.deliveryDate && new Date(item.deliveryDate);
+      const delivery = item.delivery_date && new Date(item.delivery_date);
       return {
         Numero: item.unique_code,
         //@ts-ignore
-        Cliente: item.client?.businessName || "",
+        Cliente: item.clients?.business_name || "",
         //@ts-ignore
-        Prodotto: item.sellProduct ? item.sellProduct.name : "Nessun prodotto",
+        Prodotto: item.sell_products
+          ? item.sell_products.name
+          : "Nessun prodotto",
         //@ts-ignore
-        Fase: item.column ? item.column?.title : "Nessuna fase",
+        Fase: item.kanban_columns ? item.kanban_columns?.title : "Nessuna fase",
         "Data Creazione": created.toLocaleString(),
         "Data consegna prevista": delivery
           ? delivery.toLocaleString()
           : "NON ASSEGNATA",
-        Percentuale: item.percentStatus,
+        Percentuale: item.percent_status,
         // Materiale: item.material ? "Si" : "No",
         Ferramenta: item.ferramenta ? "Si" : "No",
         Metalli: item.metalli ? "Si" : "No",
         Altro: item.other,
-        Posizioni: item.positions.join(", "),
-        "Prezzo di vendita": item.sellPrice,
-        Valore: item.sellPrice
-          ? //@ts-ignore
-            calculateCurrentValue(item, item.column?.position)
+        Posizioni: item.positions?.join(", ") || "",
+        "Prezzo di vendita": item.sell_price,
+        Valore: item.sell_price
+          //@ts-ignore
+          ? calculateCurrentValue(item, item.kanban_columns?.position)
           : 0,
       };
     });
@@ -68,7 +79,7 @@ export const GET = async () => {
       "Numero totale di progetti aperti": taskDataSubset.length,
       "Valore in produzione": taskDataSubset.reduce(
         (acc: number, task: any) => acc + task["Prezzo di vendita"],
-        0
+        0,
       ),
     };
 
@@ -84,11 +95,11 @@ export const GET = async () => {
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`
+      `attachment; filename="${fileName}${fileExtension}"`,
     );
 
     // Convert workbook to binary to send in response

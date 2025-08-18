@@ -1,59 +1,69 @@
 "use server";
 
-import { Errortracking } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/errorTracking/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/errorTracking/create";
 
 export async function createItem(props: any) {
   const result = validation.safeParse(props.data);
-  const session = await getSession();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (user) {
+    userId = user.id;
   }
   // console.log("result", result.error);
   try {
     if (result.success) {
-      const createError = await prisma.errortracking.create({
-        data: {
+      const { data: createError, error: createErrorResponse } = await supabase
+        .from("errortracking")
+        .insert({
           position: result.data.position,
-          supplier: { connect: { id: Number(result.data.supplier!) } },
+          supplier_id: Number(result.data.supplier!),
           description: result.data.description ?? "",
           error_category: result.data.errorCategory,
           error_type: result.data.errorType!,
-          task: { connect: { id: Number(result.data.task) } },
-          user: { connect: { id: Number(result.data.user) } },
-        },
-      });
-      if (props.filedIds.length > 0) {
+          task_id: Number(result.data.task),
+          user_id: Number(result.data.user),
+        })
+        .select()
+        .single();
+
+      if (createErrorResponse) {
+        console.error("Error creating errortracking:", createErrorResponse);
+        return {
+          message: "Creazione elemento fallita!",
+          error: createErrorResponse.message,
+        };
+      }
+
+      if (props.filedIds?.length > 0) {
         props.fileIds.forEach(async (file: any) => {
-          const fileCreate = await prisma.file.create({
-            data: {
-              errortrackingId: createError.id,
-              name: file.original_filename,
-              url: file.secure_url,
-              cloudinaryId: file.asset_id,
-            },
+          await supabase.from("file").insert({
+            errortracking_id: createError.id,
+            name: file.original_filename,
+            url: file.secure_url,
+            cloudinary_id: file.asset_id,
           });
         });
       }
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
+      if (createError && userId) {
+        const { error: actionError } = await supabase.from("action").insert({
           type: "errorTracking_create",
           data: {
             errorTracking: createError.id,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-        },
-      });
+          user_id: userId,
+        });
+
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
       return revalidatePath("/errortracking");
     } else {

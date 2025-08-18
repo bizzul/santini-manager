@@ -1,49 +1,57 @@
-// pages/api/protected-route.js
-import { withApiAuthRequired, getSession } from "@auth0/nextjs-auth0";
-import { Auth0ManagementApi } from "../../../../../core/auth/auth0-management-api";
+import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../../prisma-global";
+
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const session = await getSession();
-  const userId = params.id;
-  console.log("userId", userId);
-  //Managing token
-  await Auth0ManagementApi.manageToken(session);
+  try {
+    const supabase = await createClient();
+    const { id: userId } = await params;
+    console.log("userId", userId);
 
-  if (session) {
-    const response = await fetch(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${userId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.managementToken}`,
-        },
-        body: JSON.stringify({
-          blocked: true,
-        }),
-      }
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized", status: 401 });
+    }
+
+    // Block the user in Supabase auth
+    const { error: blockError } = await supabase.auth.admin.updateUserById(
+      userId,
+      { user_metadata: { blocked: true } },
     );
 
-    if (response.ok || response.status === 200) {
-      const blockedUser = await response.json();
-      const updateLocalUser = await prisma.user.update({
-        where: {
-          authId: userId,
-        },
-        data: {
-          enabled: false,
-        },
-      });
-      return NextResponse.json({ blocked: blockedUser, status: 200 });
+    if (blockError) {
+      // If admin API fails, try to update the user record directly
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ enabled: false })
+        .eq("id", userId);
+
+      if (updateError) {
+        throw updateError;
+      }
     } else {
-      return NextResponse.json({
-        error: `Failed to block user: ${response.status} ${response.statusText}`,
-        status: 400,
-      });
+      // Update local user record
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ enabled: false })
+        .eq("id", userId);
+
+      if (updateError) {
+        throw updateError;
+      }
     }
+
+    return NextResponse.json({ blocked: true, status: 200 });
+  } catch (error) {
+    console.error("Error blocking user:", error);
+    return NextResponse.json({
+      error: `Failed to block user: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      status: 500,
+    });
   }
 }

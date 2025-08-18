@@ -1,7 +1,6 @@
 import { validation } from "../../../../validation/timeTracking/create";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { Action, Prisma, Timetracking } from "@prisma/client";
 
 // Helper function to calculate total hours
 function calculateTotalHours(hours: number, minutes: number): number {
@@ -11,6 +10,8 @@ function calculateTotalHours(hours: number, minutes: number): number {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+
     // Parse and validate request data
     const data = await req.json().catch(() => {
       throw new Error("Invalid JSON payload");
@@ -24,54 +25,63 @@ export async function POST(req: NextRequest) {
           details: dataArray.error.format(),
           status: 400,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const timetrackings = dataArray.data;
-    const results: { timetracking: Timetracking; action: Action }[] = [];
+    const results: { timetracking: any; action: any }[] = [];
 
-    // Use a transaction to ensure all operations succeed or none do
-    await prisma.$transaction(async (tx) => {
-      for (const data of timetrackings) {
-        const roundedTotalTime = calculateTotalHours(data.hours, data.minutes);
-        const useCNC = data.roles.id === 2;
+    // Process each time tracking entry
+    for (const data of timetrackings) {
+      const roundedTotalTime = calculateTotalHours(data.hours, data.minutes);
+      const useCNC = data.roles.id === 2;
 
-        const timetrackingData = {
+      // Get task ID from unique code
+      const { data: task, error: taskError } = await supabase
+        .from("tasks")
+        .select("id")
+        .eq("unique_code", data.task)
+        .single();
+
+      if (taskError) throw taskError;
+
+      // Create timetracking entry
+      const { data: timetracking, error: timetrackingError } = await supabase
+        .from("timetracking")
+        .insert({
           description: data.description,
           description_type: data.descriptionCat,
           hours: data.hours,
           minutes: data.minutes,
-          totalTime: roundedTotalTime,
+          total_time: roundedTotalTime,
           use_cnc: useCNC,
-          roles: { connect: { id: data.roles.id } },
-          task: { connect: { unique_code: data.task } },
-          user: { connect: { authId: data.userId } },
-        };
+          role_id: data.roles.id,
+          task_id: task.id,
+          user_id: data.userId,
+        })
+        .select()
+        .single();
 
-        // Create timetracking entry
-        const timetracking = await tx.timetracking.create({
-          data: timetrackingData,
-        });
+      if (timetrackingError) throw timetrackingError;
 
-        // Create action record
-        const action = await tx.action.create({
+      // Create action record
+      const { data: action, error: actionError } = await supabase
+        .from("actions")
+        .insert({
+          type: "timetracking_create",
           data: {
-            type: "timetracking_create",
-            data: {
-              timetracking: timetracking.id,
-            },
-            User: {
-              connect: {
-                authId: data.userId,
-              },
-            },
+            timetracking: timetracking.id,
           },
-        });
+          user_id: data.userId,
+        })
+        .select()
+        .single();
 
-        results.push({ timetracking, action });
-      }
-    });
+      if (actionError) throw actionError;
+
+      results.push({ timetracking, action });
+    }
 
     return NextResponse.json(
       {
@@ -79,40 +89,41 @@ export async function POST(req: NextRequest) {
         results,
         status: 200,
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error in time-tracking creation:", error);
 
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      // Handle specific Prisma errors
-      switch (error.code) {
-        case "P2002":
+    // Handle specific database errors
+    if (error && typeof error === "object" && "code" in error) {
+      const dbError = error as any;
+      switch (dbError.code) {
+        case "23505": // Unique constraint violation
           return NextResponse.json(
             {
               error: "Unique constraint violation",
-              details: error.message,
+              details: dbError.message,
               status: 409,
             },
-            { status: 409 }
+            { status: 409 },
           );
-        case "P2025":
+        case "23503": // Foreign key violation
           return NextResponse.json(
             {
               error: "Record not found",
-              details: error.message,
+              details: dbError.message,
               status: 404,
             },
-            { status: 404 }
+            { status: 404 },
           );
         default:
           return NextResponse.json(
             {
               error: "Database error",
-              details: error.message,
+              details: dbError.message,
               status: 500,
             },
-            { status: 500 }
+            { status: 500 },
           );
       }
     }
@@ -124,7 +135,7 @@ export async function POST(req: NextRequest) {
         details: error instanceof Error ? error.message : "Unknown error",
         status: 500,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -3,9 +3,9 @@ import { createClient } from "@/utils/supabase/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { slug: string } },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
-  const filteredKanban = params.slug;
+  const { slug: filteredKanban } = await params;
   try {
     const supabase = await createClient();
 

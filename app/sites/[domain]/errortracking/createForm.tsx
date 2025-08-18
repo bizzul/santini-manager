@@ -12,31 +12,29 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
-import { Textarea } from "../../../components/ui/textarea";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
+} from "@/components/ui/select";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/errorTracking/create";
-import { useToast } from "../../../components/ui/use-toast";
-import { DataResult } from "./page";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import { validation } from "@/validation/errorTracking/create";
+import { useToast } from "@/components/ui/use-toast";
 import { Product_category, Supplier, Task, User } from "@prisma/client";
-import { CldUploadButton, CldUploadWidget } from "next-cloudinary";
+import { CldUploadButton } from "next-cloudinary";
 
 const CreateProductForm = ({
   handleClose,
   data,
 }: {
   handleClose: any;
-  data: DataResult;
+  data: any;
 }) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
@@ -129,7 +127,7 @@ const CreateProductForm = ({
                     disabled={isSubmitting}
                   >
                     <SelectTrigger>
-                      <SelectValue  />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {data.users.map((user: User) => (
@@ -162,7 +160,7 @@ const CreateProductForm = ({
                     disabled={isSubmitting}
                   >
                     <SelectTrigger>
-                      <SelectValue  />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="fornitore">Fornitore</SelectItem>
@@ -193,7 +191,7 @@ const CreateProductForm = ({
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
-                        <SelectValue  />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {data.tasks.map((t: Task) => (
@@ -228,7 +226,7 @@ const CreateProductForm = ({
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
-                        <SelectValue  />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {form.watch("errorCategory") === "fornitore"
@@ -242,7 +240,7 @@ const CreateProductForm = ({
                                 </SelectItem>
                               )
                             )
-                          : data.roles.map((role) => (
+                          : data.roles.map((role: any) => (
                               <SelectItem
                                 key={role.id}
                                 value={role.id.toString()}
@@ -280,7 +278,7 @@ const CreateProductForm = ({
                         disabled={isSubmitting}
                       >
                         <SelectTrigger>
-                          <SelectValue  />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {data.suppliers
@@ -332,7 +330,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Textarea {...field}  />
+                <Textarea {...field} />
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />

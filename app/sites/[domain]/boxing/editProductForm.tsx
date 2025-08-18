@@ -12,18 +12,17 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button } from "@tremor/react";
-import { validation } from "../../../validation/sellProducts/create";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/sellProducts/create";
+import { useToast } from "@/components/ui/use-toast";
 import { useFormState, useFormStatus } from "react-dom";
-import { SellProduct } from "@prisma/client";
 import { editSellProductAction } from "./actions/edit-item.action";
 
 type Props = {
   handleClose: any;
-  data: SellProduct;
+  data: any;
 };
 
 const EditProductForm = ({ handleClose, data }: Props) => {
@@ -44,7 +43,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   }, [data, setValue]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    //@ts-expect-error
     const response = await editSellProductAction(d, data?.id);
     if (response?.error) {
       toast({
@@ -69,7 +67,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormDescription>Il nome del prodotto</FormDescription>
               <FormMessage />
@@ -83,7 +81,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Tipo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormDescription>La descrizione del prodotto</FormDescription>
               <FormMessage />

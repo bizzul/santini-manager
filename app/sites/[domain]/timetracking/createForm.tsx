@@ -10,20 +10,20 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
-import { SearchSelect } from "../../../components/ui/search-select";
+} from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/timeTracking/createManual";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/timeTracking/createManual";
+import { useToast } from "@/components/ui/use-toast";
 import { Roles, Task, User } from "@prisma/client";
 
 export interface Typology {

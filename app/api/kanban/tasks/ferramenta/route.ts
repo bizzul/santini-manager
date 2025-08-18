@@ -1,78 +1,72 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../../prisma-global";
-import { getSession, withApiAuthRequired } from "@auth0/nextjs-auth0";
-import { request } from "http";
+import { createClient } from "../../../../../utils/supabase/server";
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-
-  const body = await req.json();
-  const { id, ferramentaStatus } = body;
-  let userId = null;
-  if (session) {
-    userId = session.user.sub;
-  }
   try {
-    const task = await prisma.task.findUnique({
-      where: {
-        id,
-      },
-    });
+    const supabase = await createClient();
+
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { id, ferramentaStatus } = body;
+
+    const { data: task, error: findError } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (findError) throw findError;
+
     if (task) {
-      let response;
+      let updateData: any = { ferramenta: ferramentaStatus };
+
       if (ferramentaStatus === true && task.ferramenta === false) {
         console.log("adding ferramenta");
-        // Adding 25% only if it hasn't been added before
-        response = await prisma.task.update({
-          where: { id },
-          data: {
-            ferramenta: ferramentaStatus,
-            percentStatus: (task.percentStatus! += 15),
-          },
-        });
+        // Adding 15% only if it hasn't been added before
+        updateData.percent_status = (task.percent_status || 0) + 15;
       } else if (ferramentaStatus === false && task.ferramenta === true) {
         console.log("removing ferramenta");
-        // Removing 25% only if it was added before
-        response = await prisma.task.update({
-          where: { id },
-          data: {
-            ferramenta: ferramentaStatus,
-            percentStatus: (task.percentStatus! -= 15),
-          },
-        });
+        // Removing 15% only if it was added before
+        updateData.percent_status = (task.percent_status || 0) - 15;
       } else {
         console.log("no change in ferramenta");
-        // No change in percentStatus
-        response = await prisma.task.update({
-          where: { id },
-          data: {
-            ferramenta: ferramentaStatus,
-          },
-        });
+        // No change in percent_status
       }
+
+      const { data: response, error: updateError } = await supabase
+        .from("tasks")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
 
       if (response) {
         // console.log(response);
         // Create a new Action record to track the user action
-        const newAction = await prisma.action.create({
-          data: {
+        const { data: newAction, error: actionError } = await supabase
+          .from("actions")
+          .insert({
             type: "updated_task",
             data: {
               taskId: id,
               ferramenta: response.ferramenta,
             },
-            User: {
-              connect: {
-                authId: userId,
-              },
-            },
-            Task: {
-              connect: {
-                id: id,
-              },
-            },
-          },
-        });
+            user_id: user.id,
+            task_id: id,
+          })
+          .select()
+          .single();
+
+        if (actionError) {
+          console.error("Error creating action:", actionError);
+        }
 
         return NextResponse.json({
           data: response,

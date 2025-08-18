@@ -1,54 +1,41 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { faBox } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
-import { PackingControl } from "@prisma/client";
-
-import { prisma } from "../../../prisma-global";
 import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
+import { getUserContext } from "@/lib/auth-utils";
+import { createClient } from "@/utils/server";
 
-async function getSellProducts(): Promise<PackingControl[]> {
-  // Fetch data from your API here.
-  // Fetch all the products
-  const qualityControl = await prisma.packingControl.findMany({
-    include: {
-      items: true,
-      task: { include: { column: true } },
-      user: true,
-    },
-    where: {
-      AND: [
-        {
-          task: {
-            archived: false,
-            column: {
-              identifier: {
-                not: "SPEDITO",
-              },
-            },
-          },
-        },
-      ],
-    },
-  });
+async function getSellProducts(): Promise<any[]> {
+  // Fetch all the products from supabase
 
-  return qualityControl;
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("packing_control")
+    .select("*")
+    .eq("task.archived", false)
+    .not("task.column.identifier", "eq", "SPEDITO");
+
+  if (error) {
+    console.error("Error fetching packing control:", error);
+    return [];
+  }
+
+  return data;
 }
 
 async function Page() {
   //get initial data
   const data = await getSellProducts();
 
-  const session = await getSession();
+  const userContext = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext;
 
   return (
     // <SWRProvider>

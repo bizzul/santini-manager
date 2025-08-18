@@ -1,10 +1,10 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
+import { Structure } from "@/components/structure/structure";
 import { faUser } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
+import { getUserContext } from "@/lib/auth-utils";
 import { Product_category, Supplier } from "@prisma/client";
 import DialogCreate from "./dialogCreate";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
 
@@ -15,17 +15,21 @@ export type Datas = {
 
 async function getData(): Promise<Datas> {
   // Fetch data from your API here.
-  const supplier = await prisma.supplier.findMany({
-    orderBy: {
-      name: "asc",
-    },
-  });
+  const supabase = await createClient();
+  const { data: supplier, error: supplierError } = await supabase
+    .from("supplier")
+    .select("*")
+    .order("name", { ascending: true });
 
-  const categories = await prisma.product_category.findMany({
-    orderBy: {
-      name: "asc",
-    },
-  });
+  const { data: categories, error: categoriesError } = await supabase
+    .from("product_category")
+    .select("*")
+    .order("name", { ascending: true });
+
+  if (supplierError || categoriesError) {
+    console.error("Error fetching data:", supplierError || categoriesError);
+    return { suppliers: [], categories: [] };
+  }
 
   return { suppliers: supplier, categories: categories };
 }
@@ -34,7 +38,7 @@ async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
+  const session = await getUserContext();
 
   if (!session || !session.user) {
     // Handle the absence of a session. Redirect or return an error.
@@ -44,8 +48,7 @@ async function Page() {
 
   // Now it's safe to use session.user
   const { user } = session;
-  //@ts-ignore
-  // const { user } = await getSession();
+
   return (
     // <SWRProvider>
     <div className="container">

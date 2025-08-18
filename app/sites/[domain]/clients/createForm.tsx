@@ -4,9 +4,9 @@ import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
-import { useToast } from "../../../components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/clients/create";
+import { validation } from "@/validation/clients/create";
 // Components
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";

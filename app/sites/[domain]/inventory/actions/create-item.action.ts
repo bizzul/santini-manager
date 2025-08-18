@@ -1,28 +1,28 @@
 "use server";
 
-import { Product, Product_category } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/products/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/products/create";
+import { getUserContext } from "@/lib/auth-utils";
 
-export async function createItem(props: Product) {
+export async function createItem(props: any) {
   const result = validation.safeParse(props);
-  const session = await getSession();
+  const userContext = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (userContext) {
+    userId = userContext.user.id;
   }
 
   if (result.success) {
     try {
       const totalPrice = props.unit_price * props.quantity;
-      const result = await prisma.product.create({
-        data: {
-          //@ts-ignore
-          product_category: { connect: { id: props.productCategoryId } },
+      const supabase = await createClient();
+      const { data: newProduct, error: createError } = await supabase
+        .from("product")
+        .insert({
+          product_category_id: props.productCategoryId,
           name: props.name,
-          supplierInfo: { connect: { id: props.supplierId! } },
+          supplier_id: props.supplierId,
           unit_price: props.unit_price,
           description: props.description ?? "",
           height: props.height,
@@ -32,28 +32,33 @@ export async function createItem(props: Product) {
           total_price: totalPrice,
           type: props.type,
           unit: props.unit,
-        },
-      });
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error("Error creating product:", createError);
+        return {
+          message: "Creazione elemento fallita!",
+          error: createError.message,
+        };
+      }
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
+      if (newProduct && userId) {
+        const { error: actionError } = await supabase.from("action").insert({
           type: "product_create",
           data: {
-            inventoryId: result.inventoryId,
+            inventoryId: newProduct.id,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-          Product: {
-            connect: {
-              id: result.id,
-            },
-          },
-        },
-      });
+          user_id: userId,
+          productId: newProduct.id,
+        });
+
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
       return revalidatePath("/inventory");
     } catch (error: any) {

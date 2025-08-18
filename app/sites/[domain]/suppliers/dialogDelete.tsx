@@ -7,9 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../../components/ui/dialog";
+} from "@/components/ui/dialog";
 import { Button } from "@tremor/react";
-import { useToast } from "../../../components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { removeItem } from "./actions/delete-item.action";
 import { useState } from "react";
 

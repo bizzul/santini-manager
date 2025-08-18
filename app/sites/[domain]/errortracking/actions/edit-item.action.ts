@@ -1,25 +1,27 @@
 "use server";
 
-import { Errortracking, Product, SellProduct } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/errorTracking/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/errorTracking/create";
+
 export async function editItem(
-  formData: Errortracking,
+  formData: any,
   id: number,
-  files: any
+  files: any,
 ) {
+  const supabase = await createClient();
   const result = validation.safeParse(formData);
-  const session = await getSession();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (user) {
+    userId = user.id;
   }
 
   if (result.success) {
     try {
-      const updateError = await prisma.errortracking.update({
+      const updateError = await supabase.from("errortracking").update({
         where: {
           id,
         },
@@ -35,7 +37,7 @@ export async function editItem(
       });
 
       files.forEach(async (file: any) => {
-        const fileUpdate = await prisma.file.update({
+        const fileUpdate = await supabase.from("file").update({
           where: {
             id: file.id,
           },
@@ -48,17 +50,13 @@ export async function editItem(
       });
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
+      const action = await supabase.from("action").insert({
         data: {
           type: "errorTracking_update",
           data: {
-            errorTrackingId: updateError.id,
+            errorTrackingId: id,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
+          user_id: userId,
         },
       });
 

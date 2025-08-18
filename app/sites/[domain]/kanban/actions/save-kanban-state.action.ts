@@ -1,11 +1,12 @@
 "use server";
-import { prisma } from "../../../../prisma-global";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/utils/server";
 
 // Main function to save state and handle revalidation
 export async function saveState() {
   try {
-    const result = await saveKanbanState();
+    const supabase = await createClient();
+    const result = await saveKanbanState(supabase);
     if (result.success) {
       revalidatePath("/kanban");
       return { success: true };
@@ -18,42 +19,31 @@ export async function saveState() {
 }
 
 // Internal function to handle the actual saving of state
-async function saveKanbanState() {
+async function saveKanbanState(supabase: any) {
   try {
     // Get all current tasks with their column and kanban information
-    const currentTasks = await prisma.task.findMany({
-      include: {
-        column: true,
-        kanban: true,
-        client: true,
-        suppliers: {
-          include: {
-            supplier: true,
-          },
-        },
-        PackingControl: true,
-        QualityControl: true,
-        sellProduct: true,
-      },
-      where: {
-        archived: false,
-      },
-    });
+    const { data: currentTasks, error: currentTasksError } = await supabase
+      .from("task")
+      .select("*");
+    if (currentTasksError) {
+      console.error("Error fetching current tasks:", currentTasksError);
+      throw new Error("Failed to fetch current tasks");
+    }
 
     // Get the latest snapshot timestamp
-    const latestSnapshot = await prisma.taskHistory.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
+    const { data: latestSnapshot, error: latestSnapshotError } = await supabase
+      .from("task_history")
+      .select("*")
+      .order("createdAt", { ascending: false })
+      .limit(1);
 
     // Increase the cooldown to 5 minutes (300000 ms)
     if (
       !latestSnapshot ||
-      Date.now() - latestSnapshot.createdAt.getTime() > 300000
+      Date.now() - latestSnapshot[0].createdAt.getTime() > 300000
     ) {
       // Create history entries for all tasks, including column and position data
-      const historyPromises = currentTasks.map((task) => {
+      const historyPromises = currentTasks.map((task: any) => {
         const snapshotData = {
           ...task,
           kanbanColumnId: task.kanbanColumnId,
@@ -72,12 +62,14 @@ async function saveKanbanState() {
           },
         };
 
-        return prisma.taskHistory.create({
-          data: {
+        return supabase
+          .from("task_history")
+          .insert({
             taskId: task.id,
             snapshot: snapshotData,
-          },
-        });
+          })
+          .select()
+          .single();
       });
 
       await Promise.all(historyPromises);

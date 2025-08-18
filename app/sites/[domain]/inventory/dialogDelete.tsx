@@ -3,13 +3,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../../components/ui/dialog";
-import { Button } from "@tremor/react";
-import { useToast } from "../../../components/ui/use-toast";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import { removeItem } from "./actions/delete-item.action";
 import { useState } from "react";
 
@@ -62,7 +61,7 @@ function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
         <form onSubmit={handleDelete} className="w-full">
           <Button
             aria-disabled={pending}
-            variant="primary"
+            variant="destructive"
             className="w-full"
             type="submit"
             // onClick={() => setOpen(false)}

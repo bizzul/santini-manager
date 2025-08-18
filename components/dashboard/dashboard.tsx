@@ -11,9 +11,16 @@ import {
   TabPanel,
   TabPanels,
 } from "@tremor/react";
-import { User } from "auth0";
 import { BarChart, BarList } from "@tremor/react";
 import { DashboardData } from "../../types/dashboard";
+
+// Define User type for Supabase authentication
+interface User {
+  id: string;
+  email?: string;
+  nickname?: string;
+  name?: string;
+}
 
 type Props = {
   user: User;

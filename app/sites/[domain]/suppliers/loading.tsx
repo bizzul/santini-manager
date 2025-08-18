@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { Skeleton } from "../../../components/ui/skeleton";
+import { Structure } from "@/components/structure/structure";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
+} from "@/components/ui/table";
 import { faBox, faUser } from "@fortawesome/free-solid-svg-icons";
 
 function Loading() {

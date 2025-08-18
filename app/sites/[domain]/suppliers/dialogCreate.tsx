@@ -9,11 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../../components/ui/dialog";
+} from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
-import { Product_category } from "@prisma/client";
 
-function DialogCreate({ data }: { data: Product_category[] }) {
+function DialogCreate({ data }: { data: any[] }) {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>

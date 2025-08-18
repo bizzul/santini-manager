@@ -2,16 +2,16 @@
 
 import { Client } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/clients/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/clients/create";
 
 export async function editItem(props: Client, id: number) {
   const result = validation.safeParse(props);
-  const session = await getSession();
+  const supabase = await createClient();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (supabase) {
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id;
   }
 
   if (result.success) {
@@ -26,19 +26,15 @@ export async function editItem(props: Client, id: number) {
       const generatedCode = firstInitials ? firstInitials + lastInitials : "";
       // Concatenate the initials using the + operator
 
-      const saveData = await prisma.client.update({
-        where: {
-          id,
-        },
-        data: {
-          individualTitle:
-            result.data?.clientType === "INDIVIDUAL"
-              ? result.data?.individualTitle
-              : "",
-          businessName:
-            result.data?.clientType === "BUSINESS"
-              ? result.data?.businessName
-              : "",
+      const { data: saveData, error: updateError } = await supabase
+        .from("client")
+        .update({
+          individualTitle: result.data?.clientType === "INDIVIDUAL"
+            ? result.data?.individualTitle
+            : "",
+          businessName: result.data?.clientType === "BUSINESS"
+            ? result.data?.businessName
+            : "",
           individualFirstName: result.data?.individualFirstName,
           //@ts-ignore
           clientType: result.data.clientType,
@@ -51,25 +47,23 @@ export async function editItem(props: Client, id: number) {
           zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
           clientLanguage: result.data?.clientLanguage,
           code: generatedCode,
-        },
-      });
+        })
+        .eq("id", id)
+        .select()
+        .single();
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
+      const { error: actionError } = await supabase
+        .from("actions")
+        .insert({
           type: "client_update",
           data: {
-            clientId: saveData.id,
+            clientId: saveData?.id,
           },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-        },
-      });
+          user_id: userId,
+        });
 
-      console.log(action);
+      console.log(actionError);
 
       return revalidatePath("/clients");
     } catch (error: any) {

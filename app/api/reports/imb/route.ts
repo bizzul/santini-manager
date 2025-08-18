@@ -4,7 +4,7 @@ import { text } from "@pdfme/schemas";
 import { generate } from "@pdfme/generator";
 import type { Font } from "@pdfme/common";
 import * as fs from "fs";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import { basePdfIta, schemaPdfIta } from "./basepdf_ita";
 import { basePdfDe, schemaPdfDe } from "./basepdf_de";
 import { DateManager } from "../../../../package/utils/dates/date-manager";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const fontDirectory = path.resolve(process.cwd(), "fonts");
 const file = fs.readFileSync(
   path.join(fontDirectory, "SuisseBPIntl-Medium.ttf"),
-  "utf8"
+  "utf8",
 );
 const font: Font = {
   suisseframe: {
@@ -207,6 +207,7 @@ const template: Template = {
 
 export const POST = async (req: NextRequest) => {
   try {
+    const supabase = await createClient();
     const inputData = await req.json();
     const taskNumber = inputData.data.task
       ? Number(inputData.data.task)
@@ -215,14 +216,16 @@ export const POST = async (req: NextRequest) => {
     const items = inputData.data.imballaggioData[0];
     const todayDate = new Date();
 
-    const task = await prisma.task.findUnique({
-      where: {
-        id: taskNumber,
-      },
-      include: {
-        client: true,
-      },
-    });
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select(`
+        *,
+        clients:client_id(*)
+      `)
+      .eq("id", taskNumber)
+      .single();
+
+    if (taskError) throw taskError;
 
     console.log("task", task);
 
@@ -245,22 +248,21 @@ export const POST = async (req: NextRequest) => {
       inputs = [
         items.items.reduce(
           (acc: any, item: any) => {
-            acc.ncoprisoglia =
-              item.name === "Coprisoglia" ? `${item.number}` : acc.ncoprisoglia;
-            acc.nallargamento =
-              item.name === "Allargamenti telaio"
-                ? `${item.number}`
-                : acc.nallargamento;
-            acc.nguarnizione =
-              item.name === "Guarnizione esterna"
-                ? `${item.number}`
-                : acc.nguarnizione;
-            acc.nlistevetri =
-              item.name === "Liste vetri" ? `${item.number}` : acc.nlistevetri;
-            acc.nmaniglia =
-              item.name === "Maniglia e viti"
-                ? `${item.number}`
-                : acc.nmaniglia;
+            acc.ncoprisoglia = item.name === "Coprisoglia"
+              ? `${item.number}`
+              : acc.ncoprisoglia;
+            acc.nallargamento = item.name === "Allargamenti telaio"
+              ? `${item.number}`
+              : acc.nallargamento;
+            acc.nguarnizione = item.name === "Guarnizione esterna"
+              ? `${item.number}`
+              : acc.nguarnizione;
+            acc.nlistevetri = item.name === "Liste vetri"
+              ? `${item.number}`
+              : acc.nlistevetri;
+            acc.nmaniglia = item.name === "Maniglia e viti"
+              ? `${item.number}`
+              : acc.nmaniglia;
 
             return acc;
           },
@@ -274,7 +276,7 @@ export const POST = async (req: NextRequest) => {
             date: `${DateManager.formatEUDate(todayDate)}`,
             // luogo_data: `Ambri, ${DateManager.formatEUDate(todayDate)}`,
             order_nr: `${task?.unique_code}`,
-          }
+          },
         ),
       ];
     }
@@ -283,12 +285,12 @@ export const POST = async (req: NextRequest) => {
     const headers = new Headers();
     headers.append(
       "Content-Disposition",
-      `attachment; filename="Report_Bollettino_Progetto.pdf"`
+      `attachment; filename="Report_Bollettino_Progetto.pdf"`,
     );
     const plugins = { text };
 
     let pdf: Uint8Array;
-    switch (task?.client?.clientLanguage) {
+    switch (task?.clients?.client_language) {
       case "Italiano":
         template.basePdf = basePdfIta; // Use the Italian template
         template.schemas = schemaPdfIta;

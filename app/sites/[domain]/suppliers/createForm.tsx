@@ -11,21 +11,20 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/supplier/create";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/supplier/create";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
-import { Product_category } from "@prisma/client";
-import ImageUploader from "../../../components/uploaders/ImageUploader";
+} from "@/components/ui/select";
+import ImageUploader from "@/components/uploaders/ImageUploader";
 import Image from "next/image";
 
 const CreateProductForm = ({
@@ -33,7 +32,7 @@ const CreateProductForm = ({
   data,
 }: {
   handleClose: any;
-  data: Product_category[];
+  data: any[];
 }) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
@@ -133,10 +132,10 @@ const CreateProductForm = ({
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {data.map((cat: Product_category) => (
+                    {data.map((cat: any) => (
                       <SelectItem key={cat.id} value={cat.name}>
                         {cat.name} - {cat.description}
                       </SelectItem>
@@ -157,7 +156,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -172,7 +171,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Nome Corto</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -187,7 +186,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>P. di Contatto</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -202,7 +201,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -218,7 +217,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Indirizzo</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -233,7 +232,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>CAP</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -248,7 +247,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Località</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -265,7 +264,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Website</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -280,11 +279,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input
-                    type="email"
-                    
-                    {...field}
-                  />
+                  <Input type="email" {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -299,7 +294,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Telefono</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />

@@ -1,16 +1,25 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { Product, Timetracking } from "@prisma/client";
+import { createClient } from "@/utils/server";
+import { Timetracking } from "@prisma/client";
 
 export const removeItem = async (formData: Timetracking) => {
   try {
-    await prisma.timetracking.delete({
-      where: { id: Number(formData.id) },
-    });
-    return revalidatePath("/timetrackings");
+    const supabase = await createClient();
+    const { error: deleteError } = await supabase
+      .from("timetracking")
+      .delete()
+      .eq("id", Number(formData.id));
+
+    if (deleteError) {
+      console.error("Error deleting timetracking:", deleteError);
+      return { message: `Failed to delete item: ${deleteError.message}` };
+    }
+
+    return revalidatePath("/timetracking");
   } catch (e) {
+    console.error("Error deleting timetracking:", e);
     return { message: `Failed to delete item: ${e}` };
   }
 };

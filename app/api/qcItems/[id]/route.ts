@@ -1,74 +1,77 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
-import { QC_Status } from "@prisma/client";
+import { createClient } from "../../../../utils/supabase/server";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const item = params.id;
+  const { id: item } = await params;
   const body = await req.json();
   const todayDate = new Date();
+
   try {
-    // Transactional update for each item
-    const updateResults = await prisma.$transaction(
-      body.items.map((item: { id: number; checked: boolean }) => {
-        return prisma.qc_item.update({
-          where: {
-            id: item.id, // Use the id from each item
-          },
-          data: {
+    const supabase = await createClient();
+
+    // Update each item
+    const updateResults = await Promise.all(
+      body.items.map(async (item: { id: number; checked: boolean }) => {
+        const { data, error } = await supabase
+          .from("qc_items")
+          .update({
             checked: item.checked, // Update check
             updated_at: todayDate, // Update date
-          },
-        });
-      })
+          })
+          .eq("id", item.id)
+          .select();
+
+        if (error) throw error;
+        return data;
+      }),
     );
 
-    // After updating items, check if all related packing items are completed
+    // After updating items, check if all related QC items are completed
     for (const { id } of body.items) {
-      const relatedPackingControl = await prisma.qc_item.findUnique({
-        where: { id },
-        select: { qualityControlId: true }, // Assuming packingItem has a relation with packingControl
-      });
+      const { data: relatedQCControl, error: findError } = await supabase
+        .from("qc_items")
+        .select("quality_control_id")
+        .eq("id", id)
+        .single();
 
-      if (relatedPackingControl) {
-        const items = await prisma.qc_item.findMany({
-          where: { qualityControlId: relatedPackingControl.qualityControlId },
-        });
+      if (findError) continue;
+
+      if (relatedQCControl) {
+        const { data: items, error: itemsError } = await supabase
+          .from("qc_items")
+          .select("*")
+          .eq("quality_control_id", relatedQCControl.quality_control_id);
+
+        if (itemsError) continue;
 
         const totalItems = items.length;
         const filledItems = items.filter(
-          (item) => item.checked !== false
+          (item) => item.checked !== false,
         ).length;
 
-        // SET IF ALL THE ITEMS ARE COMPLETED
-        // let status: QC_Status = QC_Status.NOT_DONE; // Default status
-        // if (filledItems === totalItems) {
-        //   status = QC_Status.DONE; // All items are filled
-        // } else if (filledItems > 0) {
-        //   status = QC_Status.PARTIALLY_DONE; // Some items are filled
-        // }
-
         // SET IF SOME ITEMS ARE COMPLETED
-        let status: QC_Status = QC_Status.NOT_DONE; // Default status
+        let status = "NOT_DONE"; // Default status
         if (filledItems >= 1) {
-          status = QC_Status.DONE; // All items are filled
+          status = "DONE"; // All items are filled
         } else if (filledItems > 0) {
-          status = QC_Status.PARTIALLY_DONE; // Some items are filled
+          status = "PARTIALLY_DONE"; // Some items are filled
         }
 
-        // Update packingControl status
-        await prisma.qualityControl.update({
-          where: { id: relatedPackingControl.qualityControlId! },
-          data: {
+        // Update qualityControl status
+        await supabase
+          .from("quality_control")
+          .update({
             passed: status,
-            user: { connect: { authId: body.user } },
+            user_id: body.user,
             updated_at: todayDate,
-          },
-        });
+          })
+          .eq("id", relatedQCControl.quality_control_id);
       }
     }
+
     return NextResponse.json({ updateResults, status: 200 });
   } catch (error) {
     return NextResponse.json({ error: error, status: 500 });

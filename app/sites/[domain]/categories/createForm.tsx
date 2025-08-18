@@ -12,12 +12,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/productsCategory/create";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/productsCategory/create";
+import { useToast } from "@/hooks/use-toast";
 
 const CreateForm = ({ handleClose }: { handleClose: any }) => {
   const { toast } = useToast();
@@ -59,7 +59,7 @@ const CreateForm = ({ handleClose }: { handleClose: any }) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input {...field}  disabled={isSubmitting} />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -73,11 +73,7 @@ const CreateForm = ({ handleClose }: { handleClose: any }) => {
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input
-                  {...field}
-                  
-                  disabled={isSubmitting}
-                />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />

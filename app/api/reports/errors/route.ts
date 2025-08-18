@@ -1,13 +1,12 @@
-import { Errortracking, Supplier } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "../../../../utils/supabase/server";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
 
-function filterErrorsTimeRange(errors: Errortracking[], from: Date, to: Date) {
+function filterErrorsTimeRange(errors: any[], from: Date, to: Date) {
   return errors.filter(
-    (item: Errortracking) => item.updated_at >= from && item.updated_at <= to
+    (item: any) => item.updated_at >= from && item.updated_at <= to,
   );
 }
 
@@ -18,23 +17,39 @@ export const POST = async (req: NextRequest) => {
   const supplierId = inputData.data.supplier;
 
   try {
-    const data = await prisma.errortracking.findMany({
-      include: { supplier: true, user: true, task: true, files: true },
-    });
-    let supplier: Supplier | null = null;
+    const supabase = await createClient();
+
+    // Get error tracking data with related information
+    const { data: errorData, error: errorError } = await supabase
+      .from("errortracking")
+      .select(`
+        *,
+        suppliers:supplier_id(name),
+        users:user_id(family_name),
+        tasks:task_id(unique_code),
+        files(url)
+      `);
+
+    if (errorError) throw errorError;
+
+    let supplier: any = null;
     if (supplierId) {
-      supplier = await prisma.supplier.findUnique({
-        where: { id: Number(supplierId) },
-      });
+      const { data: supplierData, error: supplierError } = await supabase
+        .from("suppliers")
+        .select("*")
+        .eq("id", Number(supplierId))
+        .single();
+
+      if (supplierError) throw supplierError;
+      supplier = supplierData;
     }
 
-    let filterData: Errortracking[] = [];
+    let filterData: any[] = [];
 
     if (supplier && supplierId) {
       // Filter by supplier name
-      filterData = data.filter(
-        //@ts-ignore
-        (error: Errortracking) => error.supplier_id === supplier.id
+      filterData = errorData.filter(
+        (error: any) => error.supplier_id === supplier.id,
       );
 
       // Further filter by time range if 'from' and 'to' are provided
@@ -43,10 +58,10 @@ export const POST = async (req: NextRequest) => {
       }
     } else if (from && to) {
       // Filter only by time range if 'supplier' is not provided
-      filterData = filterErrorsTimeRange(data, from, to);
+      filterData = filterErrorsTimeRange(errorData, from, to);
     } else {
       // If neither 'supplier' nor time range is provided, use original data
-      filterData = data;
+      filterData = errorData;
     }
 
     const date = new Date();
@@ -59,26 +74,22 @@ export const POST = async (req: NextRequest) => {
     const workbook = XLSX.utils.book_new();
 
     //Add inventories to the worksheet
-    const taskDataSubset = filterData.map((item: Errortracking) => {
+    const taskDataSubset = filterData.map((item: any) => {
       const created = new Date(item.created_at);
       // Concatenating all file URLs into a single string, separated by line breaks.
-      //@ts-ignore
-      const imageLinks = item.files.map((file: any) => file.url).join(" ");
+      const imageLinks = item.files?.map((file: any) => file.url).join(" ") ||
+        "";
       return {
         "Data Creazione": created.toLocaleString(),
-        //@ts-ignore
-        Numero: item.task?.unique_code,
-        //@ts-ignore
-        Utente: item.user?.family_name,
+        Numero: item.tasks?.unique_code,
+        Utente: item.users?.family_name,
         Categoria: item.error_category,
-        Fornitore:
-          //@ts-ignore
-          item.error_category === "fornitore" ? item.supplier?.name : "",
+        Fornitore: item.error_category === "fornitore"
+          ? item.suppliers?.name
+          : "",
         Tipo: item.error_type,
         Descrizione: item.description,
-        //@ts-ignore
         Prodotto: item.sellProduct ? item.sellProduct.name : "Nessun prodotto",
-        //@ts-ignore
         Immagini: imageLinks,
       };
     });
@@ -104,11 +115,11 @@ export const POST = async (req: NextRequest) => {
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet"
+      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`
+      `attachment; filename="${fileName}${fileExtension}"`,
     );
 
     // Convert workbook to binary to send in response

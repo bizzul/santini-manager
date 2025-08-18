@@ -3,10 +3,10 @@ import { getSiteData } from "@/lib/fetchers";
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { domain: string } },
+    { params }: { params: Promise<{ domain: string }> },
 ) {
     try {
-        const { domain } = params;
+        const { domain } = await params;
         const response = await getSiteData(domain);
         if (!response?.data) {
             return NextResponse.json({ error: "Site not found" }, {

@@ -13,10 +13,10 @@ export default function DeleteSiteForm({ siteName }: { siteName: string }) {
   const router = useRouter();
   return (
     <form
-      action={async (data: FormData) =>
-        window.confirm("Are you sure you want to delete your site?") &&
-        deleteSite(data, id, "delete")
-          .then(async (res) => {
+      action={async (data: FormData) => {
+        if (window.confirm("Are you sure you want to delete your site?")) {
+          try {
+            const res = await deleteSite(data, id, "delete");
             if (res.error) {
               toast.error(res.error);
             } else {
@@ -25,9 +25,11 @@ export default function DeleteSiteForm({ siteName }: { siteName: string }) {
               router.push("/sites");
               toast.success(`Successfully deleted site!`);
             }
-          })
-          .catch((err: Error) => toast.error(err.message))
-      }
+          } catch (err: any) {
+            toast.error(err.message);
+          }
+        }
+      }}
       className="rounded-lg border border-red-600 bg-white dark:bg-black"
     >
       <div className="relative flex flex-col space-y-4 p-5 sm:p-10">
@@ -67,7 +69,7 @@ function FormButton() {
         "flex h-8 w-32 items-center justify-center space-x-2 rounded-md border text-sm transition-all focus:outline-hidden sm:h-10",
         pending
           ? "cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
-          : "border-red-600 bg-red-600 text-white hover:bg-white hover:text-red-600 dark:hover:bg-transparent",
+          : "border-red-600 bg-red-600 text-white hover:bg-white hover:text-red-600 dark:hover:bg-transparent"
       )}
       disabled={pending}
     >

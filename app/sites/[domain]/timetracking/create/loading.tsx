@@ -1,8 +1,6 @@
 "use client";
 import React from "react";
-import { Skeleton } from "../../../../components/ui/skeleton";
-
-import { faBox } from "@fortawesome/free-solid-svg-icons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function Loading() {
   return (

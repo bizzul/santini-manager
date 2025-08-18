@@ -1,34 +1,50 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { faSquarePollVertical } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
+import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import GridReports from "@/components/reports/GridReports";
-import { PackingControl, QualityControl, Supplier, Task } from "@prisma/client";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "@/utils/server";
 
 interface Data {
-  supplier: Supplier[];
-  qualityControl: QualityControl[];
-  packingControl: PackingControl[];
-  task: Task[];
+  supplier: any[];
+  qualityControl: any[];
+  packingControl: any[];
+  task: any[];
 }
 async function getData(): Promise<Data> {
-  const supplier = await prisma.supplier.findMany();
-  const qualityControl = await prisma.qualityControl.findMany({
-    include: { task: true, items: true },
-  });
-  const packingControl = await prisma.packingControl.findMany({
-    include: { task: true, items: true },
-  });
-  const task = await prisma.task.findMany({
-    include: { QualityControl: true },
-  });
+  const supabase = await createClient();
+  const { data: supplier, error: supplierError } = await supabase
+    .from("supplier")
+    .select("*");
+  const { data: qualityControl, error: qualityControlError } = await supabase
+    .from("quality_control")
+    .select("*, task:task(*), items:items(*)");
+  const { data: packingControl, error: packingControlError } = await supabase
+    .from("packing_control")
+    .select("*, task:task(*), items:items(*)");
+  const { data: task, error: taskError } = await supabase
+    .from("task")
+    .select(
+      "*, quality_control:quality_control(*), packing_control:packing_control(*)"
+    );
+
+  if (
+    supplierError ||
+    qualityControlError ||
+    packingControlError ||
+    taskError
+  ) {
+    console.error(
+      "Error fetching data:",
+      supplierError || qualityControlError || packingControlError || taskError
+    );
+    return { supplier: [], qualityControl: [], packingControl: [], task: [] };
+  }
+
   return { supplier, qualityControl, packingControl, task };
 }
 
 async function Page() {
-  const session = await getSession();
+  const session = await getUserContext();
 
   if (!session || !session.user) {
     // Handle the absence of a session. Redirect or return an error.

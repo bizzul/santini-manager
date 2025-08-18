@@ -12,8 +12,17 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/users/editRole";
-import { Roles } from "@prisma/client";
-import { Role } from "auth0";
+
+// Define types based on Supabase schema
+interface Roles {
+  id: number;
+  name: string;
+}
+
+interface Role {
+  id: number;
+  name: string;
+}
 
 type Props = {
   open: boolean;

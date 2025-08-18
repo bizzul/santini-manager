@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 export default async function SiteDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
   const site = await getSiteById(id);

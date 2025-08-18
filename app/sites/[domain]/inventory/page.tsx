@@ -1,40 +1,28 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
+import { Structure } from "@/components/structure/structure";
 import { faBox } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
-import {
-  Product,
-  Product_category,
-  SellProduct,
-  Supplier,
-} from "@prisma/client";
+import { getUserContext } from "@/lib/auth-utils";
+
 import DialogCreate from "./dialogCreate";
-import { dehydrate } from "@tanstack/react-query";
-import getQueryClient from "../../getQueryClient";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
 
-export type DataResult = {
-  inventory: Product[];
-  category: Product_category[];
-  supplier: Supplier[];
-};
-
 export const revalidate = 60;
 
-async function getData(): Promise<DataResult> {
+async function getData(): Promise<any> {
   // Fetch data from your API here.
-  const inventory = await prisma.product.findMany({
-    include: {
-      product_category: true,
-      supplierInfo: true,
-      Action: { include: { User: true } },
-    },
-  });
+  const supabase = await createClient();
+  const { data: inventory, error: inventoryError } = await supabase
+    .from("product")
+    .select("*");
 
-  const category = await prisma.product_category.findMany();
-  const supplier = await prisma.supplier.findMany();
+  const { data: category, error: categoryError } = await supabase
+    .from("product_category")
+    .select("*");
+  const { data: supplier, error: supplierError } = await supabase
+    .from("supplier")
+    .select("*");
 
   return { inventory, supplier, category };
 }
@@ -43,18 +31,16 @@ async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
-
-  if (!session || !session.user) {
+  const userContext = await getUserContext();
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
   // Now it's safe to use session.user
-  const { user } = session;
+  const { user } = userContext;
 
   return (
-    // <SWRProvider>
     <div className="container">
       <DialogCreate data={data} />
       {data.inventory.length > 0 ? (

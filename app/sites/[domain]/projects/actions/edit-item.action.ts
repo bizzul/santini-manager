@@ -1,90 +1,116 @@
 "use server";
 
-import { Errortracking, Task } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/task/create";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/task/create";
+import { getUserContext } from "@/lib/auth-utils";
 
-export async function editItem(formData: Task, id: number) {
+export async function editItem(formData: any, id: number) {
   const result = validation.safeParse(formData);
-  const session = await getSession();
+  const session = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (session && session.user && session.user.id) {
+    // Get the integer user ID from the User table using the authId
+    const supabase = await createClient();
+    const { data: userData, error: userError } = await supabase
+      .from("User")
+      .select("id")
+      .eq("authId", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching user data:", userError);
+      return { error: true, message: "Errore nel recupero dei dati utente!" };
+    }
+
+    userId = userData?.id;
   }
   // console.log("result", result.error);
   try {
     if (result.success) {
+      const supabase = await createClient();
+
       // Get the first column of the selected kanban if kanban is being changed
       let firstColumn;
       if (result.data.kanbanId) {
-        firstColumn = await prisma.kanbanColumn.findFirst({
-          where: {
-            kanbanId: result.data.kanbanId,
-            position: 1,
-          },
-        });
+        const { data: columnData, error: columnError } = await supabase
+          .from("KanbanColumn")
+          .select("*")
+          .eq("kanbanId", result.data.kanbanId)
+          .eq("position", 1)
+          .single();
+
+        if (columnError) {
+          console.error("Error fetching first column:", columnError);
+          return { error: true, message: "Errore nel recupero della colonna!" };
+        }
+
+        firstColumn = columnData;
       }
 
       // if a position is not provided, it defaults to an empty string
       const positions = Array.from(
         { length: 8 },
         //@ts-ignore
-        (_, i) => result.data[`position${i + 1}`] || ""
+        (_, i) => result.data[`position${i + 1}`] || "",
       );
       console.log("positions", positions);
 
-      const taskCreate = await prisma.task.update({
-        where: {
-          id: Number(id),
-        },
-        data: {
-          unique_code: result.data?.unique_code || undefined,
-          name: result.data?.name || undefined,
-          deliveryDate: result.data.deliveryDate || undefined || "",
-          other: result.data?.other || undefined || "",
+      const { data: taskCreate, error: taskUpdateError } = await supabase
+        .from("task")
+        .update({
+          unique_code: result.data?.unique_code || null,
+          name: result.data?.name || null,
+          deliveryDate: result.data.deliveryDate || null,
+          other: result.data?.other || null,
           sellPrice: result.data?.sellPrice
             ? Number(result.data?.sellPrice)
-            : undefined,
+            : null,
           clientId: result.data?.clientId
             ? Number(result.data?.clientId)
-            : undefined,
+            : null,
           sellProductId: result.data?.productId
             ? Number(result.data?.productId)
-            : undefined,
+            : null,
           kanbanId: result.data?.kanbanId
             ? Number(result.data?.kanbanId)
-            : undefined,
-          kanbanColumnId: firstColumn ? firstColumn.id : undefined, // Only update column if kanban was changed
-          positions: {
-            set: positions || undefined,
-          },
-        },
-      });
+            : null,
+          kanbanColumnId: firstColumn ? firstColumn.id : null, // Only update column if kanban was changed
+          positions: positions || null,
+        })
+        .eq("id", Number(id))
+        .select()
+        .single();
+
+      if (taskUpdateError) {
+        console.error("Error updating task:", taskUpdateError);
+        return { error: true, message: "Errore nell'aggiornamento del task!" };
+      }
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
-          type: "task_update",
-          data: {
-            task: taskCreate.id,
-          },
-          User: {
-            connect: {
-              authId: userId,
+      if (taskCreate && userId) {
+        const { error: actionError } = await supabase
+          .from("Action")
+          .insert({
+            type: "task_update",
+            data: {
+              task: taskCreate.id,
             },
-          },
-        },
-      });
+            userId: userId,
+          });
+
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
       return revalidatePath("/projects");
     } else {
       return { error: true, message: "Validazione elemento fallita!" };
     }
   } catch (error: any) {
-    console.error("Error creating Error:", error);
+    console.error("Error updating task:", error);
     // Make sure to return a plain object
-    return { message: "Creazione elemento fallita!", error: error.message };
+    return { message: "Aggiornamento elemento fallito!", error: error.message };
   }
 }

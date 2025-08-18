@@ -1,27 +1,32 @@
-import { prisma } from "../../../../../prisma-global";
+import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: number } }
+  { params }: { params: Promise<{ id: number }> },
 ) {
-  const taskId = params.id;
+  const { id: taskId } = await params;
   try {
-    // Fetch a single client
-    const task = await prisma.task.findUnique({
-      where: {
-        id: Number(taskId),
-      },
-      include: {
-        kanban: true,
-        client: true,
-        User: true,
-        column: true,
-        files: true,
-        sellProduct: true,
-      },
-    });
-    // console.log("project", client);
+    const supabase = await createClient();
+
+    // Fetch a single task
+    const { data: task, error } = await supabase
+      .from("tasks")
+      .select(`
+        *,
+        kanbans:kanban_id(*),
+        clients:client_id(*),
+        users:user_id(*),
+        kanban_columns:column_id(*),
+        files(*),
+        sell_products:sell_product_id(*)
+      `)
+      .eq("id", Number(taskId))
+      .single();
+
+    if (error) throw error;
+
+    // console.log("project", task);
     if (task) {
       return NextResponse.json({ task, status: 200 });
     } else {
@@ -34,53 +39,81 @@ export async function GET(
 }
 
 export async function PATCH(req: NextRequest) {
-  const taskId = await req.json();
-  //Fetch a single client address
-  // console.log(req.body);
-  const task = await prisma.task.findUnique({
-    where: {
-      id: Number(taskId),
-    },
-  });
+  try {
+    const supabase = await createClient();
+    const taskId = await req.json();
 
-  if (task) {
-    const taskData = await prisma.task.update({
-      where: {
-        id: Number(taskId),
-      },
-      data: {},
+    //Fetch a single task
+    // console.log(req.body);
+    const { data: task, error: findError } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", Number(taskId))
+      .single();
+
+    if (findError) throw findError;
+
+    if (task) {
+      const { data: taskData, error: updateError } = await supabase
+        .from("tasks")
+        .update({})
+        .eq("id", Number(taskId))
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      return NextResponse.json({
+        stato: "UPDATED",
+        task: taskData,
+        status: 200,
+      });
+    }
+    return NextResponse.json({
+      message: "The product not exist.",
+      status: 404,
     });
-
-    return NextResponse.json({ stato: "UPDATED", task: taskData, status: 200 });
+  } catch (error) {
+    console.error("Error updating task:", error);
+    return NextResponse.json({ message: "Internal server error", status: 500 });
   }
-  return NextResponse.json({ message: "The product not exist.", status: 404 });
 }
 
 export async function DELETE(req: NextRequest) {
-  const productId = await req.json();
-  const product = await prisma.product.findUnique({
-    where: {
-      id: Number(productId),
-    },
-  });
+  try {
+    const supabase = await createClient();
+    const productId = await req.json();
 
-  if (product) {
-    //Removing client
-    await prisma.product.delete({
-      where: {
-        id: Number(productId),
-      },
-    });
+    const { data: product, error: findError } = await supabase
+      .from("products")
+      .select("*")
+      .eq("id", Number(productId))
+      .single();
+
+    if (findError) throw findError;
+
+    if (product) {
+      //Removing product
+      const { error: deleteError } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", Number(productId));
+
+      if (deleteError) throw deleteError;
+
+      return NextResponse.json({
+        stato: "DELETED",
+        product: product,
+        status: 200,
+      });
+    }
 
     return NextResponse.json({
-      stato: "DELETED",
-      product: product,
-      status: 200,
+      message: "The product id not exist.",
+      status: 404,
     });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    return NextResponse.json({ message: "Internal server error", status: 500 });
   }
-
-  return NextResponse.json({
-    message: "The product id not exist.",
-    status: 404,
-  });
 }

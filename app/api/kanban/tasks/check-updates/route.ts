@@ -1,31 +1,39 @@
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../prisma-global";
+import { createClient } from "../../../../../utils/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
+    const supabase = await createClient();
     const ifModifiedSince = request.headers.get("If-Modified-Since");
 
     // Get the latest modification time from tasks and actions
-    const [latestTask, latestAction] = await Promise.all([
-      prisma.task.findFirst({
-        orderBy: { updated_at: "desc" },
-        select: { updated_at: true },
-      }),
-      prisma.action.findFirst({
-        orderBy: { createdAt: "desc" },
-        select: { createdAt: true },
-      }),
+    const [latestTaskResult, latestActionResult] = await Promise.all([
+      supabase
+        .from("tasks")
+        .select("updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("actions")
+        .select("created_at")
+        .order("created_at", { ascending: false })
+        .limit(1),
     ]);
+
+    if (latestTaskResult.error) throw latestTaskResult.error;
+    if (latestActionResult.error) throw latestActionResult.error;
+
+    const latestTask = latestTaskResult.data?.[0];
+    const latestAction = latestActionResult.data?.[0];
 
     // Get the most recent timestamp between tasks and actions
     const taskTimestamp = latestTask?.updated_at;
-    const actionTimestamp = latestAction?.createdAt;
-    const lastModified =
-      taskTimestamp && actionTimestamp
-        ? new Date(Math.max(taskTimestamp.getTime(), actionTimestamp.getTime()))
-        : taskTimestamp || actionTimestamp || new Date();
+    const actionTimestamp = latestAction?.created_at;
+    const lastModified = taskTimestamp && actionTimestamp
+      ? new Date(Math.max(taskTimestamp.getTime(), actionTimestamp.getTime()))
+      : taskTimestamp || actionTimestamp || new Date();
 
     const lastModifiedString = lastModified.toUTCString();
 
@@ -48,13 +56,13 @@ export async function GET(request: Request) {
           "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
         },
-      }
+      },
     );
   } catch (error) {
     console.error("Error checking for updates:", error);
     return NextResponse.json(
       { error: "Failed to check for updates" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

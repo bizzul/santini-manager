@@ -1,14 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { Errortracking, Product } from "@prisma/client";
+import { createClient } from "@/utils/server";
 
-export const removeItem = async (formData: Errortracking) => {
+export const removeItem = async (formData: any) => {
   try {
-    const data = await prisma.errortracking.delete({
-      where: { id: Number(formData.id) },
-    });
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("errortracking")
+      .delete()
+      .eq("id", Number(formData.id));
+    if (error) {
+      return { message: `Failed to delete item: ${error}` };
+    }
     return revalidatePath("/errortracking");
   } catch (e) {
     return { message: `Failed to delete item: ${e}` };

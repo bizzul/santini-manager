@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../prisma-global";
-export async function POST(req: NextRequest) {
-  const body = await req.json();
+import { createClient } from "../../../../utils/supabase/server";
 
+export async function POST(req: NextRequest) {
   try {
-    const result = await prisma.file.create({
-      data: {
+    const supabase = await createClient();
+    const body = await req.json();
+
+    const { data: result, error } = await supabase
+      .from("files")
+      .insert({
         name: body.original_filename,
         url: body.secure_url,
-        cloudinaryId: body.asset_id,
-      },
-    });
-    // // Success
+        cloudinary_id: body.asset_id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // Success
     if (result) {
       return NextResponse.json({ result, status: 200 });
     }

@@ -35,7 +35,7 @@ import {
   ContextMenuTrigger,
 } from "../../components/ui/context-menu";
 
-import { archiveItem } from "../../app/(user)/kanban/actions/archived-item-action";
+import { archiveItem } from "@/app/sites/[domain]/kanban/actions/archived-item-action";
 import { Button } from "../ui/button";
 
 type Supplier = {

@@ -19,12 +19,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../../components/ui/table";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
-import { DataTablePagination } from "../../../components/table/pagination";
+import { DataTablePagination } from "@/components/table/pagination";
 import { Select, SelectItem } from "@tremor/react";
-import { DebouncedInput } from "../../../components/debouncedInput";
+import { DebouncedInput } from "@/components/debouncedInput";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -82,13 +82,11 @@ export function DataTable<TData, TValue>({
         <DebouncedInput
           value={globalFilter ?? ""}
           onChange={(value) => setGlobalFilter(String(value))}
-          
           className="max-w-sm"
           aria-label="Ricerca globale"
         />
 
         <Select
-          
           //@ts-ignore
           value={table.getColumn("fullName")?.getFilterValue() ?? ""}
           onChange={(event) =>

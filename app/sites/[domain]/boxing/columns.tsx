@@ -1,11 +1,10 @@
 "use client";
 
-import { PackingControl, QualityControl, SellProduct } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Check, CheckCheck, Cross, PauseIcon, X } from "lucide-react";
-export const columns: ColumnDef<PackingControl>[] = [
+export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "passed",
     header: ({ column }) => (

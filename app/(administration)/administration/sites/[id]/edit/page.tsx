@@ -4,14 +4,17 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import EditSiteForm from "./EditSiteForm";
 import { redirect } from "next/navigation";
+import { getUserContext } from "@/lib/auth-utils";
 
 export default async function EditSitePage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const site = await getSiteById(params.id);
-  const siteUsers = await getSiteUsers(params.id);
+  const { id } = await params;
+  const userContext = await getUserContext();
+  const site = await getSiteById(id);
+  const siteUsers = await getSiteUsers(id);
   const organizations = await getOrganizations();
   const users = (await getUsers()).filter((u: any) => u.role !== "admin");
 
@@ -45,6 +48,7 @@ export default async function EditSitePage({
         siteUsers={siteUsers}
         organizations={organizations}
         users={users}
+        userRole={userContext?.role}
       />
     </div>
   );

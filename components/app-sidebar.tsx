@@ -42,6 +42,7 @@ import { Kanban } from "../store/kanban-store";
 import Link from "next/link";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { NetworkStatus } from "@/components/ui/network-status";
+import { useSiteModules } from "@/hooks/use-site-modules";
 
 type menuItem = {
   label: string;
@@ -50,10 +51,14 @@ type menuItem = {
   alert: boolean;
   items?: menuItem[];
   customComponent?: React.ReactNode;
+  moduleName?: string;
 };
 
 // Function to get menu items based on current context
-const getMenuItems = (pathname: string): menuItem[] => {
+const getMenuItems = (
+  pathname: string,
+  enabledModules: string[] = []
+): menuItem[] => {
   // Check if we're on a site domain (sites/[domain] route)
   const isOnSiteDomain = pathname.includes("/sites/");
 
@@ -65,106 +70,145 @@ const getMenuItems = (pathname: string): menuItem[] => {
   // Base path for site-specific routes
   const basePath = isOnSiteDomain ? `/sites/${domain}` : "";
 
-  const siteSpecificItems: menuItem[] = [
+  const allSiteItems: menuItem[] = [
     {
       label: "Dashboard",
       icon: faWaveSquare,
       alert: true,
       href: `${basePath}/dashboard`,
+      moduleName: "dashboard",
     },
     {
       label: "Kanban",
       icon: faTable,
       href: `${basePath}/kanban`,
       alert: true,
+      moduleName: "kanban",
     },
     {
       label: "Progetti",
       icon: faTable,
       href: `${basePath}/projects`,
       alert: false,
+      moduleName: "projects",
     },
-    // {
-    //   label: "Calendario",
-    //   icon: faClock,
-    //   href: `${basePath}/calendar`,
-    //   alert: false,
-    // },
+    {
+      label: "Calendario",
+      icon: faClock,
+      href: `${basePath}/calendar`,
+      alert: false,
+      moduleName: "calendar",
+    },
     {
       label: "Clienti",
       icon: faUser,
       href: `${basePath}/clients`,
       alert: false,
+      moduleName: "clients",
     },
-    // {
-    //   label: "Errori",
-    //   icon: faExclamation,
-    //   href: `${basePath}/errortracking`,
-    //   alert: false,
-    // },
-    // {
-    //   label: "Ore",
-    //   icon: faClock,
-    //   href: `${basePath}/timetracking`,
-    //   alert: false,
-    // },
-    // {
-    //   label: "Reports",
-    //   icon: faSquarePollVertical,
-    //   href: `${basePath}/reports`,
-    //   alert: false,
-    //   items: [
-    //     {
-    //       label: "Quality Control",
-    //       icon: faCheckSquare,
-    //       href: `${basePath}/qualityControl`,
-    //       alert: false,
-    //     },
-    //     {
-    //       label: "Effettua QC",
-    //       icon: faCheckSquare,
-    //       href: `${basePath}/qualityControl/edit`,
-    //       alert: false,
-    //     },
-    //     {
-    //       label: "Imballaggio",
-    //       icon: faBox,
-    //       href: `${basePath}/boxing`,
-    //       alert: false,
-    //     },
-    //     {
-    //       label: "Effettua imballaggio",
-    //       icon: faBox,
-    //       href: `${basePath}/boxing/edit`,
-    //       alert: false,
-    //     },
-    //   ],
-    // },
+    {
+      label: "Errori",
+      icon: faExclamation,
+      href: `${basePath}/errortracking`,
+      alert: false,
+      moduleName: "errortracking",
+    },
+    {
+      label: "Ore",
+      icon: faClock,
+      href: `${basePath}/timetracking`,
+      alert: false,
+      moduleName: "timetracking",
+    },
+    {
+      label: "Reports",
+      icon: faSquarePollVertical,
+      href: `${basePath}/reports`,
+      alert: false,
+      moduleName: "reports",
+      items: [
+        {
+          label: "Quality Control",
+          icon: faCheckSquare,
+          href: `${basePath}/qualityControl`,
+          alert: false,
+          moduleName: "qualitycontrol",
+        },
+        {
+          label: "Effettua QC",
+          icon: faCheckSquare,
+          href: `${basePath}/qualityControl/edit`,
+          alert: false,
+          moduleName: "qualitycontrol",
+        },
+        {
+          label: "Imballaggio",
+          icon: faBox,
+          href: `${basePath}/boxing`,
+          alert: false,
+          moduleName: "boxing",
+        },
+        {
+          label: "Effettua imballaggio",
+          icon: faBox,
+          href: `${basePath}/boxing/edit`,
+          alert: false,
+          moduleName: "boxing",
+        },
+      ],
+    },
     {
       label: "Inventario",
       icon: faBox,
       href: `${basePath}/inventory`,
       alert: false,
+      moduleName: "inventory",
     },
     {
       label: "Prodotti",
       icon: faBox,
       href: `${basePath}/products`,
       alert: false,
+      moduleName: "products",
     },
     {
       label: "Fornitori",
       icon: faHelmetSafety,
       href: `${basePath}/suppliers`,
       alert: false,
+      moduleName: "suppliers",
     },
     {
       label: "Categorie",
       icon: faTable,
       href: `${basePath}/categories`,
       alert: false,
+      moduleName: "categories",
     },
   ];
+
+  // Filter items based on enabled modules
+  const siteSpecificItems = allSiteItems.filter((item) => {
+    if (item.moduleName) {
+      return enabledModules.includes(item.moduleName);
+    }
+    if (item.items) {
+      // For items with sub-items, check if any sub-item is enabled
+      const enabledSubItems = item.items.filter(
+        (subItem) =>
+          subItem.moduleName && enabledModules.includes(subItem.moduleName)
+      );
+      if (enabledSubItems.length > 0) {
+        // Return the parent item with only enabled sub-items
+        return {
+          ...item,
+          items: enabledSubItems,
+        };
+      }
+      return false;
+    }
+    return true; // Items without moduleName are always shown
+  });
 
   // Add admin-only items if not on site domain
   if (!isOnSiteDomain) {
@@ -214,6 +258,13 @@ export function AppSidebar() {
   const [siteName, setSiteName] = useState<string>("");
   const { toast } = useToast();
   const { isOnline, lastOnlineTime } = useOnlineStatus();
+
+  // Get domain for module filtering
+  const isOnSiteDomain = pathname.includes("/sites/");
+  const domain = isOnSiteDomain
+    ? pathname.split("/sites/")[1]?.split("/")[0]
+    : null;
+  const { enabledModules } = useSiteModules(domain || "");
 
   // Function to fetch organization name
   const fetchOrganizationName = useCallback(async (organizationId: string) => {
@@ -413,7 +464,10 @@ export function AppSidebar() {
   );
 
   const menuItems = useMemo(() => {
-    const items = getMenuItems(pathname);
+    const items = getMenuItems(
+      pathname,
+      enabledModules.map((m) => m.name)
+    );
     return items.map((item: menuItem) => {
       if (item.label === "Kanban") {
         // Get the base path for kanban routes

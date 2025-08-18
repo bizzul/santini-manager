@@ -12,20 +12,19 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
-import { Button } from "../../../components/ui/button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "../../../validation/products/create";
-import { useToast } from "../../../components/ui/use-toast";
-import { DataResult } from "./page";
+import { validation } from "@/validation/products/create";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../../components/ui/select";
+} from "@/components/ui/select";
 import { Product_category, Supplier } from "@prisma/client";
 
 const CreateProductForm = ({
@@ -33,7 +32,7 @@ const CreateProductForm = ({
   data,
 }: {
   handleClose: any;
-  data: DataResult;
+  data: any;
 }) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
@@ -88,7 +87,7 @@ const CreateProductForm = ({
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {data.category.map((cat: Product_category) => (
@@ -115,7 +114,7 @@ const CreateProductForm = ({
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
-                    <SelectValue  />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {data.supplier.map((sup: Supplier) => (
@@ -138,7 +137,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
@@ -153,7 +152,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Tipo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -168,7 +167,7 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Num. Articolo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -184,7 +183,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Larghezza</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -199,7 +198,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Altezza</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -214,7 +213,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Lunghezza</FormLabel>
                 <FormControl>
-                  <Input  {...field} />
+                  <Input {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -261,11 +260,7 @@ const CreateProductForm = ({
               <FormItem>
                 <FormLabel>Unità</FormLabel>
                 <FormControl>
-                  <Input
-                    {...form.register("unit")}
-                    
-                    {...field}
-                  />
+                  <Input {...form.register("unit")} {...field} />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />

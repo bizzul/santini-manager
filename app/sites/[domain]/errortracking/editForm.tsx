@@ -12,20 +12,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button, Textarea } from "@tremor/react";
-import { validation } from "../../../validation/errorTracking/create";
-import { useToast } from "../../../components/ui/use-toast";
-import { useFormState, useFormStatus } from "react-dom";
-import {
-  Errortracking,
-  Product_category,
-  Roles,
-  Supplier,
-  Task,
-  User,
-} from "@prisma/client";
+import { validation } from "@/validation/errorTracking/create";
+import { useToast } from "@/components/ui/use-toast";
+import { useFormStatus } from "react-dom";
+import { Product_category, Roles, Supplier, Task, User } from "@prisma/client";
 import { editItem } from "./actions/edit-item.action";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 import { CldUploadButton } from "next-cloudinary";
@@ -33,7 +26,7 @@ import Image from "next/image";
 
 type Props = {
   handleClose: any;
-  data: Errortracking;
+  data: any;
 };
 
 const EditProductForm = ({ handleClose, data }: Props) => {
@@ -150,7 +143,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   }, [data, setValue]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    //@ts-expect-error
     const response = await editItem(d, data?.id, fileIds);
     if (response?.error) {
       toast({
@@ -211,7 +203,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       field.onChange(e);
                     }}
                     disabled={isSubmitting}
-                    
                   >
                     {users.map((user: User) => (
                       <SearchSelectItem
@@ -243,7 +234,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       field.onChange(e);
                     }}
                     disabled={isSubmitting}
-                    
                   >
                     <SearchSelectItem value="fornitore">
                       Fornitore
@@ -272,7 +262,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                         field.onChange(e);
                       }}
                       disabled={isSubmitting}
-                      
                     >
                       {tasks.map((t: Task) => (
                         <SearchSelectItem key={t.id} value={t.id.toString()}>
@@ -303,7 +292,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                         field.onChange(e);
                       }}
                       disabled={isSubmitting}
-                      
                     >
                       {form.watch("errorCategory") === "fornitore"
                         ? categories.map((category: Product_category) => (
@@ -349,7 +337,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                           field.onChange(e);
                         }}
                         disabled={isSubmitting}
-                        
                       >
                         {suppliers
                           .filter(
@@ -399,7 +386,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Textarea {...field}  />
+                <Textarea {...field} />
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />

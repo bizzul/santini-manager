@@ -1,54 +1,66 @@
-// pages/api/protected-route.js
-import { withApiAuthRequired, getSession } from "@auth0/nextjs-auth0";
-import { Auth0ManagementApi } from "../../../core/auth/auth0-management-api";
-import { validation } from "../../../validation/users/editInfo";
-import { prisma } from "../../../prisma-global";
+import { createClient } from "../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
-  //@ts-ignore
-  const searchParams = req.nextUrl.searchParams;
-  //Get session
-  const session = await getSession();
-  // console.log("session", session);
-  //Managing token
-  await Auth0ManagementApi.manageToken(session);
-  const id = searchParams.get("user");
-
   try {
-    const getUserResponse = await fetch(
-      `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${id}`,
-      {
-        method: "GET",
-        headers: {
-          //@ts-ignore
-          Authorization: `Bearer ${session.managementToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const supabase = await createClient();
 
-    if (getUserResponse) {
-      const auth0User = await getUserResponse.json();
-      const localUser = await prisma.user.findUnique({
-        where: {
-          authId: id || "",
-        },
-      });
-
-      const mergedUser = {
-        ...auth0User,
-        ...localUser,
-      };
-
-      return NextResponse.json({ user: mergedUser }, { status: 200 });
-    } else {
-      throw new Error("Failed to get user");
+    // Get the current user from Supabase auth to verify permissions
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    //@ts-ignore
+    const searchParams = req.nextUrl.searchParams;
+    const id = searchParams.get("user");
+
+    if (!id) {
+      return NextResponse.json({ error: "User ID is required" }, {
+        status: 400,
+      });
+    }
+
+    // Get user from Supabase auth
+    const { data: authUser, error: getUserError } = await supabase.auth.admin
+      .getUserById(id);
+    if (getUserError) {
+      // Fallback to getting user from users table
+      const { data: localUser, error: localUserError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (localUserError) {
+        throw localUserError;
+      }
+
+      return NextResponse.json({ user: localUser }, { status: 200 });
+    }
+
+    // Get local user data
+    const { data: localUser, error: localUserError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (localUserError && localUserError.code !== "PGRST116") {
+      throw localUserError;
+    }
+
+    const mergedUser = {
+      ...authUser.user,
+      ...localUser,
+    };
+
+    return NextResponse.json({ user: mergedUser }, { status: 200 });
   } catch (error) {
     console.error(error);
-    //@ts-ignore
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : "Unknown error",
+    }, { status: 400 });
   }
 }
 

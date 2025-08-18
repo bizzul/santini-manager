@@ -1,42 +1,58 @@
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { faCheckSquare } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
-import { QC_Status, QualityControl } from "@prisma/client";
-import { prisma } from "../../../prisma-global";
+import { getUserContext } from "@/lib/auth-utils";
+import { createClient } from "@/utils/server";
 import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
 
-async function getSellProducts(): Promise<QualityControl[]> {
+async function getSellProducts(): Promise<any[]> {
   // Fetch data from your API here.
   // Fetch all the products
-  const qualityControl = await prisma.qualityControl.findMany({
-    include: {
-      items: true,
-      task: { include: { column: true } },
-      user: true,
-    },
-    where: {
-      AND: [
-        {
-          task: {
-            archived: false,
-            column: {
-              identifier: {
-                not: "SPEDITO",
-              },
-            },
-          },
-        },
-      ],
-    },
-  });
+  const supabase = await createClient();
 
-  console.log(qualityControl);
+  // First, get all quality controls with their related data
+  const { data: qualityControl, error: qualityControlError } =
+    await supabase.from("quality_control").select(`
+      *,
+      task:taskId(*),
+      user:userId(*)
+    `);
+
+  if (qualityControlError) {
+    console.error("Error fetching quality control:", qualityControlError);
+    return [];
+  }
+
+  // Get tasks with their columns to filter out archived tasks and SPEDITO tasks
+  const { data: tasks, error: tasksError } = await supabase
+    .from("task")
+    .select(
+      `
+      *,
+      column:kanbanColumnId(*)
+    `
+    )
+    .eq("archived", false);
+
+  if (tasksError) {
+    console.error("Error fetching tasks:", tasksError);
+    return [];
+  }
+
+  // Filter tasks that are not in SPEDITO column
+  const validTaskIds =
+    tasks
+      ?.filter((task) => task.column?.identifier !== "SPEDITO")
+      ?.map((task) => task.id) || [];
+
+  // Filter quality controls to only include those with valid tasks
+  const filteredQualityControl =
+    qualityControl?.filter((qc) => validTaskIds.includes(qc.taskId)) || [];
+
+  console.log(filteredQualityControl);
 
   // Grouping by taskId and transforming into an array of objects
-  const groupedByTaskId = qualityControl.reduce((group: any, qc) => {
-    const taskId = qc.task.id;
+  const groupedByTaskId = filteredQualityControl.reduce((group: any, qc) => {
+    const taskId = qc.taskId;
     const existingGroup: any = group.find((g: any) => g.taskId === taskId);
 
     if (existingGroup) {
@@ -58,10 +74,7 @@ async function getSellProducts(): Promise<QualityControl[]> {
     return group;
   }, []);
 
-  function updatePassedStatus(
-    currentStatus: QC_Status,
-    newItemStatus: QC_Status
-  ) {
+  function updatePassedStatus(currentStatus: string, newItemStatus: string) {
     console.log("current", currentStatus, "new", newItemStatus);
     if (currentStatus === "DONE" || newItemStatus === "DONE") {
       return "DONE";
@@ -78,14 +91,12 @@ async function getSellProducts(): Promise<QualityControl[]> {
   }
 
   return groupedByTaskId;
-
-  // return qualityControl;
 }
 
 async function Page() {
   //get initial data
   const data = await getSellProducts();
-  const session = await getSession();
+  const session = await getUserContext();
 
   if (!session || !session.user) {
     // Handle the absence of a session. Redirect or return an error.

@@ -16,7 +16,7 @@ import { Input } from "../../components/ui/input";
 import { DatePicker } from "../../components/ui/date-picker";
 import { SearchSelect } from "../../components/ui/search-select";
 import { Textarea } from "../../components/ui/textarea";
-import { editItem } from "../../app/(user)/projects/actions/edit-item.action";
+import { editItem } from "@/app/sites/[domain]/projects/actions/edit-item.action";
 import { validation } from "../../validation/task/create";
 import { useToast } from "../../components/ui/use-toast";
 import { Client, SellProduct } from "@prisma/client";
@@ -195,7 +195,6 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
   console.log(errors);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    //@ts-expect-error
     const response = await editItem(d, resource?.id);
     if (response && typeof response === "object" && "error" in response) {
       toast({

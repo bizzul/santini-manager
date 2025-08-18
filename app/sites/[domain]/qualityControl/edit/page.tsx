@@ -1,13 +1,10 @@
 import React from "react";
-import { faBox, faCheckSquare } from "@fortawesome/free-solid-svg-icons";
-import { getSession } from "@auth0/nextjs-auth0";
-import { PackingControl, QualityControl } from "@prisma/client";
-import { prisma } from "../../../../prisma-global";
+import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import MobilePage from "@/components/qualityControl/mobilePage";
-import { revalidatePath } from "next/cache";
+import { createClient } from "@/utils/server";
 interface Data {
-  quality: QualityControl[];
+  quality: any[];
 }
 
 export const revalidate = 10;
@@ -15,32 +12,25 @@ async function getSellProducts(): Promise<Data> {
   // Fetch data from your API here.
   // Fetch all the products
 
-  const qualityControl = await prisma.qualityControl.findMany({
-    include: {
-      items: true,
-      task: { include: { column: true, sellProduct: true } },
-      user: true,
-    },
-    where: {
-      AND: [
-        {
-          task: {
-            archived: false,
-            column: {
-              identifier: {
-                not: "SPEDITO",
-              },
-            },
-          },
-        },
-      ],
-    },
-    orderBy: {
-      task: {
-        unique_code: "asc",
-      },
-    },
-  });
+  const supabase = await createClient();
+  const { data: qualityControl, error: qualityControlError } = await supabase
+    .from("quality_control")
+    .select(
+      `
+    *,
+    items:items(*),
+    task:task(*),
+    user:user(*)
+  `
+    )
+    .eq("task.archived", false)
+    .eq("task.column.identifier", "SPEDITO")
+    .order("task.unique_code", { ascending: true });
+
+  if (qualityControlError) {
+    console.error("Error fetching quality control:", qualityControlError);
+    return { quality: [] };
+  }
 
   return { quality: qualityControl };
 }
@@ -49,7 +39,7 @@ async function Page() {
   //get initial data
   const data = await getSellProducts();
 
-  const session = await getSession();
+  const session = await getUserContext();
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
     "/qualityControl/edit"
   )}`;

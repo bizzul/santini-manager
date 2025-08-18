@@ -1,19 +1,11 @@
 "use client";
 
-import { Errortracking, Product } from "@prisma/client";
 import { ColumnDef } from "@tanstack/react-table";
-import { DataTableColumnHeader } from "../../../components/table/column-header";
+import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
-import Image from "next/image";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../../../components/ui/tooltip";
 import ImageGallery from "./imageGallery";
 
-export const columns: ColumnDef<Errortracking>[] = [
+export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "user.given_name",
     header: ({ column }) => (

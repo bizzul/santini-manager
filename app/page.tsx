@@ -9,8 +9,8 @@ export default function Home() {
         <div className="glass-gradient-bg  absolute inset-0 z-0" />
         <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
           <div className="backdrop-blur-lg bg-white/20 dark:bg-black/20 border border-white/30 dark:border-black/30 rounded-2xl shadow-lg p-10 flex flex-col justify-center items-center">
-            <h1 className="text-4xl font-bold mb-6 dark:text-white w-full">
-              Welcome to Reactive Manager
+            <h1 className="text-4xl font-bold mb-6 dark:text-white ">
+              Reactive Manager
             </h1>
             <div className="space-x-4 ">
               <Link href="/login">

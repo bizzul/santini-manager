@@ -1,27 +1,37 @@
 "use server";
 
-import { Product, Product_category, Supplier } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
-import { validation } from "../../../../validation/supplier/edit";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { validation } from "@/validation/supplier/edit";
+import { getUserContext } from "@/lib/auth-utils";
 
-export async function editItem(formData: Supplier, id: number) {
+export async function editItem(formData: any, id: number) {
   const result = validation.safeParse(formData);
-  const session = await getSession();
+  const session = await getUserContext();
   let userId = null;
-  if (session) {
-    userId = session.user.sub;
+  if (session && session.user && session.user.id) {
+    // Get the integer user ID from the User table using the authId
+    const supabase = await createClient();
+    const { data: userData, error: userError } = await supabase
+      .from("User")
+      .select("id")
+      .eq("authId", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("Error fetching user data:", userError);
+      return { error: true, message: "Errore nel recupero dei dati utente!" };
+    }
+
+    userId = userData?.id;
   }
 
-  console.log("userId", userId);
   if (result.success) {
     try {
-      const resultUpdate = await prisma.supplier.update({
-        where: {
-          id,
-        },
-        data: {
+      const supabase = await createClient();
+      const { data: resultUpdate, error: resultUpdateError } = await supabase
+        .from("supplier")
+        .update({
           description: result.data.description,
           name: result.data.name,
           address: result.data.address,
@@ -33,24 +43,33 @@ export async function editItem(formData: Supplier, id: number) {
           phone: result.data.phone,
           short_name: result.data.short_name,
           website: result.data.website,
-        },
-      });
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (resultUpdateError) {
+        console.error("Error updating supplier:", resultUpdateError);
+        return { message: "Errore nell'aggiornamento del fornitore!" };
+      }
 
       // Create a new Action record to track the user action
-      const action = await prisma.action.create({
-        data: {
-          type: "supplier_update",
-          data: {
-            supplierId: resultUpdate.id,
-          },
-          User: {
-            connect: {
-              authId: userId,
+      if (resultUpdate && userId) {
+        const { error: actionError } = await supabase
+          .from("Action")
+          .insert({
+            type: "supplier_update",
+            data: {
+              supplierId: resultUpdate.id,
             },
-          },
-          supplierId: resultUpdate.id,
-        },
-      });
+            userId: userId,
+            supplierId: resultUpdate.id,
+          });
+
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
       // return revalidatePath("/suppliers");
       return resultUpdate;

@@ -1,52 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "@/utils/server";
 
 export const removeItem = async (id: number) => {
   try {
     // Delete TaskHistory records first
-    const taskHistory = await prisma.taskHistory.findMany({
-      where: {
-        taskId: id,
-      },
-    });
-    if (taskHistory.length > 0) {
-      await prisma.taskHistory.deleteMany({
-        where: {
-          taskId: id,
-        },
-      });
+    const supabase = await createClient();
+    const { data: taskHistory, error: taskHistoryError } = await supabase
+      .from("task_history")
+      .select("*")
+      .eq("taskId", id);
+    if (taskHistory && taskHistory.length > 0) {
+      await supabase.from("task_history").delete().eq("taskId", id);
     }
 
-    const qc = await prisma.qualityControl.findMany({
-      where: {
-        taskId: id,
-      },
-    });
-    if (qc.length > 0) {
-      await prisma.qualityControl.deleteMany({
-        where: {
-          taskId: id,
-        },
-      });
+    const { data: qc, error: qcError } = await supabase
+      .from("quality_control")
+      .select("*")
+      .eq("taskId", id);
+    if (qc && qc.length > 0) {
+      await supabase.from("quality_control").delete().eq("taskId", id);
     }
 
-    const boxing = await prisma.packingControl.findMany({
-      where: {
-        taskId: id,
-      },
-    });
-    if (boxing.length > 0) {
-      await prisma.packingControl.deleteMany({
-        where: {
-          taskId: id,
-        },
-      });
+    const { data: boxing, error: boxingError } = await supabase
+      .from("packing_control")
+      .select("*")
+      .eq("taskId", id);
+    if (boxing && boxing.length > 0) {
+      await supabase.from("packing_control").delete().eq("taskId", id);
     }
-    await prisma.task.delete({
-      where: { id: id },
-    });
+    await supabase.from("task").delete().eq("id", id);
     return revalidatePath("/projects");
   } catch (e) {
     return { message: `Failed to delete item: ${e}` };

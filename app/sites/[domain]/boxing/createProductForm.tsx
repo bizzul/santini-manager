@@ -12,12 +12,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../../components/ui/form";
-import { Input } from "../../../components/ui/input";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button } from "@tremor/react";
 import { createSellProductAction } from "./actions/create-item.action";
-import { validation } from "../../../validation/sellProducts/create";
-import { useToast } from "../../../components/ui/use-toast";
+import { validation } from "@/validation/sellProducts/create";
+import { useToast } from "@/components/ui/use-toast";
 
 type Props = {
   handleClose: any;
@@ -59,7 +59,7 @@ const CreateProductForm = ({ handleClose }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormDescription>Il nome del prodotto</FormDescription>
               <FormMessage />
@@ -73,7 +73,7 @@ const CreateProductForm = ({ handleClose }: Props) => {
             <FormItem>
               <FormLabel>Tipo</FormLabel>
               <FormControl>
-                <Input  {...field} />
+                <Input {...field} />
               </FormControl>
               <FormDescription>La descrizione del prodotto</FormDescription>
               <FormMessage />

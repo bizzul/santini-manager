@@ -1,70 +1,88 @@
-import { prisma } from "../../../../../prisma-global";
+import { createClient } from "../../../../../utils/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> },
 ) {
   try {
-    const taskSuppliers = await prisma.taskSupplier.findMany({
-      where: { taskId: parseInt(params.taskId) },
-      include: { supplier: true },
-    });
+    const supabase = await createClient();
+    const { taskId } = await params;
+
+    const { data: taskSuppliers, error } = await supabase
+      .from("task_suppliers")
+      .select(`
+        *,
+        suppliers:supplier_id(*)
+      `)
+      .eq("task_id", parseInt(taskId));
+
+    if (error) throw error;
 
     return NextResponse.json(taskSuppliers);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
       { error: "Error fetching task suppliers", message: error },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function POST(
   request: Request,
-  { params }: { params: { taskId: string } }
+  { params }: { params: Promise<{ taskId: string }> },
 ) {
   try {
+    const supabase = await createClient();
+    const { taskId } = await params;
     const { supplierId, deliveryDate } = await request.json();
 
-    const existingSupplier = await prisma.taskSupplier.findUnique({
-      where: {
-        taskId_supplierId: {
-          taskId: parseInt(params.taskId),
-          supplierId: supplierId,
-        },
-      },
-    });
+    const { data: existingSupplier, error: findError } = await supabase
+      .from("task_suppliers")
+      .select("*")
+      .eq("task_id", parseInt(taskId))
+      .eq("supplier_id", supplierId)
+      .single();
+
+    if (findError && findError.code !== "PGRST116") throw findError;
 
     if (existingSupplier) {
-      const updatedSupplier = await prisma.taskSupplier.update({
-        where: {
-          id: existingSupplier.id,
-        },
-        data: {
-          deliveryDate: new Date(deliveryDate),
-        },
-        include: { supplier: true },
-      });
+      const { data: updatedSupplier, error: updateError } = await supabase
+        .from("task_suppliers")
+        .update({ delivery_date: new Date(deliveryDate) })
+        .eq("id", existingSupplier.id)
+        .select(`
+          *,
+          suppliers:supplier_id(*)
+        `)
+        .single();
+
+      if (updateError) throw updateError;
       return NextResponse.json(updatedSupplier);
     }
 
-    const taskSupplier = await prisma.taskSupplier.create({
-      data: {
-        taskId: parseInt(params.taskId),
-        supplierId,
-        deliveryDate: new Date(deliveryDate),
-      },
-      include: { supplier: true },
-    });
+    const { data: taskSupplier, error: createError } = await supabase
+      .from("task_suppliers")
+      .insert({
+        task_id: parseInt(taskId),
+        supplier_id: supplierId,
+        delivery_date: new Date(deliveryDate),
+      })
+      .select(`
+        *,
+        suppliers:supplier_id(*)
+      `)
+      .single();
+
+    if (createError) throw createError;
 
     return NextResponse.json(taskSupplier);
   } catch (error) {
     console.error(error);
     return NextResponse.json(
       { error: "Error managing task supplier" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
-import { Structure } from "../../../components/structure/structure";
-import { Skeleton } from "../../../components/ui/skeleton";
+import { Structure } from "@/components/structure/structure";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { faSquarePollVertical } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../../components/ui/card";
+} from "@/components/ui/card";
 
 function Loading() {
   return (

@@ -1,28 +1,38 @@
 import { Task } from "@prisma/client";
 import CalendarComponent from "@/components/calendar/calendarComponent";
-import { prisma } from "../../../prisma-global";
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "@/utils/server";
+import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 export const revalidate = 0;
 
 async function getData(): Promise<Task[]> {
   // Fetch data from your API here.
-  const tasks = await prisma.task.findMany();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("task")
+    .select("*")
+    .eq("archived", false);
+  if (error) {
+    console.error("Error fetching tasks:", error);
+    return [];
+  }
 
-  return tasks;
+  return data;
 }
 
 async function Page() {
   //get initial data
   const data = await getData();
 
-  const session = await getSession();
+  const userContext = await getUserContext();
 
-  if (!session || !session.user) {
+  if (!userContext || !userContext.user) {
     // Handle the absence of a session. Redirect or return an error.
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
+  // Now it's safe to use session.user
+  const { user } = userContext;
 
   return (
     <div className="container mx-auto relative ">

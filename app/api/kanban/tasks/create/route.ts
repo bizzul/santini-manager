@@ -1,88 +1,110 @@
-// pages/api/protected-route.js
-import { getSession } from "@auth0/nextjs-auth0";
+import { createClient } from "../../../../../utils/supabase/server";
 import { validation } from "../../../../../validation/task/create"; //? <--- The validation schema
-import { prisma } from "../../../../../prisma-global";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const result = validation.safeParse(body); //? <---Veryfing body against validation schema
-  const session = await getSession();
-  let userId = null;
-  if (session) {
-    userId = session.user.sub;
-  }
-  if (result.success) {
-    // create an array of positions from the request body
-    // if a position is not provided, it defaults to an empty string
-    const positions = Array.from(
-      { length: 8 },
-      //@ts-ignore
-      (_, i) => result.data[`position${i + 1}`] || ""
-    );
+  try {
+    const supabase = await createClient();
 
-    const taskCreate = await prisma.task.create({
-      //@ts-ignore
-      data: {
-        title: "",
-        clientId: result.data.clientId,
-        deliveryDate: result.data.deliveryDate,
-        unique_code: result.data.unique_code,
-        sellProductId: result.data.productId,
-        name: result.data.name,
+    // Get the current user from Supabase auth
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const result = validation.safeParse(body); //? <---Veryfing body against validation schema
+
+    if (result.success) {
+      // Get kanban and column IDs
+      const { data: kanban, error: kanbanError } = await supabase
+        .from("kanbans")
+        .select("id")
+        .eq("identifier", "PRODUCTION")
+        .single();
+
+      if (kanbanError) throw kanbanError;
+
+      const { data: column, error: columnError } = await supabase
+        .from("kanban_columns")
+        .select("id")
+        .eq("identifier", "TODOPROD")
+        .single();
+
+      if (columnError) throw columnError;
+
+      // create an array of positions from the request body
+      // if a position is not provided, it defaults to an empty string
+      const positions = Array.from(
+        { length: 8 },
         //@ts-ignore
-        kanban: { connect: { identifier: "PRODUCTION" } },
-        //@ts-ignore
-        column: { connect: { identifier: "TODOPROD" } },
-        sellPrice: result.data.sellPrice,
-        other: result.data.other,
-        positions: {
-          set: positions,
-        },
-      },
-    });
-    // // Success
-    if (taskCreate) {
-      if (body.fileIds !== null) {
-        // Save the Cloudinary IDs of the uploaded files to the task record
-        await Promise.all(
-          body.fileIds.map((fileId: number) => {
-            return prisma.file.update({
-              where: { id: fileId },
-              data: {
-                taskId: taskCreate.id,
-              },
-            });
+        (_, i) => result.data[`position${i + 1}`] || "",
+      );
+
+      const { data: taskCreate, error: taskError } = await supabase
+        .from("tasks")
+        .insert({
+          title: "",
+          client_id: result.data.clientId,
+          delivery_date: result.data.deliveryDate,
+          unique_code: result.data.unique_code,
+          sell_product_id: result.data.productId,
+          name: result.data.name,
+          kanban_id: kanban.id,
+          column_id: column.id,
+          sell_price: result.data.sellPrice,
+          other: result.data.other,
+          positions: positions,
+        })
+        .select()
+        .single();
+
+      if (taskError) throw taskError;
+
+      // Success
+      if (taskCreate) {
+        if (body.fileIds !== null) {
+          // Save the Cloudinary IDs of the uploaded files to the task record
+          await Promise.all(
+            body.fileIds.map((fileId: number) => {
+              return supabase
+                .from("files")
+                .update({ task_id: taskCreate.id })
+                .eq("id", fileId);
+            }),
+          );
+        }
+
+        // Create a new Action record to track the user action
+        const { data: newAction, error: actionError } = await supabase
+          .from("actions")
+          .insert({
+            type: "task_create",
+            data: {
+              task: taskCreate.id,
+            },
+            user_id: user.id,
+            task_id: taskCreate.id,
           })
-        );
-      }
-      // Create a new Action record to track the user action
-      const newAction = await prisma.action.create({
-        data: {
-          type: "task_create",
-          data: {
-            task: taskCreate.id,
-          },
-          User: {
-            connect: {
-              authId: userId,
-            },
-          },
-          Task: {
-            connect: {
-              id: taskCreate.id,
-            },
-          },
-        },
-      });
-      if (newAction) {
+          .select()
+          .single();
+
+        if (actionError) {
+          console.error("Error creating action:", actionError);
+        }
+
         return NextResponse.json({ taskCreate, status: 200 });
+      } else {
+        return NextResponse.json({ error: result, status: 500 });
       }
     } else {
-      NextResponse.json({ error: result, status: 500 });
+      //Input invalid
+      return NextResponse.json({ error: "Error", status: 400 });
     }
-  } else {
-    //Input invalid
-    return NextResponse.json({ error: "Error", status: 500 });
+  } catch (error) {
+    console.error("Error creating task:", error);
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : "Unknown error",
+    }, { status: 500 });
   }
 }

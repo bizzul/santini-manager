@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../../components/ui/dialog";
+} from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
 import { Roles, Task, Timetracking, User } from "@prisma/client";
 

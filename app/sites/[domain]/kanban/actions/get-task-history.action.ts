@@ -1,9 +1,16 @@
 "use server";
-import { prisma } from "../../../../prisma-global";
+import { createClient } from "@/utils/server";
 
 export async function getTaskHistory(taskId: number) {
-  return await prisma.taskHistory.findMany({
-    where: { taskId },
-    orderBy: { createdAt: "desc" },
-  });
+  const supabase = await createClient();
+  const { data: taskHistory, error: taskHistoryError } = await supabase
+    .from("task_history")
+    .select("*")
+    .eq("taskId", taskId)
+    .order("createdAt", { ascending: false });
+  if (taskHistoryError) {
+    console.error("Error fetching task history:", taskHistoryError);
+    throw new Error("Failed to fetch task history");
+  }
+  return taskHistory;
 }
