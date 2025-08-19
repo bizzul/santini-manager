@@ -14,25 +14,27 @@ export async function generateStaticParams() {
     return [];
   }
 
-  const allPaths =
-    allSites
-      ?.flatMap(
-        ({
-          subdomain,
-          custom_domain,
-        }: {
-          subdomain: string;
-          custom_domain: string;
-        }) => [
-          subdomain && {
-            domain: `${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
-          },
-          custom_domain && {
-            domain: custom_domain,
-          },
-        ]
-      )
-      .filter(Boolean) || [];
+  const allPaths: { domain: string }[] = [];
+  const processedDomains = new Set<string>();
+
+  allSites?.forEach(({ subdomain, custom_domain }) => {
+    // Handle subdomain
+    if (subdomain && !processedDomains.has(subdomain)) {
+      const subdomainPath = `${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
+      allPaths.push({ domain: subdomainPath });
+      processedDomains.add(subdomain);
+    }
+
+    // Handle custom domain (only if different from subdomain)
+    if (
+      custom_domain &&
+      custom_domain !== subdomain &&
+      !processedDomains.has(custom_domain)
+    ) {
+      allPaths.push({ domain: custom_domain });
+      processedDomains.add(custom_domain);
+    }
+  });
 
   return allPaths;
 }
