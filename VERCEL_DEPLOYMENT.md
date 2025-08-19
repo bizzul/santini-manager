@@ -50,6 +50,20 @@ NEXT_PUBLIC_ROOT_DOMAIN=yourdomain.com
 - Ensure your domain configuration supports subdomains
 - Check that the root domain is set correctly in environment variables
 
+### Local vs Production Differences
+
+**If it works locally but not on Vercel:**
+
+1. **Environment Variables**: Check that all environment variables are set in Vercel
+2. **Database Permissions**: Vercel uses different IP addresses - ensure your Supabase RLS policies allow Vercel's IPs
+3. **Cookie Domain**: Local uses `.localhost`, production needs your actual domain
+4. **Service Role Key**: Ensure `STORAGE_SUPABASE_SERVICE_ROLE_KEY` is set for admin operations
+
+**Debug Steps:**
+1. Visit `/api/debug/user-context` after deployment to see detailed error information
+2. Check Vercel function logs for specific error messages
+3. Compare environment variable values between local and production
+
 ## Testing
 
 After deployment:
@@ -57,6 +71,7 @@ After deployment:
 2. Try logging in again
 3. Check browser dev tools > Application > Cookies to see if cookies are set
 4. Verify that you can navigate between protected routes without re-authentication
+5. Use the debug endpoint `/api/debug/user-context` to troubleshoot issues
 
 ## Debugging
 
@@ -65,3 +80,25 @@ If issues persist:
 2. Verify environment variables are loaded correctly
 3. Test with a simple authentication flow first
 4. Check Supabase dashboard for authentication logs
+5. Use the debug endpoint to identify specific issues
+
+## Local Development vs Production
+
+**Local Environment:**
+- ✅ Cookies work with `.localhost` domain
+- ✅ Direct database connection
+- ✅ No IP restrictions
+- ✅ Development environment variables
+
+**Vercel Production:**
+- ⚠️ Cookies need actual domain
+- ⚠️ Edge runtime limitations
+- ⚠️ IP-based restrictions possible
+- ⚠️ Production environment variables required
+
+**Key Differences to Check:**
+1. Environment variable values
+2. Cookie domain settings
+3. Database RLS policies
+4. Supabase project settings
+5. Network access permissions

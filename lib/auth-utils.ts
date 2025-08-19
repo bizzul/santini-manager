@@ -34,72 +34,140 @@ export interface TenantAccess {
  * Get the current user's context including role and organization access
  */
 export async function getUserContext(): Promise<UserContext | null> {
-    const cookieStore = await cookies();
-    const impersonationCookie = cookieStore.get("impersonation");
-    let userIdToFetch: string | null = null;
-    let originalSuperadminId: string | undefined = undefined;
-    let isImpersonating = false;
-    let impersonatedUser: any = undefined;
+    try {
+        const cookieStore = await cookies();
+        const impersonationCookie = cookieStore.get("impersonation");
+        let userIdToFetch: string | null = null;
+        let originalSuperadminId: string | undefined = undefined;
+        let isImpersonating = false;
+        let impersonatedUser: any = undefined;
 
-    const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (impersonationCookie && user) {
-        try {
-            const { originalId, targetId } = JSON.parse(
-                impersonationCookie.value,
-            );
-            userIdToFetch = targetId;
-            originalSuperadminId = originalId;
-            isImpersonating = true;
-        } catch {}
-    }
-    if (!user && !userIdToFetch) {
-        return null;
-    }
-    // If impersonating, fetch the impersonated user's info
-    let userToUse = user;
-    if (userIdToFetch) {
-        const { data: impersonatedUserData, error: impErr } = await supabase
-            .auth.admin.getUserById(userIdToFetch);
-        if (impersonatedUserData && impersonatedUserData.user) {
-            userToUse = impersonatedUserData.user;
-            impersonatedUser = impersonatedUserData.user;
-        } else {
-            // If impersonation fails, fallback to real user
-            userToUse = user;
-            isImpersonating = false;
-            originalSuperadminId = undefined;
+        const supabase = await createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error) {
+            console.error("Error getting user from auth:", error);
+            return null;
         }
-    }
-    if (!userToUse) {
+
+        if (impersonationCookie && user) {
+            try {
+                const { originalId, targetId } = JSON.parse(
+                    impersonationCookie.value,
+                );
+                userIdToFetch = targetId;
+                originalSuperadminId = originalId;
+                isImpersonating = true;
+            } catch (parseError) {
+                console.error(
+                    "Error parsing impersonation cookie:",
+                    parseError,
+                );
+            }
+        }
+
+        if (!user && !userIdToFetch) {
+            console.log("No user found and no impersonation target");
+            return null;
+        }
+
+        // If impersonating, fetch the impersonated user's info
+        let userToUse = user;
+        if (userIdToFetch) {
+            try {
+                const { data: impersonatedUserData, error: impErr } =
+                    await supabase
+                        .auth.admin.getUserById(userIdToFetch);
+                if (impErr) {
+                    console.error("Error getting impersonated user:", impErr);
+                }
+                if (impersonatedUserData && impersonatedUserData.user) {
+                    userToUse = impersonatedUserData.user;
+                    impersonatedUser = impersonatedUserData.user;
+                } else {
+                    // If impersonation fails, fallback to real user
+                    userToUse = user;
+                    isImpersonating = false;
+                    originalSuperadminId = undefined;
+                }
+            } catch (impError) {
+                console.error("Error in impersonation flow:", impError);
+                // Fallback to real user
+                userToUse = user;
+                isImpersonating = false;
+                originalSuperadminId = undefined;
+            }
+        }
+
+        if (!userToUse) {
+            console.log("No user to use after impersonation check");
+            return null;
+        }
+
+        console.log("Fetching tenant data for user:", userToUse.id);
+
+        // Get user's tenant information including role
+        const { data: tenantData, error: tenantError } = await supabase
+            .from("tenants")
+            .select("role, organization_id")
+            .eq("user_id", userToUse.id)
+            .single();
+
+        if (tenantError) {
+            console.error("Error fetching tenant data:", tenantError);
+            // Check if it's a "no rows returned" error
+            if (tenantError.code === "PGRST116") {
+                console.log("No tenant record found for user:", userToUse.id);
+                // Return a default context for users without tenant records
+                return {
+                    user: userToUse,
+                    role: "user" as UserRole,
+                    organizationId: undefined,
+                    tenantId: userToUse.id,
+                    canAccessAllOrganizations: false,
+                    canAccessAllTenants: false,
+                    isImpersonating,
+                    originalSuperadminId,
+                    impersonatedUser,
+                };
+            }
+            throw tenantError;
+        }
+
+        if (!tenantData) {
+            console.log("No tenant data returned for user:", userToUse.id);
+            return null;
+        }
+
+        const role = tenantData.role as UserRole;
+        const organizationId = tenantData.organization_id;
+        const isSuperAdmin = role === "superadmin";
+        const isAdmin = role === "admin";
+
+        console.log("User context created successfully:", {
+            userId: userToUse.id,
+            role,
+            organizationId,
+            isSuperAdmin,
+            isAdmin,
+        });
+
+        return {
+            user: userToUse,
+            role,
+            organizationId,
+            tenantId: userToUse.id,
+            canAccessAllOrganizations: isSuperAdmin,
+            canAccessAllTenants: isSuperAdmin || isAdmin,
+            isImpersonating,
+            originalSuperadminId,
+            impersonatedUser,
+        };
+    } catch (error) {
+        console.error("Error in getUserContext:", error);
+        // Return null instead of throwing to prevent 500 errors
         return null;
     }
-    // Get user's tenant information including role
-    const { data: tenantData } = await supabase
-        .from("tenants")
-        .select("role, organization_id")
-        .eq("user_id", userToUse.id)
-        .single();
-
-    if (!tenantData) {
-        return null;
-    }
-
-    const role = tenantData.role as UserRole;
-    const organizationId = tenantData.organization_id;
-    const isSuperAdmin = role === "superadmin";
-    const isAdmin = role === "admin";
-    return {
-        user: userToUse,
-        role,
-        organizationId,
-        tenantId: userToUse.id,
-        canAccessAllOrganizations: isSuperAdmin,
-        canAccessAllTenants: isSuperAdmin || isAdmin,
-        isImpersonating,
-        originalSuperadminId,
-        impersonatedUser,
-    };
 }
 
 /**

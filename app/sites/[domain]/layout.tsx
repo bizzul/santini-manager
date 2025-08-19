@@ -73,53 +73,61 @@ export default async function SiteLayout({
   params: Promise<{ domain: string }>;
   children: ReactNode;
 }) {
-  const { domain } = await params;
-  const response = await getSiteData(domain);
+  try {
+    const { domain } = await params;
+    const response = await getSiteData(domain);
 
-  if (!response?.data) {
-    notFound();
-  }
+    if (!response?.data) {
+      console.log("Site data not found for domain:", domain);
+      notFound();
+    }
 
-  const data = response.data;
+    const data = response.data;
 
-  // Optional: Redirect to custom domain if it exists
-  if (
-    domain.endsWith(`.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`) &&
-    data.custom_domain &&
-    process.env.REDIRECT_TO_CUSTOM_DOMAIN_IF_EXISTS === "true"
-  ) {
-    return redirect(`https://${data.custom_domain}`);
-  }
+    // Optional: Redirect to custom domain if it exists
+    if (
+      domain.endsWith(`.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`) &&
+      data.custom_domain &&
+      process.env.REDIRECT_TO_CUSTOM_DOMAIN_IF_EXISTS === "true"
+    ) {
+      return redirect(`https://${data.custom_domain}`);
+    }
 
-  // Add authentication check
-  const userContext = await getUserContext();
-  if (!userContext) {
+    // Add authentication check
+    const userContext = await getUserContext();
+    if (!userContext) {
+      console.log("User context not found, redirecting to login");
+      redirect("/login");
+    }
+
+    const isImpersonating = userContext?.isImpersonating;
+    const impersonatedUser = userContext?.impersonatedUser;
+    const originalSuperadminId = userContext?.originalSuperadminId;
+
+    const cookieStore = await cookies();
+    const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+
+    return (
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <div>
+          {isImpersonating && impersonatedUser && originalSuperadminId && (
+            <ImpersonationBanner
+              impersonatedUser={impersonatedUser}
+              originalSuperadminId={originalSuperadminId}
+            />
+          )}
+          <div className="flex">
+            <AppSidebar />
+
+            <SidebarTrigger />
+            {children}
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  } catch (error) {
+    console.error("Error in site layout:", error);
+    // Redirect to login instead of throwing 500 error
     redirect("/login");
   }
-
-  const isImpersonating = userContext?.isImpersonating;
-  const impersonatedUser = userContext?.impersonatedUser;
-  const originalSuperadminId = userContext?.originalSuperadminId;
-
-  const cookieStore = await cookies();
-  const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
-
-  return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <div>
-        {isImpersonating && impersonatedUser && originalSuperadminId && (
-          <ImpersonationBanner
-            impersonatedUser={impersonatedUser}
-            originalSuperadminId={originalSuperadminId}
-          />
-        )}
-        <div className="flex">
-          <AppSidebar />
-
-          <SidebarTrigger />
-          {children}
-        </div>
-      </div>
-    </SidebarProvider>
-  );
 }
