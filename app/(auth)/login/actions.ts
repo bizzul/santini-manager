@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { nukeCookies } from "@/utils/nukeCookie";
-import { cookies } from "next/headers";
 import { getUserSites } from "@/lib/auth-utils";
 
 export async function signIn(formData: FormData) {
@@ -21,15 +20,8 @@ export async function signIn(formData: FormData) {
     return redirect("/login?error=Invalid credentials");
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set("sb-auth", JSON.stringify(data.session), { // cookie options
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    domain: `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`,
-    expires: new Date(data.session?.expires_at?.toString() || 0),
-  });
+  // Supabase automatically handles cookies, no need to set them manually
+  // This was causing conflicts with the authentication flow
 
   // Fetch user sites and redirect accordingly
   const sites = await getUserSites();

@@ -47,11 +47,14 @@ export async function updateSession(request: NextRequest) {
     "/setup-organization",
     "/unauthorized",
     "/favicon.ico",
+    "/api/auth/callback",
+    "/api/auth/refresh",
   ];
   const isPublic =
     publicRoutes.some((route) => request.nextUrl.pathname === route) ||
     request.nextUrl.pathname.startsWith("/_next") ||
     request.nextUrl.pathname.startsWith("/static") ||
+    request.nextUrl.pathname.startsWith("/api/auth") ||
     request.nextUrl.pathname.match(/\.[a-zA-Z0-9]+$/); // static files
 
   if (
@@ -63,7 +66,13 @@ export async function updateSession(request: NextRequest) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+
+    // Ensure Supabase cookies are set even on redirect
+    const supacookies = supabaseResponse.cookies.getAll();
+    supacookies.forEach((c) => response.cookies.set(c));
+
+    return response;
   }
 
   if (error || !user) {
@@ -86,7 +95,7 @@ export async function updateSession(request: NextRequest) {
       }
     } catch {
       // If cookies() fails, continue without cookie cleanup
-      // This can happen in certain edge cases
+      // This can happen in certain edge cases, especially on Vercel
     }
   }
 

@@ -49,17 +49,28 @@ export default async function middleware(req: NextRequest) {
   const supabaseResponse = await updateSession(req);
   const subdomain = extractSubdomain(req);
 
+  // Ensure cookies are always set from Supabase response
+  const ensureCookies = (response: NextResponse) => {
+    const supacookies = supabaseResponse.cookies.getAll();
+    supacookies.forEach((c) => response.cookies.set(c));
+    return response;
+  };
+
   if (subdomain) {
     // Block access to admin page from subdomains
     if (pathname.startsWith("/admin")) {
-      return NextResponse.redirect(new URL("/", req.url));
+      const response = NextResponse.redirect(new URL("/", req.url));
+      return ensureCookies(response);
     }
 
     // For the root path on a subdomain, rewrite to the subdomain page
     if (pathname === "/") {
       const fullDomain = `${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
       console.log("Rewriting to:", `/sites/${fullDomain}`);
-      return NextResponse.rewrite(new URL(`/sites/${fullDomain}`, req.url));
+      const response = NextResponse.rewrite(
+        new URL(`/sites/${fullDomain}`, req.url),
+      );
+      return ensureCookies(response);
     }
   }
 
@@ -76,9 +87,7 @@ export default async function middleware(req: NextRequest) {
     const res = NextResponse.rewrite(new URL(`/app${url.pathname}`, req.url), {
       request: req,
     });
-    const supacookies = supabaseResponse.cookies.getAll();
-    supacookies.forEach((c) => res.cookies.set(c));
-    return res;
+    return ensureCookies(res);
   }
 
   if (hostname == `admin.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`) {
@@ -87,11 +96,9 @@ export default async function middleware(req: NextRequest) {
       req.url,
     );
     const res = NextResponse.rewrite(rewriteUrl);
-    const supacookies = supabaseResponse.cookies.getAll();
-    supacookies.forEach((c) => res.cookies.set(c));
-    return res;
+    return ensureCookies(res);
   }
 
-  // On the root domain, allow normal access
-  return supabaseResponse;
+  // On the root domain, allow normal access and ensure cookies are set
+  return ensureCookies(supabaseResponse);
 }
