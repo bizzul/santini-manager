@@ -8,10 +8,23 @@ import { createClient } from "@/utils/supabase/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function getSellProducts(): Promise<any[]> {
+async function getData(): Promise<{
+  suppliers: any[];
+  qualityControl: any[];
+  tasks: any[];
+}> {
   // Fetch data from your API here.
-  // Fetch all the products
   const supabase = await createClient();
+
+  // Get suppliers for the reports
+  const { data: suppliers, error: suppliersError } = await supabase
+    .from("supplier")
+    .select("*");
+
+  if (suppliersError) {
+    console.error("Error fetching suppliers:", suppliersError);
+    return { suppliers: [], qualityControl: [], tasks: [] };
+  }
 
   // First, get all quality controls with their related data
   const { data: qualityControl, error: qualityControlError } =
@@ -23,7 +36,7 @@ async function getSellProducts(): Promise<any[]> {
 
   if (qualityControlError) {
     console.error("Error fetching quality control:", qualityControlError);
-    return [];
+    return { suppliers: suppliers || [], qualityControl: [], tasks: [] };
   }
 
   // Get tasks with their columns to filter out archived tasks and SPEDITO tasks
@@ -39,67 +52,23 @@ async function getSellProducts(): Promise<any[]> {
 
   if (tasksError) {
     console.error("Error fetching tasks:", tasksError);
-    return [];
+    return {
+      suppliers: suppliers || [],
+      qualityControl: qualityControl || [],
+      tasks: [],
+    };
   }
 
-  // Filter tasks that are not in SPEDITO column
-  const validTaskIds =
-    tasks
-      ?.filter((task) => task.column?.identifier !== "SPEDITO")
-      ?.map((task) => task.id) || [];
-
-  // Filter quality controls to only include those with valid tasks
-  const filteredQualityControl =
-    qualityControl?.filter((qc) => validTaskIds.includes(qc.taskId)) || [];
-
-  console.log(filteredQualityControl);
-
-  // Grouping by taskId and transforming into an array of objects
-  const groupedByTaskId = filteredQualityControl.reduce((group: any, qc) => {
-    const taskId = qc.taskId;
-    const existingGroup: any = group.find((g: any) => g.taskId === taskId);
-
-    if (existingGroup) {
-      existingGroup.qualityControls.push(qc);
-      existingGroup.passed = updatePassedStatus(
-        existingGroup.passed,
-        qc.passed
-      );
-    } else {
-      group.push({
-        taskId: taskId,
-        taskDetails: qc.task, // Assuming you want to keep task details
-        userDetails: qc.user,
-        qualityControls: [qc],
-        passed: qc.passed, // Initial status based on the first item
-      });
-    }
-
-    return group;
-  }, []);
-
-  function updatePassedStatus(currentStatus: string, newItemStatus: string) {
-    console.log("current", currentStatus, "new", newItemStatus);
-    if (currentStatus === "DONE" || newItemStatus === "DONE") {
-      return "DONE";
-    } else if (
-      currentStatus === "PARTIALLY_DONE" &&
-      newItemStatus === "PARTIALLY_DONE"
-    ) {
-      return "DONE";
-    } else if (newItemStatus === "PARTIALLY_DONE") {
-      return "DONE";
-    } else {
-      return "NOT_DONE";
-    }
-  }
-
-  return groupedByTaskId;
+  return {
+    suppliers: suppliers || [],
+    qualityControl: qualityControl || [],
+    tasks: tasks || [],
+  };
 }
 
 async function Page() {
   //get initial data
-  const data = await getSellProducts();
+  const data = await getData();
   const session = await getUserContext();
 
   if (!session || !session.user) {
@@ -114,8 +83,13 @@ async function Page() {
     // <SWRProvider>
     <div className="container">
       {/* <DialogCreate /> */}
-      {data ? (
-        <GridReports data={data} />
+      {data.qualityControl && data.qualityControl.length > 0 ? (
+        <GridReports
+          suppliers={data.suppliers}
+          imb={[]} // Empty array for packing control since this is quality control page
+          qc={data.qualityControl}
+          task={data.tasks}
+        />
       ) : (
         <div className="w-full h-full text-center">
           <h1 className="font-bold text-2xl">Nessun quality control creato!</h1>
