@@ -7,6 +7,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { getUserContext } from "@/lib/auth-utils";
 
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function ImpersonationBanner({
   impersonatedUser,
   originalSuperadminId,
