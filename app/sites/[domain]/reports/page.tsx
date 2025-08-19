@@ -17,16 +17,16 @@ interface Data {
 async function getData(): Promise<Data> {
   const supabase = await createClient();
   const { data: supplier, error: supplierError } = await supabase
-    .from("supplier")
+    .from("Supplier")
     .select("*");
   const { data: qualityControl, error: qualityControlError } = await supabase
-    .from("quality_control")
+    .from("Quality_control")
     .select("*, task:task(*), items:items(*)");
   const { data: packingControl, error: packingControlError } = await supabase
-    .from("packing_control")
+    .from("Packing_control")
     .select("*, task:task(*), items:items(*)");
   const { data: task, error: taskError } = await supabase
-    .from("task")
+    .from("Task")
     .select(
       "*, quality_control:quality_control(*), packing_control:packing_control(*)"
     );

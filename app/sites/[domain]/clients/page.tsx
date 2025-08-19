@@ -14,7 +14,7 @@ async function getData(): Promise<Client[]> {
   // Fetch data from your API here.
   const supabase = await createClient();
   const { data: clients, error } = await supabase
-    .from("client")
+    .from("Client")
     .select("*")
     .order("businessName", { ascending: true });
 

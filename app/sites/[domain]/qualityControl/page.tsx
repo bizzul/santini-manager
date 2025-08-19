@@ -18,7 +18,7 @@ async function getData(): Promise<{
 
   // Get suppliers for the reports
   const { data: suppliers, error: suppliersError } = await supabase
-    .from("supplier")
+    .from("Supplier")
     .select("*");
 
   if (suppliersError) {
@@ -28,7 +28,7 @@ async function getData(): Promise<{
 
   // First, get all quality controls with their related data
   const { data: qualityControl, error: qualityControlError } =
-    await supabase.from("quality_control").select(`
+    await supabase.from("Quality_control").select(`
       *,
       task:taskId(*),
       user:userId(*)
@@ -41,7 +41,7 @@ async function getData(): Promise<{
 
   // Get tasks with their columns to filter out archived tasks and SPEDITO tasks
   const { data: tasks, error: tasksError } = await supabase
-    .from("task")
+    .from("Task")
     .select(
       `
       *,

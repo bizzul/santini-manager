@@ -1,5 +1,12 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  memo,
+  useRef,
+} from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -43,6 +50,43 @@ import Link from "next/link";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { NetworkStatus } from "@/components/ui/network-status";
 import { useSiteModules } from "@/hooks/use-site-modules";
+
+// Cache for API responses
+const apiCache = new Map<
+  string,
+  { data: any; timestamp: number; ttl: number }
+>();
+
+// Cache TTL values (in milliseconds)
+const CACHE_TTL = {
+  KANBANS: 5 * 60 * 1000, // 5 minutes
+  USER_DATA: 10 * 60 * 1000, // 10 minutes
+  ORGANIZATION: 30 * 60 * 1000, // 30 minutes
+  SITE_NAME: 60 * 60 * 1000, // 1 hour
+};
+
+// Helper function to get cached data
+const getCachedData = (key: string): any | null => {
+  const cached = apiCache.get(key);
+  if (!cached) return null;
+
+  const now = Date.now();
+  if (now - cached.timestamp > cached.ttl) {
+    apiCache.delete(key);
+    return null;
+  }
+
+  return cached.data;
+};
+
+// Helper function to set cached data
+const setCachedData = (key: string, data: any, ttl: number): void => {
+  apiCache.set(key, {
+    data,
+    timestamp: Date.now(),
+    ttl,
+  });
+};
 
 type menuItem = {
   label: string;
@@ -266,121 +310,138 @@ export function AppSidebar() {
     : null;
   const { enabledModules } = useSiteModules(domain || "");
 
-  // Function to fetch organization name
+  // Function to fetch organization name (declared first)
   const fetchOrganizationName = useCallback(async (organizationId: string) => {
+    const cacheKey = `organization_${organizationId}`;
+    const cached = getCachedData(cacheKey);
+
+    if (cached) {
+      setOrganizationName(cached);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/organizations/${organizationId}`);
       if (response.ok) {
         const data = await response.json();
-        setOrganizationName(data.name);
-      } else {
-        console.error("Failed to fetch organization name");
-        setOrganizationName("Organization");
+        const orgName = data.organization?.name || "";
+        setCachedData(cacheKey, orgName, CACHE_TTL.ORGANIZATION);
+        setOrganizationName(orgName);
       }
     } catch (error) {
       console.error("Error fetching organization name:", error);
-      setOrganizationName("Organization");
     }
   }, []);
 
-  // Function to fetch site name
-  const fetchSiteName = useCallback(
-    async (domain: string) => {
-      try {
-        const response = await fetch(`/api/sites/${domain}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSiteName(data.name);
-          // Optionally, fetch org name if not already set
-          if (data.organization_id && !organizationName) {
-            fetchOrganizationName(data.organization_id);
-          }
-        } else {
-          setSiteName("");
-        }
-      } catch (error) {
-        setSiteName("");
+  // Function to fetch user data (depends on fetchOrganizationName)
+  const fetchUserData = useCallback(async () => {
+    const cacheKey = "user_data";
+    const cached = getCachedData(cacheKey);
+
+    if (cached) {
+      setUser(cached);
+      if (cached.organizationId) {
+        fetchOrganizationName(cached.organizationId);
       }
-    },
-    [organizationName, fetchOrganizationName]
-  );
-
-  // Handle online/offline status changes
-  useEffect(() => {
-    if (isOnline && lastOnlineTime) {
-      // Just came back online, refresh kanbans
-      refreshKanbans();
-      toast({
-        title: "Connessione ripristinata",
-        description: "I dati sono stati aggiornati automaticamente",
-      });
+      return;
     }
-  }, [isOnline, lastOnlineTime]);
 
+    try {
+      const response = await fetch("/api/auth/me");
+      const data = await response.json();
+      if (data.user) {
+        setCachedData(cacheKey, data.user, CACHE_TTL.USER_DATA);
+        setUser(data.user);
+        if (data.organizationId) {
+          fetchOrganizationName(data.organizationId);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  }, [fetchOrganizationName]);
+
+  const fetchSiteName = useCallback(async (domain: string) => {
+    const cacheKey = `site_name_${domain}`;
+    const cached = getCachedData(cacheKey);
+
+    if (cached) {
+      setSiteName(cached);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sites/${domain}`);
+      if (response.ok) {
+        const data = await response.json();
+        const siteName = data.name || domain;
+        setCachedData(cacheKey, siteName, CACHE_TTL.SITE_NAME);
+        setSiteName(siteName);
+      }
+    } catch (error) {
+      setSiteName("");
+    }
+  }, []);
+
+  // Single useEffect to handle all initial data fetching
   useEffect(() => {
     if (!userWithLocal) {
-      const fetchUserData = async () => {
-        try {
-          const response = await fetch("/api/auth/me");
-          const data = await response.json();
-          if (data.user) {
-            setUser(data.user);
-            // Fetch organization name if we have organizationId
-            if (data.organizationId) {
-              fetchOrganizationName(data.organizationId);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        }
-      };
       fetchUserData();
     } else {
-      // If user is already loaded, fetch organization name
-      const fetchOrgName = async () => {
-        try {
-          const response = await fetch("/api/auth/me");
-          const data = await response.json();
-          if (data.organizationId) {
-            fetchOrganizationName(data.organizationId);
-          }
-        } catch (error) {
-          console.error("Error fetching organization data:", error);
-        }
-      };
-      fetchOrgName();
+      // If user is already loaded, just fetch organization name if needed
+      // Check if user has organization info in metadata
+      const userOrgId = (userWithLocal as any)?.user_metadata?.organization_id;
+      if (userOrgId && !organizationName) {
+        fetchOrganizationName(userOrgId);
+      }
     }
-  }, [userWithLocal, setUser, fetchOrganizationName]);
+  }, [userWithLocal, fetchUserData, fetchOrganizationName, organizationName]);
 
+  // Optimized kanban state management - separate from main sidebar state
+  const [kanbansLocal, setKanbansLocal] = useState<Kanban[]>([]);
+  const [isLoadingKanbansLocal, setIsLoadingKanbansLocal] = useState(false);
+  const [lastSyncTimeLocal, setLastSyncTimeLocal] = useState<Date | null>(null);
+
+  // Separate kanban fetching that doesn't trigger sidebar re-renders
+  const fetchKanbansOptimized = useCallback(async () => {
+    const cacheKey = "kanbans_list";
+    const cached = getCachedData(cacheKey);
+
+    if (cached) {
+      setKanbansLocal(cached);
+      return cached;
+    }
+
+    try {
+      const response = await fetch("/api/kanban/list");
+      if (!response.ok) throw new Error("Failed to fetch kanbans");
+      const data = await response.json();
+      const kanbanData = Array.isArray(data) ? data : [];
+
+      setCachedData(cacheKey, kanbanData, CACHE_TTL.KANBANS);
+      setKanbansLocal(kanbanData);
+      setLastSyncTimeLocal(new Date());
+
+      return kanbanData;
+    } catch (error) {
+      console.error("Error fetching kanbans:", error);
+      setKanbansLocal([]);
+      return [];
+    }
+  }, []);
+
+  // Initialize kanbans on mount without triggering sidebar re-render
   useEffect(() => {
-    if (kanbans.length === 0 && isOnline) {
-      setIsLoadingKanbans(true);
-      const fetchKanbans = async () => {
-        try {
-          const response = await fetch("/api/kanban/list", {
-            headers: {
-              "Cache-Control": "no-cache",
-              Pragma: "no-cache",
-            },
-          });
-          if (!response.ok) throw new Error("Failed to fetch kanbans");
-          const data = await response.json();
-          const kanbanData = Array.isArray(data) ? data : [];
-          setKanbans(kanbanData);
-          setLastSyncTime(new Date());
-        } catch (error) {
-          console.error("Error fetching kanbans:", error);
-          setKanbans([]);
-        } finally {
-          setIsLoadingKanbans(false);
-        }
-      };
-      fetchKanbans();
+    if (kanbansLocal.length === 0 && isOnline) {
+      setIsLoadingKanbansLocal(true);
+      fetchKanbansOptimized().finally(() => {
+        setIsLoadingKanbansLocal(false);
+      });
     }
-  }, [kanbans.length, setKanbans, isOnline]);
+  }, [kanbansLocal.length, isOnline, fetchKanbansOptimized]);
 
-  // Add a function to manually refresh kanbans
-  const refreshKanbans = useCallback(async () => {
+  // Optimized refresh function that only updates kanbans locally
+  const refreshKanbansOptimized = useCallback(async () => {
     if (!isOnline) {
       toast({
         title: "Impossibile aggiornare",
@@ -390,53 +451,64 @@ export function AppSidebar() {
       return;
     }
 
-    setIsLoadingKanbans(true);
+    setIsLoadingKanbansLocal(true);
     try {
-      const response = await fetch("/api/kanban/list", {
-        headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
-      });
+      const response = await fetch("/api/kanban/list");
       if (!response.ok) throw new Error("Failed to fetch kanbans");
       const data = await response.json();
       const kanbanData = Array.isArray(data) ? data : [];
-      setKanbans(kanbanData);
-      setLastSyncTime(new Date());
+
+      // Update cache with fresh data
+      setCachedData("kanbans_list", kanbanData, CACHE_TTL.KANBANS);
+      setKanbansLocal(kanbanData);
+      setLastSyncTimeLocal(new Date());
+
       toast({
         title: "Aggiornamento completato",
         description: "Lista kanban aggiornata con successo",
       });
     } catch (error) {
       console.error("Error refreshing kanbans:", error);
-      setKanbans([]);
+      setKanbansLocal([]);
       toast({
         title: "Errore nell'aggiornamento",
         description: "Impossibile aggiornare la lista kanban",
         variant: "destructive",
       });
     } finally {
-      setIsLoadingKanbans(false);
+      setIsLoadingKanbansLocal(false);
     }
-  }, [setKanbans, isOnline, toast]);
+  }, [isOnline, toast]);
 
-  // Periodic refresh when online
+  // Reduced periodic refresh frequency - only check every 5 minutes
   useEffect(() => {
     if (!isOnline) return;
 
     const interval = setInterval(() => {
-      // Only refresh if we haven't refreshed in the last 5 minutes
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-      if (!lastSyncTime || lastSyncTime < fiveMinutesAgo) {
-        refreshKanbans();
+      // Only refresh if we haven't refreshed in the last 15 minutes
+      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+      if (!lastSyncTimeLocal || lastSyncTimeLocal < fifteenMinutesAgo) {
+        refreshKanbansOptimized();
       }
-    }, 30000); // Check every 30 seconds
+    }, 300000); // Check every 5 minutes
 
     return () => clearInterval(interval);
-  }, [isOnline, lastSyncTime, refreshKanbans]);
+  }, [isOnline, lastSyncTimeLocal, refreshKanbansOptimized]);
 
+  // Handle online/offline status changes
   useEffect(() => {
-    // If on a site domain, fetch site name
+    if (isOnline && lastOnlineTime) {
+      // Just came back online, refresh kanbans
+      refreshKanbansOptimized();
+      toast({
+        title: "Connessione ripristinata",
+        description: "I dati sono stati aggiornati automaticamente",
+      });
+    }
+  }, [isOnline, lastOnlineTime, refreshKanbansOptimized]);
+
+  // If on a site domain, fetch site name
+  useEffect(() => {
     const isOnSiteDomain = pathname.includes("/sites/");
     if (isOnSiteDomain) {
       const domain = pathname.split("/sites/")[1]?.split("/")[0];
@@ -468,6 +540,7 @@ export function AppSidebar() {
       pathname,
       enabledModules.map((m) => m.name)
     );
+
     return items.map((item: menuItem) => {
       if (item.label === "Kanban") {
         // Get the base path for kanban routes
@@ -477,54 +550,56 @@ export function AppSidebar() {
           : null;
         const basePath = isOnSiteDomain ? `/sites/${domain}` : "";
 
+        // Create kanban submenu items
+        const kanbanSubItems = [
+          ...(isLoadingKanbansLocal
+            ? [
+                {
+                  label: "Caricamento...",
+                  icon: faWrench,
+                  href: "#",
+                  alert: false,
+                },
+              ]
+            : kanbansLocal.length === 0
+            ? [
+                {
+                  label: isOnline
+                    ? "Nessun kanban disponibile"
+                    : "Dati non disponibili offline",
+                  icon: faTable,
+                  href: "#",
+                  alert: false,
+                },
+              ]
+            : kanbansLocal.map((kanban) => ({
+                label: kanban.title,
+                icon: faTable,
+                href: `${basePath}/kanban?name=${kanban.identifier}`,
+                alert: false,
+              }))),
+          {
+            label: "Gestisci Kanban",
+            icon: faPlus,
+            href: "#",
+            alert: false,
+          },
+        ];
+
         return {
           ...item,
-          items: [
-            ...(isLoadingKanbans
-              ? [
-                  {
-                    label: "Caricamento...",
-                    icon: faWrench,
-                    href: "#",
-                    alert: false,
-                  },
-                ]
-              : kanbans.length === 0
-              ? [
-                  {
-                    label: isOnline
-                      ? "Nessun kanban disponibile"
-                      : "Dati non disponibili offline",
-                    icon: faTable,
-                    href: "#",
-                    alert: false,
-                  },
-                ]
-              : kanbans.map((kanban) => ({
-                  label: kanban.title,
-                  icon: faTable,
-                  href: `${basePath}/kanban?name=${kanban.identifier}`,
-                  alert: false,
-                }))),
-            {
-              label: "Crea Nuovo Kanban",
-              icon: faPlus,
-              href: "#",
-              alert: false,
-              customComponent: true,
-            },
-          ],
+          items: kanbanSubItems,
         };
       }
       return item;
     });
   }, [
-    kanbans,
-    isLoadingKanbans,
-    isOnline,
-    lastSyncTime,
-    refreshKanbans,
     pathname,
+    enabledModules,
+    kanbansLocal,
+    isLoadingKanbansLocal,
+    isOnline,
+    refreshKanbansOptimized,
   ]);
 
   const toggleMenu = useCallback((label: string) => {
@@ -537,7 +612,7 @@ export function AppSidebar() {
   const handleSaveKanban = async (kanbanData: Kanban) => {
     try {
       await saveKanban(kanbanData);
-      await refreshKanbans();
+      await refreshKanbansOptimized();
       toast({
         title: "Successo",
         description: "Kanban salvato correttamente",
@@ -552,6 +627,18 @@ export function AppSidebar() {
       });
     }
   };
+
+  // Cleanup function to clear cache when needed
+  const clearCache = useCallback(() => {
+    apiCache.clear();
+  }, []);
+
+  // Clear cache when user changes or component unmounts
+  useEffect(() => {
+    return () => {
+      clearCache();
+    };
+  }, [clearCache]);
 
   return (
     <Sidebar collapsible="icon">

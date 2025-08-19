@@ -13,17 +13,17 @@ export const revalidate = 0;
 async function getData(): Promise<any> {
   const supabase = await createClient();
   const { data: clients, error: clientsError } = await supabase
-    .from("client")
+    .from("Client")
     .select("*");
   const { data: products, error: productsError } = await supabase
-    .from("sell_product")
+    .from("SellProduct")
     .select("*");
   const { data: history, error: historyError } = await supabase
-    .from("action")
+    .from("Action")
     .select("*");
 
   const { data: tasks, error: tasksError } = await supabase
-    .from("task")
+    .from("Task")
     .select("*");
 
   return { clients, products, history, tasks };

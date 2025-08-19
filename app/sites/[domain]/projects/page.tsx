@@ -20,14 +20,14 @@ export type Data = {
 async function getData(): Promise<Data> {
   const supabase = await createClient();
   const { data: clients, error: clientsError } = await supabase
-    .from("client")
+    .from("Client")
     .select("*");
   if (clientsError) {
     console.error("Error fetching clients:", clientsError);
     throw new Error("Failed to fetch clients");
   }
   const { data: activeProducts, error: activeProductsError } = await supabase
-    .from("sell_product")
+    .from("SellProduct")
     .select("*")
     .eq("active", true);
   if (activeProductsError) {
@@ -35,14 +35,14 @@ async function getData(): Promise<Data> {
     throw new Error("Failed to fetch active products");
   }
   const { data: kanbans, error: kanbansError } = await supabase
-    .from("kanban")
+    .from("Kanban")
     .select("*");
   if (kanbansError) {
     console.error("Error fetching kanbans:", kanbansError);
     throw new Error("Failed to fetch kanbans");
   }
   const { data: tasks, error: tasksError } = await supabase
-    .from("task")
+    .from("Task")
     .select("*");
   if (tasksError) {
     console.error("Error fetching tasks:", tasksError);

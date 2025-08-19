@@ -14,7 +14,7 @@ async function getData(): Promise<Product_category[]> {
   // Fetch data from your API here.
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("product_category")
+    .from("Product_category")
     .select("*")
     .order("name", { ascending: true });
 
