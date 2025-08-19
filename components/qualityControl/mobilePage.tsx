@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { QualityControl, User } from "@prisma/client";
+import { QualityControl, User } from "@/types/supabase";
 import { useToast } from "../ui/use-toast";
 
 import {
@@ -63,7 +63,7 @@ const TaskCard = ({
             quality.passed === "PARTIALLY_DONE" && "text-amber-500"
           } ${quality.passed === "DONE" && "text-green-500"}`}
         >
-          {statusText(quality.passed)}
+          {statusText(quality.passed || "PENDING")}
         </div>
       </CardContent>
     </Card>

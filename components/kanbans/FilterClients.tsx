@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
-import { Client } from "@prisma/client";
+import { Client } from "@/types/supabase";
 
 export default function ClientsFilter({
   clients,

@@ -23,7 +23,7 @@ import { validation } from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 import { editItem } from "./actions/edit-item.action";
-import { Roles, Task, User, Timetracking } from "@prisma/client";
+import { Roles, Task, User, Timetracking } from "@/types/supabase";
 import { Typology } from "./createForm";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -135,7 +135,12 @@ const EditForm = ({
   }, []); // Empty dependency array means this effect runs once on mount
 
   useEffect(() => {
-    setValue("date", formatDate(data.created_at));
+    setValue(
+      "date",
+      data.created_at
+        ? formatDate(new Date(data.created_at))
+        : formatDate(new Date())
+    );
     setValue("description", data.description ?? undefined);
     setValue("descriptionCat", data.description_type ?? undefined);
     setValue("hours", data.hours!);

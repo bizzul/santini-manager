@@ -36,7 +36,7 @@ import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Data } from "./page";
-import { Client, SellProduct, Task, Kanban } from "@prisma/client";
+import { Client, SellProduct, Task, Kanban } from "@/types/supabase";
 
 type Props = {
   handleClose: any;

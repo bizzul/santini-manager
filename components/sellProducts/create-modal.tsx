@@ -11,7 +11,7 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/sellProducts/create";
-import { Supplier } from "@prisma/client";
+import { Supplier } from "@/types/supabase";
 type Props = {
   open: boolean;
   setOpen: Dispatch<React.SetStateAction<boolean>>;
@@ -105,7 +105,6 @@ export const CreateModal: FC<Props> = ({ open, setOpen }) => {
                     id="name"
                     type="text"
                     className="form-input"
-                    
                     {...register("name", { required: true })}
                   />
                   {errors.name && <span>Campo necessario</span>}
@@ -120,7 +119,6 @@ export const CreateModal: FC<Props> = ({ open, setOpen }) => {
                     id="code"
                     type="text"
                     className="form-input"
-                    
                     {...register("type")}
                   />
                   {errors.type && <span>Campo necessario</span>}

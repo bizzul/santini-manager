@@ -19,7 +19,7 @@ import { Textarea } from "../../components/ui/textarea";
 import { editItem } from "@/app/sites/[domain]/projects/actions/edit-item.action";
 import { validation } from "../../validation/task/create";
 import { useToast } from "../../components/ui/use-toast";
-import { Client, SellProduct } from "@prisma/client";
+import { Client, SellProduct } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import QRCode from "qrcode.react";
 import * as QCode from "qrcode";

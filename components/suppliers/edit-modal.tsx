@@ -21,7 +21,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/supplier/edit";
 import ImageUploader from "../uploaders/ImageUploader";
 import Image from "next/image";
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 type Props = {
   open: boolean;
   setOpen: any;
@@ -212,7 +212,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="text"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("name", { required: true })}
                   />
@@ -226,7 +225,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="text"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("address", { required: true })}
                   />
@@ -240,7 +238,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="text"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("cap", { required: true })}
                   />
@@ -254,7 +251,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="text"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("location", { required: true })}
                   />
@@ -268,7 +264,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="text"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("website", { required: true })}
                   />
@@ -282,7 +277,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="email"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("email", { required: true })}
                   />
@@ -296,7 +290,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="number"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("phone", { required: true })}
                   />
@@ -310,7 +303,6 @@ export const EditModal: FC<Props> = ({
                   <input
                     type="text"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("contact", { required: true })}
                   />

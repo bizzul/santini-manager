@@ -1,6 +1,6 @@
 import React from "react";
 import { getUserContext } from "@/lib/auth-utils";
-import { Client, SellProduct, Task } from "@prisma/client";
+import { Client, SellProduct, Task } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
 import { createClient } from "@/utils/server";
 import SellProductWrapper from "./sellProductWrapper";

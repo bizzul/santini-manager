@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 
 export default function TasksFilter({
   tasks,
@@ -26,7 +26,6 @@ export default function TasksFilter({
           <div className="relative w-full cursor-default overflow-hidden text-black text-left border-gray-300 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
             <Combobox.Input
               className="w-full  py-2 pl-3 pr-10 text-sm leading-5   border-gray-300  text-black focus:ring-0"
-              
               onChange={(event) => setQuery(event.target.value)}
               value={selectedTask?.unique_code}
             />

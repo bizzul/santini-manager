@@ -10,7 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Menu, Transition } from "@headlessui/react";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
-import { Roles } from "@prisma/client";
+import { Roles } from "@/types/supabase";
 
 type Props = {
   data: any;

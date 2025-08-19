@@ -23,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 import { DebouncedInput } from "@/components/debouncedInput";
 
 interface DataTableProps<TData, TValue> {

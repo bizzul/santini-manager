@@ -1,4 +1,4 @@
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 
 export function calculateCurrentValue(data: Task, columnIndex: number) {
   const sellPrice = data.sellPrice || 0;

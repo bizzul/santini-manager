@@ -1,5 +1,5 @@
 import React from "react";
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";

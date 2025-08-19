@@ -1,6 +1,6 @@
 "use client";
 
-import { SellProduct } from "@prisma/client";
+import { SellProduct } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";

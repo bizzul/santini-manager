@@ -1,5 +1,5 @@
 "use client";
-import { PackingControl, PackingItem } from "@prisma/client";
+import { PackingControl, PackingItem } from "@/types/supabase";
 import React, { useEffect, useState } from "react";
 import {
   Card,

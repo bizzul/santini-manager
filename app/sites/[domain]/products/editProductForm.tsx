@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
 import { useFormState, useFormStatus } from "react-dom";
-import { SellProduct } from "@prisma/client";
+import { SellProduct } from "@/types/supabase";
 import { editSellProductAction } from "./actions/edit-item.action";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -41,9 +41,9 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   const { isSubmitting } = form.formState;
   const { pending } = useFormStatus();
   useEffect(() => {
-    setValue("name", data.name);
-    setValue("type", data.type);
-    setValue("active", data.active);
+    setValue("name", data.name || "");
+    setValue("type", data.type || "");
+    setValue("active", data.active ?? true);
   }, [data, setValue]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {

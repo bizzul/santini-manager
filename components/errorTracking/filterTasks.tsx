@@ -1,7 +1,7 @@
 import { Fragment, useState } from "react";
 import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 
 export default function TasksFilter({
   tasks,

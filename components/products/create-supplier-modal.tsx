@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/supplier/create";
 import ImageUploader from "../uploaders/ImageUploader";
 import Image from "next/image";
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 type Props = {
   open: boolean;
   setOpen: Dispatch<React.SetStateAction<boolean>>;

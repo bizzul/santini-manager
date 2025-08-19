@@ -164,8 +164,5 @@
     "fs": false,
     "os": false,
     "path": false
-  },
-  "trustedDependencies": [
-    "prisma"
-  ]
+  }
 }

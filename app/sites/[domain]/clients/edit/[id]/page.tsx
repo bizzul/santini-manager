@@ -1,5 +1,5 @@
 import { getUserContext } from "@/lib/auth-utils";
-import { Product } from "@prisma/client";
+import { Product } from "@/types/supabase";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/server";
 import MobilePage from "@/components/inventory/MobilePage";

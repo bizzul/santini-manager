@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { User } from "@supabase/supabase-js";
 import { faBell } from "@fortawesome/free-solid-svg-icons";
 import { NotificationDrawer } from "./notification-drawer";
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 import { onlyTaskLateWithDaysRemaining } from "../../../package/utils/various/calculateTaskRemaining";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 

@@ -18,7 +18,13 @@ import { Button, Textarea } from "@tremor/react";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
 import { useFormStatus } from "react-dom";
-import { Product_category, Roles, Supplier, Task, User } from "@prisma/client";
+import {
+  Product_category,
+  Roles,
+  Supplier,
+  Task,
+  User,
+} from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 import { CldUploadButton } from "next-cloudinary";
@@ -297,9 +303,9 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                         ? categories.map((category: Product_category) => (
                             <SearchSelectItem
                               key={category.id}
-                              value={category.name.toLowerCase()}
+                              value={category.name?.toLowerCase() || ""}
                             >
-                              {category.name}
+                              {category.name || "Unnamed"}
                             </SearchSelectItem>
                           ))
                         : roles.map((role) => (

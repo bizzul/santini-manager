@@ -11,7 +11,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { Dispatch, FC, Fragment, useEffect, useState } from "react";
 import { Modal } from "../../package/components/modal";
 import { useForm } from "react-hook-form";
-import { Client, Product, Task } from "@prisma/client";
+import { Client, Product, Task } from "@/types/supabase";
 import FilterProducts from "../kanbans/FilterProducts";
 import FilterClients from "../kanbans/FilterClients";
 
@@ -87,7 +87,7 @@ export const EditModal: FC<Props> = ({
     setValue("other", data?.other);
     setValue("sellPrice", data?.sellPrice);
     setValue("clientId", data?.clientId);
-    data?.positions.map((position: any, index: number) => {
+    data?.positions?.map((position: any, index: number) => {
       setValue(`position${index + 1}`, position);
     });
 
@@ -266,7 +266,7 @@ export const EditModal: FC<Props> = ({
                     <h1 className="text-slate-400 font-bold">Posizioni</h1>
                     <div className="text-xl text-slate-400">
                       <div className="grid grid-rows-2 grid-cols-4">
-                        {data?.positions.map((position, i) => (
+                        {data?.positions?.map((position, i) => (
                           <input
                             key={i}
                             type="text"

@@ -1,6 +1,6 @@
 "use server";
 
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/productsCategory/create";

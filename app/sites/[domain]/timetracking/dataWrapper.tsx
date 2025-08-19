@@ -1,7 +1,7 @@
 import React from "react";
 import { DataTable } from "./table";
 import { columns } from "./columns";
-import { Timetracking } from "@prisma/client";
+import { Timetracking } from "@/types/supabase";
 
 const DataWrapper = ({ data }: { data: Timetracking[] }) => {
   return (

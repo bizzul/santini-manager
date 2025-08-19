@@ -1,6 +1,6 @@
 import React from "react";
 import { redirect } from "next/navigation";
-import { Action, SellProduct, Task } from "@prisma/client";
+import { Action, SellProduct, Task } from "@/types/supabase";
 import ContentPage from "@/components/kanbans/ContentPage";
 import { getAvailableSnapshots } from "./actions/get-available-snapshots.action";
 import { createClient } from "@/utils/server";

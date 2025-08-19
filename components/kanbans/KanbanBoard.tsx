@@ -27,7 +27,7 @@ import {
   faBoxesStacked,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import { Action, KanbanColumn, Task } from "@prisma/client";
+import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 
 import {

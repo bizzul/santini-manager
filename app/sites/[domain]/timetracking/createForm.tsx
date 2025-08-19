@@ -24,7 +24,7 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
-import { Roles, Task, User } from "@prisma/client";
+import { Roles, Task, User } from "@/types/supabase";
 
 export interface Typology {
   name: string;

@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
-import { Roles, Task, Timetracking, User } from "@prisma/client";
+import { Roles, Task, Timetracking, User } from "@/types/supabase";
 
 function DialogCreate({
   data,

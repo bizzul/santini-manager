@@ -12,7 +12,7 @@ import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/timeTracking/createManual";
 import TasksFilter from "./filterTasksBlack";
-import { Roles, Task, User } from "@prisma/client";
+import { Roles, Task, User } from "@/types/supabase";
 import { Dropdown } from "flowbite-react";
 type Props = {
   open: boolean;

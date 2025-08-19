@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
-import { Client, SellProduct, Task, Kanban } from "@prisma/client";
+import { Client, SellProduct, Task, Kanban } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,7 +48,7 @@ const EditForm = ({ handleClose, data }: Props) => {
     resolver: zodResolver(validation),
     defaultValues: {
       clientId: data.clientId ?? undefined,
-      deliveryDate: data.deliveryDate ?? undefined,
+      deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : undefined,
       name: data.name ?? "",
       position1: data.positions?.[0] ?? "",
       position2: data.positions?.[1] ?? "",

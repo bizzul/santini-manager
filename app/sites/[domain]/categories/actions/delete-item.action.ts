@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 
 export const removeItem = async (formData: Product_category) => {
   try {

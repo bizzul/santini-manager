@@ -12,7 +12,7 @@ import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/timeTracking/editManual";
 import TasksFilter from "./filterTaskWhite";
-import { Roles, Task } from "@prisma/client";
+import { Roles, Task } from "@/types/supabase";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import {

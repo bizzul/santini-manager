@@ -6,7 +6,7 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { validation } from "@/validation/clients/create";
 import { useToast } from "@/components/ui/use-toast";
-import { Client } from "@prisma/client";
+import { Client } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";

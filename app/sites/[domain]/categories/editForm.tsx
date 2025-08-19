@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/productsCategory/create";
 import { useToast } from "@/hooks/use-toast";
-import { Product_category } from "@prisma/client";
+import { Product_category } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 
 type Props = {

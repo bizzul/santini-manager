@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/task/create";
 import FilterClients from "./FilterClients";
 import FilterProducts from "./FilterProducts";
-import { Client, ClientAddress, File, Product, User } from "@prisma/client";
+import { Client, File, Product, User } from "@/types/supabase";
 import Image from "next/image";
 import { countries } from "../clients/countries";
 import { Disclosure } from "@headlessui/react";
@@ -24,7 +24,7 @@ type Props = {
   setOpenModal: Dispatch<React.SetStateAction<boolean>>;
   clients: Client[];
   products: Product[];
-  setCreatedToast: any;
+  setCreatedToast: (value: boolean) => void;
 };
 
 export const CreateModal: FC<Props> = ({
@@ -53,18 +53,20 @@ export const CreateModal: FC<Props> = ({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
 
-  const [uploaded, setUploadedFile] = useState<File[] | null | []>([]);
-  const [fileIds, setFileIds] = useState<any>([]);
+  const [uploaded, setUploadedFile] = useState<File[]>([]);
+  const [fileIds, setFileIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (open === false) {
       setSelectedClient(null);
       setSelectedEmployee(null);
       setSelectedProduct(null);
-      setValue("unique_code", null);
-      setValue("title", null);
+      setUploadedFile([]);
+      setFileIds([]);
+      setError(null);
+      reset();
     }
-  }, [open]);
+  }, [open, reset]);
 
   // useEffect(() => {
   //   if (selectedClient !== null) {
@@ -124,8 +126,8 @@ export const CreateModal: FC<Props> = ({
           } else if (data.issues) {
             setError("Invalid data found.");
           } else {
-            setUploadedFile((current: any) => [...current, data.result]);
-            setFileIds((current: any) => [...current, data.result.id]);
+            setUploadedFile((current: File[]) => [...current, data.result]);
+            setFileIds((current: string[]) => [...current, data.result.id]);
           }
         });
     }
@@ -240,145 +242,102 @@ export const CreateModal: FC<Props> = ({
                   <Disclosure.Panel className="text-gray-500">
                     <div>
                       <h1 className="text-slate-400 font-bold text-xl p-4">
-                        INDIRIZZI
+                        INFORMAZIONI CLIENTE
                       </h1>
-                      <div className="flex flex-row gap-10">
-                        {selectedClient &&
-                          // @ts-ignore
-                          selectedClient.addresses?.map(
-                            (address: ClientAddress) => {
-                              return (
-                                <div
-                                  className=" p-4 py-4 shadow-md w-full"
-                                  key={address.id}
-                                >
-                                  <h1 className="font-bold text-xl pb-4">
-                                    {address.type === "CONSTRUCTION_SITE"
-                                      ? "Cantiere"
-                                      : "Altro"}
-                                  </h1>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      Tipo
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.typeDetail}</p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      NAZIONE
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <Image
-                                        src={
-                                          address.countryCode
-                                            ? `https://flagcdn.com/w20/${address.countryCode.toLowerCase()}.png`
-                                            : ""
-                                        }
-                                        alt={address.countryCode || "NAZIONE"}
-                                        width={25}
-                                        height={20}
-                                      />
-                                      <p className="flex">
-                                        {countries.find(
-                                          (country) =>
-                                            country.code === address.countryCode
-                                        )?.label || address.countryCode}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      NOME
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.name}</p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      NOME
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.name}</p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      COGNOME
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.lastName}</p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      CAP
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.zipCode}</p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      CITTÀ
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.city}</p>
-                                    </div>
-                                  </div>
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      INDIRIZZO
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.address}</p>
-                                    </div>
-                                  </div>
-                                  {address.addressExtra !== null ||
-                                    (address.addressExtra && (
-                                      <div className="pb-4">
-                                        <h2 className=" text-slate-400 text-sm">
-                                          COMPLEMENTO INDIRIZZO
-                                        </h2>
-                                        <div className="flex flex-row gap-3 pt-2">
-                                          <p>{address.addressExtra}</p>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  {address.phone && (
-                                    <div className="pb-4">
-                                      <h2 className=" text-slate-400 text-sm">
-                                        TELEFONO
-                                      </h2>
-                                      <div className="flex flex-row gap-3 pt-2">
-                                        <p>{address.phone}</p>
-                                      </div>
-                                    </div>
-                                  )}
-                                  {address.mobile && (
-                                    <div className="pb-4">
-                                      <h2 className=" text-slate-400 text-sm">
-                                        MOBILE
-                                      </h2>
-                                      <div className="flex flex-row gap-3 pt-2">
-                                        <p>{address.mobile}</p>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div className="pb-4">
-                                    <h2 className=" text-slate-400 text-sm">
-                                      EMAIL
-                                    </h2>
-                                    <div className="flex flex-row gap-3 pt-2">
-                                      <p>{address.email}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                          )}
+                      <div className="p-4">
+                        <div className="pb-4">
+                          <h2 className="text-slate-400 text-sm">
+                            NOME AZIENDA
+                          </h2>
+                          <div className="flex flex-row gap-3 pt-2">
+                            <p>{selectedClient.businessName}</p>
+                          </div>
+                        </div>
+                        {selectedClient.individualFirstName && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">NOME</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.individualFirstName}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.individualLastName && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">COGNOME</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.individualLastName}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.address && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">
+                              INDIRIZZO
+                            </h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.address}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.city && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">CITTÀ</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.city}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.zipCode && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">CAP</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.zipCode}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.countryCode && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">NAZIONE</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <Image
+                                src={`https://flagcdn.com/w20/${selectedClient.countryCode.toLowerCase()}.png`}
+                                alt={selectedClient.countryCode}
+                                width={25}
+                                height={20}
+                              />
+                              <p className="flex">
+                                {countries.find(
+                                  (country) =>
+                                    country.code === selectedClient.countryCode
+                                )?.label || selectedClient.countryCode}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.phone && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">TELEFONO</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.phone}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.mobile && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">MOBILE</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.mobile}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.email && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">EMAIL</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.email}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </Disclosure.Panel>
@@ -436,7 +395,7 @@ export const CreateModal: FC<Props> = ({
                   sources: ["local"],
                 }}
               />
-              {uploaded && (
+              {uploaded.length > 0 && (
                 <div>
                   <p>File caricati:</p>
                   <ul>

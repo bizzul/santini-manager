@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
-import { Timetracking } from "@prisma/client";
+import { Timetracking } from "@/types/supabase";
 
 export const removeItem = async (formData: Timetracking) => {
   try {

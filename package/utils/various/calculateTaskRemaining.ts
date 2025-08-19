@@ -1,4 +1,4 @@
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 
 interface TaskWithDays extends Task {
   daysUntilDue: number;

@@ -13,7 +13,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { Dispatch, FC, Fragment, useEffect, useState } from "react";
 import { Modal } from "../../package/components/modal";
 import { DeleteModal } from "./delete-modal";
-import { Client, Prisma, Task } from "@prisma/client";
+import { Client, Task } from "@/types/supabase";
 import Image from "next/image";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 
@@ -340,13 +340,17 @@ export const DetailModal: FC<Props> = ({
               <div className="uppercase pb-1 font-semibold text-gray-500 text-lg">
                 Creazione
               </div>
-              {new Date(data.created_at).toLocaleDateString()}
+              {data.created_at
+                ? new Date(data.created_at).toLocaleDateString()
+                : "N/A"}
             </div>
             <div>
               <div className="uppercase pb-1 font-semibold text-gray-500 text-lg">
                 Ultima modifica
               </div>
-              {new Date(data.updated_at).toLocaleDateString()}
+              {data.updated_at
+                ? new Date(data.updated_at).toLocaleDateString()
+                : "N/A"}
             </div>
 
             <div className="flex flex-col justify-center items-center">

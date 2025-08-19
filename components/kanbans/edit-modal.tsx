@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FC, useState } from "react";
 import { Modal } from "../../package/components/modal";
 import { useForm } from "react-hook-form";
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 import QRCode from "qrcode.react";
 import QCode from "qrcode";
 import NextImage from "next/image";

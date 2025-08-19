@@ -20,7 +20,7 @@ import { Modal } from "../../package/components/modal";
 import PasswordStrengthBar from "react-password-strength-bar";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/users/create";
-import { Roles } from "@prisma/client";
+import { Roles } from "@/types/supabase";
 import { Dropdown } from "flowbite-react";
 
 const generator = require("generate-password");
@@ -152,7 +152,6 @@ export const CreateModal: FC<Props> = ({
                   <input
                     type="email"
                     className="form-input"
-                    
                     disabled={loading || isSubmitting}
                     {...register("email", { required: true })}
                   />
@@ -176,7 +175,6 @@ export const CreateModal: FC<Props> = ({
                     <input
                       type={passwordVisible ? "text" : "password"}
                       className="form-input"
-                      
                       disabled={loading || isSubmitting}
                       {...register("password", { required: true })}
                     />
@@ -212,7 +210,6 @@ export const CreateModal: FC<Props> = ({
                     type="text"
                     className="form-input"
                     id="given_name"
-                    
                     disabled={loading || isSubmitting}
                     {...register("given_name")}
                   />
@@ -225,7 +222,6 @@ export const CreateModal: FC<Props> = ({
                     type="text"
                     className="form-input"
                     id="family_name"
-                    
                     disabled={loading || isSubmitting}
                     {...register("family_name")}
                   />
@@ -238,7 +234,6 @@ export const CreateModal: FC<Props> = ({
                     type="text"
                     className="form-input"
                     id="initials"
-                    
                     disabled={loading || isSubmitting}
                     {...register("initials")}
                   />

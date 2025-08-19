@@ -1,8 +1,6 @@
 import React from "react";
-import { Structure } from "@/components/structure/structure";
-import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { getUserContext } from "@/lib/auth-utils";
-import { Product_category, Supplier } from "@prisma/client";
+import { Product_category, Supplier } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
 import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";

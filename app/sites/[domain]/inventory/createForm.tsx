@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product_category, Supplier } from "@prisma/client";
+import { Product_category, Supplier } from "@/types/supabase";
 
 const CreateProductForm = ({
   handleClose,

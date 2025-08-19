@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useToast } from "../ui/use-toast";
-import { Product } from "@prisma/client";
+import { Product } from "@/types/supabase";
 function MobilePage({ data }: { data: Product }) {
   const [tempQuantity, setTempQuantity] = useState(Number(data.quantity));
   const [loading, setLoading] = useState(false);

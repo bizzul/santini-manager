@@ -17,7 +17,7 @@ import {
 import { itCH } from "date-fns/locale";
 import { useState } from "react";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
-import { PackingControl, QualityControl, Supplier, Task } from "@prisma/client";
+import { PackingControl, QualityControl, Supplier, Task } from "@/types/supabase";
 function GridReports({
   suppliers,
   imb,

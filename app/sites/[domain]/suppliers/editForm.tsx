@@ -17,7 +17,7 @@ import { Button } from "@tremor/react";
 import { validation } from "@/validation/supplier/edit";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
-import { Product_category, Supplier } from "@prisma/client";
+import { Product_category, Supplier } from "@/types/supabase";
 import ImageUploader from "@/components/uploaders/ImageUploader";
 import Image from "next/image";
 import { editItem } from "./actions/edit-item.action";
@@ -72,20 +72,17 @@ const EditProductForm = ({
   }, []);
 
   useEffect(() => {
-    setValue("name", data.name);
-    setValue("short_name", data.short_name ?? undefined);
-    //@ts-ignore
-    setValue("address", data.address ?? undefined);
-    setValue("cap", data.cap ?? undefined);
-    setValue("contact", data.contact ?? undefined);
-    setValue("description", data.description ?? undefined);
-    setValue("email", data.email ?? undefined);
-    //@ts-ignore
-    setValue("location", data.location ?? undefined);
-    setValue("phone", data.phone ?? undefined);
-    setValue("website", data.website ?? undefined);
-    //@ts-ignore
-    setValue("category", data.category ?? undefined);
+    setValue("name", data.name || "");
+    setValue("short_name", data.short_name || "");
+    setValue("address", data.address || "");
+    setValue("cap", data.cap || 0);
+    setValue("contact", data.contact || "");
+    setValue("description", data.description || "");
+    setValue("email", data.email || "");
+    setValue("location", data.location || "");
+    setValue("phone", data.phone || "");
+    setValue("website", data.website || "");
+    setValue("category", data.category || "");
     console.log("categories", categories);
 
     setPreview(data.supplier_image);
@@ -172,8 +169,8 @@ const EditProductForm = ({
                     disabled={isSubmitting}
                   >
                     {categories.map((cat: Product_category) => (
-                      <SearchSelectItem key={cat.id} value={cat.name}>
-                        {cat.name}
+                      <SearchSelectItem key={cat.id} value={cat.name || ""}>
+                        {cat.name || "Unnamed"}
                       </SearchSelectItem>
                     ))}
                   </SearchSelect>

@@ -1,5 +1,39 @@
 import { DateManager } from "@/package/utils/dates/date-manager";
-import { Task, Action } from "@prisma/client";
+import { Action, Task } from "@/types/supabase";
+
+// Extended interfaces for the actual data structure used in the application
+interface TaskWithRelations extends Task {
+  column?: {
+    id: number;
+    title: string;
+    identifier: string;
+    position: number;
+  };
+  sellProduct?: {
+    id: number;
+    name: string;
+    type?: string;
+    description?: string;
+  };
+  QualityControl?: Array<{
+    id: number;
+    task_id?: number;
+    user_id?: string;
+    position_nr?: string;
+    passed?: string;
+    created_at?: string;
+    updated_at?: string;
+  }>;
+}
+
+interface ActionWithTask extends Action {
+  Task?: TaskWithRelations;
+  data?: {
+    toColumn?: string;
+    fromColumn?: string;
+    [key: string]: any;
+  };
+}
 
 export const getBaseTaskNumber = (taskTitle: string): string => {
   const match = taskTitle.match(/^\d{2}-\d{3}/);
@@ -7,9 +41,9 @@ export const getBaseTaskNumber = (taskTitle: string): string => {
 };
 
 export const groupTasksByBaseNumber = (
-  tasks: Task[]
-): { [key: string]: Task[] } => {
-  return tasks.reduce((acc: { [key: string]: Task[] }, task) => {
+  tasks: TaskWithRelations[],
+): { [key: string]: TaskWithRelations[] } => {
+  return tasks.reduce((acc: { [key: string]: TaskWithRelations[] }, task) => {
     const baseNumber = getBaseTaskNumber(task.unique_code!);
     if (!acc[baseNumber]) {
       acc[baseNumber] = [];
@@ -20,15 +54,14 @@ export const groupTasksByBaseNumber = (
 };
 
 export const aggregateTasksByColumn = (
-  tasks: Task[]
+  tasks: TaskWithRelations[],
 ): { name: string; value: number }[] => {
   const columnCounts: {
-    [columnName: string]: { [baseNumber: string]: Task[] };
+    [columnName: string]: { [baseNumber: string]: TaskWithRelations[] };
   } = {};
 
   tasks.forEach((task) => {
-    //@ts-ignore
-    const columnName = task.column?.title;
+    const columnName = task.column?.title || "Unknown";
     const baseNumber = getBaseTaskNumber(task.unique_code!);
 
     if (!columnCounts[columnName]) {
@@ -44,7 +77,7 @@ export const aggregateTasksByColumn = (
     ([name, groupedTasks]): { name: string; value: number } => ({
       name,
       value: Object.keys(groupedTasks).length,
-    })
+    }),
   );
 
   const columnOrder: string[] = [
@@ -64,31 +97,37 @@ export const aggregateTasksByColumn = (
   });
 };
 
-export const sumSellPriceForActiveTasks = (tasks: Task[]): number => {
+export const sumSellPriceForActiveTasks = (
+  tasks: TaskWithRelations[],
+): number => {
   return tasks.reduce(
-    (total, { sellPrice }: any) => total + (sellPrice || 0),
-    0
+    (total, task) => total + (task.sellPrice || 0),
+    0,
   );
 };
 
-export const sumSellPriceActualForActiveTasks = (tasks: Task[]): number => {
+export const sumSellPriceActualForActiveTasks = (
+  tasks: TaskWithRelations[],
+): number => {
   return tasks.reduce((total, task) => {
-    const statusPercentage = task.percentStatus! / 100 || 0;
+    const statusPercentage = (task.percentStatus || 0) / 100;
     const sellPrice = task.sellPrice || 0;
     return total + sellPrice * statusPercentage;
   }, 0);
 };
 
-export const sumAllPositionsLengths = (tasks: Task[]): number => {
+export const sumAllPositionsLengths = (tasks: TaskWithRelations[]): number => {
   return tasks.reduce((totalLength, task) => {
-    const filteredPositions = task.positions.filter(
-      (position) => position !== ""
-    );
+    const filteredPositions = task.positions?.filter(
+      (position) => position !== "",
+    ) || [];
     return totalLength + filteredPositions.length;
   }, 0);
 };
 
-export const countTasksWithTodayDelivery = (tasks: Task[]): number => {
+export const countTasksWithTodayDelivery = (
+  tasks: TaskWithRelations[],
+): number => {
   // Get today's date at midnight in local timezone
   const today = new Date();
 
@@ -109,10 +148,12 @@ export const countTasksWithTodayDelivery = (tasks: Task[]): number => {
   return result;
 };
 
-export const countTasksWithDeliveryThisWeek = (tasks: Task[]): number => {
+export const countTasksWithDeliveryThisWeek = (
+  tasks: TaskWithRelations[],
+): number => {
   const now = new Date();
   const firstDayOfWeek = new Date(
-    now.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+    now.setDate(now.getDate() - ((now.getDay() + 6) % 7)),
   );
   firstDayOfWeek.setHours(0, 0, 0, 0);
 
@@ -123,14 +164,17 @@ export const countTasksWithDeliveryThisWeek = (tasks: Task[]): number => {
   const groupedTasks = groupTasksByBaseNumber(tasks);
 
   const result = Object.values(groupedTasks).filter((taskGroup) => {
-    const deliveryDate = new Date(taskGroup[0].deliveryDate!);
+    if (!taskGroup[0].deliveryDate) return false;
+    const deliveryDate = new Date(taskGroup[0].deliveryDate);
     return deliveryDate >= firstDayOfWeek && deliveryDate <= lastDayOfWeek;
   }).length;
 
   return result;
 };
 
-export const countQualityControlsDoneToday = (tasks: Task[]): number => {
+export const countQualityControlsDoneToday = (
+  tasks: TaskWithRelations[],
+): number => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -141,9 +185,8 @@ export const countQualityControlsDoneToday = (tasks: Task[]): number => {
 
   return Object.values(groupedTasks).reduce((sum, taskGroup) => {
     const task = taskGroup[0];
-    //@ts-ignore
-    const countForTask = task.QualityControl.reduce((taskSum, item) => {
-      const updated_at = new Date(item.updated_at);
+    const countForTask = (task.QualityControl || []).reduce((taskSum, item) => {
+      const updated_at = new Date(item.updated_at || item.created_at || "");
       if (
         item.passed === "DONE" &&
         updated_at >= todayStart &&
@@ -160,7 +203,7 @@ export const countQualityControlsDoneToday = (tasks: Task[]): number => {
 
 export const aggregateSellProductsByMonth = (
   years: number[],
-  actions: Action[]
+  actions: ActionWithTask[],
 ): {
   [year: number]: { name: string; count: number }[][];
   packagingTimes: { [key: string]: number };
@@ -171,12 +214,14 @@ export const aggregateSellProductsByMonth = (
   // Filter packaging moves for the specified years
   const packagingMoves = actions.filter((action) => {
     if (action.type !== "move_task") return false;
-    const data = action.data as any;
-    const actionDate = new Date(action.createdAt);
+    const data = action.data;
+    if (!data?.toColumn) return false;
+
+    const actionDate = new Date(action.createdAt || action.created_at || "");
     const actionYear = actionDate.getFullYear();
 
     // Only include moves from the specified years
-    return data?.toColumn === "IMBALLAGGIO" && years.includes(actionYear);
+    return data.toColumn === "IMBALLAGGIO" && years.includes(actionYear);
   });
 
   years.forEach((year) => {
@@ -185,62 +230,39 @@ export const aggregateSellProductsByMonth = (
     for (let month = 0; month < 12; month++) {
       // Filter moves for this month and year
       const movesForMonth = packagingMoves.filter((action) => {
-        const actionDate = new Date(action.createdAt);
+        const actionDate = new Date(
+          action.createdAt || action.created_at || "",
+        );
         const actionYear = actionDate.getFullYear();
         const actionMonth = actionDate.getMonth();
 
         return actionYear === year && actionMonth === month;
       });
 
-      // // Debug log for March - group by taskId
-      // if (month === 2 && year === 2025) {
-      //   const taskActions: { [key: string]: any[] } = {};
-      //   movesForMonth.forEach((action) => {
-      //     const taskId = action.taskId || "unknown";
-      //     if (!taskActions[taskId]) {
-      //       taskActions[taskId] = [];
-      //     }
-      //     const actionDate = new Date(action.createdAt);
-      //     taskActions[taskId].push({
-      //       actionDate: actionDate.toISOString(),
-      //       actionYear: actionDate.getFullYear(),
-      //       actionMonth: actionDate.getMonth(),
-      //       //@ts-ignore
-      //       positions: action.Task?.positions?.filter(Boolean).length,
-      //     });
-      //   });
-
-      //   Object.entries(taskActions).forEach(([taskId, actions]) => {
-      //     console.log(`March actions for task ${taskId}:`, actions);
-      //   });
-      // }
-
       const productCounts: { [name: string]: number } = {};
       const processedTasks = new Set<string>();
 
       // Process each move
       movesForMonth.forEach((action) => {
-        //@ts-ignore
         const task = action.Task;
         if (!task) return;
 
         // Skip if we've already processed this task
-        if (processedTasks.has(task.id)) {
+        if (processedTasks.has(task.id.toString())) {
           return;
         }
 
         // Mark task as processed
-        processedTasks.add(task.id);
+        processedTasks.add(task.id.toString());
 
         // Count non-empty positions
-        const positions = task.positions.filter(Boolean);
+        const positions = task.positions?.filter(Boolean) || [];
         const positionCount = positions.length;
 
-        //@ts-ignore
         const productName = task.sellProduct?.name;
         if (productName) {
-          productCounts[productName] =
-            (productCounts[productName] || 0) + positionCount;
+          productCounts[productName] = (productCounts[productName] || 0) +
+            positionCount;
         }
       });
 
@@ -248,7 +270,7 @@ export const aggregateSellProductsByMonth = (
         ([name, count]) => ({
           name,
           count,
-        })
+        }),
       );
 
       monthlyAggregates.push(monthlyData);
@@ -266,16 +288,16 @@ export const aggregateSellProductsByMonth = (
 };
 
 export const calculateTotalNonEmptyPositions = (
-  tasks: Task[],
+  tasks: TaskWithRelations[],
   years: number[],
-  actions: Action[]
+  actions: ActionWithTask[],
 ): { [year: number]: number } => {
   const yearlyTotals: { [year: number]: number } = {};
 
   // Filter packaging moves
   const packagingMoves = actions.filter((action) => {
     if (action.type !== "move_task") return false;
-    const data = action.data as any;
+    const data = action.data;
     return data?.toColumn === "IMBALLAGGIO";
   });
 
@@ -283,27 +305,26 @@ export const calculateTotalNonEmptyPositions = (
     const processedTasks = new Set<string>();
 
     yearlyTotals[year] = packagingMoves.reduce((totalSum, action) => {
-      const actionDate = new Date(action.createdAt);
+      const actionDate = new Date(action.createdAt || action.created_at || "");
       const actionYear = actionDate.getFullYear();
 
       if (actionYear === year) {
-        //@ts-ignore
         const task = action.Task;
         if (!task) return totalSum;
 
         // Skip if we've already processed this task
-        if (processedTasks.has(task.id)) {
+        if (processedTasks.has(task.id.toString())) {
           return totalSum;
         }
 
         // Mark task as processed
-        processedTasks.add(task.id);
+        processedTasks.add(task.id.toString());
 
-        const taskSum = task.positions.reduce(
+        const taskSum = (task.positions || []).reduce(
           (sum: number, position: string) => {
             return position !== "" ? sum + 1 : sum;
           },
-          0
+          0,
         );
         return totalSum + taskSum;
       }
@@ -314,9 +335,8 @@ export const calculateTotalNonEmptyPositions = (
   return yearlyTotals;
 };
 
-export const calculateTodoProdValue = (tasks: Task[]): number => {
+export const calculateTodoProdValue = (tasks: TaskWithRelations[]): number => {
   return tasks.reduce((total, task) => {
-    //@ts-ignore
     if (task.column?.identifier === "TODOPROD") {
       return total + (task.sellPrice || 0);
     }
@@ -331,14 +351,17 @@ const getWeekNumber = (date: Date): number => {
   return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
 };
 
-export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
+export const aggregateProductsByWeek = (
+  tasks: TaskWithRelations[],
+  actions: ActionWithTask[],
+) => {
   const currentDate = new Date();
   const currentWeekNumber = getWeekNumber(currentDate);
 
   const packagingMoves = actions.filter((action) => {
     if (action.type !== "move_task") return false;
-    const actionDate = new Date(action.createdAt);
-    const data = action.data as any;
+    const actionDate = new Date(action.createdAt || action.created_at || "");
+    const data = action.data;
 
     return (
       data?.toColumn === "IMBALLAGGIO" &&
@@ -360,15 +383,16 @@ export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
 
   // Process moves in chronological order (earliest first)
   const sortedMoves = [...packagingMoves].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    (a, b) =>
+      new Date(a.createdAt || a.created_at || "").getTime() -
+      new Date(b.createdAt || b.created_at || "").getTime(),
   );
 
   sortedMoves.forEach((action) => {
-    //@ts-ignore
     const task = action.Task;
     if (!task) return;
 
-    const moveDate = new Date(action.createdAt);
+    const moveDate = new Date(action.createdAt || action.created_at || "");
     const weekNumber = getWeekNumber(moveDate);
 
     // Initialize week's processed tasks set if not exists
@@ -377,12 +401,12 @@ export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
     }
 
     // Skip if we've already processed this task for this week
-    if (processedTasksPerWeek[weekNumber].has(task.id)) {
+    if (processedTasksPerWeek[weekNumber].has(task.id.toString())) {
       return;
     }
 
     // Mark task as processed for this week
-    processedTasksPerWeek[weekNumber].add(task.id);
+    processedTasksPerWeek[weekNumber].add(task.id.toString());
 
     // Initialize week data if not exists
     if (!weeklyPackagingData[weekNumber]) {
@@ -394,7 +418,7 @@ export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
     }
 
     // Count non-empty positions for this task - using the same logic as monthly totals
-    const positions = task.positions.filter(Boolean);
+    const positions = task.positions?.filter(Boolean) || [];
     const positionCount = positions.length;
 
     // Add positions and value to week totals
@@ -402,7 +426,6 @@ export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
     weeklyPackagingData[weekNumber].value += task.sellPrice || 0;
 
     // Add positions to product breakdown
-    //@ts-ignore
     const productName = task.sellProduct?.name;
     if (productName) {
       weeklyPackagingData[weekNumber].products[productName] =
@@ -456,7 +479,7 @@ export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
       totalValue: weeklyPackagingData[week.weekNumber]?.value || 0,
       remainingToGoal: Math.max(
         weeklyGoal - (weeklyPackagingData[week.weekNumber]?.value || 0),
-        0
+        0,
       ),
       percentageOfGoal:
         ((weeklyPackagingData[week.weekNumber]?.value || 0) / weeklyGoal) * 100,
@@ -466,43 +489,50 @@ export const aggregateProductsByWeek = (tasks: Task[], actions: Action[]) => {
   return filteredWeeklyData;
 };
 
-export const getPackagingTimesByMonth = (actions: Action[]) => {
+export const getPackagingTimesByMonth = (actions: ActionWithTask[]) => {
   const monthlyPackaging = actions.reduce(
     (acc: { [key: string]: number }, action) => {
-      const date = new Date(action.createdAt);
-      const monthKey = `${date.getFullYear()}-${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}`;
+      const date = new Date(action.createdAt || action.created_at || "");
+      const monthKey = `${date.getFullYear()}-${
+        String(
+          date.getMonth() + 1,
+        ).padStart(2, "0")
+      }`;
 
       acc[monthKey] = (acc[monthKey] || 0) + 1;
       return acc;
     },
-    {}
+    {},
   );
 
   return monthlyPackaging;
 };
 
-export const getPackagingTimesByWeek = (actions: Action[]) => {
+export const getPackagingTimesByWeek = (actions: ActionWithTask[]) => {
   const weeklyPackaging = actions.reduce(
     (acc: { [key: string]: number }, action) => {
-      const date = new Date(action.createdAt);
+      const date = new Date(action.createdAt || action.created_at || "");
       const weekNumber = getWeekNumber(date);
-      const weekKey = `${date.getFullYear()}-W${String(weekNumber).padStart(
-        2,
-        "0"
-      )}`;
+      const weekKey = `${date.getFullYear()}-W${
+        String(weekNumber).padStart(
+          2,
+          "0",
+        )
+      }`;
 
       acc[weekKey] = (acc[weekKey] || 0) + 1;
       return acc;
     },
-    {}
+    {},
   );
 
   return weeklyPackaging;
 };
 
-export const calculateMonthlyTotals = (tasks: Task[], actions: Action[]) => {
+export const calculateMonthlyTotals = (
+  tasks: TaskWithRelations[],
+  actions: ActionWithTask[],
+) => {
   const currentDate = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
@@ -510,8 +540,8 @@ export const calculateMonthlyTotals = (tasks: Task[], actions: Action[]) => {
   // Filter actions to only include moves to IMBALLAGGIO for current month
   const monthlyPackagingMoves = actions.filter((action) => {
     if (action.type !== "move_task") return false;
-    const actionDate = new Date(action.createdAt);
-    const data = action.data as any;
+    const actionDate = new Date(action.createdAt || action.created_at || "");
+    const data = action.data;
 
     return (
       data?.toColumn === "IMBALLAGGIO" &&
@@ -525,26 +555,27 @@ export const calculateMonthlyTotals = (tasks: Task[], actions: Action[]) => {
 
   // Sort moves chronologically
   const sortedMoves = [...monthlyPackagingMoves].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    (a, b) =>
+      new Date(a.createdAt || a.created_at || "").getTime() -
+      new Date(b.createdAt || b.created_at || "").getTime(),
   );
 
   // Calculate total value and positions from packaging moves using the same logic as weekly calculations
   const monthlyTotal = sortedMoves.reduce(
     (acc, action) => {
-      //@ts-ignore
       const task = action.Task;
       if (!task) return acc;
 
       // Skip if we've already processed this task
-      if (processedTasks.has(task.id)) {
+      if (processedTasks.has(task.id.toString())) {
         return acc;
       }
 
       // Mark task as processed
-      processedTasks.add(task.id);
+      processedTasks.add(task.id.toString());
 
       // Count non-empty positions
-      const positions = task.positions.filter(Boolean);
+      const positions = task.positions?.filter(Boolean) || [];
       const positionCount = positions.length;
 
       return {
@@ -552,14 +583,13 @@ export const calculateMonthlyTotals = (tasks: Task[], actions: Action[]) => {
         totalCount: acc.totalCount + positionCount,
         products: {
           ...acc.products,
-          //@ts-ignore
-          [task.sellProduct?.name]:
-            //@ts-ignore
-            (acc.products[task.sellProduct?.name] || 0) + positionCount,
+          [task.sellProduct?.name || "Unknown"]:
+            (acc.products[task.sellProduct?.name || "Unknown"] || 0) +
+            positionCount,
         },
       };
     },
-    { totalValue: 0, totalCount: 0, products: {} }
+    { totalValue: 0, totalCount: 0, products: {} as { [key: string]: number } },
   );
 
   return monthlyTotal;

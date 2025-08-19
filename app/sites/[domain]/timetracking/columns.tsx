@@ -1,6 +1,6 @@
 "use client";
 
-import { Roles, Timetracking } from "@prisma/client";
+import { Roles, Timetracking } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
@@ -68,6 +68,8 @@ export const columns: ColumnDef<Timetracking>[] = [
     ),
     cell: ({ row }) => {
       const { totalTime } = row.original;
+      if (!totalTime) return "0 ore e 0 minuti";
+
       const hours = Math.floor(totalTime);
       const minutes = Math.round((totalTime - hours) * 60);
 
@@ -140,7 +142,9 @@ export const columns: ColumnDef<Timetracking>[] = [
       const { created_at } = row.original;
 
       // Check if website includes the protocol, if not, prepend it.
-      const formattedDate = created_at.toLocaleDateString();
+      if (!created_at) return <div>N/A</div>;
+
+      const formattedDate = new Date(created_at).toLocaleDateString();
 
       return <div suppressHydrationWarning>{formattedDate}</div>;
     },

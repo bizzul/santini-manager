@@ -4,10 +4,13 @@ import { useDrag } from "react-dnd";
 import {
   Action,
   Client,
+  KanbanColumn,
   PackingControl,
   QualityControl,
+  SellProduct,
   Task,
-} from "@prisma/client";
+  User,
+} from "@/types/supabase";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { DateManager } from "../../package/utils/dates/date-manager";

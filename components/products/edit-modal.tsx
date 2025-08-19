@@ -11,7 +11,7 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/products/edit";
-import { Supplier } from "@prisma/client";
+import { Supplier } from "@/types/supabase";
 type Props = {
   open: boolean;
   setOpen: any;
@@ -214,7 +214,6 @@ export const EditModal: FC<Props> = ({
                       id="name"
                       type="text"
                       className="form-input"
-                      
                       {...register("name", { required: false })}
                     />
                     {errors.name && <span>Campo necessario</span>}
@@ -229,7 +228,6 @@ export const EditModal: FC<Props> = ({
                       id="code"
                       type="text"
                       className="form-input"
-                      
                       {...register("type")}
                     />
                     {errors.type && <span>Campo necessario</span>}
@@ -258,7 +256,6 @@ export const EditModal: FC<Props> = ({
                       id="length"
                       type="text"
                       className="form-input w-1/3"
-                      
                       {...register("length")}
                     />
                     {errors.length && <span>Campo necessario</span>}
@@ -267,7 +264,6 @@ export const EditModal: FC<Props> = ({
                       id="width"
                       type="text"
                       className="form-input w-1/3"
-                      
                       {...register("width")}
                     />
                     {errors.width && <span>Campo necessario</span>}
@@ -276,7 +272,6 @@ export const EditModal: FC<Props> = ({
                       id="height"
                       type="text"
                       className="form-input w-1/3"
-                      
                       {...register("height")}
                     />
                     {errors.height && <span>Campo necessario</span>}
@@ -291,7 +286,6 @@ export const EditModal: FC<Props> = ({
                       id="quantity"
                       type="text"
                       className="form-input"
-                      
                       {...register("quantity")}
                     />
                     {errors.quantity && <span>Campo necessario</span>}
@@ -305,7 +299,6 @@ export const EditModal: FC<Props> = ({
                       id="price"
                       type="text"
                       className="form-input w-1/2"
-                      
                       {...register("unit_price")}
                     />
                     {errors.unit_price && <span>Campo necessario</span>}
@@ -314,7 +307,6 @@ export const EditModal: FC<Props> = ({
                       id="unit"
                       type="text"
                       className="form-input w-1/2"
-                      
                       {...register("unit")}
                     />
                     {errors.unit && <span>Campo necessario</span>}

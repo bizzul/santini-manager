@@ -1,4 +1,4 @@
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 import CalendarComponent from "@/components/calendar/calendarComponent";
 import { createClient } from "@/utils/server";
 import { getUserContext } from "@/lib/auth-utils";

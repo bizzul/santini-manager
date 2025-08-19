@@ -11,7 +11,7 @@ import {
 import { Dialog, Menu, Transition } from "@headlessui/react";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import Toast from "../../package/components/toast";
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 
 type Props = {
   data: any;

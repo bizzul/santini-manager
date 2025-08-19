@@ -11,7 +11,7 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/products/create";
-import { Product_category, Supplier } from "@prisma/client";
+import { Product_category, Supplier } from "@/types/supabase";
 type Props = {
   open: boolean;
   setOpen: Dispatch<React.SetStateAction<boolean>>;
@@ -158,7 +158,6 @@ export const CreateModal: FC<Props> = ({
                     id="name"
                     type="text"
                     className="form-input"
-                    
                     {...register("name", { required: true })}
                   />
                   {errors.name && <span>Campo necessario</span>}
@@ -173,7 +172,6 @@ export const CreateModal: FC<Props> = ({
                     id="code"
                     type="text"
                     className="form-input"
-                    
                     {...register("type")}
                   />
                   {errors.type && <span>Campo necessario</span>}
@@ -188,7 +186,6 @@ export const CreateModal: FC<Props> = ({
                     id="type"
                     type="text"
                     className="form-input"
-                    
                     {...register("description")}
                   />
                   {errors.description && <span>Campo necessario</span>}
@@ -203,7 +200,6 @@ export const CreateModal: FC<Props> = ({
                     id="length"
                     type="text"
                     className="form-input w-1/3"
-                    
                     {...register("length")}
                   />
                   {errors.length && <span>Campo necessario</span>}
@@ -212,7 +208,6 @@ export const CreateModal: FC<Props> = ({
                     id="width"
                     type="text"
                     className="form-input w-1/3"
-                    
                     {...register("width")}
                   />
                   {errors.width && <span>Campo necessario</span>}
@@ -221,7 +216,6 @@ export const CreateModal: FC<Props> = ({
                     id="height"
                     type="text"
                     className="form-input w-1/3"
-                    
                     {...register("height")}
                   />
                   {errors.height && <span>Campo necessario</span>}
@@ -236,7 +230,6 @@ export const CreateModal: FC<Props> = ({
                     id="quantity"
                     type="text"
                     className="form-input"
-                    
                     {...register("quantity")}
                   />
                   {errors.quantity && <span>Campo necessario</span>}
@@ -250,7 +243,6 @@ export const CreateModal: FC<Props> = ({
                     id="price"
                     type="text"
                     className="form-input w-1/2"
-                    
                     {...register("unit_price")}
                   />
                   {errors.unit_price && <span>Campo necessario</span>}
@@ -259,7 +251,6 @@ export const CreateModal: FC<Props> = ({
                     id="unit"
                     type="text"
                     className="form-input w-1/2"
-                    
                     {...register("unit")}
                   />
                   {errors.unit && <span>Campo necessario</span>}

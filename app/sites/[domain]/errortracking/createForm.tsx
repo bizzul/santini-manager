@@ -26,7 +26,7 @@ import {
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
-import { Product_category, Supplier, Task, User } from "@prisma/client";
+import { Product_category, Supplier, Task, User } from "@/types/supabase";
 import { CldUploadButton } from "next-cloudinary";
 
 const CreateProductForm = ({
@@ -234,9 +234,9 @@ const CreateProductForm = ({
                               (category: Product_category) => (
                                 <SelectItem
                                   key={category.id}
-                                  value={category.name.toLowerCase()}
+                                  value={category.name?.toLowerCase() || ""}
                                 >
-                                  {category.name}
+                                  {category.name || "Unnamed"}
                                 </SelectItem>
                               )
                             )

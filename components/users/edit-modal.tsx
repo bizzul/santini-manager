@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/users/editInfo";
-import { Roles } from "@prisma/client";
+import { Roles } from "@/types/supabase";
 import { Dropdown } from "flowbite-react";
 import ImageUploader from "../uploaders/ImageUploader";
 import Image from "next/image";

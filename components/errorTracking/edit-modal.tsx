@@ -12,7 +12,7 @@ import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/products/create";
 import TasksFilter from "./filterTaskWhite";
-import { Roles, Supplier } from "@prisma/client";
+import { Roles, Supplier } from "@/types/supabase";
 import { CldUploadButton } from "next-cloudinary";
 type Props = {
   open: boolean;

@@ -11,7 +11,7 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/products/create";
-import { Supplier } from "@prisma/client";
+import { Supplier } from "@/types/supabase";
 type Props = {
   open: boolean;
   setOpen: Dispatch<React.SetStateAction<boolean>>;

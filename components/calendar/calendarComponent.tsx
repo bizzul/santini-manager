@@ -2,7 +2,7 @@
 import React from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import { Task } from "@prisma/client";
+import { Task } from "@/types/supabase";
 import itLocale from "@fullcalendar/core/locales/it";
 
 function renderEventContent(eventInfo: any) {
@@ -21,7 +21,7 @@ export default function CalendarComponent({ tasks }: { tasks: Task[] }) {
 
   // Map over tasks to create events array
   const events = tasksWithDeliveryDate.map((task) => {
-    const date = task.deliveryDate!;
+    const date = new Date(task.deliveryDate!);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");

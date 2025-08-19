@@ -1,6 +1,6 @@
 import React from "react";
 import { getUserContext } from "@/lib/auth-utils";
-import { Client } from "@prisma/client";
+import { Client } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
 import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";

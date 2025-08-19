@@ -2,7 +2,7 @@ import React from "react";
 import { Structure } from "@/components/structure/structure";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { getUserContext } from "@/lib/auth-utils";
-import { Roles, Task, Timetracking, User } from "@prisma/client";
+import { Roles, Task, Timetracking, User } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
 import { createClient } from "@/utils/server";
 import DataWrapper from "./dataWrapper";

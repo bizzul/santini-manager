@@ -17,7 +17,7 @@ import { Button } from "@tremor/react";
 import { validation } from "@/validation/products/create";
 import { useToast } from "@/components/ui/use-toast";
 import { useFormState, useFormStatus } from "react-dom";
-import { Product_category, Supplier } from "@prisma/client";
+import { Product_category, Supplier } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 import { SearchSelect, SearchSelectItem } from "@tremor/react";
 

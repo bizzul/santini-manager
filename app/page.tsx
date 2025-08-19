@@ -1,7 +1,5 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { SetBodyClass } from "@/components/SetBodyClass";
-
 export default function Home() {
   return (
     <>
