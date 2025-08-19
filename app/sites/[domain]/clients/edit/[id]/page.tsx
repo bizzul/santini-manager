@@ -1,8 +1,12 @@
 import { getUserContext } from "@/lib/auth-utils";
 import { Product } from "@/types/supabase";
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import MobilePage from "@/components/inventory/MobilePage";
+
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type DataResult = Product | { error: { message: string } };
 

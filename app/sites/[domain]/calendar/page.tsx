@@ -1,8 +1,12 @@
+import React from "react";
 import { Task } from "@/types/supabase";
 import CalendarComponent from "@/components/calendar/calendarComponent";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
+
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 async function getData(): Promise<Task[]> {

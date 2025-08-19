@@ -1,16 +1,20 @@
 import React from "react";
 import { getUserContext } from "@/lib/auth-utils";
-import { Client, SellProduct, Task } from "@/types/supabase";
+import { SellProduct } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
 
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export type Data = {
-  clients: Client[];
+  clients: any[];
   activeProducts: SellProduct[];
   kanbans: any[];
-  tasks: Task[];
+  tasks: any[];
 };
 
 async function getData(): Promise<Data> {

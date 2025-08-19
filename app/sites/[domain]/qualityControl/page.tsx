@@ -1,8 +1,12 @@
 import React from "react";
 import { getUserContext } from "@/lib/auth-utils";
-import { createClient } from "@/utils/server";
-import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
+import GridReports from "@/components/reports/GridReports";
+import { createClient } from "@/utils/supabase/server";
+
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function getSellProducts(): Promise<any[]> {
   // Fetch data from your API here.
@@ -111,7 +115,7 @@ async function Page() {
     <div className="container">
       {/* <DialogCreate /> */}
       {data ? (
-        <SellProductWrapper data={data} />
+        <GridReports data={data} />
       ) : (
         <div className="w-full h-full text-center">
           <h1 className="font-bold text-2xl">Nessun quality control creato!</h1>

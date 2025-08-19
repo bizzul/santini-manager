@@ -4,11 +4,13 @@ import { faBox } from "@fortawesome/free-solid-svg-icons";
 import { getUserContext } from "@/lib/auth-utils";
 
 import DialogCreate from "./dialogCreate";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
 
-export const revalidate = 60;
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function getData(): Promise<any> {
   // Fetch data from your API here.

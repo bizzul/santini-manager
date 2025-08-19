@@ -2,9 +2,13 @@ import React from "react";
 import { getUserContext } from "@/lib/auth-utils";
 
 import DialogCreate from "./dialogCreate";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
+
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function getData(): Promise<any> {
   const supabase = await createClient();

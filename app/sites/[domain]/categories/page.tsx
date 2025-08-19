@@ -3,8 +3,12 @@ import { Product_category } from "@/types/supabase";
 import DialogCreate from "./dialogCreate";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
+
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function getData(): Promise<Product_category[]> {
   // Fetch data from your API here.

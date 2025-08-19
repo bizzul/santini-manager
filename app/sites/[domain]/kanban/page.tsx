@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { Action, SellProduct, Task } from "@/types/supabase";
 import ContentPage from "@/components/kanbans/ContentPage";
 import { getAvailableSnapshots } from "./actions/get-available-snapshots.action";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 
+// Force dynamic rendering to prevent static/dynamic conflicts
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 async function getData(): Promise<any> {
