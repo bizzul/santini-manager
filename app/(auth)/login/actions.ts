@@ -42,7 +42,7 @@ export async function signIn(formData: FormData) {
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  const COOKIE_NAME = process.env.COOKIE_NAME ?? "appname:session";
+  const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
   const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN ?? ".localhost";
   const cookiesToRemove = [`${COOKIE_NAME}`, `${COOKIE_NAME}-code-verifier`];
   nukeCookies(cookiesToRemove, COOKIE_DOMAIN);

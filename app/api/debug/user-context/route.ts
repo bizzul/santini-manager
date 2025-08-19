@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/utils/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 
 export async function GET(request: NextRequest) {
     try {
-        // Use service client to bypass RLS and get full access
-        const supabase = createServiceClient();
+        // Use regular client to get user session from cookies
+        const supabase = await createClient();
 
         // Get the current user from Supabase auth
         const { data: { user }, error: authError } = await supabase.auth
@@ -15,6 +15,8 @@ export async function GET(request: NextRequest) {
                 error: "Auth error",
                 details: authError.message,
                 status: 401,
+                note:
+                    "This error often occurs in production when cookies aren't properly set or retrieved",
             });
         }
 
@@ -22,6 +24,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({
                 error: "No authenticated user",
                 status: 401,
+                note: "User is not logged in or session has expired",
             });
         }
 
@@ -34,6 +37,11 @@ export async function GET(request: NextRequest) {
             auth: "✅ User authenticated successfully",
             note:
                 "🔍 This endpoint helps debug authentication issues. If this works locally but not on Vercel, check environment variables and database permissions.",
+            session_info: {
+                has_session: !!user,
+                user_id: user.id,
+                email: user.email,
+            },
         };
 
         // Check if user exists in tenants table
@@ -131,6 +139,29 @@ export async function GET(request: NextRequest) {
             has_supabase_url: !!process.env.STORAGE_SUPABASE_URL,
             has_service_key: !!process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY,
         };
+
+        // Add cookie debugging info
+        try {
+            const cookieStore = await import("next/headers").then((m) =>
+                m.cookies()
+            );
+            const cookieName = process.env.COOKIE_NAME ??
+                "reactive-app:session";
+            const authCookie = cookieStore.get(cookieName);
+            debugInfo.cookies = {
+                has_auth_cookie: !!authCookie,
+                cookie_name: cookieName,
+                cookie_value_length: authCookie?.value?.length || 0,
+                note: "Cookie presence helps debug session issues",
+            };
+        } catch (cookieError) {
+            debugInfo.cookies = {
+                error: "Could not check cookies",
+                details: cookieError instanceof Error
+                    ? cookieError.message
+                    : "Unknown error",
+            };
+        }
 
         return NextResponse.json(debugInfo);
     } catch (error) {

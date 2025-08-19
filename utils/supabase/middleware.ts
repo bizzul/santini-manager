@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_OPTIONS } from "./cookie";
 
-const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-auth:session";
+const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({

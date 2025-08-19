@@ -1,18 +1,14 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { NextResponse, type NextRequest } from 'next/server'
-import { COOKIE_OPTIONS } from './cookie'
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { type NextRequest, NextResponse } from "next/server";
+import { COOKIE_OPTIONS } from "./supabase/cookie";
 
-
-
-const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-auth:session";
-
+const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
 
 export async function updateSession(request: NextRequest) {
-
   let supabaseResponse = NextResponse.next({
     request,
-  })
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,18 +17,18 @@ export async function updateSession(request: NextRequest) {
       cookieOptions: COOKIE_OPTIONS,
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach((c) => request.cookies.set(c));
-        supabaseResponse = NextResponse.next({
-          request,
-        });
-        cookiesToSet.forEach((c) => supabaseResponse.cookies.set(c));
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+          cookiesToSet.forEach((c) => supabaseResponse.cookies.set(c));
         },
       },
-    }
-  )
+    },
+  );
 
   // IMPORTANT: Avoid writing any logic between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
@@ -40,20 +36,19 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
-    error
-  } = await supabase.auth.getUser()
+    error,
+  } = await supabase.auth.getUser();
 
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth')
+    !request.nextUrl.pathname.startsWith("/login") &&
+    !request.nextUrl.pathname.startsWith("/auth")
   ) {
     // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
   }
-
 
   if (error || !user) {
     const cookieStore = await cookies();
@@ -72,7 +67,7 @@ export async function updateSession(request: NextRequest) {
       cookiesToDelete.forEach((c) => res.cookies.delete(c));
       return res;
     }
-  } 
+  }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
   // creating a new response object with NextResponse.next() make sure to:
@@ -87,5 +82,5 @@ export async function updateSession(request: NextRequest) {
   // If this is not done, you may be causing the browser and server to go out
   // of sync and terminate the user's session prematurely!
   console.log("user", user);
-  return supabaseResponse
+  return supabaseResponse;
 }
