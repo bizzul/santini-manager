@@ -30,7 +30,7 @@ export function CountryCombo({ field }: { field: any }) {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-[200px] justify-between"
+          className="w-full h-10 justify-between"
         >
           {field.value
             ? countries.find((country) => country.code === field.value)?.label
@@ -39,14 +39,14 @@ export function CountryCombo({ field }: { field: any }) {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[200px] p-0 z-50 pointer-events-auto cursor-pointer"
+        className="w-[200px] p-0 z-50 pointer-events-auto cursor-pointer bg-black"
         side="bottom"
         align="start"
         sideOffset={4}
         alignOffset={0}
       >
         <Command>
-          <CommandInput  className="h-9" />
+          <CommandInput className="h-9" />
           <CommandList>
             <CommandEmpty>Nessuna nazione trovata.</CommandEmpty>
             <CommandGroup>

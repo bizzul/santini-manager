@@ -16,8 +16,11 @@ function DialogCreate() {
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
       <DialogTrigger asChild>
-        <div className="container flex justify-end pt-12 overflow-hidden pointer-events-none ">
-          <Button className="pointer-events-auto" onClick={() => setOpen(true)}>
+        <div className=" flex justify-end pt-12 overflow-hidden cursor-pointer pointer-events-none hover:opacity-50 opacity-100 transition-opacity duration-300 ">
+          <Button
+            className="pointer-events-auto border dark:border-white"
+            onClick={() => setOpen(true)}
+          >
             Aggiungi cliente
           </Button>
         </div>

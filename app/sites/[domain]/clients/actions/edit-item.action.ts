@@ -2,7 +2,7 @@
 
 import { Client } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
 
 export async function editItem(props: Client, id: number) {

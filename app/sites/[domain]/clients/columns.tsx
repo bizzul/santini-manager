@@ -61,43 +61,43 @@ export const columns: ColumnDef<Client>[] = [
       <DataTableColumnHeader column={column} title="Tipologia" />
     ),
   },
-  {
-    accessorKey: "actions.user.image",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Ultima mod." />
-    ),
-    cell: ({ row }) => {
-      //@ts-ignore
-      const actions = row.original.Action;
-      const mostRecentAction = actions.sort(
-        (a: any, b: any) =>
-          new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf()
-      )[0];
-      return mostRecentAction &&
-        mostRecentAction.User &&
-        mostRecentAction.User.picture ? (
-        <>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Image
-                  src={mostRecentAction.User.picture}
-                  alt={mostRecentAction.User.authId}
-                  width={40}
-                  height={40}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{mostRecentAction.User.given_name}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </>
-      ) : (
-        "-"
-      );
-    },
-  },
+  // {
+  //   accessorKey: "action.user.image",
+  //   header: ({ column }) => (
+  //     <DataTableColumnHeader column={column} title="Ultima mod." />
+  //   ),
+  //   cell: ({ row }) => {
+  //     //@ts-ignore
+  //     const actions = row.original.Action;
+  //     const mostRecentAction = actions.sort(
+  //       (a: any, b: any) =>
+  //         new Date(b.createdAt).valueOf() - new Date(a.createdAt).valueOf()
+  //     )[0];
+  //     return mostRecentAction &&
+  //       mostRecentAction.User &&
+  //       mostRecentAction.User.picture ? (
+  //       <>
+  //         <TooltipProvider>
+  //           <Tooltip>
+  //             <TooltipTrigger>
+  //               <Image
+  //                 src={mostRecentAction.User.picture}
+  //                 alt={mostRecentAction.User.authId}
+  //                 width={40}
+  //                 height={40}
+  //               />
+  //             </TooltipTrigger>
+  //             <TooltipContent>
+  //               <p>{mostRecentAction.User.given_name}</p>
+  //             </TooltipContent>
+  //           </Tooltip>
+  //         </TooltipProvider>
+  //       </>
+  //     ) : (
+  //       "-"
+  //     );
+  //   },
+  // },
   {
     id: "actions",
     header: "Azioni",

@@ -13,7 +13,7 @@ async function getData(): Promise<Task[]> {
   // Fetch data from your API here.
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("task")
+    .from("Task")
     .select("*")
     .eq("archived", false);
   if (error) {
@@ -35,11 +35,9 @@ async function Page() {
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
-  // Now it's safe to use session.user
-  const { user } = userContext;
 
   return (
-    <div className="container mx-auto relative ">
+    <div className="container w-full mx-auto relative ">
       <CalendarComponent tasks={data} />
     </div>
   );

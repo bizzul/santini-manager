@@ -4,7 +4,7 @@ import { z } from "zod";
  * Auth0 user creation schema
  */
 export const validation = z.object({
-  individualTitle: z.string(),
+  individualTitle: z.string().optional(),
   businessName: z.string().optional(),
   individualFirstName: z.string().optional(),
   individualLastName: z.string().optional(),
@@ -26,6 +26,6 @@ export const validation = z.object({
       .nullable()
       .refine((val) => val !== null, {
         message: "CAP richiesto",
-      })
+      }),
   ),
 });

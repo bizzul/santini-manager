@@ -113,20 +113,18 @@ export default async function SiteLayout({
 
     return (
       <SidebarProvider defaultOpen={defaultOpen}>
-        <div>
-          {isImpersonating && impersonatedUser && originalSuperadminId && (
-            <ImpersonationBanner
-              impersonatedUser={impersonatedUser}
-              originalSuperadminId={originalSuperadminId}
-            />
-          )}
-          <div className="flex">
-            <AppSidebar />
+        {isImpersonating && impersonatedUser && originalSuperadminId && (
+          <ImpersonationBanner
+            impersonatedUser={impersonatedUser}
+            originalSuperadminId={originalSuperadminId}
+          />
+        )}
 
-            <SidebarTrigger />
-            {children}
-          </div>
-        </div>
+        <AppSidebar />
+        <main className="w-full h-full">
+          <SidebarTrigger />
+          {children}
+        </main>
       </SidebarProvider>
     );
   } catch (error) {

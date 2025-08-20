@@ -41,88 +41,145 @@ export const MainClientForm: FC<MainClientFormProps> = ({
   isSubmitting,
 }) => {
   return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Informazioni Cliente</h2>
+    <div className="space-y-6 bg-black">
+      <h2 className="text-xl font-semibold text-foreground border-b border-border pb-2">
+        Informazioni Cliente
+      </h2>
 
       {/* Client Type Selection */}
-      <FormField
-        control={form.control}
-        name="clientType"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Tipologia</FormLabel>
-            <FormControl>
-              <RadioGroup
-                {...field}
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-                disabled={isSubmitting}
-              >
-                <FormItem className="flex items-center space-x-3 space-y-0">
-                  <FormControl>
-                    <RadioGroupItem value="INDIVIDUAL" />
-                  </FormControl>
-                  <FormLabel className="font-normal">Privato</FormLabel>
-                </FormItem>
-                <FormItem className="flex items-center space-x-3 space-y-0">
-                  <FormControl>
-                    <RadioGroupItem value="BUSINESS" />
-                  </FormControl>
-                  <FormLabel className="font-normal">Azienda</FormLabel>
-                </FormItem>
-              </RadioGroup>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Individual Client Fields */}
-      {watchClientType === "INDIVIDUAL" && (
-        <div className="space-y-4">
-          <FormField
-            name="individualTitle"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Titolo</FormLabel>
-                <Select
+      <div className="bg-muted/50 p-4 rounded-lg border border-border">
+        <FormField
+          control={form.control}
+          name="clientType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-base font-medium text-foreground mb-3 block">
+                Tipologia Cliente
+              </FormLabel>
+              <FormControl>
+                <RadioGroup
+                  {...field}
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={isSubmitting}
+                  className="flex space-x-6"
                 >
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <RadioGroupItem value="INDIVIDUAL" />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-foreground">
+                      Privato
+                    </FormLabel>
+                  </FormItem>
+                  <FormItem className="flex items-center space-x-2">
+                    <FormControl>
+                      <RadioGroupItem value="BUSINESS" />
+                    </FormControl>
+                    <FormLabel className="font-normal cursor-pointer text-foreground">
+                      Azienda
+                    </FormLabel>
+                  </FormItem>
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Individual Client Fields */}
+      {watchClientType === "INDIVIDUAL" && (
+        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+          <h3 className="text-lg font-medium text-foreground mb-4">
+            Dati Personali
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              name="individualTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    Titolo
+                  </FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Seleziona titolo" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-black">
+                      <SelectItem value="Sig.">Sig.</SelectItem>
+                      <SelectItem value="Sig.ra">Sig.ra</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              name="individualFirstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    Nome
+                  </FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <Input
+                      {...field}
+                      disabled={isSubmitting}
+                      className="w-full"
+                    />
                   </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Sig.">Sig.</SelectItem>
-                    <SelectItem value="Sig.ra">Sig.ra</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              name="individualLastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    Cognome
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      disabled={isSubmitting}
+                      className="w-full"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Business Client Fields */}
+      {watchClientType === "BUSINESS" && (
+        <div className="bg-card border border-border rounded-lg p-6">
+          <h3 className="text-lg font-medium text-foreground mb-4">
+            Dati Aziendali
+          </h3>
           <FormField
-            name="individualFirstName"
+            name="businessName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nome</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground">
+                  Nome Azienda
+                </FormLabel>
                 <FormControl>
-                  <Input {...field} disabled={isSubmitting} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            name="individualLastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cognome</FormLabel>
-                <FormControl>
-                  <Input {...field} disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    className="w-full"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -131,40 +188,30 @@ export const MainClientForm: FC<MainClientFormProps> = ({
         </div>
       )}
 
-      {/* Business Client Fields */}
-      {watchClientType === "BUSINESS" && (
-        <FormField
-          name="businessName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome azienda</FormLabel>
-              <FormControl>
-                <Input {...field} disabled={isSubmitting} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
-
       {/* Common Fields */}
-      <div className="space-y-4">
+      <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+        <h3 className="text-lg font-medium text-foreground border-b border-border pb-2">
+          Informazioni Generali
+        </h3>
+
         <FormField
           name="clientLanguage"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Lingua</FormLabel>
+              <FormLabel className="text-sm font-medium text-foreground">
+                Lingua Preferita
+              </FormLabel>
               <Select
                 onValueChange={field.onChange}
                 defaultValue={field.value}
                 disabled={isSubmitting}
               >
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-full max-w-xs">
+                    <SelectValue placeholder="Seleziona lingua" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent>
+                <SelectContent className="bg-black">
                   {languages.map((lan) => (
                     <SelectItem key={lan.id} value={lan.name}>
                       {lan.name}
@@ -179,28 +226,37 @@ export const MainClientForm: FC<MainClientFormProps> = ({
 
         {/* Main Address */}
         <div className="space-y-4">
-          <h3 className="text-md font-medium">Indirizzo Principale</h3>
+          <h4 className="text-md font-medium text-foreground flex items-center">
+            <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
+            Indirizzo Principale
+          </h4>
+
           <FormField
             name="address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
-                  Indirizzo <span className="text-red-500">*</span>
+                <FormLabel className="text-sm font-medium text-foreground">
+                  Indirizzo <span className="text-destructive">*</span>
                 </FormLabel>
                 <FormControl>
-                  <Input {...field} disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    className="w-full"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <div className="flex flex-row gap-2">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
             <FormField
               name="countryCode"
               render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>
-                    Paese <span className="text-red-500">*</span>
+                <FormItem className="flex flex-col">
+                  <FormLabel className="text-sm font-medium text-foreground mb-2">
+                    Paese <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <CountryCombo field={field} />
@@ -212,15 +268,16 @@ export const MainClientForm: FC<MainClientFormProps> = ({
             <FormField
               name="zipCode"
               render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>
-                    CAP <span className="text-red-500">*</span>
+                <FormItem className="flex flex-col">
+                  <FormLabel className="text-sm font-medium text-foreground mb-2">
+                    CAP <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       {...field}
                       disabled={isSubmitting}
+                      className="w-full h-10"
                       onChange={(e) => {
                         const value = e.target.value;
                         field.onChange(value === "" ? null : Number(value));
@@ -233,15 +290,20 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               )}
             />
           </div>
+
           <FormField
             name="city"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
-                  Città <span className="text-red-500">*</span>
+                <FormLabel className="text-sm font-medium text-foreground">
+                  Città <span className="text-destructive">*</span>
                 </FormLabel>
                 <FormControl>
-                  <Input {...field} disabled={isSubmitting} />
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    className="w-full"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -250,31 +312,54 @@ export const MainClientForm: FC<MainClientFormProps> = ({
         </div>
 
         {/* Contact Information */}
-        <div className="flex flex-row gap-2">
-          <FormField
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input {...field} type="email" disabled={isSubmitting} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Telefono</FormLabel>
-                <FormControl>
-                  <Input {...field} type="tel" disabled={isSubmitting} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <div className="space-y-4">
+          <h4 className="text-md font-medium text-foreground flex items-center">
+            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+            Informazioni di Contatto
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    Email
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="email"
+                      disabled={isSubmitting}
+                      className="w-full"
+                      placeholder="esempio@email.com"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    Telefono
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="tel"
+                      disabled={isSubmitting}
+                      className="w-full"
+                      placeholder="+39 123 456 7890"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
       </div>
     </div>

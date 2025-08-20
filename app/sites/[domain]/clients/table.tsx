@@ -20,8 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 

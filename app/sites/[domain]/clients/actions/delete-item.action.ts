@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 
 export const removeItem = async (formData: any) => {
   try {

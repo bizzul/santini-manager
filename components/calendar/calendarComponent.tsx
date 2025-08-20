@@ -33,7 +33,7 @@ export default function CalendarComponent({ tasks }: { tasks: Task[] }) {
   });
 
   return (
-    <div className="py-4 z-20 relative">
+    <div className="py-4 z-20 relative w-full">
       <FullCalendar
         locale={itLocale}
         plugins={[dayGridPlugin]}
@@ -41,6 +41,9 @@ export default function CalendarComponent({ tasks }: { tasks: Task[] }) {
         weekends={false}
         eventContent={renderEventContent}
         events={events}
+        height="auto"
+        contentHeight="auto"
+        dayHeaderClassNames={"black text-black"}
       />
     </div>
   );

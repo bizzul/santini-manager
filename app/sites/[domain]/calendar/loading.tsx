@@ -2,8 +2,6 @@
 import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { faBox } from "@fortawesome/free-solid-svg-icons";
-
 function Loading() {
   return (
     <div className="container mx-auto ">
