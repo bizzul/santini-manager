@@ -4,17 +4,48 @@ import { Client } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function editItem(props: Client, id: number) {
+export async function editItem(props: Client, id: number, domain: string) {
   const result = validation.safeParse(props);
   const supabase = await createClient();
   let userId = null;
+  let siteId = null;
+  let organizationId = null;
+
   if (supabase) {
     const { data: { user } } = await supabase.auth.getUser();
     userId = user?.id;
   }
 
   if (result.success) {
+    try {
+      // Use getSiteData function which properly handles subdomain extraction
+      const siteResult = await getSiteData(domain);
+
+      if (!siteResult?.data) {
+        console.error("No site data returned for domain:", domain);
+        return {
+          message: "Errore nel recupero del sito!",
+          error: "Site not found",
+        };
+      }
+
+      const siteData = siteResult.data;
+      siteId = siteData.id;
+      organizationId = siteData.organization_id;
+      console.log("Site and organization found:", {
+        siteId,
+        organizationId,
+      });
+    } catch (error) {
+      console.error("Unexpected error fetching site:", error);
+      return {
+        message: "Errore imprevisto nel recupero del sito!",
+        error: String(error),
+      };
+    }
+
     try {
       const firstInitials = result.data?.individualFirstName
         ? result.data?.individualFirstName.slice(0, 2)
@@ -43,7 +74,8 @@ export async function editItem(props: Client, id: number) {
           city: result.data?.city,
           countryCode: result.data?.countryCode,
           email: result.data?.email,
-          phone: result.data?.phone,
+          mobilePhone: result.data?.phone,
+          landlinePhone: result.data?.phone,
           zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
           clientLanguage: result.data?.clientLanguage,
           code: generatedCode,
@@ -61,6 +93,8 @@ export async function editItem(props: Client, id: number) {
             clientId: saveData?.id,
           },
           user_id: userId,
+          site_id: siteId,
+          organization_id: organizationId,
         });
 
       console.log(actionError);

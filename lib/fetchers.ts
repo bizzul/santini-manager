@@ -16,8 +16,6 @@ export async function getSiteData(domain: string) {
         "",
       );
 
-      console.log("Fetching site data for subdomain:", subdomain);
-
       // Use service client to bypass RLS for public site access
       const supabase = createServiceClient();
       query = supabase.from("sites").select("*").eq("subdomain", subdomain);

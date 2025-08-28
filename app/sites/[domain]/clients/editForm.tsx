@@ -6,19 +6,23 @@ import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { validation } from "@/validation/clients/create";
 import { useToast } from "@/components/ui/use-toast";
-import { Client } from "@/types/supabase";
+import { Database as DatabaseTypes } from "@/types/database.types";
 import { editItem } from "./actions/edit-item.action";
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { useParams } from "next/navigation";
 
 type Props = {
   handleClose: () => void;
-  data: Client;
+  data: DatabaseTypes["public"]["Tables"]["Client"]["Row"];
 };
 
 const EditClientForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
+  const params = useParams();
+  const domain = params?.domain as string;
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -30,7 +34,7 @@ const EditClientForm = ({ handleClose, data }: Props) => {
       individualLastName: data.individualLastName || "",
       clientLanguage: data.clientLanguage || "",
       email: data.email || "",
-      phone: data.phone || "",
+      phone: data.mobilePhone || "",
 
       // Main address
       address: data.address || "",
@@ -52,7 +56,7 @@ const EditClientForm = ({ handleClose, data }: Props) => {
         code: data.code,
       };
 
-      await editItem(clientData as any, data.id);
+      await editItem(clientData as any, data.id, domain);
       handleClose();
       toast({
         description: `Cliente ${

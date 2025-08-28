@@ -1,19 +1,31 @@
 "use client";
 
-import Image from "next/image";
 import { signIn, signup } from "./actions";
 import { Suspense, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (formData: FormData) => {
-    startTransition(() => {
-      signIn(formData);
+  const handleSubmit = async (formData: FormData) => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await signIn(formData);
+        if (result && "error" in result) {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "An unexpected error occurred"
+        );
+      }
     });
   };
 
@@ -57,6 +69,18 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isPending}
               />
+              <Link
+                href="/auth/forgot-password"
+                className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+              >
+                Forgot your password?
+              </Link>
+
+              {error && (
+                <div className="text-red-500 text-sm text-center bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
+                  {error}
+                </div>
+              )}
               <Button
                 className="hover:bg-white/20 mt-8 mx-auto"
                 variant="outline"

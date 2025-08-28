@@ -49,6 +49,8 @@ export async function updateSession(request: NextRequest) {
     "/favicon.ico",
     "/api/auth/callback",
     "/api/auth/refresh",
+    "/auth/forgot-password",
+    "/auth/reset-password",
   ];
   const isPublic =
     publicRoutes.some((route) => request.nextUrl.pathname === route) ||
@@ -111,6 +113,5 @@ export async function updateSession(request: NextRequest) {
   //    return myNewResponse
   // If this is not done, you may be causing the browser and server to go out
   // of sync and terminate the user's session prematurely!
-  console.log("user", user);
   return supabaseResponse;
 }

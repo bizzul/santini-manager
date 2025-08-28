@@ -5,6 +5,7 @@ import DialogCreate from "./dialogCreate";
 import { createClient } from "@/utils/supabase/server";
 import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
+import { getSiteData } from "@/lib/fetchers";
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
@@ -12,20 +13,25 @@ export const revalidate = 0;
 
 async function getData(domain: string): Promise<Client[]> {
   try {
-    // Fetch data from your API here.
-    const supabase = await createClient();
+    console.log("Fetching site data for domain:", domain);
 
-    // First get the site information
-    const { data: siteData, error: siteError } = await supabase
-      .from("sites")
-      .select("id, organization_id")
-      .eq("subdomain", domain)
-      .single();
+    // Use the getSiteData function which properly handles subdomain extraction
+    const siteResult = await getSiteData(domain);
 
-    if (siteError || !siteData) {
-      console.error("Error fetching site:", siteError);
+    if (!siteResult?.data) {
+      console.error("No site data returned for domain:", domain);
+      console.error("This means either:");
+      console.error("1. The site doesn't exist in the database");
+      console.error("2. The subdomain doesn't match what's stored");
+      console.error("3. There's a URL routing issue");
       return [];
     }
+
+    const siteData = siteResult.data;
+    console.log("Site found:", siteData);
+
+    // Now fetch clients using the site ID
+    const supabase = await createClient();
 
     // Try to fetch clients with site_id filter first (if migration is complete)
     let { data: clients, error } = await supabase
@@ -67,15 +73,19 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
   try {
     //get initial data
     const resolvedParams = await params;
-    const data = await getData(resolvedParams.domain);
+    console.log("Page params:", resolvedParams);
 
     const userContext = await getUserContext();
+    console.log("User context:", userContext);
 
     if (!userContext) {
       // Handle the absence of a session. Redirect or return an error.
       // For example, you might redirect to the login page:
+      console.error("No user context found, redirecting to login");
       return redirect("/login");
     }
+
+    const data = await getData(resolvedParams.domain);
 
     return (
       // <SWRProvider>

@@ -52,7 +52,7 @@ export default async function AdministrationLayout({
           originalSuperadminId={originalSuperadminId}
         />
       )}
-      <div className="relative top-4 left-4 z-40 bg-white/90 rounded-sm shadow-sm px-4 py-2 text-sm text-gray-800 border border-gray-200 mt-12">
+      <div className="relative top-0 left-0 z-40 bg-white/90 rounded-sm shadow-sm px-4 py-2 text-sm text-gray-800 border border-gray-200 mt-0">
         {user ? (
           <span>
             <strong>User:</strong> {user.email} <span className="mx-2">|</span>{" "}

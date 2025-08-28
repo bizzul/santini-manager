@@ -3,10 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
+import { getSiteData } from "@/lib/fetchers";
 
 export async function createItem(props: any, domain?: string) {
-  console.log("createItem called with props:", props, "domain:", domain);
-
   const result = validation.safeParse(props);
   const supabase = await createClient();
   let userId = null;
@@ -20,29 +19,24 @@ export async function createItem(props: any, domain?: string) {
     // Get organization and site information
     if (domain) {
       try {
-        // Get site information
-        const { data: siteData, error: siteError } = await supabase
-          .from("sites")
-          .select("id, organization_id")
-          .eq("subdomain", domain)
-          .single();
+        // Use getSiteData function which properly handles subdomain extraction
+        const siteResult = await getSiteData(domain);
 
-        if (siteError) {
-          console.error("Error fetching site:", siteError);
+        if (!siteResult?.data) {
+          console.error("No site data returned for domain:", domain);
           return {
             message: "Errore nel recupero del sito!",
-            error: siteError.message,
+            error: "Site not found",
           };
         }
 
-        if (siteData) {
-          siteId = siteData.id;
-          organizationId = siteData.organization_id;
-          console.log("Site and organization found:", {
-            siteId,
-            organizationId,
-          });
-        }
+        const siteData = siteResult.data;
+        siteId = siteData.id;
+        organizationId = siteData.organization_id;
+        console.log("Site and organization found:", {
+          siteId,
+          organizationId,
+        });
       } catch (error) {
         console.error("Unexpected error fetching site:", error);
         return {
@@ -52,8 +46,6 @@ export async function createItem(props: any, domain?: string) {
       }
     }
   }
-
-  console.log("result", result);
 
   if (result.success) {
     try {
@@ -65,29 +57,6 @@ export async function createItem(props: any, domain?: string) {
         : undefined;
 
       const generatedCode = firstInitials ? firstInitials + lastInitials : "";
-
-      console.log("Attempting to insert client with data:", {
-        individualTitle: result.data?.clientType === "INDIVIDUAL"
-          ? result.data?.individualTitle
-          : "",
-        businessName: result.data?.clientType === "BUSINESS"
-          ? result.data?.businessName
-          : "",
-        individualFirstName: result.data?.individualFirstName,
-        clientType: result.data.clientType,
-        individualLastName: result.data?.individualLastName,
-        address: result.data?.address,
-        city: result.data?.city,
-        countryCode: result.data?.countryCode,
-        email: result.data?.email,
-        mobilePhone: result.data?.phone,
-        landlinePhone: result.data?.phone,
-        zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
-        clientLanguage: result.data?.clientLanguage,
-        code: generatedCode,
-        organization_id: organizationId,
-        site_id: siteId,
-      });
 
       // Prepare the insert data
       const insertData: any = {
@@ -125,7 +94,7 @@ export async function createItem(props: any, domain?: string) {
         .select()
         .single();
 
-      console.log("saveData", saveData);
+      // console.log("saveData", saveData);
 
       if (createError) {
         console.error("Error creating client:", createError);
@@ -145,15 +114,9 @@ export async function createItem(props: any, domain?: string) {
               clientId: saveData.id,
             },
             user_id: userId,
+            site_id: siteId,
+            organization_id: organizationId,
           };
-
-          // Only add site and organization fields if they exist and have values
-          if (siteId) {
-            actionData.site_id = siteId;
-          }
-          if (organizationId) {
-            actionData.organization_id = organizationId;
-          }
 
           const { error: actionError } = await supabase
             .from("Action")

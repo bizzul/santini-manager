@@ -32,11 +32,11 @@ export function ThemeSwitcher() {
   return (
     <div
       onClick={toggleSwitch}
-      className={`flex-start flex h-[50px] w-[100px]   p-[8px] shadow-inner hover:cursor-pointer  ${
+      className={`flex-start flex h-[50px] w-[100px]   p-[8px]  hover:cursor-pointer  ${
         isOn && "place-content-end"
       }`}
     >
-      <div className="flex h-[40px] w-[40px] items-center justify-center  bg-black/90">
+      <div className="flex h-[40px] w-[40px] items-center justify-center  ">
         {isOn ? (
           <RiSunFill className="h-6 w-6 text-yellow-300" />
         ) : (
