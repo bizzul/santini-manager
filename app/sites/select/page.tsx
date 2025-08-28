@@ -15,7 +15,12 @@ export default async function SelectSitePage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <h1 className="text-2xl font-bold mb-4">Select a Site</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Select a Site</h1>
+        <Link href="/">
+          <Button variant="outline">Go Home</Button>
+        </Link>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Your Sites</CardTitle>
