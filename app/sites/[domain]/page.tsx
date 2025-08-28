@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { getSiteData } from "@/lib/fetchers";
-import { createClient } from "@/utils/supabase/server";
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";

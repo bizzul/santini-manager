@@ -42,7 +42,9 @@ export default async function SelectSitePage() {
                     )}
                   </div>
                   <Link
-                    href={`/sites/${site.domain || site.subdomain || site.id}`}
+                    href={`/sites/${site.domain || site.subdomain || site.id}.${
+                      process.env.NEXT_PUBLIC_ROOT_DOMAIN
+                    }/dashboard`}
                   >
                     <Button
                       size="sm"

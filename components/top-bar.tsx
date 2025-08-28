@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 export default function TopBar({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
 
+  console.log("user", user);
   useEffect(() => {
-    if (user) {
+    if (user || user === null) {
       setLoading(false);
     }
   }, [user]);
@@ -28,8 +29,30 @@ export default function TopBar({ user }: { user: any }) {
   if (loading) {
     return (
       <div className="w-full h-16 bg-white/10 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-6">
-        <div className="w-20 h-6 bg-white/20 rounded animate-pulse" />
         <div className="w-24 h-8 bg-white/20 rounded animate-pulse" />
+        <div className="w-24 h-8 bg-white/20 rounded animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="w-full h-16 bg-white/10 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-6">
+        <div className="flex items-center space-x-4">
+          <Link
+            href="/"
+            className="text-xl font-semibold text-white hover:text-white/80 transition-colors"
+          >
+            Matris Manager
+          </Link>
+        </div>
+        <div className="text-sm text-center font-bold">
+          <Link href="/login">
+            <Button variant="outline" className="hover:bg-white/20">
+              Login
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }

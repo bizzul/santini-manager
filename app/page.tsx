@@ -43,6 +43,15 @@ export default async function Home() {
                 </div>
               )}
             </div>
+            {!userData && (
+              <div className="text-sm text-center font-bold mb-4">
+                <Link href="/login">
+                  <Button variant="outline" className="hover:bg-white/20">
+                    Login
+                  </Button>
+                </Link>
+              </div>
+            )}
             {/* <p className="mt-8 ">This is the root home page</p> */}
             <p className="mt-8 ">COMING SOON THE PRESENTATION OF THE MANAGER</p>
           </div>
