@@ -3,27 +3,27 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/utils/supabase/client";
 
 export default function TopBar({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      // Redirect to home page after logout
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Error logging out:", error);
-    }
-  };
 
   useEffect(() => {
     if (user) {
       setLoading(false);
     }
   }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      // Use a simple redirect instead of Supabase client-side logout
+      // The server-side auth will handle the session cleanup
+      window.location.href = "/logout";
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Fallback to direct redirect
+      window.location.href = "/logout";
+    }
+  };
 
   if (loading) {
     return (
