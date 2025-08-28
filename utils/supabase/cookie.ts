@@ -14,8 +14,8 @@ const getCookieDomain = () => {
     // Fallback for Vercel preview deployments
     return undefined;
   }
-  // Local development
-  return ".localhost";
+  // Local development - use localhost
+  return "localhost";
 };
 
 export const COOKIE_OPTIONS: CookieOptionsWithName = {
@@ -24,6 +24,6 @@ export const COOKIE_OPTIONS: CookieOptionsWithName = {
   domain: getCookieDomain(),
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
-  httpOnly: true,
+  httpOnly: false, // Changed to false to allow client-side access
   path: "/",
 };

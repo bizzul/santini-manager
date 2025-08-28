@@ -41,59 +41,56 @@ export const MainClientForm: FC<MainClientFormProps> = ({
   isSubmitting,
 }) => {
   return (
-    <div className="space-y-6 bg-black">
+    <div className="space-y-4 bg-card">
       <h2 className="text-xl font-semibold text-foreground border-b border-border pb-2">
-        Informazioni Cliente
+        Informazioni
       </h2>
 
       {/* Client Type Selection */}
-      <div className="bg-muted/50 p-4 rounded-lg border border-border">
-        <FormField
-          control={form.control}
-          name="clientType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-base font-medium text-foreground mb-3 block">
-                Tipologia Cliente
-              </FormLabel>
-              <FormControl>
-                <RadioGroup
-                  {...field}
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  disabled={isSubmitting}
-                  className="flex space-x-6"
-                >
-                  <FormItem className="flex items-center space-x-2">
-                    <FormControl>
-                      <RadioGroupItem value="INDIVIDUAL" />
-                    </FormControl>
-                    <FormLabel className="font-normal cursor-pointer text-foreground">
-                      Privato
-                    </FormLabel>
-                  </FormItem>
-                  <FormItem className="flex items-center space-x-2">
-                    <FormControl>
-                      <RadioGroupItem value="BUSINESS" />
-                    </FormControl>
-                    <FormLabel className="font-normal cursor-pointer text-foreground">
-                      Azienda
-                    </FormLabel>
-                  </FormItem>
-                </RadioGroup>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+
+      <FormField
+        control={form.control}
+        name="clientType"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="text-base font-medium text-foreground mb-3 block">
+              Tipologia
+            </FormLabel>
+            <FormControl>
+              <RadioGroup
+                {...field}
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+                disabled={isSubmitting}
+                className="flex space-x-6"
+              >
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <RadioGroupItem value="INDIVIDUAL" />
+                  </FormControl>
+                  <FormLabel className="font-normal cursor-pointer text-foreground">
+                    Privato
+                  </FormLabel>
+                </FormItem>
+                <FormItem className="flex items-center space-x-2">
+                  <FormControl>
+                    <RadioGroupItem value="BUSINESS" />
+                  </FormControl>
+                  <FormLabel className="font-normal cursor-pointer text-foreground">
+                    Azienda
+                  </FormLabel>
+                </FormItem>
+              </RadioGroup>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       {/* Individual Client Fields */}
       {watchClientType === "INDIVIDUAL" && (
-        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
-          <h3 className="text-lg font-medium text-foreground mb-4">
-            Dati Personali
-          </h3>
+        <div className="bg-card  space-y-4">
+          <h3 className="text-lg font-medium text-foreground mb-4">Dati</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField
               name="individualTitle"
@@ -112,7 +109,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                         <SelectValue placeholder="Seleziona titolo" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-black">
+                    <SelectContent>
                       <SelectItem value="Sig.">Sig.</SelectItem>
                       <SelectItem value="Sig.ra">Sig.ra</SelectItem>
                     </SelectContent>
@@ -163,16 +160,16 @@ export const MainClientForm: FC<MainClientFormProps> = ({
 
       {/* Business Client Fields */}
       {watchClientType === "BUSINESS" && (
-        <div className="bg-card border border-border rounded-lg p-6">
+        <div className="">
           <h3 className="text-lg font-medium text-foreground mb-4">
-            Dati Aziendali
+            Dati aziendali
           </h3>
           <FormField
             name="businessName"
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-sm font-medium text-foreground">
-                  Nome Azienda
+                  Nome azienda
                 </FormLabel>
                 <FormControl>
                   <Input
@@ -189,9 +186,9 @@ export const MainClientForm: FC<MainClientFormProps> = ({
       )}
 
       {/* Common Fields */}
-      <div className="bg-card border border-border rounded-lg p-6 space-y-6">
+      <div className="bg-card  space-y-6">
         <h3 className="text-lg font-medium text-foreground border-b border-border pb-2">
-          Informazioni Generali
+          Informazioni generali
         </h3>
 
         <FormField
@@ -199,7 +196,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-sm font-medium text-foreground">
-                Lingua Preferita
+                Lingua
               </FormLabel>
               <Select
                 onValueChange={field.onChange}
@@ -211,9 +208,13 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                     <SelectValue placeholder="Seleziona lingua" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent className="bg-black">
+                <SelectContent>
                   {languages.map((lan) => (
-                    <SelectItem key={lan.id} value={lan.name}>
+                    <SelectItem
+                      className="hover:bg-slate-500 dark:hover:bg-slate-500"
+                      key={lan.id}
+                      value={lan.name}
+                    >
                       {lan.name}
                     </SelectItem>
                   ))}
@@ -227,8 +228,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
         {/* Main Address */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-foreground flex items-center">
-            <span className="w-2 h-2 bg-primary rounded-full mr-2"></span>
-            Indirizzo Principale
+            Indirizzo
           </h4>
 
           <FormField
@@ -314,8 +314,8 @@ export const MainClientForm: FC<MainClientFormProps> = ({
         {/* Contact Information */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-foreground flex items-center">
-            <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-            Informazioni di Contatto
+            {/* <span className="w-2 h-2  rounded-full mr-2"></span> */}
+            Informazioni di contatto
           </h4>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

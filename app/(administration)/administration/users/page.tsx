@@ -1,42 +1,67 @@
 import React from "react";
 import Link from "next/link";
-import {
-  getUsers,
-  getTenants,
-  getUserProfiles,
-  getOrganizations,
-} from "../actions";
+import { getUsers, getUserProfiles, getOrganizations } from "../actions";
+import { createClient } from "@/utils/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowLeft } from "lucide-react";
 import { getUserContext } from "@/lib/auth-utils";
 import ImpersonateButton from "@/components/users/impersonateButton";
+import { redirect } from "next/navigation";
+
+// Force dynamic rendering to prevent static generation errors with cookies
+export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
-  const [users, tenants, profiles, organizations] = await Promise.all([
-    getUsers(),
-    getTenants(),
-    getUserProfiles(),
-    getOrganizations(),
-  ]);
   const userContext = await getUserContext();
+
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  const { role } = userContext;
+
+  // Only allow admin and superadmin access
+  if (role !== "admin" && role !== "superadmin") {
+    redirect("/");
+  }
+
+  const [users, profiles] = await Promise.all([getUsers(), getUserProfiles()]);
   const isSuperadmin =
     userContext?.role === "superadmin" && !userContext.isImpersonating;
   const currentUserId = userContext?.user?.id;
 
-  // Merge user, tenant, profile, and organization data by auth id
+  // Get user-organization relationships with organization information
+  const supabase = await createClient();
+  const { data: userOrgs } = await supabase.from("user_organizations").select(`
+      user_id,
+      organization_id,
+      organizations (
+        id,
+        name
+      )
+    `);
+
+  // Merge user, profile, and organization data using direct joins
   const mergedUsers = users.map((user: any) => {
-    const tenant = tenants.find((t: any) => t.user_id === user.id);
     const profile = profiles.find((p: any) => p.authId === user.id);
-    const organization = tenant
-      ? organizations.find((o: any) => o.id === tenant.organization_id)
-      : null;
+
+    // Get all organizations for this user from user_organizations table
+    const userOrganizations =
+      userOrgs
+        ?.filter((userOrg: any) => userOrg.user_id === user.id)
+        ?.map((userOrg: any) => ({
+          organization_id: userOrg.organization_id,
+          organization: userOrg.organizations,
+          organization_name: userOrg.organizations?.name || "Unknown Org",
+          role: profile?.role || "user",
+        })) || [];
+
     return {
       ...user,
-      tenant,
+      userOrganizations,
       given_name: profile?.given_name || "-",
       family_name: profile?.family_name || "-",
-      organization_name: organization?.name || "-",
     };
   });
 
@@ -52,17 +77,33 @@ export default async function UsersPage() {
         </Link>
       </div>
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Manage Users</h1>
-        <Link href="/administration/create-user">
-          <Button variant="default">
-            <Plus className="h-4 w-4 mr-2" />
-            Create User
-          </Button>
-        </Link>
+        <h1 className="text-2xl font-bold">
+          {role === "superadmin"
+            ? "Manage All Users"
+            : "Manage Organization Users"}
+        </h1>
+        <div className="flex gap-2">
+          <Link href="/administration/create-user">
+            <Button variant="default">
+              <Plus className="h-4 w-4 mr-2" />
+              Create User
+            </Button>
+          </Link>
+          {isSuperadmin && (
+            <Link href="/administration/create-user?role=superadmin">
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Superadmin
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Users</CardTitle>
+          <CardTitle>
+            {role === "superadmin" ? "All Users" : "Organization Users"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -82,7 +123,7 @@ export default async function UsersPage() {
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Organization Name
+                    Organizations
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -101,8 +142,21 @@ export default async function UsersPage() {
                         {u.family_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{u.role}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {u.organization_name}
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          {u.userOrganizations?.map(
+                            (userOrg: any, index: number) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2"
+                              >
+                                <span className="text-sm font-medium">
+                                  {userOrg.organization?.name || "Unknown Org"}
+                                </span>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap flex gap-2">
                         <Link href={`/administration/users/${u.id}`}>
@@ -116,7 +170,9 @@ export default async function UsersPage() {
                           </Button>
                         </Link>
                         {isSuperadmin &&
-                          u.role !== "superadmin" &&
+                          !u.userOrganizations?.some(
+                            (userOrg: any) => userOrg.role === "superadmin"
+                          ) &&
                           u.id !== currentUserId && (
                             <ImpersonateButton userId={u.id} />
                           )}
@@ -126,7 +182,7 @@ export default async function UsersPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={7}
                       className="px-6 py-4 text-center text-gray-500"
                     >
                       No users found.

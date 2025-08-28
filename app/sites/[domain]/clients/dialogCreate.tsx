@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -15,20 +14,17 @@ function DialogCreate() {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
-      <DialogTrigger asChild>
-        <div className=" flex justify-end pt-12 overflow-hidden cursor-pointer pointer-events-none hover:opacity-50 opacity-100 transition-opacity duration-300 ">
-          <Button
-            className="pointer-events-auto border dark:border-white"
-            onClick={() => setOpen(true)}
-          >
+      <div className="flex justify-end pt-12 overflow-hidden">
+        <DialogTrigger asChild>
+          <Button variant="outline" onClick={() => setOpen(true)}>
             Aggiungi cliente
           </Button>
-        </div>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[60%] max-h-[90%] overflow-scroll">
+        </DialogTrigger>
+      </div>
+      <DialogContent className="sm:max-w-[60%] max-h-[90%] overflow-scroll ">
         <DialogHeader>
-          <DialogTitle>Crea cliente</DialogTitle>
-          <DialogDescription>Crea un cliente nuovo</DialogDescription>
+          <DialogTitle>Crea nuovo cliente</DialogTitle>
+          {/* <DialogDescription>Crea un cliente nuovo</DialogDescription> */}
         </DialogHeader>
         <CreateProductForm handleClose={() => setOpen(false)} />
       </DialogContent>

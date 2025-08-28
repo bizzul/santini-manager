@@ -79,7 +79,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
 
     return (
       // <SWRProvider>
-      <div className="min-w-full px-4 h-full">
+      <div className="min-w-full px-4 h-full ">
         <DialogCreate />
         {data.length > 0 ? (
           <DataWrapper data={data} />

@@ -3,12 +3,15 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   getUsers,
-  getTenants,
+  getUserOrganizations,
   getUserProfiles,
   getOrganizations,
 } from "../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getUserContext } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
 
 export default async function UserViewPage({
   params,
@@ -16,19 +19,67 @@ export default async function UserViewPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [users, tenants, profiles, organizations] = await Promise.all([
+  const userContext = await getUserContext();
+  
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  const { role, user } = userContext;
+  
+  // Only allow admin and superadmin access
+  if (role !== "admin" && role !== "superadmin") {
+    redirect("/");
+  }
+
+  const [users, userOrgs, profiles, organizations] = await Promise.all([
     getUsers(),
-    getTenants(),
+    getUserOrganizations(id),
     getUserProfiles(),
     getOrganizations(),
   ]);
-  const user = users.find((u: any) => u.id === id);
-  if (!user) return notFound();
-  const tenant = tenants.find((t: any) => t.user_id === user.id);
-  const profile = profiles.find((p: any) => p.authId === user.id);
-  const organization = tenant
-    ? organizations.find((o: any) => o.id === tenant.organization_id)
-    : null;
+  const userToView = users.find((u: any) => u.id === id);
+  if (!userToView) return notFound();
+  
+  // Check if user has access to view this user
+  if (role === "admin") {
+    const supabase = await createClient();
+    const { data: currentUserOrgs } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", user?.id);
+
+    const { data: targetUserOrgs } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", id);
+
+    if (!currentUserOrgs || !targetUserOrgs) {
+      redirect("/administration/users");
+    }
+
+    const currentUserOrgIds = currentUserOrgs.map((uo: any) => uo.organization_id);
+    const targetUserOrgIds = targetUserOrgs.map((uo: any) => uo.organization_id);
+
+    // Check if they share any organizations
+    const hasSharedOrg = currentUserOrgIds.some((orgId: string) =>
+      targetUserOrgIds.includes(orgId)
+    );
+
+    if (!hasSharedOrg) {
+      redirect("/administration/users");
+    }
+  }
+
+  const profile = profiles.find((p: any) => p.authId === userToView.id);
+  const userOrganizations = userOrgs || [];
+  const organizationNames =
+    userOrganizations.length > 0
+      ? userOrganizations
+          .map((userOrg: any) => userOrg.organizations?.name)
+          .filter(Boolean)
+          .join(", ")
+      : "-";
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-lg mx-auto">
@@ -42,10 +93,10 @@ export default async function UserViewPage({
         <CardContent>
           <div className="space-y-2">
             <div>
-              <span className="font-semibold">Email:</span> {user.email}
+              <span className="font-semibold">Email:</span> {userToView.email}
             </div>
             <div>
-              <span className="font-semibold">Role:</span> {user.role}
+              <span className="font-semibold">Role:</span> {userToView.role}
             </div>
             <div>
               <span className="font-semibold">Given Name:</span>{" "}
@@ -56,8 +107,8 @@ export default async function UserViewPage({
               {profile?.family_name || "-"}
             </div>
             <div>
-              <span className="font-semibold">Organization:</span>{" "}
-              {organization?.name || "-"}
+              <span className="font-semibold">Organizations:</span>{" "}
+              {organizationNames}
             </div>
           </div>
         </CardContent>

@@ -2,7 +2,8 @@
 
 import { useFormStatus } from "react-dom";
 import { useActionState } from "react";
-import { createOrganizationAndInviteUser } from "../actions";
+import { createOrganizationAndInviteUser } from "../../actions";
+import { Input } from "@/components/ui/input";
 
 const initialState = {
   message: "",
@@ -30,36 +31,26 @@ export function CreateOrganizationForm() {
   );
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4 ">
       <div>
-        <label
-          htmlFor="organizationName"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Organization Name
-        </label>
-        <input
+        <Input
           type="text"
           id="organizationName"
           name="organizationName"
+          placeholder="Organization Name"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:bg-black"
         />
       </div>
 
       <div>
-        <label
-          htmlFor="adminEmail"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Admin Email
-        </label>
-        <input
+        <Input
           type="email"
           id="adminEmail"
           name="adminEmail"
+          placeholder="Admin Email"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:bg-black dark:border-white dark:text-white"
         />
       </div>
 

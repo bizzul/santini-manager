@@ -2,8 +2,7 @@
 
 import { useActionState } from "react";
 import { createUser } from "../actions";
-
-const roles: any[] = ["user", "admin"];
+import { useSearchParams } from "next/navigation";
 
 const initialState = {
   success: false,
@@ -12,10 +11,19 @@ const initialState = {
 
 interface CreateUserFormProps {
   organizations: any[];
+  userRole?: string;
 }
 
-export function CreateUserForm({ organizations }: CreateUserFormProps) {
+export function CreateUserForm({ organizations, userRole }: CreateUserFormProps) {
   const [state, formAction] = useActionState(createUser, initialState);
+  const searchParams = useSearchParams();
+  
+  // Filter roles based on user's role
+  const availableRoles = userRole === "superadmin" 
+    ? ["user", "admin", "superadmin"]
+    : ["user", "admin"];
+  
+  const defaultRole = searchParams.get("role") || "user";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -72,21 +80,25 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           htmlFor="organization"
           className="block text-sm font-medium text-gray-700"
         >
-          Organization
+          Organizations
         </label>
         <select
           name="organization"
           id="organization"
           required
+          multiple
+          size={4}
           className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         >
-          <option value="">Select an organization</option>
           {organizations?.map((org) => (
             <option key={org.id} value={org.id}>
               {org.name}
             </option>
           ))}
         </select>
+        <p className="mt-1 text-sm text-gray-500">
+          Hold Ctrl (or Cmd on Mac) to select multiple organizations
+        </p>
       </div>
 
       <div>
@@ -100,9 +112,10 @@ export function CreateUserForm({ organizations }: CreateUserFormProps) {
           name="role"
           id="role"
           required
+          defaultValue={availableRoles.includes(defaultRole) ? defaultRole : "user"}
           className="mt-1 block w-full rounded-md border border-gray-300 shadow-xs p-2"
         >
-          {roles.map((role) => (
+          {availableRoles.map((role) => (
             <option key={role} value={role}>
               {role}
             </option>

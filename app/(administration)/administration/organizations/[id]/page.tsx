@@ -9,6 +9,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
+import { getUserContext } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
 
 interface OrganizationPageProps {
   params: Promise<{ id: string }>;
@@ -18,8 +21,36 @@ export default async function OrganizationDetailsPage({
   params,
 }: OrganizationPageProps) {
   const { id } = await params;
+  const userContext = await getUserContext();
+  
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  const { role, user } = userContext;
+  
+  // Only allow admin and superadmin access
+  if (role !== "admin" && role !== "superadmin") {
+    redirect("/");
+  }
+
   const organization = await getOrganizationById(id);
   if (!organization) return notFound();
+
+  // Check if user has access to this organization
+  if (role === "admin") {
+    const supabase = await createClient();
+    const { data: userOrg } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", user?.id)
+      .eq("organization_id", id)
+      .single();
+
+    if (!userOrg) {
+      redirect("/administration");
+    }
+  }
 
   const sites = await getOrganizationSites(id);
   const users = await getOrganizationUsers(id);
@@ -34,6 +65,14 @@ export default async function OrganizationDetailsPage({
             Back to Organizations
           </Button>
         </Link>
+        {role === "superadmin" && (
+          <Link
+            href={`/administration/organizations/${id}/edit`}
+            className="ml-2"
+          >
+            <Button variant="outline">Edit Organization</Button>
+          </Link>
+        )}
       </div>
       <Card>
         <CardHeader>
@@ -84,23 +123,22 @@ export default async function OrganizationDetailsPage({
             <ul>
               {users?.length > 0 ? (
                 users.map((user: any) => (
-                  <li key={user.id}>
-                    <div>
-                      {user.given_name} {user.family_name}{" "}
-                      <span className="text-gray-500">({user.authId})</span>
+                  <li key={user.id} className="mb-2 p-2 border rounded">
+                    <div className="font-medium">
+                      {user.givenName} {user.familyName}
                     </div>
-                    {user.email && (
-                      <span className="text-gray-500">
-                        Email: ({user.email})
-                      </span>
-                    )}
-                    {user.role && (
-                      <span className="text-gray-500"> Role:({user.role})</span>
-                    )}
+                    <div className="text-sm text-gray-600">
+                      <span>ID: {user.id}</span>
+                      {user.email && (
+                        <span className="ml-2">• Email: {user.email}</span>
+                      )}
+                      <span className="ml-2">• Role: {user.role}</span>
+                      <span className="ml-2">• Joined: {user.joinedAt}</span>
+                    </div>
                   </li>
                 ))
               ) : (
-                <li>No users found.</li>
+                <li>No users connected.</li>
               )}
             </ul>
           </div>

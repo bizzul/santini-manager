@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import {
   addDomainToVercel,
   removeDomainFromVercelProject,
@@ -235,3 +236,35 @@ export const deleteSite = withSiteAuth(
     }
   },
 );
+
+// Update user password using service client (for invitations)
+export async function updateUserPassword(userId: string, newPassword: string) {
+  try {
+    const supabaseService = await createServiceClient();
+
+    // Update the user's password using admin privileges
+    const { error } = await supabaseService.auth.admin.updateUserById(
+      userId,
+      { password: newPassword },
+    );
+
+    if (error) {
+      return {
+        success: false,
+        message: `Failed to update password: ${error.message}`,
+      };
+    }
+
+    return {
+      success: true,
+      message: "Password updated successfully",
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error updating password: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    };
+  }
+}

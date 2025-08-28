@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Login | Reactive Manager",
+  title: "Login | Matris Manager",
 };
 
 export default function AuthLayout({ children }: { children: ReactNode }) {

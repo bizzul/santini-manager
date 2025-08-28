@@ -4,16 +4,24 @@ import { useRouter } from "next/navigation";
 import { updateSiteWithUsers } from "../../actions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import ModuleManagementModal from "@/components/module-management/ModuleManagementModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function SubmitButton({ pending }: { pending: boolean }) {
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-    >
+    <Button type="submit" disabled={pending} className="w-full">
       {pending ? "Saving..." : "Save Changes"}
-    </button>
+    </Button>
   );
 }
 
@@ -70,138 +78,111 @@ export default function EditSiteForm({
   }
 
   return (
-    <div className="space-y-4 border border-gray-200 p-6 rounded-lg shadow-md max-w-md mx-auto relative z-10">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Site Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            required
-            className="mt-1 block w-full rounded-md border-white shadow-xs p-2 text-black bg-white"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="subdomain"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Subdomain
-          </label>
-          <input
-            type="text"
-            id="subdomain"
-            name="subdomain"
-            value={form.subdomain}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, subdomain: e.target.value }))
-            }
-            required
-            className="mt-1 block w-full rounded-md border-white shadow-xs p-2 text-black bg-white"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={3}
-            value={form.description}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, description: e.target.value }))
-            }
-            className="mt-1 block w-full rounded-md border-white shadow-xs p-2 text-black bg-white"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="organization_id"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Organization
-          </label>
-          <select
-            id="organization_id"
-            name="organization_id"
-            value={form.organization_id}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, organization_id: e.target.value }))
-            }
-            required
-            className="mt-1 block w-full rounded-md border-white shadow-xs p-2 text-black bg-white"
-          >
-            {organizations.map((org: any) => (
-              <option key={org.id} value={org.id}>
-                {org.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label
-            htmlFor="users"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Users
-          </label>
-          <MultiSelect
-            options={users.map((user: any) => ({
-              value: user.id,
-              label: user.email || user.name,
-            }))}
-            onValueChange={handleUsersChange}
-            defaultValue={form.users}
-            placeholder="Search users..."
-            variant="default"
-            animation={2}
-            maxCount={3}
-            className="w-full "
-          />
-        </div>
-        <SubmitButton pending={pending} />
-        {message && (
-          <div className="mt-4 p-4 rounded-sm bg-green-100 text-green-700">
-            {message}
+    <Card className="max-w-md mx-auto relative z-10">
+      <CardHeader>
+        <CardTitle>Edit Site</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Site Name</Label>
+            <Input
+              type="text"
+              id="name"
+              name="name"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="subdomain">Subdomain</Label>
+            <Input
+              type="text"
+              id="subdomain"
+              name="subdomain"
+              value={form.subdomain}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, subdomain: e.target.value }))
+              }
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              rows={3}
+              value={form.description}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, description: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="organization_id">Organization</Label>
+            <Select
+              value={form.organization_id}
+              onValueChange={(value) =>
+                setForm((f) => ({ ...f, organization_id: value }))
+              }
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select an organization" />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((org: any) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="users">Users</Label>
+            <MultiSelect
+              options={users.map((user: any) => ({
+                value: user.id,
+                label: user.email || user.name,
+              }))}
+              onValueChange={handleUsersChange}
+              defaultValue={form.users}
+              placeholder="Search users..."
+              variant="default"
+              animation={2}
+              maxCount={3}
+              className="w-full"
+            />
+          </div>
+          <SubmitButton pending={pending} />
+          {message && (
+            <div className="mt-4 p-4 rounded-md bg-green-100 text-green-700 text-sm">
+              {message}
+            </div>
+          )}
+        </form>
+
+        {userRole === "superadmin" && (
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-medium  mb-4 ">Module Management</h3>
+            <p className="text-sm  mb-4">
+              Control which modules are available for this site. Only
+              superadmins can modify these settings.
+            </p>
+            <ModuleManagementModal
+              siteId={site.id}
+              trigger={
+                <Button variant="outline" type="button">
+                  Manage Modules
+                </Button>
+              }
+            />
           </div>
         )}
-      </form>
-
-      {userRole === "superadmin" && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Module Management
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Control which modules are available for this site. Only superadmins
-            can modify these settings.
-          </p>
-          <ModuleManagementModal
-            siteId={site.id}
-            domain={site.subdomain}
-            trigger={
-              <button
-                type="button"
-                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Manage Modules
-              </button>
-            }
-          />
-        </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }

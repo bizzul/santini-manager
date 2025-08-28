@@ -73,21 +73,21 @@ export async function PUT(
             });
         }
 
-        // Check if user has superadmin role
-        const { data: tenantData, error: tenantError } = await supabase
-            .from("tenants")
+        // Check if user has superadmin role from User table
+        const { data: userProfile, error: userProfileError } = await supabase
+            .from("User")
             .select("role")
-            .eq("user_id", user.id)
+            .eq("authId", user.id)
             .single();
 
-        if (tenantError || !tenantData) {
-            return NextResponse.json({ error: "User not found" }, {
+        if (userProfileError || !userProfile) {
+            return NextResponse.json({ error: "User profile not found" }, {
                 status: 404,
             });
         }
 
         // Check if user has superadmin role
-        if (tenantData.role !== "superadmin") {
+        if (userProfile.role !== "superadmin") {
             return NextResponse.json({
                 error: "Only superadmins can modify modules",
             }, { status: 403 });

@@ -2,8 +2,26 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getOrganizations } from "../actions";
 import { CreateUserForm } from "./form";
+import { getUserContext } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
+
+// Force dynamic rendering to prevent static generation errors with cookies
+export const dynamic = "force-dynamic";
 
 export default async function CreateUserPage() {
+  const userContext = await getUserContext();
+
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  const { role } = userContext;
+
+  // Only allow admin and superadmin access
+  if (role !== "admin" && role !== "superadmin") {
+    redirect("/");
+  }
+
   const organizations = await getOrganizations();
 
   return (
@@ -12,7 +30,7 @@ export default async function CreateUserPage() {
         <Button variant="outline">Back to Users</Button>
       </Link>
       <h1 className="text-2xl font-bold mb-6">Create New User</h1>
-      <CreateUserForm organizations={organizations} />
+      <CreateUserForm organizations={organizations} userRole={role} />
     </div>
   );
 }

@@ -5,6 +5,17 @@ import { useActionState, useEffect, useState } from "react";
 import { getOrganizations, getUsers } from "../actions";
 import { createSiteWithAssociations } from "./actions";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const initialState = {
   message: "",
@@ -14,13 +25,14 @@ const initialState = {
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
+    <Button
       type="submit"
+      variant="outline"
       disabled={pending}
-      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+      className="w-full flex justify-center py-2 px-4 text-sm font-medium  disabled:opacity-50"
     >
       {pending ? "Creating..." : "Create Site"}
-    </button>
+    </Button>
   );
 }
 
@@ -32,9 +44,17 @@ export function CreateSiteForm() {
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedOrganizationId, setSelectedOrganizationId] =
+    useState<string>("");
 
   useEffect(() => {
-    getOrganizations().then((orgs: any[]) => setOrganizations(orgs));
+    getOrganizations().then((orgs: any[]) => {
+      setOrganizations(orgs);
+      // If admin user only has one organization, auto-select it
+      if (orgs.length === 1) {
+        setSelectedOrganizationId(orgs[0].id);
+      }
+    });
     getUsers().then((users: any[]) =>
       setUsers(
         // users.filter((u: any) => u.role !== "admin" && u.role !== "superadmin")
@@ -46,13 +66,8 @@ export function CreateSiteForm() {
   return (
     <form action={formAction} className="space-y-4">
       <div>
-        <label
-          htmlFor="name"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Site Name
-        </label>
-        <input
+        <Label htmlFor="name">Site Name</Label>
+        <Input
           type="text"
           id="name"
           name="name"
@@ -61,13 +76,8 @@ export function CreateSiteForm() {
         />
       </div>
       <div>
-        <label
-          htmlFor="subdomain"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Subdomain
-        </label>
-        <input
+        <Label htmlFor="subdomain">Subdomain</Label>
+        <Input
           type="text"
           id="subdomain"
           name="subdomain"
@@ -76,13 +86,8 @@ export function CreateSiteForm() {
         />
       </div>
       <div>
-        <label
-          htmlFor="description"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Description
-        </label>
-        <textarea
+        <Label htmlFor="description">Description</Label>
+        <Textarea
           id="description"
           name="description"
           rows={3}
@@ -90,33 +95,39 @@ export function CreateSiteForm() {
         />
       </div>
       <div>
-        <label
-          htmlFor="organizations"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Connect to Organizations
-        </label>
-        <select
-          id="organizations"
-          name="organizations"
-          multiple
+        <Label htmlFor="organization">Organization</Label>
+        <Select
+          name="organization"
           required
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2"
+          value={selectedOrganizationId}
+          onValueChange={setSelectedOrganizationId}
         >
-          {organizations.map((org: any) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="mt-1 block w-full rounded-md border-gray-300 shadow-xs p-2">
+            <SelectValue placeholder="Select an organization" />
+          </SelectTrigger>
+          <SelectContent>
+            {organizations.map((org: any) => (
+              <SelectItem key={org.id} value={org.id}>
+                {org.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* Hidden input for form submission */}
+        <Input
+          type="hidden"
+          name="organization_id"
+          value={selectedOrganizationId}
+        />
+        {organizations.length === 1 && (
+          <p className="mt-1 text-sm text-blue-600">
+            You can only create sites in your organization:{" "}
+            {organizations[0].name}
+          </p>
+        )}
       </div>
       <div>
-        <label
-          htmlFor="users"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Add Users
-        </label>
+        <Label htmlFor="users">Add Users</Label>
         <MultiSelect
           options={users.map((user: any) => ({
             label: user.email || user.name,
@@ -127,7 +138,7 @@ export function CreateSiteForm() {
           placeholder="Select users"
         />
         {/* Hidden input for form submission */}
-        <input type="hidden" name="users" value={selectedUserIds.join(",")} />
+        <Input type="hidden" name="users" value={selectedUserIds.join(",")} />
       </div>
       <SubmitButton />
       {state?.message && (

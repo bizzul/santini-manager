@@ -4,7 +4,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
-import { getOrganizationById, updateOrganization } from "../../../actions";
+import {
+  getOrganizationById,
+  updateOrganization,
+  getAvailableAdminUsers,
+  getOrganizationAdminUser,
+  updateOrganizationAdminUser,
+} from "../../../actions";
+import { getUserContext } from "@/lib/auth-utils";
 
 interface EditOrganizationPageProps {
   params: Promise<{ id: string }>;
@@ -14,8 +21,27 @@ export default async function EditOrganizationPage({
   params,
 }: EditOrganizationPageProps) {
   const { id } = await params;
+  const userContext = await getUserContext();
+  
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  const { role } = userContext;
+  
+  // Only allow superadmin access
+  if (role !== "superadmin") {
+    redirect("/administration/organizations");
+  }
+
   const organization = await getOrganizationById(id);
   if (!organization) return notFound();
+
+  // Get available admin users and current admin
+  const [availableAdminUsers, currentAdmin] = await Promise.all([
+    getAvailableAdminUsers().catch(() => []),
+    getOrganizationAdminUser(id).catch(() => null),
+  ]);
 
   async function handleSubmit(formData: FormData) {
     "use server";
@@ -24,6 +50,13 @@ export default async function EditOrganizationPage({
       code: formData.get("code"),
     };
     await updateOrganization(id, updates);
+
+    // Handle admin user change if different
+    const newAdminUserId = formData.get("adminUser");
+    if (newAdminUserId && newAdminUserId !== currentAdmin?.authId) {
+      await updateOrganizationAdminUser(id, newAdminUserId as string);
+    }
+
     redirect(`/administration/organizations/${id}`);
   }
 
@@ -56,18 +89,6 @@ export default async function EditOrganizationPage({
                 required
               />
             </div>
-            {/* <div>
-              <label className="block font-semibold mb-1" htmlFor="domain">
-                Domain
-              </label>
-              <input
-                id="domain"
-                name="domain"
-                type="text"
-                defaultValue={organization.domain || ""}
-                className="w-full border rounded-sm px-3 py-2"
-              />
-            </div> */}
             <div>
               <label className="block font-semibold mb-1" htmlFor="code">
                 Code
@@ -79,6 +100,32 @@ export default async function EditOrganizationPage({
                 defaultValue={organization.code || ""}
                 className="w-full border rounded-sm px-3 py-2"
               />
+            </div>
+            <div>
+              <label className="block font-semibold mb-1" htmlFor="adminUser">
+                Admin User
+              </label>
+              <select
+                id="adminUser"
+                name="adminUser"
+                defaultValue={currentAdmin?.authId || ""}
+                className="w-full border rounded-sm px-3 py-2"
+                required
+              >
+                <option value="">Select an admin user</option>
+                {availableAdminUsers.map((user: any) => (
+                  <option key={user.authId} value={user.authId}>
+                    {user.given_name} {user.family_name} ({user.email}) -{" "}
+                    {user.role}
+                  </option>
+                ))}
+              </select>
+              {currentAdmin && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Current admin: {currentAdmin.given_name}{" "}
+                  {currentAdmin.family_name} ({currentAdmin.email})
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <Button type="submit" variant="default">

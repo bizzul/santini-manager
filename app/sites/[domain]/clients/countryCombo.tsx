@@ -39,7 +39,7 @@ export function CountryCombo({ field }: { field: any }) {
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[200px] p-0 z-50 pointer-events-auto cursor-pointer bg-black"
+        className="w-[200px] p-0 z-50 pointer-events-auto cursor-pointer"
         side="bottom"
         align="start"
         sideOffset={4}

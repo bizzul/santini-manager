@@ -89,7 +89,7 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 ">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* Main client form section */}
         <MainClientForm
           form={form}
@@ -101,7 +101,8 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full border dark:border-white hover:bg-white hover:text-black"
+          className="w-full"
+          variant="outline"
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">
@@ -109,7 +110,7 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
               <span>Salvataggio in corso...</span>
             </div>
           ) : (
-            "Salva Cliente"
+            "Salva"
           )}
         </Button>
       </form>

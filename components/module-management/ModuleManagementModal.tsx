@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,10 +27,13 @@ import {
   AVAILABLE_MODULES,
   getModulesByCategory,
 } from "@/lib/module-config";
+import {
+  getSiteModules,
+  updateSiteModules,
+} from "@/app/(administration)/administration/actions";
 
 interface ModuleManagementModalProps {
   siteId: string;
-  domain: string;
   trigger?: React.ReactNode;
 }
 
@@ -40,7 +43,6 @@ interface ModuleWithStatus extends ModuleConfig {
 
 export default function ModuleManagementModal({
   siteId,
-  domain,
   trigger,
 }: ModuleManagementModalProps) {
   const [open, setOpen] = useState(false);
@@ -49,19 +51,10 @@ export default function ModuleManagementModal({
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open) {
-      fetchModules();
-    }
-  }, [open, domain]);
-
-  const fetchModules = async () => {
+  const fetchModules = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/sites/${domain}/modules`);
-      if (!response.ok) throw new Error("Failed to fetch modules");
-
-      const data = await response.json();
+      const data = await getSiteModules(siteId);
       setModules(data.modules);
     } catch (error) {
       console.error("Error fetching modules:", error);
@@ -73,7 +66,13 @@ export default function ModuleManagementModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [siteId, toast]);
+
+  useEffect(() => {
+    if (open) {
+      fetchModules();
+    }
+  }, [open, fetchModules]);
 
   const handleModuleToggle = (moduleName: string, enabled: boolean) => {
     setModules((prev) =>
@@ -86,18 +85,7 @@ export default function ModuleManagementModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/sites/${domain}/modules`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ modules }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update modules");
-      }
+      await updateSiteModules(siteId, modules);
 
       toast({
         title: "Success",
@@ -196,7 +184,7 @@ export default function ModuleManagementModal({
         <DialogHeader>
           <DialogTitle>Manage Site Modules</DialogTitle>
           <DialogDescription>
-            Enable or disable modules for {domain}. Changes will affect what
+            Enable or disable modules for this site. Changes will affect what
             features are available to users.
           </DialogDescription>
         </DialogHeader>

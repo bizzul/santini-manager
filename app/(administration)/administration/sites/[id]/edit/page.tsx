@@ -13,6 +13,18 @@ export default async function EditSitePage({
 }) {
   const { id } = await params;
   const userContext = await getUserContext();
+  
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  const { role } = userContext;
+  
+  // Only allow superadmin access
+  if (role !== "superadmin") {
+    redirect("/administration/sites");
+  }
+
   const site = await getSiteById(id);
   const siteUsers = await getSiteUsers(id);
   const organizations = await getOrganizations();

@@ -1,5 +1,4 @@
 import { createClient } from "../../../../utils/supabase/server";
-import { NextApiRequest, NextApiResponse } from "next";
 import { promises as fs } from "fs";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -7,7 +6,10 @@ function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9_\u0600-\u06FF.]/g, "_");
 }
 
-export async function POST(req: NextRequest, res: NextResponse, context: any) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ subfolder: string }> },
+) {
   try {
     const supabase = await createClient();
 
@@ -17,12 +19,8 @@ export async function POST(req: NextRequest, res: NextResponse, context: any) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // const subfolder = context.params.subfolder;
-    // Extract the URL from the request object
-    const url = new URL(req.url);
-    // Parse the pathname to get the dynamic segment
-    const pathnameArray = url.pathname.split("/");
-    const subfolder = pathnameArray[pathnameArray.indexOf("local-upload") + 1];
+    // Get the subfolder from params
+    const { subfolder } = await params;
 
     const formData = await req.formData();
     const file = formData.get("image") as File;

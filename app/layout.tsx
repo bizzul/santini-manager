@@ -6,7 +6,7 @@ import { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
 
-const title = "Reactive Manager";
+const title = "Matris Manager";
 const description = "A B2B Saas Platform";
 const image = "https://vercel.pub/thumbnail.png";
 

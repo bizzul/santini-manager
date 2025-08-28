@@ -58,7 +58,7 @@ export default async function middleware(req: NextRequest) {
 
   if (subdomain) {
     // Block access to admin page from subdomains
-    if (pathname.startsWith("/admin")) {
+    if (pathname.startsWith("/administration")) {
       const response = NextResponse.redirect(new URL("/", req.url));
       return ensureCookies(response);
     }

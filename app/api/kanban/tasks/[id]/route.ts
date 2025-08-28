@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: number }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: taskId } = await params;
   try {
@@ -30,10 +30,10 @@ export async function GET(
     if (task) {
       return NextResponse.json({ task, status: 200 });
     } else {
-      return NextResponse.json({ message: "Client not found", status: 404 });
+      return NextResponse.json({ message: "Task not found", status: 404 });
     }
   } catch (error) {
-    console.error("Error fetching client:", error);
+    console.error("Error fetching task:", error);
     return NextResponse.json({ message: "Internal server error", status: 500 });
   }
 }
@@ -70,7 +70,7 @@ export async function PATCH(req: NextRequest) {
       });
     }
     return NextResponse.json({
-      message: "The product not exist.",
+      message: "The task does not exist.",
       status: 404,
     });
   } catch (error) {
@@ -82,38 +82,38 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const supabase = await createClient();
-    const productId = await req.json();
+    const taskId = await req.json();
 
-    const { data: product, error: findError } = await supabase
-      .from("products")
+    const { data: task, error: findError } = await supabase
+      .from("tasks")
       .select("*")
-      .eq("id", Number(productId))
+      .eq("id", Number(taskId))
       .single();
 
     if (findError) throw findError;
 
-    if (product) {
-      //Removing product
+    if (task) {
+      //Removing task
       const { error: deleteError } = await supabase
-        .from("products")
+        .from("tasks")
         .delete()
-        .eq("id", Number(productId));
+        .eq("id", Number(taskId));
 
       if (deleteError) throw deleteError;
 
       return NextResponse.json({
         stato: "DELETED",
-        product: product,
+        task: task,
         status: 200,
       });
     }
 
     return NextResponse.json({
-      message: "The product id not exist.",
+      message: "The task id does not exist.",
       status: 404,
     });
   } catch (error) {
-    console.error("Error deleting product:", error);
+    console.error("Error deleting task:", error);
     return NextResponse.json({ message: "Internal server error", status: 500 });
   }
 }

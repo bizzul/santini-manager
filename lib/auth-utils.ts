@@ -7,7 +7,9 @@ export type UserRole = "superadmin" | "admin" | "user";
 export interface UserContext {
     user: any;
     role: UserRole;
-    organizationId?: string;
+    organizationId?: string; // Keep for backward compatibility
+    organizationIds?: string[]; // New: array of organization IDs for many-to-many
+    userId?: string; // New: user ID for easier access
     tenantId?: string;
     canAccessAllOrganizations: boolean;
     canAccessAllTenants: boolean;
@@ -32,6 +34,7 @@ export interface TenantAccess {
 
 /**
  * Get the current user's context including role and organization access
+ * Updated to work with new structure: User.role + user_organizations table
  */
 export async function getUserContext(): Promise<UserContext | null> {
     try {
@@ -104,25 +107,29 @@ export async function getUserContext(): Promise<UserContext | null> {
             return null;
         }
 
-        console.log("Fetching tenant data for user:", userToUse.id);
+        console.log(
+            "Fetching user data and organization relationships for user:",
+            userToUse.id,
+        );
 
-        // Get user's tenant information including role
-        const { data: tenantData, error: tenantError } = await supabase
-            .from("tenants")
-            .select("role, organization_id")
-            .eq("user_id", userToUse.id)
-            .single();
+        // Get user's role from User table
+        const { data: userData, error: userError } = await supabase
+            .from("User")
+            .select("role")
+            .eq("authId", userToUse.id);
 
-        if (tenantError) {
-            console.error("Error fetching tenant data:", tenantError);
+        if (userError) {
+            console.error("Error fetching user data:", userError);
             // Check if it's a "no rows returned" error
-            if (tenantError.code === "PGRST116") {
-                console.log("No tenant record found for user:", userToUse.id);
-                // Return a default context for users without tenant records
+            if (userError.code === "PGRST116") {
+                console.log("No user record found for user:", userToUse.id);
+                // Return a default context for users without user records
                 return {
                     user: userToUse,
                     role: "user" as UserRole,
                     organizationId: undefined,
+                    organizationIds: [],
+                    userId: userToUse.id,
                     tenantId: userToUse.id,
                     canAccessAllOrganizations: false,
                     canAccessAllTenants: false,
@@ -131,31 +138,69 @@ export async function getUserContext(): Promise<UserContext | null> {
                     impersonatedUser,
                 };
             }
-            throw tenantError;
+            throw userError;
         }
 
-        if (!tenantData) {
-            console.log("No tenant data returned for user:", userToUse.id);
+        if (!userData || userData.length === 0) {
+            console.log("No user data returned for user:", userToUse.id);
             return null;
         }
 
-        const role = tenantData.role as UserRole;
-        const organizationId = tenantData.organization_id;
+        // Get user's role from User table
+        const role = userData[0]?.role as UserRole || "user";
+
+        // Get user's organization relationships from user_organizations table
+        const { data: userOrgData, error: userOrgError } = await supabase
+            .from("user_organizations")
+            .select("organization_id")
+            .eq("user_id", userToUse.id);
+
+        console.log("User organization data:", userOrgData, userOrgError);
+        if (userOrgError) {
+            console.error(
+                "Error fetching user organization data:",
+                userOrgError,
+            );
+            // Return context with just the role if organization fetch fails
+            return {
+                user: userToUse,
+                role: role,
+                organizationId: undefined,
+                organizationIds: [],
+                userId: userToUse.id,
+                tenantId: userToUse.id,
+                canAccessAllOrganizations: role === "superadmin",
+                canAccessAllTenants: role === "superadmin" || role === "admin",
+                isImpersonating,
+                originalSuperadminId,
+                impersonatedUser,
+            };
+        }
+
+        // Get all organization IDs from user_organizations table
+        const organizationIds = userOrgData?.map((uo: any) =>
+            uo.organization_id
+        ) || [];
+        const organizationId = organizationIds[0]; // Keep first one for backward compatibility
+
         const isSuperAdmin = role === "superadmin";
         const isAdmin = role === "admin";
 
-        console.log("User context created successfully:", {
-            userId: userToUse.id,
-            role,
-            organizationId,
-            isSuperAdmin,
-            isAdmin,
-        });
+        // console.log("User context created successfully:", {
+        //     userId: userToUse.id,
+        //     role,
+        //     organizationIds,
+        //     organizationId,
+        //     isSuperAdmin,
+        //     isAdmin,
+        // });
 
         return {
             user: userToUse,
             role,
             organizationId,
+            organizationIds,
+            userId: userToUse.id,
             tenantId: userToUse.id,
             canAccessAllOrganizations: isSuperAdmin,
             canAccessAllTenants: isSuperAdmin || isAdmin,
@@ -182,8 +227,8 @@ export async function canAccessOrganization(
     // Superadmin can access all organizations
     if (context.canAccessAllOrganizations) return true;
 
-    // Regular users can only access their own organization
-    return context.organizationId === organizationId;
+    // Regular users can only access organizations they belong to
+    return context.organizationIds?.includes(organizationId) || false;
 }
 
 /**
@@ -196,15 +241,16 @@ export async function canAccessTenant(
     const context = await getUserContext();
     if (!context) return false;
 
-    // Superadmin can access all tenants
+    // Superadmin can access all users
     if (context.canAccessAllOrganizations) return true;
 
-    // Admin can access all tenants in their organization
+    // Admin can access all users in their organizations
     if (
-        context.canAccessAllTenants && context.organizationId === organizationId
+        context.canAccessAllTenants && context.organizationIds &&
+        organizationId && context.organizationIds.includes(organizationId)
     ) return true;
 
-    // Regular users can only access their own tenant
+    // Regular users can only access their own data
     return context.tenantId === tenantId;
 }
 
@@ -225,15 +271,16 @@ export async function getUserOrganizations(): Promise<string[]> {
 
         return organizations?.map((org) => org.id) || [];
     } else {
-        // Regular users can only see their organization
-        return context.organizationId ? [context.organizationId] : [];
+        // Regular users can see all organizations they belong to
+        return context.organizationIds || [];
     }
 }
 
 /**
- * Get all tenants the user can access
+ * Get all users the user can access in organizations
+ * Updated from getUserTenants to work with user_organizations table
  */
-export async function getUserTenants(
+export async function getUsersInOrganizations(
     organizationId?: string,
 ): Promise<string[]> {
     const context = await getUserContext();
@@ -242,24 +289,28 @@ export async function getUserTenants(
     const supabase = await createClient();
 
     if (context.canAccessAllOrganizations) {
-        // Superadmin can see all tenants
-        const { data: tenants } = await supabase
-            .from("tenants")
+        // Superadmin can see all users
+        const { data: userOrgs } = await supabase
+            .from("user_organizations")
             .select("user_id")
             .eq(
-                organizationId ? "organization_id" : "organization_id",
-                organizationId || context.organizationId,
+                "organization_id",
+                organizationId ||
+                    (context.organizationIds &&
+                            context.organizationIds.length > 0
+                        ? context.organizationIds[0]
+                        : undefined),
             );
 
-        return tenants?.map((tenant) => tenant.user_id) || [];
+        return userOrgs?.map((userOrg) => userOrg.user_id) || [];
     } else if (context.canAccessAllTenants) {
-        // Admin can see all tenants in their organization
-        const { data: tenants } = await supabase
-            .from("tenants")
+        // Admin can see all users in their organizations
+        const { data: userOrgs } = await supabase
+            .from("user_organizations")
             .select("user_id")
-            .eq("organization_id", context.organizationId);
+            .in("organization_id", context.organizationIds || []);
 
-        return tenants?.map((tenant) => tenant.user_id) || [];
+        return userOrgs?.map((userOrg) => userOrg.user_id) || [];
     } else {
         // Regular users can only see themselves
         return context.tenantId ? [context.tenantId] : [];
@@ -282,20 +333,20 @@ export async function getUserSites() {
             .from("sites")
             .select("*, organization:organizations(*)");
         if (!error && data) sites = data;
-    } else if (context.organizationId) {
-        // Admin/User: return sites for their organization
+    } else if (context.organizationIds && context.organizationIds.length > 0) {
+        // Admin/User: return sites for all their organizations
         const { data, error } = await supabase
             .from("sites")
             .select("*, organization:organizations(*)")
-            .eq("organization_id", context.organizationId);
+            .in("organization_id", context.organizationIds);
         if (!error && data) sites = data;
     }
 
-    // Also include sites where the user is directly assigned via site_users
+    // Also include sites where the user is directly assigned via user_sites
     const { data: userSiteLinks, error: userSiteLinksError } = await supabase
-        .from("site_users")
+        .from("user_sites")
         .select("site_id")
-        .eq("user_id", context.user.id);
+        .eq("user_id", context.userId || context.user.id);
     if (!userSiteLinksError && userSiteLinks && userSiteLinks.length > 0) {
         const siteIds = userSiteLinks.map((row: any) => row.site_id);
         if (siteIds.length > 0) {
@@ -380,9 +431,12 @@ export async function createAccessFilter(
     if (context.canAccessAllOrganizations) {
         // Superadmin can see everything - no filter needed
         return { query };
-    } else if (context.canAccessAllTenants && context.organizationId) {
-        // Admin can see everything in their organization
-        query = query.eq(organizationColumn, context.organizationId);
+    } else if (
+        context.canAccessAllTenants && context.organizationIds &&
+        context.organizationIds.length > 0
+    ) {
+        // Admin can see everything in their organizations
+        query = query.in(organizationColumn, context.organizationIds);
         return { query };
     } else {
         // Regular user can only see their own data
@@ -403,8 +457,11 @@ export async function canManageOrganization(
     // Superadmin can manage all organizations
     if (context.role === "superadmin") return true;
 
-    // Admin can manage their own organization
-    if (context.role === "admin" && context.organizationId === organizationId) {
+    // Admin can manage their own organizations
+    if (
+        context.role === "admin" && context.organizationIds &&
+        context.organizationIds.includes(organizationId)
+    ) {
         return true;
     }
 
@@ -421,11 +478,14 @@ export async function canManageTenant(
     const context = await getUserContext();
     if (!context) return false;
 
-    // Superadmin can manage all tenants
+    // Superadmin can manage all users
     if (context.role === "superadmin") return true;
 
-    // Admin can manage tenants in their organization
-    if (context.role === "admin" && context.organizationId === organizationId) {
+    // Admin can manage users in their organizations
+    if (
+        context.role === "admin" && context.organizationIds && organizationId &&
+        context.organizationIds.includes(organizationId)
+    ) {
         return true;
     }
 

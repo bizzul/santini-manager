@@ -374,7 +374,7 @@ function KanbanBoard({
   } | null>(null);
   const [lastModifiedTimestamp, setLastModifiedTimestamp] =
     useState<string>("");
-  const pollingIntervalRef = useRef<NodeJS.Timeout>();
+  const pollingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const tasksRef = useRef(tasks); // Keep a ref of current tasks to avoid unnecessary updates
 
   // Update ref when tasks change

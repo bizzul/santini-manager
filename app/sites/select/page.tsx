@@ -1,13 +1,17 @@
-import React from "react";
-import Link from "next/link";
+import { getUserContext, getUserSites } from "@/lib/auth-utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// You may need to implement or adjust this import based on your backend
-import { getUserSites } from "@/lib/auth-utils";
+import Link from "next/link";
+
+// Force dynamic rendering to prevent static generation errors with cookies
+export const dynamic = "force-dynamic";
 
 export default async function SelectSitePage() {
   // Fetch the sites the current user has access to
   const sites = await getUserSites();
+
+  const userContext = await getUserContext();
+  const userRole = userContext?.role;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -56,6 +60,21 @@ export default async function SelectSitePage() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Administration button for superadmin users */}
+      {userRole === "superadmin" ||
+        (userRole !== "admin" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Administration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Link href="/administration">
+                <Button className="w-full">Go to Administration</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ))}
     </div>
   );
 }

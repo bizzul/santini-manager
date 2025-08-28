@@ -1,10 +1,13 @@
 import React from "react";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getUsers, updateUser } from "../../../actions";
+import { getUsers, getOrganizations } from "../../../actions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { validation } from "@/validation/users/editInfo";
+import { createClient } from "@/utils/supabase/server";
+import { EditUserForm } from "./EditUserForm";
+import { getUserContext } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
 
 export default async function UserEditPage({
   params,
@@ -12,22 +15,69 @@ export default async function UserEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const users = await getUsers();
-  const user = users.find((u: any) => u.id === id);
+  const userContext = await getUserContext();
 
-  if (!user) return notFound();
-
-  async function handleSubmit(formData: FormData): Promise<void> {
-    "use server";
-    const data = Object.fromEntries(formData.entries());
-    const parsed = validation.safeParse(data);
-    if (!parsed.success) {
-      // Optionally, handle error (e.g., show toast or set state)
-      return;
-    }
-    await updateUser(id, parsed.data);
-    redirect(`/administration/users/${id}`);
+  if (!userContext) {
+    redirect("/login");
   }
+
+  const { role, user } = userContext;
+
+  // Only allow admin and superadmin access
+  if (role !== "admin" && role !== "superadmin") {
+    redirect("/");
+  }
+
+  const [users, organizations] = await Promise.all([
+    getUsers(),
+    getOrganizations(),
+  ]);
+  const userToEdit = users.find((u: any) => u.id === id);
+
+  if (!userToEdit) return notFound();
+
+  // Check if user has access to edit this user
+  if (role === "admin") {
+    const supabase = await createClient();
+    const { data: currentUserOrgs } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", user?.id);
+
+    const { data: targetUserOrgs } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", id);
+
+    if (!currentUserOrgs || !targetUserOrgs) {
+      redirect("/administration/users");
+    }
+
+    const currentUserOrgIds = currentUserOrgs.map(
+      (uo: any) => uo.organization_id
+    );
+    const targetUserOrgIds = targetUserOrgs.map(
+      (uo: any) => uo.organization_id
+    );
+
+    // Check if they share any organizations
+    const hasSharedOrg = currentUserOrgIds.some((orgId: string) =>
+      targetUserOrgIds.includes(orgId)
+    );
+
+    if (!hasSharedOrg) {
+      redirect("/administration/users");
+    }
+  }
+
+  // Get user's current organizations
+  const supabase = await createClient();
+  const { data: userOrgs } = await supabase
+    .from("user_organizations")
+    .select("organization_id")
+    .eq("user_id", id);
+
+  const userOrgIds = userOrgs?.map((uo: any) => uo.organization_id) || [];
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-lg mx-auto">
@@ -39,51 +89,13 @@ export default async function UserEditPage({
           <CardTitle>Edit User</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block font-semibold mb-1">Email</label>
-              <input
-                name="email"
-                type="email"
-                defaultValue={user.email}
-                className="w-full border rounded-sm px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Given Name</label>
-              <input
-                name="given_name"
-                type="text"
-                defaultValue={user.given_name}
-                className="w-full border rounded-sm px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Family Name</label>
-              <input
-                name="family_name"
-                type="text"
-                defaultValue={user.family_name}
-                className="w-full border rounded-sm px-3 py-2"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold mb-1">Role</label>
-              <select
-                name="role"
-                defaultValue={user.role}
-                className="w-full border rounded-sm px-3 py-2"
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="superadmin">Superadmin</option>
-              </select>
-            </div>
-            {/* Add more fields as needed */}
-            <Button type="submit" variant="default">
-              Save
-            </Button>
-          </form>
+          <EditUserForm
+            user={userToEdit}
+            organizations={organizations}
+            userOrgIds={userOrgIds}
+            userId={id}
+            currentUserRole={userContext?.role}
+          />
         </CardContent>
       </Card>
     </div>

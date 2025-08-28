@@ -20,6 +20,9 @@ import {
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 
+// Force dynamic rendering to prevent static generation errors with cookies
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboardPage() {
   const userContext = await getUserContext();
 
@@ -34,15 +37,56 @@ export default async function AdminDashboardPage() {
     redirect("/");
   }
 
-  // Fetch all sites for the organization
   const supabase = await createClient();
-  const { data: sites, error } = await supabase
-    .from("sites")
-    .select("*")
-    .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Error fetching sites:", error);
+  // Get user's organization for admin users and fetch appropriate sites
+  let userOrganization = null;
+  let sites = [];
+
+  if (role === "admin") {
+    // For admin users, get their organization and only sites from that organization
+    const { data: orgData, error: orgError } = await supabase
+      .from("user_organizations")
+      .select("organization_id")
+      .eq("user_id", user?.id)
+      .single();
+
+    if (!orgError && orgData) {
+      const { data: org, error: orgFetchError } = await supabase
+        .from("organizations")
+        .select("id, name, code")
+        .eq("id", orgData.organization_id)
+        .single();
+
+      if (!orgFetchError && org) {
+        userOrganization = org;
+
+        // Fetch only sites from this organization
+        const { data: orgSites, error: sitesError } = await supabase
+          .from("sites")
+          .select("*")
+          .eq("organization_id", org.id)
+          .order("created_at", { ascending: false });
+
+        if (!sitesError) {
+          sites = orgSites || [];
+        } else {
+          console.error("Error fetching organization sites:", sitesError);
+        }
+      }
+    }
+  } else if (role === "superadmin") {
+    // For superadmin users, fetch all sites
+    const { data: allSites, error: sitesError } = await supabase
+      .from("sites")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!sitesError) {
+      sites = allSites || [];
+    } else {
+      console.error("Error fetching all sites:", sitesError);
+    }
   }
 
   // Dashboard content based on role
@@ -90,7 +134,7 @@ export default async function AdminDashboardPage() {
               title: "Users",
               description: "Manage organization users",
               icon: <Users className="h-4 w-4" />,
-              href: "/users",
+              href: "/administration/users",
               color:
                 "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
             },
@@ -98,17 +142,21 @@ export default async function AdminDashboardPage() {
               title: "Sites",
               description: "Manage organization sites",
               icon: <Globe className="h-4 w-4" />,
-              href: "/sites",
+              href: "/administration/sites",
               color:
                 "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
             },
             {
-              title: "Settings",
-              description: "Organization settings",
-              icon: <Settings className="h-4 w-4" />,
-              href: "/settings",
+              title: "Edit Organization",
+              description: userOrganization
+                ? `Manage ${userOrganization.name} (${userOrganization.code})`
+                : "Manage your organization details",
+              icon: <Building className="h-4 w-4" />,
+              href: userOrganization
+                ? `/administration/organizations/${userOrganization.id}/edit`
+                : "/administration/organizations",
               color:
-                "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+                "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
             },
           ],
         };
@@ -161,12 +209,61 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
+      {/* Organization Information for Admin Users */}
+      {role === "admin" && userOrganization && (
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Organization Information
+              </CardTitle>
+              <CardDescription>Details about your organization</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Organization Name
+                  </label>
+                  <p className="text-lg font-semibold">
+                    {userOrganization.name}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Organization Code
+                  </label>
+                  <p className="text-lg font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    {userOrganization.code}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <Link
+                  href={`/administration/organizations/${userOrganization.id}/edit`}
+                >
+                  <Button variant="outline" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Organization
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Sites Overview */}
       {role === "admin" && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">Organization Sites</h3>
-            <Link href="/sites">
+            <h3 className="text-xl font-semibold">
+              {userOrganization
+                ? `${userOrganization.name} Sites`
+                : "Organization Sites"}
+            </h3>
+            <Link href="/administration/sites/create">
               <Button size="sm">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Site
@@ -206,7 +303,7 @@ export default async function AdminDashboardPage() {
                         Visit Site
                       </Button>
                     </Link>
-                    <Link href={`/sites/${site.id}/settings`}>
+                    <Link href={`/administration/sites/${site.id}/edit`}>
                       <Button size="sm" variant="outline">
                         <Settings className="h-4 w-4 mr-1" />
                         Settings
@@ -227,7 +324,96 @@ export default async function AdminDashboardPage() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
                     Create your first site to get started
                   </p>
-                  <Link href="/sites">
+                  <Link href="/administration/sites/create">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create First Site
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Sites Overview for Superadmin */}
+      {role === "superadmin" && (
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold">All System Sites</h3>
+            <div className="flex gap-2">
+              <Link href="/administration/sites">
+                <Button size="sm" variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Manage Sites
+                </Button>
+              </Link>
+              <Link href="/administration/sites/create">
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Site
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {sites?.map((site) => (
+              <Card
+                key={site.id}
+                className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-72"
+              >
+                <CardHeader>
+                  <CardTitle className="text-lg">{site.name}</CardTitle>
+                  <CardDescription>{site.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col flex-1 justify-between">
+                  <div className="space-y-2 flex-1">
+                    <div className="text-sm">
+                      <span className="font-medium">Domain:</span>{" "}
+                      {site.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}
+                    </div>
+                    {site.custom_domain && (
+                      <div className="text-sm">
+                        <span className="font-medium">Custom Domain:</span>{" "}
+                        {site.custom_domain}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex space-x-2 pt-2 mt-auto">
+                    <Link
+                      href={`/sites/${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/dashboard`}
+                    >
+                      <Button size="sm" variant="outline">
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Visit Site
+                      </Button>
+                    </Link>
+                    <Link href={`/administration/sites/${site.id}/edit`}>
+                      <Button size="sm" variant="outline">
+                        <Settings className="h-4 w-4 mr-1" />
+                        Manage
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {(!sites || sites.length === 0) && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center">
+                  <Globe className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium mb-2">
+                    No sites in system
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    No sites have been created yet
+                  </p>
+                  <Link href="/administration/sites">
                     <Button>
                       <Plus className="h-4 w-4 mr-2" />
                       Create First Site

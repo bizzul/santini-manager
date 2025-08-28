@@ -1,8 +1,12 @@
-import { createClient } from "@/utils/supabase/server";
+import { getUserContext } from "@/lib/auth-utils";
+import { redirect } from "next/navigation";
+import RoleBasedLayout from "@/components/role-based-layout";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import React from "react";
-import { getUserContext } from "@/lib/auth-utils";
+
+// Force dynamic rendering to prevent static generation errors with cookies
+export const dynamic = "force-dynamic";
 
 async function ImpersonationBanner({
   impersonatedUser,
