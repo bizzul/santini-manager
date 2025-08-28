@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "bun run --bun next dev --turbopack",
+    "dev": "bun run --bun next dev",
     "build": "bun run --bun next build",
-    "start": "bun run --bun next start",
-    "lint": "bun run --bun next lint"
+    "start": "bun run --bun next start"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
@@ -139,6 +138,8 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "19.1.12",
     "@types/react-dom": "19.1.9",
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
+    "@typescript-eslint/parser": "^8.41.0",
     "eslint": "8.22.0",
     "eslint-config-next": "15.5.2",
     "postcss": "^8.5.6",

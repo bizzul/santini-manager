@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button";
 import TopBar from "@/components/top-bar";
 import { createClient } from "@/utils/supabase/server";
 
+// Force dynamic rendering to prevent static generation errors with Supabase
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: user } = await supabase.auth.getUser();

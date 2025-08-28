@@ -1,5 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
+import { createClient } from "@/utils/supabase/server";
 
 // Higher-order function for site authorization
 export function withSiteAuth(handler: any) {
@@ -11,10 +10,10 @@ export function withSiteAuth(handler: any) {
     }
 
     const { data: siteData } = await supabase
-      .from('sites')
+      .from("sites")
       .select()
-      .eq('id', site.id)
-      .eq('user_id', user.id)
+      .eq("id", site.id)
+      .eq("user_id", user.id)
       .single();
 
     if (!siteData) {
