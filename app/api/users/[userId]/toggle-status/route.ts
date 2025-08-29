@@ -4,9 +4,10 @@ import { getUserContext } from "@/lib/auth-utils";
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { userId: string } },
+    { params }: { params: Promise<{ userId: string }> },
 ) {
     try {
+        const { userId } = await params;
         const supabase = await createClient();
 
         // Get the current user from Supabase auth to verify permissions
@@ -29,7 +30,6 @@ export async function POST(
             });
         }
 
-        const { userId } = params;
         const { enabled } = await req.json();
 
         if (typeof enabled !== "boolean") {
