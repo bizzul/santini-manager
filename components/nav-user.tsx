@@ -58,7 +58,7 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
                 <AvatarFallback className="rounded-lg">
                   {displayName
                     .split(" ")
-                    .map((n) => n[0])
+                    .map((n: string) => n[0])
                     .join("")
                     .toUpperCase()
                     .slice(0, 2)}
@@ -94,7 +94,7 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
                   <AvatarFallback className="rounded-lg">
                     {displayName
                       .split(" ")
-                      .map((n) => n[0])
+                      .map((n: string) => n[0])
                       .join("")
                       .toUpperCase()
                       .slice(0, 2)}
