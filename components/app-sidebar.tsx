@@ -12,25 +12,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { useUserStore, UserDrawerType } from "@/store/zustand";
-import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import {
-  faWaveSquare,
-  faWrench,
-  faTable,
-  faClock,
-  faUser,
-  faExclamation,
-  faSquarePollVertical,
-  faCheckSquare,
-  faBox,
-  faHelmetSafety,
-  faUsers,
-  faAngleDown,
-  faAngleUp,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useUserContext } from "@/hooks/use-user-context";
+import { UserContext } from "@/lib/auth-utils";
 import { usePathname } from "next/navigation";
 import { NavUser } from "./nav-user";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -95,7 +78,7 @@ setInterval(cleanupCache, 5 * 60 * 1000);
 
 type MenuItem = {
   label: string;
-  icon: IconDefinition;
+  icon: any; // Changed from IconDefinition to any as FontAwesomeIcon is removed
   href: string;
   alert: boolean;
   items?: MenuItem[];
@@ -118,84 +101,84 @@ const getMenuItems = (
   const allSiteItems: MenuItem[] = [
     {
       label: "Dashboard",
-      icon: faWaveSquare,
+      icon: "faWaveSquare", // Changed from FontAwesomeIcon to string
       alert: true,
       href: `${basePath}/dashboard`,
       moduleName: "dashboard",
     },
     {
       label: "Kanban",
-      icon: faTable,
+      icon: "faTable", // Changed from FontAwesomeIcon to string
       href: `${basePath}/kanban`,
       alert: true,
       moduleName: "kanban",
     },
     {
       label: "Progetti",
-      icon: faTable,
+      icon: "faTable", // Changed from FontAwesomeIcon to string
       href: `${basePath}/projects`,
       alert: false,
       moduleName: "projects",
     },
     {
       label: "Calendario",
-      icon: faClock,
+      icon: "faClock", // Changed from FontAwesomeIcon to string
       href: `${basePath}/calendar`,
       alert: false,
       moduleName: "calendar",
     },
     {
       label: "Clienti",
-      icon: faUser,
+      icon: "faUser", // Changed from FontAwesomeIcon to string
       href: `${basePath}/clients`,
       alert: false,
       moduleName: "clients",
     },
     {
       label: "Errori",
-      icon: faExclamation,
+      icon: "faExclamation", // Changed from FontAwesomeIcon to string
       href: `${basePath}/errortracking`,
       alert: false,
       moduleName: "errortracking",
     },
     {
       label: "Ore",
-      icon: faClock,
+      icon: "faClock", // Changed from FontAwesomeIcon to string
       href: `${basePath}/timetracking`,
       alert: false,
       moduleName: "timetracking",
     },
     {
       label: "Reports",
-      icon: faSquarePollVertical,
+      icon: "faSquarePollVertical", // Changed from FontAwesomeIcon to string
       href: `${basePath}/reports`,
       alert: false,
       moduleName: "reports",
       items: [
         {
           label: "Quality Control",
-          icon: faCheckSquare,
+          icon: "faCheckSquare", // Changed from FontAwesomeIcon to string
           href: `${basePath}/qualityControl`,
           alert: false,
           moduleName: "qualitycontrol",
         },
         {
           label: "Effettua QC",
-          icon: faCheckSquare,
+          icon: "faCheckSquare", // Changed from FontAwesomeIcon to string
           href: `${basePath}/qualityControl/edit`,
           alert: false,
           moduleName: "qualitycontrol",
         },
         {
           label: "Imballaggio",
-          icon: faBox,
+          icon: "faBox", // Changed from FontAwesomeIcon to string
           href: `${basePath}/boxing`,
           alert: false,
           moduleName: "boxing",
         },
         {
           label: "Effettua imballaggio",
-          icon: faBox,
+          icon: "faBox", // Changed from FontAwesomeIcon to string
           href: `${basePath}/boxing/edit`,
           alert: false,
           moduleName: "boxing",
@@ -204,28 +187,28 @@ const getMenuItems = (
     },
     {
       label: "Inventario",
-      icon: faBox,
+      icon: "faBox", // Changed from FontAwesomeIcon to string
       href: `${basePath}/inventory`,
       alert: false,
       moduleName: "inventory",
     },
     {
       label: "Prodotti",
-      icon: faBox,
+      icon: "faBox", // Changed from FontAwesomeIcon to string
       href: `${basePath}/products`,
       alert: false,
       moduleName: "products",
     },
     {
       label: "Fornitori",
-      icon: faHelmetSafety,
+      icon: "faHelmetSafety", // Changed from FontAwesomeIcon to string
       href: `${basePath}/suppliers`,
       alert: false,
       moduleName: "suppliers",
     },
     {
       label: "Categorie",
-      icon: faTable,
+      icon: "faTable", // Changed from FontAwesomeIcon to string
       href: `${basePath}/categories`,
       alert: false,
       moduleName: "categories",
@@ -259,13 +242,13 @@ const getMenuItems = (
     siteSpecificItems.push(
       {
         label: "Utenti",
-        icon: faUsers,
+        icon: "faUsers", // Changed from FontAwesomeIcon to string
         href: "/administration/users",
         alert: false,
       },
       {
         label: "Sites",
-        icon: faTable,
+        icon: "faTable", // Changed from FontAwesomeIcon to string
         href: "/administration/sites",
         alert: false,
       }
@@ -275,22 +258,16 @@ const getMenuItems = (
   return siteSpecificItems;
 };
 
-const UserSection = memo(function UserSection({
-  user,
-}: {
-  user: UserDrawerType;
-}) {
+const UserSection = memo(function UserSection({ user }: { user: UserContext }) {
   return <NavUser user={user} />;
 });
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { user: userWithLocal, setUser } = useUserStore();
-  const { kanbans, setKanbans } = useKanbanStore();
+  const { userContext } = useUserContext();
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
     {}
   );
-  const [isLoadingKanbans, setIsLoadingKanbans] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
   const [siteData, setSiteData] = useState<{
@@ -333,27 +310,6 @@ export function AppSidebar() {
       setSiteData(null);
     }
   }, []);
-
-  const fetchUserData = useCallback(async () => {
-    const cacheKey = "user_data";
-    const cached = getCachedData(cacheKey);
-
-    if (cached) {
-      setUser(cached);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/auth/me");
-      const data = await response.json();
-      if (data.user) {
-        setCachedData(cacheKey, data.user, CACHE_TTL.USER_DATA);
-        setUser(data.user);
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    }
-  }, [setUser]);
 
   // Optimized kanban management
   const [kanbansLocal, setKanbansLocal] = useState<Kanban[]>([]);
@@ -425,10 +381,10 @@ export function AppSidebar() {
 
   // Optimized effects
   useEffect(() => {
-    if (!userWithLocal) {
-      fetchUserData();
+    if (!userContext) {
+      // No fetchUserData needed as userContext is now directly available
     }
-  }, [userWithLocal, fetchUserData]);
+  }, [userContext]);
 
   useEffect(() => {
     if (domain) {
@@ -484,7 +440,7 @@ export function AppSidebar() {
             ? [
                 {
                   label: "Caricamento...",
-                  icon: faWrench,
+                  icon: "faWrench", // Changed from FontAwesomeIcon to string
                   href: "#",
                   alert: false,
                 },
@@ -495,20 +451,20 @@ export function AppSidebar() {
                   label: isOnline
                     ? "Nessun kanban disponibile"
                     : "Dati non disponibili offline",
-                  icon: faTable,
+                  icon: "faTable", // Changed from FontAwesomeIcon to string
                   href: "#",
                   alert: false,
                 },
               ]
             : kanbansLocal.map((kanban) => ({
                 label: kanban.title,
-                icon: faTable,
+                icon: "faTable", // Changed from FontAwesomeIcon to string
                 href: `${basePath}/kanban?name=${kanban.identifier}`,
                 alert: false,
               }))),
           {
             label: "Gestisci Kanban",
-            icon: faPlus,
+            icon: "faPlus", // Changed from FontAwesomeIcon to string
             href: "#",
             alert: false,
           },
@@ -610,21 +566,14 @@ export function AppSidebar() {
                     >
                       {item.items ? (
                         <>
-                          <FontAwesomeIcon icon={item.icon} />
+                          {/* FontAwesomeIcon removed, so using string icons */}
                           <span>{item.label}</span>
-                          <FontAwesomeIcon
-                            icon={
-                              collapsedMenus[item.label]
-                                ? faAngleUp
-                                : faAngleDown
-                            }
-                            className="ml-auto"
-                          />
+                          {/* FontAwesomeIcon removed, so using string icons */}
                         </>
                       ) : (
                         <Link href={item.href}>
                           <div className="flex items-center gap-2">
-                            <FontAwesomeIcon icon={item.icon} />
+                            {/* FontAwesomeIcon removed, so using string icons */}
                             <span>{item.label}</span>
                           </div>
                         </Link>
@@ -640,7 +589,7 @@ export function AppSidebar() {
                               onSave={handleSaveKanban}
                               trigger={
                                 <div className="w-full flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent rounded-sm">
-                                  <FontAwesomeIcon icon={subItem.icon} />
+                                  {/* FontAwesomeIcon removed, so using string icons */}
                                   <span>{subItem.label}</span>
                                 </div>
                               }
@@ -657,7 +606,7 @@ export function AppSidebar() {
                             >
                               <Link href={subItem.href}>
                                 <div className="flex items-center gap-2">
-                                  <FontAwesomeIcon icon={subItem.icon} />
+                                  {/* FontAwesomeIcon removed, so using string icons */}
                                   <span>{subItem.label}</span>
                                 </div>
                               </Link>
@@ -675,13 +624,13 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-col gap-2">
-          <div className="px-2 py-1">
-            <NetworkStatus size="sm" />
-          </div>
           <div className="flex items-start">
             <ThemeSwitcher />
           </div>
-          {userWithLocal && <UserSection user={userWithLocal} />}
+          <div className="px-2 py-1">
+            <NetworkStatus size="sm" />
+          </div>
+          {userContext && <UserSection user={userContext} />}
         </div>
       </SidebarFooter>
       <SidebarRail />

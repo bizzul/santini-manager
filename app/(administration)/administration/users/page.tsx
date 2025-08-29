@@ -1,12 +1,16 @@
 import React from "react";
 import Link from "next/link";
-import { getUsers, getUserProfiles, getOrganizations } from "../actions";
+import { getUsers, getUserProfiles } from "../actions";
 import { createClient } from "@/utils/supabase/server";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, ArrowLeft } from "lucide-react";
 import { getUserContext } from "@/lib/auth-utils";
 import ImpersonateButton from "@/components/users/impersonateButton";
+import PasswordResetButton from "@/components/users/password-reset-button";
+import ToggleUserStatusButton from "@/components/users/toggle-user-status-button";
+import { DeleteUserButton } from "@/components/users/delete-user-button";
 import { redirect } from "next/navigation";
 
 // Force dynamic rendering to prevent static generation errors with cookies
@@ -126,6 +130,9 @@ export default async function UsersPage() {
                     Organizations
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -158,6 +165,18 @@ export default async function UsersPage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge
+                          variant={u.enabled ? "default" : "secondary"}
+                          className={
+                            u.enabled
+                              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-700"
+                              : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+                          }
+                        >
+                          {u.enabled ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap flex gap-2">
                         <Link href={`/administration/users/${u.id}`}>
                           <Button size="sm" variant="outline">
@@ -169,6 +188,25 @@ export default async function UsersPage() {
                             Edit
                           </Button>
                         </Link>
+                        <PasswordResetButton
+                          userEmail={u.email}
+                          userName={
+                            `${u.given_name} ${u.family_name}`.trim() || u.email
+                          }
+                        />
+                        <ToggleUserStatusButton
+                          userId={u.id}
+                          isActive={u.enabled}
+                          userEmail={u.email}
+                        />
+                        <DeleteUserButton
+                          userId={u.id}
+                          userEmail={u.email}
+                          userName={
+                            `${u.given_name} ${u.family_name}`.trim() || u.email
+                          }
+                          disabled={u.id === currentUserId}
+                        />
                         {isSuperadmin &&
                           !u.userOrganizations?.some(
                             (userOrg: any) => userOrg.role === "superadmin"
@@ -182,7 +220,7 @@ export default async function UsersPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={9}
                       className="px-6 py-4 text-center text-gray-500"
                     >
                       No users found.

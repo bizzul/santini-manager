@@ -19,15 +19,27 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { UserDrawerType } from "@/store/zustand";
+import { UserContext } from "@/lib/auth-utils";
 import Link from "next/link";
 
-export const NavUser = memo(function NavUser({
-  user,
-}: {
-  user: UserDrawerType;
-}) {
+export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
   const { isMobile } = useSidebar();
+
+  // Extract user information from the context
+  const userData = user.user;
+  const userProfile = user.user?.user_metadata;
+
+  // Get display name (first name + last name) or fallback to email
+  const displayName =
+    userProfile?.full_name ||
+    (userProfile?.name && userProfile?.last_name
+      ? `${userProfile.name} ${userProfile.last_name}`
+      : userData?.email || "User");
+
+  // Get role for display
+  const roleDisplay = user.role
+    ? user.role.charAt(0).toUpperCase() + user.role.slice(1)
+    : "";
 
   return (
     <SidebarMenu>
@@ -40,16 +52,28 @@ export const NavUser = memo(function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage
-                  src={user.picture || undefined}
-                  alt={user.user_metadata?.full_name || user.email}
+                  src={userProfile?.picture || undefined}
+                  alt={displayName}
                 />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">
+                  {displayName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">
-                  {user.user_metadata?.full_name || user.email}
+                <span className="truncate font-semibold">{displayName}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {userData?.email}
                 </span>
-                <span className="truncate text-xs">{user.email}</span>
+                {roleDisplay && (
+                  <span className="truncate text-xs text-muted-foreground">
+                    {roleDisplay}
+                  </span>
+                )}
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -64,16 +88,28 @@ export const NavUser = memo(function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
                   <AvatarImage
-                    src={user.picture || undefined}
-                    alt={user.user_metadata?.full_name || user.email}
+                    src={userProfile?.picture || undefined}
+                    alt={displayName}
                   />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">
+                    {displayName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">
-                    {user.user_metadata?.full_name || user.email}
+                  <span className="truncate font-semibold">{displayName}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {userData?.email}
                   </span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  {roleDisplay && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {roleDisplay}
+                    </span>
+                  )}
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -89,9 +125,7 @@ export const NavUser = memo(function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            {/* Using anchor tag instead of Link for Auth0 logout to ensure full page navigation and proper session clearing */}
             <DropdownMenuItem asChild>
-              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <Link href="/logout" className="w-full">
                 <div className="flex items-center gap-2">
                   <LogOut />

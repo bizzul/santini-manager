@@ -70,7 +70,7 @@ export default async function SelectSitePage() {
 
       {/* Administration button for superadmin users */}
       {userRole === "superadmin" ||
-        (userRole !== "admin" && (
+        (userRole === "admin" && (
           <Card>
             <CardHeader>
               <CardTitle>Administration</CardTitle>

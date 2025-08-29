@@ -25,13 +25,6 @@ export interface OrganizationAccess {
     canManageOrganization: boolean;
 }
 
-export interface TenantAccess {
-    tenantId: string;
-    organizationId: string;
-    role: UserRole;
-    canManageTenant: boolean;
-}
-
 /**
  * Get the current user's context including role and organization access
  * Updated to work with new structure: User.role + user_organizations table
@@ -107,11 +100,6 @@ export async function getUserContext(): Promise<UserContext | null> {
             return null;
         }
 
-        console.log(
-            "Fetching user data and organization relationships for user:",
-            userToUse.id,
-        );
-
         // Get user's role from User table
         const { data: userData, error: userError } = await supabase
             .from("User")
@@ -155,7 +143,6 @@ export async function getUserContext(): Promise<UserContext | null> {
             .select("organization_id")
             .eq("user_id", userToUse.id);
 
-        console.log("User organization data:", userOrgData, userOrgError);
         if (userOrgError) {
             console.error(
                 "Error fetching user organization data:",
@@ -168,7 +155,6 @@ export async function getUserContext(): Promise<UserContext | null> {
                 organizationId: undefined,
                 organizationIds: [],
                 userId: userToUse.id,
-                tenantId: userToUse.id,
                 canAccessAllOrganizations: role === "superadmin",
                 canAccessAllTenants: role === "superadmin" || role === "admin",
                 isImpersonating,
@@ -239,6 +225,7 @@ export async function canAccessTenant(
     organizationId?: string,
 ): Promise<boolean> {
     const context = await getUserContext();
+
     if (!context) return false;
 
     // Superadmin can access all users

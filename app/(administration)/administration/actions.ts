@@ -603,7 +603,7 @@ export async function getUsers() {
         if (error) throw new Error(error.message);
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
-            "authId, given_name, family_name, role",
+            "authId, given_name, family_name, role, enabled",
         );
         return data.users.map((user: any) => {
             const profile = profiles?.find((p: any) => p.authId === user.id);
@@ -613,6 +613,7 @@ export async function getUsers() {
                 role: profile?.role || "user",
                 given_name: profile?.given_name || "",
                 family_name: profile?.family_name || "",
+                enabled: profile?.enabled ?? false,
             };
         });
     } else {
@@ -647,7 +648,7 @@ export async function getUsers() {
 
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
-            "authId, given_name, family_name, role",
+            "authId, given_name, family_name, role, enabled",
         );
 
         return orgUsers.map((user: any) => {
@@ -658,6 +659,7 @@ export async function getUsers() {
                 role: profile?.role || "user",
                 given_name: profile?.given_name || "",
                 family_name: profile?.family_name || "",
+                enabled: profile?.enabled ?? false,
             };
         });
     }
@@ -677,7 +679,7 @@ export async function getAllUsers() {
 
     // Fetch user profiles from User table
     const { data: profiles } = await supabase.from("User").select(
-        "authId, given_name, family_name, role",
+        "authId, given_name, family_name, role, enabled",
     );
 
     return data.users.map((user: any) => {
@@ -688,6 +690,7 @@ export async function getAllUsers() {
             role: profile?.role || "user",
             given_name: profile?.given_name || "",
             family_name: profile?.family_name || "",
+            enabled: profile?.enabled ?? false,
         };
     });
 }
@@ -1144,45 +1147,66 @@ export async function createUser(
         }
 
         const supabaseService = await createServiceClient();
-        // Create user in Supabase Auth
-        const { data: userData, error: inviteError } = await supabaseService
+
+        // Get organization names for the email template
+        const { data: orgData, error: orgError } = await supabase
+            .from("organizations")
+            .select("name")
+            .in("id", orgIds);
+
+        const organizationNames = orgData?.map((org) =>
+            org.name
+        ).filter(Boolean) || [];
+        const organizationNameText = organizationNames.length === 1
+            ? organizationNames[0]
+            : organizationNames.join(", ");
+
+        // Use invitation flow instead of creating user directly
+        // This will send an invitation email and let the user complete their profile
+        const { data: inviteData, error: inviteError } = await supabaseService
             .auth.admin
-            .createUser({
-                email: email,
-                email_confirm: true,
-                password: crypto.randomUUID(), // temporary password
+            .inviteUserByEmail(email, {
+                redirectTo: `${
+                    process.env.NEXT_PUBLIC_SITE_URL ||
+                    process.env.VERCEL_URL || "http://localhost:3000"
+                }/auth/complete-signup?email=${
+                    encodeURIComponent(email)
+                }&name=${encodeURIComponent(name)}&last_name=${
+                    encodeURIComponent(last_name)
+                }&role=${encodeURIComponent(role)}&organizations=${
+                    encodeURIComponent(orgIds.join(","))
+                }`,
+                data: {
+                    name: name,
+                    last_name: last_name,
+                    role: role,
+                    organizations: organizationNames,
+                    organization_text: organizationNameText,
+                },
             });
+
+        console.log("invitedData", inviteData);
 
         if (inviteError) {
             return {
                 success: false,
-                message: inviteError.message,
+                message: "Failed to send invitation: " + inviteError.message,
             };
         }
 
-        // Send password reset email
-        const { error: resetError } = await supabaseService.auth.admin
-            .generateLink({
-                type: "recovery",
-                email: email,
-            });
-
-        if (resetError) {
-            return {
-                success: false,
-                message: resetError.message,
-            };
-        }
+        // Get the user ID from the invitation response
+        const userId = inviteData.user.id;
 
         // Insert into User table with role
         const { error: userError } = await supabase.from("User")
             .insert({
-                authId: userData.user.id,
-                auth_id: userData.user.id,
+                authId: userId,
+                auth_id: userId,
                 email: email,
                 given_name: name,
                 family_name: last_name,
                 role: role,
+                enabled: false, // User starts as inactive until they confirm their email
             });
 
         if (userError) {
@@ -1195,7 +1219,7 @@ export async function createUser(
         // Insert into user_organizations table for each organization
         const userOrgInserts = orgIds.map((orgId) => ({
             organization_id: orgId,
-            user_id: userData.user.id,
+            user_id: userId,
         }));
 
         const { error: userOrgError } = await supabase.from(

@@ -22,13 +22,13 @@ export default async function OrganizationDetailsPage({
 }: OrganizationPageProps) {
   const { id } = await params;
   const userContext = await getUserContext();
-  
+
   if (!userContext) {
     redirect("/login");
   }
 
   const { role, user } = userContext;
-  
+
   // Only allow admin and superadmin access
   if (role !== "admin" && role !== "superadmin") {
     redirect("/");
@@ -55,7 +55,6 @@ export default async function OrganizationDetailsPage({
   const sites = await getOrganizationSites(id);
   const users = await getOrganizationUsers(id);
 
-  console.log("users", users);
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="mb-4">

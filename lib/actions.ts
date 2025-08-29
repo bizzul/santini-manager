@@ -242,10 +242,13 @@ export async function updateUserPassword(userId: string, newPassword: string) {
   try {
     const supabaseService = await createServiceClient();
 
-    // Update the user's password using admin privileges
+    // Update the user's password AND confirm their email using admin privileges
     const { error } = await supabaseService.auth.admin.updateUserById(
       userId,
-      { password: newPassword },
+      {
+        password: newPassword,
+        email_confirm: true, // This confirms the user's email
+      },
     );
 
     if (error) {
@@ -255,9 +258,26 @@ export async function updateUserPassword(userId: string, newPassword: string) {
       };
     }
 
+    // Also try to confirm the user's email explicitly
+    try {
+      const { error: confirmError } = await supabaseService.auth.admin
+        .updateUserById(
+          userId,
+          {
+            email_confirm: true, // Ensure email is confirmed
+          },
+        );
+
+      if (confirmError) {
+        console.warn("Warning: Could not confirm email:", confirmError.message);
+      }
+    } catch (confirmError) {
+      console.warn("Warning: Could not confirm email:", confirmError);
+    }
+
     return {
       success: true,
-      message: "Password updated successfully",
+      message: "Password updated successfully and email confirmed",
     };
   } catch (error) {
     return {

@@ -4,8 +4,8 @@ export function createClient() {
   const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
 
   return createBrowserClient(
-    process.env.STORAGE_SUPABASE_URL!,
-    process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: {
         name: COOKIE_NAME,

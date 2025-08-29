@@ -1,6 +1,7 @@
 // pages/api/protected-route.js
-import { createClient } from "../../../../utils/supabase/server";
+import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { getUserContext } from "@/lib/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,11 +13,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user has admin privileges
+    const userContext = await getUserContext();
+    if (
+      !userContext ||
+      (userContext.role !== "admin" && userContext.role !== "superadmin")
+    ) {
+      return NextResponse.json({ error: "Insufficient permissions" }, {
+        status: 403,
+      });
+    }
+
     const email = await req.json();
 
     // Send password reset email using Supabase
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
+      redirectTo: `${
+        process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ||
+        "http://localhost:3000"
+      }/auth/reset-password`,
     });
 
     if (error) {

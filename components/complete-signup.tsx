@@ -29,8 +29,26 @@ export function CompleteSignupForm({
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userOrganizations, setUserOrganizations] = useState<string[]>([]);
+  const [organizationNames, setOrganizationNames] = useState<string[]>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const fetchOrganizationNames = async (orgIds: string[]) => {
+    if (!orgIds || orgIds.length === 0) return;
+
+    const supabase = createClient();
+    const { data: orgs, error } = await supabase
+      .from("organizations")
+      .select("name")
+      .in("id", orgIds);
+
+    if (!error && orgs) {
+      const names = orgs.map((org) => org.name).filter(Boolean);
+      setOrganizationNames(names);
+    }
+  };
 
   useEffect(() => {
     const validateInvitation = async () => {
@@ -46,6 +64,103 @@ export function CompleteSignupForm({
           accessToken = hashParams.get("access_token");
         }
 
+        // Check if we have invitation data in URL parameters (from inviteUserByEmail)
+        // The data might be in the main URL or encoded in the 'next' parameter
+        let email = searchParams.get("email");
+        let name = searchParams.get("name");
+        let last_name = searchParams.get("last_name");
+        let role = searchParams.get("role");
+        let organizations = searchParams.get("organizations");
+
+        // If not in main URL, check the 'next' parameter (encoded invitation data)
+        if (!email || !name || !last_name || !role || !organizations) {
+          const nextParam = searchParams.get("next");
+          if (nextParam) {
+            try {
+              const decodedNext = decodeURIComponent(nextParam);
+              const nextUrl = new URL(decodedNext);
+
+              // Extract invitation data from the decoded next URL
+              email = email || nextUrl.searchParams.get("email");
+              name = name || nextUrl.searchParams.get("name");
+              last_name = last_name || nextUrl.searchParams.get("last_name");
+              role = role || nextUrl.searchParams.get("role");
+              organizations =
+                organizations || nextUrl.searchParams.get("organizations");
+
+              console.log("Found invitation data in 'next' parameter:");
+              console.log("Decoded next URL:", decodedNext);
+              console.log("Email:", email);
+              console.log("Name:", name);
+              console.log("Role:", role);
+              console.log("Organizations:", organizations);
+            } catch (decodeError) {
+              console.warn("Failed to decode 'next' parameter:", decodeError);
+            }
+          }
+        }
+
+        // If we have invitation data, this is a valid invitation
+        if (email && name && last_name && role && organizations) {
+          console.log(
+            "Found invitation data (from main URL or next parameter)"
+          );
+          console.log("Email:", email);
+          console.log("Name:", name);
+          console.log("Role:", role);
+          console.log("Organizations:", organizations);
+
+          // Set user data
+          setUserEmail(email);
+          setFirstName(name);
+          setLastName(last_name);
+          setUserRole(role);
+          setUserOrganizations(organizations.split(","));
+
+          // Fetch organization names for the welcome message
+          await fetchOrganizationNames(organizations.split(","));
+
+          setIsValidating(false);
+          return;
+        }
+
+        // Check if we have an invitation token (from Supabase inviteUserByEmail)
+        const tokenHash = searchParams.get("token_hash");
+        const inviteType = searchParams.get("type");
+
+        if (tokenHash && inviteType === "invite") {
+          console.log(
+            "Found invitation token:",
+            tokenHash.substring(0, 20) + "..."
+          );
+          console.log("Invitation type:", inviteType);
+
+          // This is a valid Supabase invitation
+          // The invitation data should be in the 'next' parameter or main URL
+          if (email && name && last_name && role && organizations) {
+            console.log("Invitation data found with token, proceeding...");
+
+            // Set user data
+            setUserEmail(email);
+            setFirstName(name);
+            setLastName(last_name);
+            setUserRole(role);
+            setUserOrganizations(organizations.split(","));
+
+            // Fetch organization names for the welcome message
+            await fetchOrganizationNames(organizations.split(","));
+
+            setIsValidating(false);
+            return;
+          } else {
+            console.error("Invitation token found but missing invitation data");
+            setError("Invalid invitation: Missing user information");
+            setIsValidating(false);
+            return;
+          }
+        }
+
+        // Check if we have an access token (from other invitation types)
         if (accessToken) {
           console.log(
             "Found access token in URL hash:",
@@ -56,19 +171,28 @@ export function CompleteSignupForm({
           // Skip session validation and go directly to form
           console.log("Access token found, skipping session validation...");
 
-          // Try to get email from the URL parameters
-          const email = searchParams.get("email");
+          // Try to get pre-filled data from the URL parameters
           if (email) {
             setUserEmail(email);
           } else {
             setUserEmail("Invited User"); // Placeholder
           }
 
+          // Pre-fill the form with the data from the invitation
+          if (name) setFirstName(name);
+          if (last_name) setLastName(last_name);
+          if (role) setUserRole(role);
+          if (organizations) {
+            setUserOrganizations(organizations.split(","));
+            // Fetch organization names for the welcome message
+            await fetchOrganizationNames(organizations.split(","));
+          }
+
           setIsValidating(false);
           return;
         }
 
-        // Only check session if no access token (fallback for other scenarios)
+        // Only check session if no invitation data or access token (fallback for other scenarios)
         const {
           data: { session },
           error: sessionError,
@@ -156,142 +280,97 @@ export function CompleteSignupForm({
     try {
       const supabase = createClient();
 
-      // Check if we have an access token (invitation flow)
-      const hash = window.location.hash;
-      let accessToken = null;
+      // For inviteUserByEmail flow, we need to update the existing profile
+      // since the user was already created in the createUser function
 
-      if (hash) {
-        const hashParams = new URLSearchParams(hash.substring(1));
-        accessToken = hashParams.get("access_token");
+      // Get the user by email since we don't have a session yet
+      const { data: existingUser, error: userLookupError } = await supabase
+        .from("User")
+        .select("authId, enabled")
+        .eq("email", userEmail)
+        .single();
+
+      if (userLookupError || !existingUser) {
+        throw new Error(
+          "User profile not found. Please contact your administrator."
+        );
       }
 
-      if (accessToken) {
-        // This is an invitation flow - we need to handle it differently
-        console.log("Handling invitation flow...");
+      // Update the user profile with the form data
+      const { error: profileError } = await supabase
+        .from("User")
+        .update({
+          given_name: firstName.trim(),
+          family_name: lastName.trim(),
+          enabled: true, // Activate the user
+        })
+        .eq("authId", existingUser.authId);
 
-        // Get email from URL parameters
-        const email = searchParams.get("email");
-        if (!email) {
-          throw new Error("Email not found in invitation URL");
-        }
+      if (profileError) {
+        throw new Error(`Failed to update profile: ${profileError.message}`);
+      }
 
-        // For invitations, we need to decode the JWT token to get the user ID
-        // The access token is a JWT that contains user information
-        try {
-          // Decode the JWT token to get user ID
-          const tokenParts = accessToken.split(".");
-          if (tokenParts.length === 3) {
-            const payload = JSON.parse(atob(tokenParts[1]));
-            const userId = payload.sub; // 'sub' field contains the user ID
-
-            console.log("Decoded user ID from token:", userId);
-
-            // Create user profile with the actual user ID
-            const { error: profileError } = await supabase.from("User").insert({
-              email: email,
-              given_name: firstName.trim(),
-              family_name: lastName.trim(),
-              role: "admin", // Default role for invited users
-              enabled: true,
-              authId: userId,
-              auth_id: userId,
-            });
-
-            if (profileError) {
-              throw new Error(
-                `Failed to create profile: ${profileError.message}`
-              );
-            }
-
-            // Now we need to update the user's password in Supabase Auth
-            // Since we don't have a full session, we'll need to use a service client
-            console.log(
-              "Profile created successfully, attempting password update..."
-            );
-
-            // Now update the user's password using the server action
-            console.log("Profile created successfully, updating password...");
-
-            try {
-              const passwordResult = await updateUserPassword(userId, password);
-
-              if (passwordResult.success) {
-                console.log("Password updated successfully!");
-                toast.success("Profile completed successfully!");
-                router.push("/sites/select");
-              } else {
-                console.error(
-                  "Password update failed:",
-                  passwordResult.message
-                );
-                // Even if password update fails, the profile is created
-                toast.success(
-                  "Profile completed! Please use 'Forgot Password' to set your password."
-                );
-                router.push("/auth/login");
-              }
-            } catch (actionError) {
-              console.error("Server action error:", actionError);
-              // Fallback to login with forgot password message
-              toast.success(
-                "Profile completed! Please use 'Forgot Password' to set your password."
-              );
-              router.push("/auth/login");
-            }
-          } else {
-            throw new Error("Invalid JWT token format");
-          }
-        } catch (decodeError) {
-          console.error("Error decoding token:", decodeError);
-          throw new Error("Failed to process invitation token");
-        }
-      } else {
-        // Regular flow - user has a session
-        // Update user password
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: password,
-        });
-
-        if (passwordError) {
-          throw new Error(
-            `Failed to update password: ${passwordError.message}`
-          );
-        }
-
-        // Get current user
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError || !user) {
-          throw new Error("Failed to get user information");
-        }
-
-        // Update or create user profile
-        const { error: profileError } = await supabase.from("User").upsert(
-          {
-            authId: user.id,
-            auth_id: user.id,
-            email: user.email,
-            given_name: firstName.trim(),
-            family_name: lastName.trim(),
-            role: "admin", // Default role for invited users
-            enabled: true,
-          },
-          {
-            onConflict: "authId",
-          }
+      // Now try to update the password using the server action
+      try {
+        console.log(
+          "Attempting to update password for user:",
+          existingUser.authId
         );
 
-        if (profileError) {
-          throw new Error(`Failed to update profile: ${profileError.message}`);
+        const passwordResult = await updateUserPassword(
+          existingUser.authId,
+          password
+        );
+
+        console.log("Password update result:", passwordResult);
+
+        if (passwordResult.success) {
+          console.log(
+            "Password updated successfully, user should be confirmed now"
+          );
+          toast.success(
+            `Profile completed successfully! Welcome to ${
+              organizationNames.length === 1
+                ? "your organization"
+                : "your organizations"
+            }${
+              organizationNames.length > 0
+                ? `: ${organizationNames.join(", ")}`
+                : ""
+            }!`
+          );
+          router.push("/sites/select");
+        } else {
+          console.error("Password update failed:", passwordResult.message);
+          // Password update failed, but profile is updated
+          toast.success(
+            `Profile completed! Welcome to ${
+              organizationNames.length === 1
+                ? "your organization"
+                : "your organizations"
+            }${
+              organizationNames.length > 0
+                ? `: ${organizationNames.join(", ")}`
+                : ""
+            }! Please use 'Forgot Password' to set your password.`
+          );
+          router.push("/login");
         }
-
-        toast.success("Profile completed successfully!");
-
-        // Redirect to sites selection
-        router.push("/sites/select");
+      } catch (passwordError) {
+        console.error("Password update failed:", passwordError);
+        // Profile is still updated, redirect to login
+        toast.success(
+          `Profile completed! Welcome to ${
+            organizationNames.length === 1
+              ? "your organization"
+              : "your organizations"
+          }${
+            organizationNames.length > 0
+              ? `: ${organizationNames.join(", ")}`
+              : ""
+          }! Please use 'Forgot Password' to set your password.`
+        );
+        router.push("/login");
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -358,7 +437,31 @@ export function CompleteSignupForm({
         <CardHeader>
           <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
           <CardDescription>
-            Welcome! Please complete your profile to get started.
+            {organizationNames.length > 0 ? (
+              <>
+                Welcome to{" "}
+                {organizationNames.length === 1
+                  ? "your organization"
+                  : "your organizations"}
+                :{" "}
+                <span className="font-medium text-primary">
+                  {organizationNames.join(", ")}
+                </span>
+                {userRole && (
+                  <>
+                    <br />
+                    <span className="text-sm text-muted-foreground">
+                      You'll be joining as:{" "}
+                      <span className="font-medium">{userRole}</span>
+                    </span>
+                  </>
+                )}
+                <br />
+                Please complete your profile to get started.
+              </>
+            ) : (
+              "Welcome! Please complete your profile to get started."
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
