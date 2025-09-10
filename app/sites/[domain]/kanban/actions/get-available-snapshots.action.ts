@@ -20,15 +20,12 @@ export async function getAvailableSnapshots(domain?: string) {
     }
 
     // Get task history entries filtered by site_id if available
-    let taskHistoryQuery = supabase
-      .from("TaskHistory")
-      .select("createdAt")
-      .order("createdAt", { ascending: false })
-      .limit(1000); // Limit to avoid performance issues
+    let taskHistories: any[] = [];
+    let error: any = null;
 
     if (siteId) {
       // Since TaskHistory doesn't have direct site_id, we need to join with Task
-      taskHistoryQuery = supabase
+      const { data, error: queryError } = await supabase
         .from("TaskHistory")
         .select(`
           createdAt,
@@ -37,9 +34,19 @@ export async function getAvailableSnapshots(domain?: string) {
         .eq("task.site_id", siteId)
         .order("createdAt", { ascending: false })
         .limit(1000);
-    }
 
-    const { data: taskHistories, error } = await taskHistoryQuery;
+      taskHistories = data || [];
+      error = queryError;
+    } else {
+      const { data, error: queryError } = await supabase
+        .from("TaskHistory")
+        .select("createdAt")
+        .order("createdAt", { ascending: false })
+        .limit(1000);
+
+      taskHistories = data || [];
+      error = queryError;
+    }
 
     if (error) {
       console.error("Error fetching task histories:", error);
