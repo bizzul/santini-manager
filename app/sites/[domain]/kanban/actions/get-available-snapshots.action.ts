@@ -1,16 +1,45 @@
 "use server";
 import { createClient } from "@/utils/supabase/server";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function getAvailableSnapshots() {
+export async function getAvailableSnapshots(domain?: string) {
   try {
     const supabase = await createClient();
+    let siteId = null;
 
-    // First, get all task history entries ordered by creation time
-    const { data: taskHistories, error } = await supabase
-      .from("task_history")
+    // Get site information
+    if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
+    // Get task history entries filtered by site_id if available
+    let taskHistoryQuery = supabase
+      .from("TaskHistory")
       .select("createdAt")
       .order("createdAt", { ascending: false })
       .limit(1000); // Limit to avoid performance issues
+
+    if (siteId) {
+      // Since TaskHistory doesn't have direct site_id, we need to join with Task
+      taskHistoryQuery = supabase
+        .from("TaskHistory")
+        .select(`
+          createdAt,
+          task:taskId(site_id)
+        `)
+        .eq("task.site_id", siteId)
+        .order("createdAt", { ascending: false })
+        .limit(1000);
+    }
+
+    const { data: taskHistories, error } = await taskHistoryQuery;
 
     if (error) {
       console.error("Error fetching task histories:", error);

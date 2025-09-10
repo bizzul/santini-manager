@@ -3,33 +3,44 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteData } from "@/lib/fetchers";
 
-export const removeItem = async (formData: any) => {
+export const removeItem = async (formData: any, domain?: string) => {
   const session = await getUserContext();
   let userId = null;
-  if (session && session.user && session.user.id) {
-    // Get the integer user ID from the User table using the authId
-    const supabase = await createClient();
-    const { data: userData, error: userError } = await supabase
-      .from("User")
-      .select("id")
-      .eq("authId", session.user.id)
-      .single();
+  let siteId = null;
 
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      return { error: true, message: "Errore nel recupero dei dati utente!" };
+  // Get site information
+  if (domain) {
+    try {
+      const siteResult = await getSiteData(domain);
+      if (siteResult?.data) {
+        siteId = siteResult.data.id;
+      }
+    } catch (error) {
+      console.error("Error fetching site data:", error);
     }
+  }
 
-    userId = userData?.id;
+  if (session && session.user && session.user.id) {
+    // Use the authId directly as it's a string and matches Action.user_id type
+    userId = session.user.id;
   }
 
   try {
     const supabase = await createClient();
-    const { error: deleteError } = await supabase
-      .from("supplier")
+
+    // Build delete query with site_id filter if available
+    let deleteQuery = supabase
+      .from("Supplier")
       .delete()
       .eq("id", formData.id);
+
+    if (siteId) {
+      deleteQuery = deleteQuery.eq("site_id", siteId);
+    }
+
+    const { error: deleteError } = await deleteQuery;
 
     if (deleteError) {
       console.error("Error deleting supplier:", deleteError);
@@ -44,7 +55,7 @@ export const removeItem = async (formData: any) => {
         data: {
           supplierId: formData.id,
         },
-        userId: userId,
+        user_id: userId,
         supplierId: formData.id,
       });
 

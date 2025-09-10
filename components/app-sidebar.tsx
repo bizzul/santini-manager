@@ -26,6 +26,38 @@ import Link from "next/link";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { NetworkStatus } from "@/components/ui/network-status";
 import { useSiteModules } from "@/hooks/use-site-modules";
+import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faWaveSquare,
+  faTable,
+  faClock,
+  faUser,
+  faExclamation,
+  faSquarePollVertical,
+  faCheckSquare,
+  faBox,
+  faHelmetSafety,
+  faUsers,
+  faWrench,
+  faPlus,
+} from "@fortawesome/free-solid-svg-icons";
+
+// Icon mapping for sidebar
+const iconMap = {
+  faWaveSquare,
+  faTable,
+  faClock,
+  faUser,
+  faExclamation,
+  faSquarePollVertical,
+  faCheckSquare,
+  faBox,
+  faHelmetSafety,
+  faUsers,
+  faWrench,
+  faPlus,
+};
 
 // Cache for API responses with improved TTL management
 const apiCache = new Map<
@@ -78,8 +110,9 @@ setInterval(cleanupCache, 5 * 60 * 1000);
 
 type MenuItem = {
   label: string;
-  icon: any; // Changed from IconDefinition to any as FontAwesomeIcon is removed
-  href: string;
+  icon: keyof typeof iconMap;
+  href?: string;
+  action?: () => void;
   alert: boolean;
   items?: MenuItem[];
   customComponent?: React.ReactNode;
@@ -101,84 +134,84 @@ const getMenuItems = (
   const allSiteItems: MenuItem[] = [
     {
       label: "Dashboard",
-      icon: "faWaveSquare", // Changed from FontAwesomeIcon to string
+      icon: "faWaveSquare",
       alert: true,
       href: `${basePath}/dashboard`,
       moduleName: "dashboard",
     },
     {
       label: "Kanban",
-      icon: "faTable", // Changed from FontAwesomeIcon to string
+      icon: "faTable",
       href: `${basePath}/kanban`,
       alert: true,
       moduleName: "kanban",
     },
     {
       label: "Progetti",
-      icon: "faTable", // Changed from FontAwesomeIcon to string
+      icon: "faTable",
       href: `${basePath}/projects`,
       alert: false,
       moduleName: "projects",
     },
     {
       label: "Calendario",
-      icon: "faClock", // Changed from FontAwesomeIcon to string
+      icon: "faClock",
       href: `${basePath}/calendar`,
       alert: false,
       moduleName: "calendar",
     },
     {
       label: "Clienti",
-      icon: "faUser", // Changed from FontAwesomeIcon to string
+      icon: "faUser",
       href: `${basePath}/clients`,
       alert: false,
       moduleName: "clients",
     },
     {
       label: "Errori",
-      icon: "faExclamation", // Changed from FontAwesomeIcon to string
+      icon: "faExclamation",
       href: `${basePath}/errortracking`,
       alert: false,
       moduleName: "errortracking",
     },
     {
       label: "Ore",
-      icon: "faClock", // Changed from FontAwesomeIcon to string
+      icon: "faClock",
       href: `${basePath}/timetracking`,
       alert: false,
       moduleName: "timetracking",
     },
     {
       label: "Reports",
-      icon: "faSquarePollVertical", // Changed from FontAwesomeIcon to string
+      icon: "faSquarePollVertical",
       href: `${basePath}/reports`,
       alert: false,
       moduleName: "reports",
       items: [
         {
           label: "Quality Control",
-          icon: "faCheckSquare", // Changed from FontAwesomeIcon to string
+          icon: "faCheckSquare",
           href: `${basePath}/qualityControl`,
           alert: false,
           moduleName: "qualitycontrol",
         },
         {
           label: "Effettua QC",
-          icon: "faCheckSquare", // Changed from FontAwesomeIcon to string
+          icon: "faCheckSquare",
           href: `${basePath}/qualityControl/edit`,
           alert: false,
           moduleName: "qualitycontrol",
         },
         {
           label: "Imballaggio",
-          icon: "faBox", // Changed from FontAwesomeIcon to string
+          icon: "faBox",
           href: `${basePath}/boxing`,
           alert: false,
           moduleName: "boxing",
         },
         {
           label: "Effettua imballaggio",
-          icon: "faBox", // Changed from FontAwesomeIcon to string
+          icon: "faBox",
           href: `${basePath}/boxing/edit`,
           alert: false,
           moduleName: "boxing",
@@ -187,28 +220,28 @@ const getMenuItems = (
     },
     {
       label: "Inventario",
-      icon: "faBox", // Changed from FontAwesomeIcon to string
+      icon: "faBox",
       href: `${basePath}/inventory`,
       alert: false,
       moduleName: "inventory",
     },
     {
       label: "Prodotti",
-      icon: "faBox", // Changed from FontAwesomeIcon to string
+      icon: "faBox",
       href: `${basePath}/products`,
       alert: false,
       moduleName: "products",
     },
     {
       label: "Fornitori",
-      icon: "faHelmetSafety", // Changed from FontAwesomeIcon to string
+      icon: "faHelmetSafety",
       href: `${basePath}/suppliers`,
       alert: false,
       moduleName: "suppliers",
     },
     {
       label: "Categorie",
-      icon: "faTable", // Changed from FontAwesomeIcon to string
+      icon: "faTable",
       href: `${basePath}/categories`,
       alert: false,
       moduleName: "categories",
@@ -242,13 +275,13 @@ const getMenuItems = (
     siteSpecificItems.push(
       {
         label: "Utenti",
-        icon: "faUsers", // Changed from FontAwesomeIcon to string
+        icon: "faUsers",
         href: "/administration/users",
         alert: false,
       },
       {
         label: "Sites",
-        icon: "faTable", // Changed from FontAwesomeIcon to string
+        icon: "faTable",
         href: "/administration/sites",
         alert: false,
       }
@@ -265,6 +298,7 @@ const UserSection = memo(function UserSection({ user }: { user: UserContext }) {
 export function AppSidebar() {
   const pathname = usePathname();
   const { userContext } = useUserContext();
+  const { openCreateModal } = useKanbanModal();
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
     {}
   );
@@ -316,7 +350,7 @@ export function AppSidebar() {
   const [isLoadingKanbansLocal, setIsLoadingKanbansLocal] = useState(false);
 
   const fetchKanbansOptimized = useCallback(async () => {
-    const cacheKey = "kanbans_list";
+    const cacheKey = `kanbans_list_${domain || "default"}`;
     const cached = getCachedData(cacheKey);
 
     if (cached) {
@@ -325,7 +359,11 @@ export function AppSidebar() {
     }
 
     try {
-      const response = await fetch("/api/kanban/list");
+      const response = await fetch("/api/kanban/list", {
+        headers: {
+          host: window.location.hostname,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch kanbans");
       const data = await response.json();
       const kanbanData = Array.isArray(data) ? data : [];
@@ -340,7 +378,7 @@ export function AppSidebar() {
       setKanbansLocal([]);
       return [];
     }
-  }, []);
+  }, [domain]);
 
   const refreshKanbansOptimized = useCallback(async () => {
     if (!isOnline) {
@@ -354,12 +392,20 @@ export function AppSidebar() {
 
     setIsLoadingKanbansLocal(true);
     try {
-      const response = await fetch("/api/kanban/list");
+      const response = await fetch("/api/kanban/list", {
+        headers: {
+          host: window.location.hostname,
+        },
+      });
       if (!response.ok) throw new Error("Failed to fetch kanbans");
       const data = await response.json();
       const kanbanData = Array.isArray(data) ? data : [];
 
-      setCachedData("kanbans_list", kanbanData, CACHE_TTL.KANBANS);
+      setCachedData(
+        `kanbans_list_${domain || "default"}`,
+        kanbanData,
+        CACHE_TTL.KANBANS
+      );
       setKanbansLocal(kanbanData);
       setLastSyncTime(new Date());
 
@@ -377,7 +423,7 @@ export function AppSidebar() {
     } finally {
       setIsLoadingKanbansLocal(false);
     }
-  }, [isOnline, toast]);
+  }, [isOnline, toast, domain]);
 
   // Optimized effects
   useEffect(() => {
@@ -440,7 +486,7 @@ export function AppSidebar() {
             ? [
                 {
                   label: "Caricamento...",
-                  icon: "faWrench", // Changed from FontAwesomeIcon to string
+                  icon: "faWrench" as const,
                   href: "#",
                   alert: false,
                 },
@@ -451,21 +497,21 @@ export function AppSidebar() {
                   label: isOnline
                     ? "Nessun kanban disponibile"
                     : "Dati non disponibili offline",
-                  icon: "faTable", // Changed from FontAwesomeIcon to string
+                  icon: "faTable" as const,
                   href: "#",
                   alert: false,
                 },
               ]
             : kanbansLocal.map((kanban) => ({
                 label: kanban.title,
-                icon: "faTable", // Changed from FontAwesomeIcon to string
+                icon: "faTable" as const,
                 href: `${basePath}/kanban?name=${kanban.identifier}`,
                 alert: false,
               }))),
           {
-            label: "Gestisci Kanban",
-            icon: "faPlus", // Changed from FontAwesomeIcon to string
-            href: "#",
+            label: "Crea Kanban",
+            icon: "faPlus" as const,
+            action: () => openCreateModal(),
             alert: false,
           },
         ];
@@ -554,26 +600,43 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       asChild={!item.items}
-                      isActive={isActive(item.href)}
+                      isActive={item.href ? isActive(item.href) : false}
                       className={
-                        isActive(item.href)
+                        item.href && isActive(item.href)
                           ? "bg-sidebar-accent text-sidebar-accent-foreground"
                           : ""
                       }
                       onClick={
-                        item.items ? () => toggleMenu(item.label) : undefined
+                        item.items
+                          ? () => toggleMenu(item.label)
+                          : item.action
+                          ? item.action
+                          : undefined
                       }
                     >
                       {item.items ? (
                         <>
-                          {/* FontAwesomeIcon removed, so using string icons */}
+                          <FontAwesomeIcon
+                            icon={iconMap[item.icon]}
+                            className="w-4 h-4"
+                          />
                           <span>{item.label}</span>
-                          {/* FontAwesomeIcon removed, so using string icons */}
                         </>
+                      ) : item.action ? (
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon
+                            icon={iconMap[item.icon]}
+                            className="w-4 h-4"
+                          />
+                          <span>{item.label}</span>
+                        </div>
                       ) : (
-                        <Link href={item.href}>
+                        <Link href={item.href!}>
                           <div className="flex items-center gap-2">
-                            {/* FontAwesomeIcon removed, so using string icons */}
+                            <FontAwesomeIcon
+                              icon={iconMap[item.icon]}
+                              className="w-4 h-4"
+                            />
                             <span>{item.label}</span>
                           </div>
                         </Link>
@@ -589,27 +652,46 @@ export function AppSidebar() {
                               onSave={handleSaveKanban}
                               trigger={
                                 <div className="w-full flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent rounded-sm">
-                                  {/* FontAwesomeIcon removed, so using string icons */}
+                                  <FontAwesomeIcon
+                                    icon={iconMap[subItem.icon]}
+                                    className="w-4 h-4"
+                                  />
                                   <span>{subItem.label}</span>
                                 </div>
                               }
                             />
                           ) : (
                             <SidebarMenuButton
-                              asChild
-                              isActive={isActive(subItem.href)}
+                              asChild={!!subItem.href}
+                              isActive={
+                                subItem.href ? isActive(subItem.href) : false
+                              }
                               className={
-                                isActive(subItem.href)
+                                subItem.href && isActive(subItem.href)
                                   ? "bg-sidebar-accent text-sidebar-accent-foreground"
                                   : ""
                               }
+                              onClick={subItem.action}
                             >
-                              <Link href={subItem.href}>
+                              {subItem.action ? (
                                 <div className="flex items-center gap-2">
-                                  {/* FontAwesomeIcon removed, so using string icons */}
+                                  <FontAwesomeIcon
+                                    icon={iconMap[subItem.icon]}
+                                    className="w-4 h-4"
+                                  />
                                   <span>{subItem.label}</span>
                                 </div>
-                              </Link>
+                              ) : (
+                                <Link href={subItem.href!}>
+                                  <div className="flex items-center gap-2">
+                                    <FontAwesomeIcon
+                                      icon={iconMap[subItem.icon]}
+                                      className="w-4 h-4"
+                                    />
+                                    <span>{subItem.label}</span>
+                                  </div>
+                                </Link>
+                              )}
                             </SidebarMenuButton>
                           )}
                         </SidebarMenuItem>

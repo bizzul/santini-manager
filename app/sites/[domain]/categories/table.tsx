@@ -28,11 +28,13 @@ import { DebouncedInput } from "@/components/debouncedInput";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  domain: string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  domain,
 }: DataTableProps<TData, TValue>) {
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);

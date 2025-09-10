@@ -4,46 +4,55 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/supplier/edit";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function editItem(formData: any, id: number) {
+export async function editItem(formData: any, id: number, domain?: string) {
   const result = validation.safeParse(formData);
   const session = await getUserContext();
   let userId = null;
-  if (session && session.user && session.user.id) {
-    // Get the integer user ID from the User table using the authId
-    const supabase = await createClient();
-    const { data: userData, error: userError } = await supabase
-      .from("User")
-      .select("id")
-      .eq("authId", session.user.id)
-      .single();
+  let siteId = null;
 
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      return { error: true, message: "Errore nel recupero dei dati utente!" };
+  // Get site information
+  if (domain) {
+    try {
+      const siteResult = await getSiteData(domain);
+      if (siteResult?.data) {
+        siteId = siteResult.data.id;
+      }
+    } catch (error) {
+      console.error("Error fetching site data:", error);
     }
+  }
 
-    userId = userData?.id;
+  if (session && session.user && session.user.id) {
+    // Use the authId directly as it's a string and matches Action.user_id type
+    userId = session.user.id;
   }
 
   if (result.success) {
     try {
       const supabase = await createClient();
+      const updateData: any = {
+        description: result.data.description,
+        name: result.data.name,
+        address: result.data.address,
+        cap: result.data.cap,
+        category: result.data.category,
+        contact: result.data.contact,
+        email: result.data.email,
+        location: result.data.location,
+        phone: result.data.phone,
+        short_name: result.data.short_name,
+        website: result.data.website,
+      };
+
+      if (siteId) {
+        updateData.site_id = siteId;
+      }
+
       const { data: resultUpdate, error: resultUpdateError } = await supabase
-        .from("supplier")
-        .update({
-          description: result.data.description,
-          name: result.data.name,
-          address: result.data.address,
-          cap: result.data.cap,
-          category: result.data.category,
-          contact: result.data.contact,
-          email: result.data.email,
-          location: result.data.location,
-          phone: result.data.phone,
-          short_name: result.data.short_name,
-          website: result.data.website,
-        })
+        .from("Supplier")
+        .update(updateData)
         .eq("id", id)
         .select()
         .single();
@@ -62,7 +71,7 @@ export async function editItem(formData: any, id: number) {
             data: {
               supplierId: resultUpdate.id,
             },
-            userId: userId,
+            user_id: userId,
             supplierId: resultUpdate.id,
           });
 

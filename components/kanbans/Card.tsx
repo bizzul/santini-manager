@@ -44,6 +44,7 @@ import { Button } from "../ui/button";
 type Supplier = {
   id: number;
   name: string;
+  short_name: string | null;
   isDefault: boolean;
 };
 
@@ -661,8 +662,9 @@ export default function Card({
                             }`}
                           >
                             <span className="font-medium">
-                              {/* @ts-ignore */}
-                              {ts.supplier.short_name}
+                              {ts.supplier?.short_name ||
+                                ts.supplier?.name ||
+                                "Unknown Supplier"}
                             </span>
                             {ts.deliveryDate && (
                               <span className="ml-2">

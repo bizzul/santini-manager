@@ -1,6 +1,7 @@
 import { createClient } from "../../../../../utils/supabase/server";
 import { validation } from "../../../../../validation/task/create"; //? <--- The validation schema
 import { NextRequest, NextResponse } from "next/server";
+import { getSiteData } from "../../../../../lib/fetchers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,20 +16,47 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const result = validation.safeParse(body); //? <---Veryfing body against validation schema
 
+    // Extract site_id from request headers or body
+    let siteId = null;
+    const siteIdFromHeader = req.headers.get("x-site-id");
+    const siteIdFromBody = body.siteId;
+    const domain = req.headers.get("host");
+
+    if (siteIdFromHeader) {
+      siteId = siteIdFromHeader;
+    } else if (siteIdFromBody) {
+      siteId = siteIdFromBody;
+    } else if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
     if (result.success) {
-      // Get kanban and column IDs
-      const { data: kanban, error: kanbanError } = await supabase
-        .from("kanbans")
+      // Get kanban and column IDs (filter by site_id if available)
+      let kanbanQuery = supabase
+        .from("Kanban")
         .select("id")
-        .eq("identifier", "PRODUCTION")
-        .single();
+        .eq("identifier", "PRODUCTION");
+
+      if (siteId) {
+        kanbanQuery = kanbanQuery.eq("site_id", siteId);
+      }
+
+      const { data: kanban, error: kanbanError } = await kanbanQuery.single();
 
       if (kanbanError) throw kanbanError;
 
       const { data: column, error: columnError } = await supabase
-        .from("kanban_columns")
+        .from("KanbanColumn")
         .select("id")
         .eq("identifier", "TODOPROD")
+        .eq("kanbanId", kanban.id)
         .single();
 
       if (columnError) throw columnError;
@@ -41,21 +69,29 @@ export async function POST(req: NextRequest) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
+      // Prepare insert data with site_id
+      const insertData: any = {
+        title: "",
+        clientId: result.data.clientId,
+        deliveryDate: result.data.deliveryDate,
+        unique_code: result.data.unique_code,
+        sellProductId: result.data.productId,
+        name: result.data.name,
+        kanbanId: kanban.id,
+        kanbanColumnId: column.id,
+        sellPrice: result.data.sellPrice,
+        other: result.data.other,
+        positions: positions,
+      };
+
+      // Add site_id if available
+      if (siteId) {
+        insertData.site_id = siteId;
+      }
+
       const { data: taskCreate, error: taskError } = await supabase
-        .from("tasks")
-        .insert({
-          title: "",
-          client_id: result.data.clientId,
-          delivery_date: result.data.deliveryDate,
-          unique_code: result.data.unique_code,
-          sell_product_id: result.data.productId,
-          name: result.data.name,
-          kanban_id: kanban.id,
-          column_id: column.id,
-          sell_price: result.data.sellPrice,
-          other: result.data.other,
-          positions: positions,
-        })
+        .from("Task")
+        .insert(insertData)
         .select()
         .single();
 
@@ -76,16 +112,23 @@ export async function POST(req: NextRequest) {
         }
 
         // Create a new Action record to track the user action
+        const actionData: any = {
+          type: "task_create",
+          data: {
+            task: taskCreate.id,
+          },
+          user_id: user.id,
+          task_id: taskCreate.id,
+        };
+
+        // Add site_id if available
+        if (siteId) {
+          actionData.site_id = siteId;
+        }
+
         const { data: newAction, error: actionError } = await supabase
-          .from("actions")
-          .insert({
-            type: "task_create",
-            data: {
-              task: taskCreate.id,
-            },
-            user_id: user.id,
-            task_id: taskCreate.id,
-          })
+          .from("Action")
+          .insert(actionData)
           .select()
           .single();
 

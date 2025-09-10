@@ -12,14 +12,14 @@ export async function GET(
 
     // Fetch a single task with related data
     const { data: task, error } = await supabase
-      .from("tasks")
+      .from("Task")
       .select(`
         *,
-        kanbans:kanban_id(*),
-        clients:client_id(*),
-        users:user_id(*),
-        kanban_columns:column_id(*),
-        sell_products:sell_product_id(*)
+        kanbans:kanbanId(*),
+        clients:clientId(*),
+        users:userId(*),
+        kanban_columns:kanbanColumnId(*),
+        sell_products:sellProductId(*)
       `)
       .eq("unique_code", taskId)
       .single();

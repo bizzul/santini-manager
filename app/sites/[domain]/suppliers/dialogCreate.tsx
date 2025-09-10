@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
 
-function DialogCreate({ data }: { data: any[] }) {
+function DialogCreate({ data, domain }: { data: any[]; domain: string }) {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
@@ -28,7 +28,11 @@ function DialogCreate({ data }: { data: any[] }) {
           <DialogTitle>Nuovo fornitore</DialogTitle>
           <DialogDescription>Crea un nuovo fornitore</DialogDescription>
         </DialogHeader>
-        <CreateProductForm data={data} handleClose={() => setOpen(false)} />
+        <CreateProductForm
+          data={data}
+          domain={domain}
+          handleClose={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

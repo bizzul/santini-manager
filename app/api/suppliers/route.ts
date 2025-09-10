@@ -1,15 +1,38 @@
 import { createClient } from "../../../utils/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Prima otteniamo tutti i fornitori
-    const { data: suppliers, error } = await supabase
-      .from("suppliers")
+    // Extract domain from request headers
+    const domain = req.headers.get("host");
+    let siteId = null;
+
+    // Get site information
+    if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
+    // Fetch suppliers filtered by site_id if available
+    let supplierQuery = supabase
+      .from("Supplier")
       .select("*")
       .order("name", { ascending: true });
+
+    if (siteId) {
+      supplierQuery = supplierQuery.eq("site_id", siteId);
+    }
+
+    const { data: suppliers, error } = await supplierQuery;
 
     if (error) {
       throw error;
@@ -17,13 +40,6 @@ export async function GET() {
 
     // Poi riordiniamo manualmente mettendo i default prima
     const orderedSuppliers = suppliers.sort((a, b) => {
-      // Se uno è default e l'altro no, il default va prima
-      if (a.name === "GU" || a.name === "GUTMANN" || a.name === "MEAS") {
-        return -1;
-      }
-      if (b.name === "GU" || b.name === "GUTMANN" || b.name === "MEAS") {
-        return 1;
-      }
       // Altrimenti manteniamo l'ordine alfabetico
       return a.name.localeCompare(b.name);
     });

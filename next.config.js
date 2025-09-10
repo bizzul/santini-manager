@@ -6,6 +6,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Optimize for Bun runtime
+  serverExternalPackages: ["@supabase/supabase-js"],
   images: {
     domains: [
       "https://flagcdn.com/",

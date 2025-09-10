@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
         // Create a new Action record to track the user action
         const { data: newAction, error: actionError } = await supabase
-          .from("actions")
+          .from("Action")
           .insert({
             type: "errortracking_create",
             data: {

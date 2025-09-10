@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -30,15 +30,17 @@ import { useToast } from "@/components/ui/use-toast";
 type Props = {
   handleClose: any;
   data: any;
+  kanbanId?: number;
+  domain?: string;
 };
 
-const CreateProductForm = ({ handleClose, data }: Props) => {
+const CreateProductForm = ({ handleClose, data, kanbanId, domain }: Props) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
       clientId: undefined,
-      deliveryDate: undefined,
+      deliveryDate: new Date(),
       position1: "",
       other: "",
       position2: "",
@@ -51,17 +53,34 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
       productId: undefined,
       sellPrice: 0,
       unique_code: "",
+      kanbanId: kanbanId,
     },
   });
 
   const { errors, isSubmitting } = form.formState;
 
   console.log(errors);
+  console.log("deliveryDate", form.getValues("deliveryDate"));
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    console.log(d);
     try {
+      console.log("d", d);
+
+      // Ensure deliveryDate is set before submission
+      if (!d.deliveryDate) {
+        const formDeliveryDate = form.getValues("deliveryDate");
+        if (formDeliveryDate) {
+          d.deliveryDate = formDeliveryDate;
+          console.log("Set d.deliveryDate from form:", d.deliveryDate);
+        } else {
+          d.deliveryDate = new Date();
+          console.log("Set d.deliveryDate to new Date():", d.deliveryDate);
+        }
+      }
+
+      console.log("Final d.deliveryDate:", d.deliveryDate);
+
       const dataObject = { data: d };
-      const res = await createItem(dataObject);
+      const res = await createItem(dataObject, domain);
       handleClose(false);
       toast({
         description: `Elemento ${d.unique_code} creato correttamente!`,
@@ -165,12 +184,17 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               <FormControl>
                 <DatePicker
                   date={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(date) => {
+                    console.log("DatePicker onValueChange called with:", date);
+                    field.onChange(date);
+                    console.log(
+                      "After field.onChange, form value:",
+                      form.getValues("deliveryDate")
+                    );
+                  }}
                   disabled={isSubmitting}
-                  minDate={new Date()}
                 />
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}

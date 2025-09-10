@@ -46,6 +46,7 @@ type Props = {
 type Supplier = {
   id: number;
   name: string;
+  short_name: string | null;
 };
 
 type TaskSupplier = {
@@ -599,7 +600,11 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                     key={ts.id}
                     className="flex items-center gap-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-sm"
                   >
-                    <span className="font-medium w-32">{ts.supplier.name}</span>
+                    <span className="font-medium w-32">
+                      {ts.supplier?.short_name ||
+                        ts.supplier?.name ||
+                        "Unknown Supplier"}
+                    </span>
                     <Input
                       type="date"
                       value={
@@ -685,7 +690,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                           key={supplier.id}
                           value={supplier.id.toString()}
                         >
-                          {supplier.name}
+                          {supplier.short_name || supplier.name}
                         </SelectItem>
                       ))}
                 </SelectContent>

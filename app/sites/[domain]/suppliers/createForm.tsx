@@ -30,9 +30,11 @@ import Image from "next/image";
 const CreateProductForm = ({
   handleClose,
   data,
+  domain,
 }: {
   handleClose: any;
   data: any[];
+  domain: string;
 }) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
@@ -59,8 +61,7 @@ const CreateProductForm = ({
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
-      //@ts-ignore
-      const supplier = await createItem(d);
+      const supplier = await createItem(d, domain);
       console.log("supplier response server", supplier);
       if (supplier && file) {
         //@ts-ignore
@@ -118,9 +119,15 @@ const CreateProductForm = ({
 
   return (
     <Form {...form}>
-      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="space-y-4 "
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit(form.getValues());
+        }}
+      >
         <FormField
-          // control={form.control}
+          control={form.control}
           name="category"
           render={({ field }) => (
             <FormItem>

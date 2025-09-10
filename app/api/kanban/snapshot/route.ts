@@ -11,15 +11,15 @@ export async function GET(request: Request) {
 
     // First get all tasks that existed at that time
     const { data: taskHistories, error: historyError } = await supabase
-      .from("task_history")
+      .from("TaskHistory")
       .select(`
         *,
-        tasks:task_id(
+        tasks:taskId(
           *,
-          kanban_columns:column_id(*),
-          kanbans:kanban_id(*),
-          clients:client_id(*),
-          sell_products:sell_product_id(*)
+          kanban_columns:kanbanColumnId(*),
+          kanbans:kanbanId(*),
+          clients:clientId(*),
+          sell_products:sellProductId(*)
         )
       `)
       .lte("created_at", timestamp)
@@ -30,13 +30,13 @@ export async function GET(request: Request) {
 
     // Get all current active tasks
     const { data: currentTasks, error: currentError } = await supabase
-      .from("tasks")
+      .from("Task")
       .select(`
         *,
-        kanban_columns:column_id(*),
-        kanbans:kanban_id(*),
-        clients:client_id(*),
-        sell_products:sell_product_id(*)
+        kanban_columns:kanbanColumnId(*),
+        kanbans:kanbanId(*),
+        clients:clientId(*),
+        sell_products:sellProductId(*)
       `)
       .eq("archived", false); // Only get non-archived tasks
 
@@ -45,33 +45,33 @@ export async function GET(request: Request) {
     // Get suppliers for current tasks
     const taskIds = currentTasks.map((task) => task.id);
     const { data: suppliers, error: suppliersError } = await supabase
-      .from("task_suppliers")
+      .from("TaskSuppliers")
       .select(`
         *,
-        suppliers:supplier_id(*)
+        suppliers:supplierId(*)
       `)
-      .in("task_id", taskIds);
+      .in("taskId", taskIds);
 
     if (suppliersError) throw suppliersError;
 
     // Get quality control and packing control for current tasks
     const { data: qualityControl, error: qcError } = await supabase
-      .from("quality_control")
+      .from("QualityControl")
       .select("*")
-      .in("task_id", taskIds);
+      .in("taskId", taskIds);
 
     if (qcError) throw qcError;
 
     const { data: packingControl, error: pcError } = await supabase
-      .from("packing_control")
+      .from("PackingControl")
       .select("*")
-      .in("task_id", taskIds);
+      .in("taskId", taskIds);
 
     if (pcError) throw pcError;
 
     // Create a map of tasks from history
     const historicalTasksMap = new Map(
-      taskHistories.map((history) => [history.task_id, history.snapshot]),
+      taskHistories.map((history) => [history.taskId, history.snapshot]),
     );
 
     // Combine historical and current tasks
@@ -102,13 +102,9 @@ export async function GET(request: Request) {
         // If no historical version exists, use current task
         return {
           ...task,
-          suppliers: suppliers.filter((s) => s.task_id === task.id),
-          quality_control: qualityControl.filter((qc) =>
-            qc.task_id === task.id
-          ),
-          packing_control: packingControl.filter((pc) =>
-            pc.task_id === task.id
-          ),
+          suppliers: suppliers.filter((s) => s.taskId === task.id),
+          quality_control: qualityControl.filter((qc) => qc.taskId === task.id),
+          packing_control: packingControl.filter((pc) => pc.taskId === task.id),
           isPreview: true,
         };
       })

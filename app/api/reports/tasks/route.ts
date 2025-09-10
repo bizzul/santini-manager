@@ -22,13 +22,13 @@ export const GET = async () => {
     const date = new Date();
 
     const { data: tasks, error: tasksError } = await supabase
-      .from("tasks")
+      .from("Task")
       .select(`
         *,
-        clients:client_id(*),
-        sell_products:sell_product_id(*),
-        kanban_columns:column_id(*),
-        kanbans:kanban_id(*)
+        clients:clientId(*),
+        sell_products:sellProductId(*),
+        kanban_columns:kanbanColumnId(*),
+        kanbans:kanbanId(*)
       `);
 
     if (tasksError) throw tasksError;

@@ -19,7 +19,13 @@ import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/productsCategory/create";
 import { useToast } from "@/hooks/use-toast";
 
-const CreateForm = ({ handleClose }: { handleClose: any }) => {
+const CreateForm = ({
+  handleClose,
+  domain,
+}: {
+  handleClose: any;
+  domain: string;
+}) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -34,7 +40,7 @@ const CreateForm = ({ handleClose }: { handleClose: any }) => {
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       console.log("data", d);
-      await createItem(d);
+      await createItem(d, domain);
       handleClose(false);
       toast({
         description: `Elemento ${d.name} creato correttamente!`,

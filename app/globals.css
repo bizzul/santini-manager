@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* Font Awesome Loading Fix - Hide icons until loaded */
+
 /* CSS Variables for component backgrounds */
 :root {
   --background: 0 0% 100%;

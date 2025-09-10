@@ -12,6 +12,7 @@ function ContentPage({
   initialTasks,
   snapshots,
   kanban,
+  domain,
 }: {
   kanName: string;
   clients: any;
@@ -20,6 +21,7 @@ function ContentPage({
   initialTasks?: any[];
   snapshots: any[];
   kanban: any;
+  domain: string;
 }) {
   return (
     <div className="w-auto h-auto">
@@ -33,6 +35,7 @@ function ContentPage({
             initialTasks={initialTasks}
             kanban={kanban}
             snapshots={snapshots}
+            domain={domain}
           />
         </div>
       </DndProvider>

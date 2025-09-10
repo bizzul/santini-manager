@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { getSiteData } from "@/lib/fetchers";
 
 export async function saveKanban(kanban: {
   title: string;
@@ -14,22 +15,44 @@ export async function saveKanban(kanban: {
     position: number;
     icon?: string;
   }[];
-}) {
+}, domain?: string) {
   console.log("Starting saveKanban with data:", {
     title: kanban.title,
     identifier: kanban.identifier,
     columnCount: kanban.columns.length,
   });
 
+  let siteId = null;
+  let organizationId = null;
+
+  // Get site information
+  if (domain) {
+    try {
+      const siteResult = await getSiteData(domain);
+      if (siteResult?.data) {
+        siteId = siteResult.data.id;
+        organizationId = siteResult.data.organization_id;
+      }
+    } catch (error) {
+      console.error("Error fetching site data:", error);
+    }
+  }
+
   try {
     const supabase = await createClient();
 
     // Start a transaction-like operation using Supabase
-    // First, check if kanban exists
-    const { data: existingKanban, error: fetchError } = await supabase
+    // First, check if kanban exists (filter by site_id if available)
+    let kanbanQuery = supabase
       .from("Kanban")
       .select("*")
-      .eq("identifier", kanban.identifier)
+      .eq("identifier", kanban.identifier);
+
+    if (siteId) {
+      kanbanQuery = kanbanQuery.eq("site_id", siteId);
+    }
+
+    const { data: existingKanban, error: fetchError } = await kanbanQuery
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") { // PGRST116 is "not found" error
@@ -40,12 +63,18 @@ export async function saveKanban(kanban: {
     let kanbanResult;
     if (existingKanban) {
       // Update existing kanban
+      const updateData: any = {
+        title: kanban.title,
+        color: kanban.color,
+      };
+
+      if (siteId) {
+        updateData.site_id = siteId;
+      }
+
       const { data: updatedKanban, error: updateError } = await supabase
         .from("Kanban")
-        .update({
-          title: kanban.title,
-          color: kanban.color,
-        })
+        .update(updateData)
         .eq("identifier", kanban.identifier)
         .select()
         .single();
@@ -58,13 +87,19 @@ export async function saveKanban(kanban: {
       kanbanResult = updatedKanban;
     } else {
       // Create new kanban
+      const insertData: any = {
+        title: kanban.title,
+        identifier: kanban.identifier,
+        color: kanban.color,
+      };
+
+      if (siteId) {
+        insertData.site_id = siteId;
+      }
+
       const { data: newKanban, error: createError } = await supabase
         .from("Kanban")
-        .insert({
-          title: kanban.title,
-          identifier: kanban.identifier,
-          color: kanban.color,
-        })
+        .insert(insertData)
         .select()
         .single();
 

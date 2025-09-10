@@ -143,9 +143,6 @@ export async function getSiteById(id: string) {
 export async function getSiteUsers(siteId: string) {
     const supabase = await createClient();
 
-    console.log("=== getSiteUsers Debug ===");
-    console.log("Looking for site ID:", siteId);
-
     // First get the site to find its organization
     const { data: site, error: siteError } = await supabase
         .from("sites")
@@ -241,9 +238,6 @@ export async function getSiteUsers(siteId: string) {
             userData: user || null,
         };
     });
-
-    console.log("Final result:", result);
-    console.log("=== End getSiteUsers Debug ===");
 
     return result;
 }

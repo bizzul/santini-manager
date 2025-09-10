@@ -10,10 +10,10 @@ export async function DELETE(
     const { taskId, supplierId } = await params;
 
     const { data: taskSupplier, error } = await supabase
-      .from("task_suppliers")
+      .from("TaskSupplier")
       .delete()
-      .eq("task_id", parseInt(taskId))
-      .eq("supplier_id", parseInt(supplierId))
+      .eq("taskId", parseInt(taskId))
+      .eq("supplierId", parseInt(supplierId))
       .select()
       .single();
 

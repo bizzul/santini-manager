@@ -5,12 +5,13 @@ import DialogCreate from "./dialogCreate";
 import { createClient } from "@/utils/supabase/server";
 import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
+import { getSiteData } from "@/lib/fetchers";
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function getSellProducts(): Promise<SellProduct[]> {
+async function getSellProducts(domain: string): Promise<SellProduct[]> {
   try {
     console.log("🔄 Starting sell products fetch...");
 
@@ -19,10 +20,28 @@ async function getSellProducts(): Promise<SellProduct[]> {
     const supabase = await createClient();
     console.log("✅ Supabase client created");
 
-    const { data: sellProducts, error: sellProductsError } = await supabase
+    // Get site information
+    let siteId = null;
+    try {
+      const siteResult = await getSiteData(domain);
+      if (siteResult?.data) {
+        siteId = siteResult.data.id;
+      }
+    } catch (error) {
+      console.error("Error fetching site data:", error);
+    }
+
+    // Fetch products filtered by site_id if available
+    let productQuery = supabase
       .from("SellProduct")
       .select("*")
       .order("name", { ascending: true });
+
+    if (siteId) {
+      productQuery = productQuery.eq("site_id", siteId);
+    }
+
+    const { data: sellProducts, error: sellProductsError } = await productQuery;
 
     console.log("📦 Sell products query result:", {
       data: sellProducts?.length || 0,
@@ -45,12 +64,13 @@ async function getSellProducts(): Promise<SellProduct[]> {
   }
 }
 
-async function Page() {
+async function Page({ params }: { params: Promise<{ domain: string }> }) {
   try {
     console.log("🚀 Products page starting...");
+    const { domain } = await params;
 
     //get initial data
-    const data = await getSellProducts();
+    const data = await getSellProducts(domain);
     console.log("📊 Data fetched successfully, count:", data.length);
 
     const userContext = await getUserContext();
@@ -68,9 +88,9 @@ async function Page() {
 
     return (
       <div className="container mx-auto">
-        <DialogCreate />
+        <DialogCreate domain={domain} />
         {data && data.length > 0 ? (
-          <SellProductWrapper data={data} />
+          <SellProductWrapper data={data} domain={domain} />
         ) : (
           <div className="w-full h-full text-center">
             <h1 className="font-bold text-2xl">Nessun prodotto registrato!</h1>

@@ -1,3 +1,6 @@
+Need to install the following packages:
+supabase@2.40.7
+Ok to proceed? (y) 
 export type Json =
   | string
   | number
@@ -86,7 +89,7 @@ export type Database = {
           supplierId: number | null
           taskId: number | null
           type: string
-          userId: number
+          user_id: string | null
         }
         Insert: {
           clientId?: number | null
@@ -99,7 +102,7 @@ export type Database = {
           supplierId?: number | null
           taskId?: number | null
           type: string
-          userId: number
+          user_id?: string | null
         }
         Update: {
           clientId?: number | null
@@ -112,7 +115,7 @@ export type Database = {
           supplierId?: number | null
           taskId?: number | null
           type?: string
-          userId?: number
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -151,13 +154,46 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "Action_userId_fkey"
-            columns: ["userId"]
+            foreignKeyName: "Action_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "User"
-            referencedColumns: ["id"]
+            referencedColumns: ["authId"]
           },
         ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string | null
+          table_name: string
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string | null
+          table_name?: string
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       Checklist_item: {
         Row: {
@@ -329,36 +365,13 @@ export type Database = {
           },
         ]
       }
-      company_settings: {
-        Row: {
-          created_at: string
-          id: string
-          logo_url: string | null
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          logo_url?: string | null
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          logo_url?: string | null
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       Department: {
         Row: {
           created_at: string
           description: string
           id: number
           name: string
+          site_id: string | null
           updated_at: string
         }
         Insert: {
@@ -366,6 +379,7 @@ export type Database = {
           description: string
           id?: number
           name: string
+          site_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -373,9 +387,18 @@ export type Database = {
           description?: string
           id?: number
           name?: string
+          site_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Department_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       Errortracking: {
         Row: {
@@ -386,6 +409,7 @@ export type Database = {
           error_type: string
           id: number
           position: string
+          site_id: string | null
           supplier_id: number | null
           task_id: number
           updated_at: string
@@ -398,6 +422,7 @@ export type Database = {
           error_type: string
           id?: number
           position: string
+          site_id?: string | null
           supplier_id?: number | null
           task_id: number
           updated_at?: string
@@ -410,6 +435,7 @@ export type Database = {
           error_type?: string
           id?: number
           position?: string
+          site_id?: string | null
           supplier_id?: number | null
           task_id?: number
           updated_at?: string
@@ -420,6 +446,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Errortracking_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
           {
@@ -446,6 +479,7 @@ export type Database = {
           id: number
           name: string
           position: string
+          site_id: string | null
           task_id: number
           updated_at: string
         }
@@ -456,6 +490,7 @@ export type Database = {
           id?: number
           name: string
           position: string
+          site_id?: string | null
           task_id: number
           updated_at?: string
         }
@@ -466,10 +501,18 @@ export type Database = {
           id?: number
           name?: string
           position?: string
+          site_id?: string | null
           task_id?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "Exit_checklist_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fk_employee"
             columns: ["employee_id"]
@@ -533,21 +576,32 @@ export type Database = {
           color: string | null
           id: number
           identifier: string
+          site_id: string | null
           title: string
         }
         Insert: {
           color?: string | null
           id?: number
           identifier: string
+          site_id?: string | null
           title: string
         }
         Update: {
           color?: string | null
           id?: number
           identifier?: string
+          site_id?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Kanban_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       KanbanColumn: {
         Row: {
@@ -613,6 +667,7 @@ export type Database = {
           created_at: string
           id: number
           passed: Database["public"]["Enums"]["QC_Status"]
+          site_id: string | null
           taskId: number
           updated_at: string
           userId: number
@@ -621,6 +676,7 @@ export type Database = {
           created_at?: string
           id?: number
           passed?: Database["public"]["Enums"]["QC_Status"]
+          site_id?: string | null
           taskId: number
           updated_at?: string
           userId: number
@@ -629,11 +685,19 @@ export type Database = {
           created_at?: string
           id?: number
           passed?: Database["public"]["Enums"]["QC_Status"]
+          site_id?: string | null
           taskId?: number
           updated_at?: string
           userId?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "PackingControl_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "PackingControl_taskId_fkey"
             columns: ["taskId"]
@@ -686,16 +750,27 @@ export type Database = {
         Row: {
           id: number
           name: string
+          site_id: string | null
         }
         Insert: {
           id?: number
           name: string
+          site_id?: string | null
         }
         Update: {
           id?: number
           name?: string
+          site_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "PackingMasterItem_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       Product: {
         Row: {
@@ -708,6 +783,7 @@ export type Database = {
           length: number | null
           name: string
           quantity: number
+          site_id: string | null
           supplier: string | null
           supplierId: number | null
           total_price: number | null
@@ -727,6 +803,7 @@ export type Database = {
           length?: number | null
           name: string
           quantity: number
+          site_id?: string | null
           supplier?: string | null
           supplierId?: number | null
           total_price?: number | null
@@ -746,6 +823,7 @@ export type Database = {
           length?: number | null
           name?: string
           quantity?: number
+          site_id?: string | null
           supplier?: string | null
           supplierId?: number | null
           total_price?: number | null
@@ -764,6 +842,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "Product_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "Product_supplierId_fkey"
             columns: ["supplierId"]
             isOneToOne: false
@@ -778,6 +863,7 @@ export type Database = {
           description: string
           id: number
           name: string
+          site_id: string | null
           updated_at: string
         }
         Insert: {
@@ -785,6 +871,7 @@ export type Database = {
           description: string
           id?: number
           name: string
+          site_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -792,9 +879,18 @@ export type Database = {
           description?: string
           id?: number
           name?: string
+          site_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Product_category_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       Qc_item: {
         Row: {
@@ -835,16 +931,27 @@ export type Database = {
         Row: {
           id: number
           name: string
+          site_id: string | null
         }
         Insert: {
           id?: number
           name: string
+          site_id?: string | null
         }
         Update: {
           id?: number
           name?: string
+          site_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "QcMasterItem_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       QualityControl: {
         Row: {
@@ -852,6 +959,7 @@ export type Database = {
           id: number
           passed: Database["public"]["Enums"]["QC_Status"]
           position_nr: string
+          site_id: string | null
           taskId: number
           updated_at: string
           userId: number
@@ -861,6 +969,7 @@ export type Database = {
           id?: number
           passed?: Database["public"]["Enums"]["QC_Status"]
           position_nr: string
+          site_id?: string | null
           taskId: number
           updated_at?: string
           userId: number
@@ -870,11 +979,19 @@ export type Database = {
           id?: number
           passed?: Database["public"]["Enums"]["QC_Status"]
           position_nr?: string
+          site_id?: string | null
           taskId?: number
           updated_at?: string
           userId?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "QualityControl_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "QualityControl_taskId_fkey"
             columns: ["taskId"]
@@ -895,16 +1012,27 @@ export type Database = {
         Row: {
           id: number
           name: string
+          site_id: string | null
         }
         Insert: {
           id?: number
           name: string
+          site_id?: string | null
         }
         Update: {
           id?: number
           name?: string
+          site_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Roles_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       SellProduct: {
         Row: {
@@ -912,6 +1040,7 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          site_id: string | null
           type: string
           updated_at: string
         }
@@ -920,6 +1049,7 @@ export type Database = {
           created_at?: string
           id?: number
           name: string
+          site_id?: string | null
           type: string
           updated_at?: string
         }
@@ -928,10 +1058,19 @@ export type Database = {
           created_at?: string
           id?: number
           name?: string
+          site_id?: string | null
           type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "SellProduct_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       site_modules: {
         Row: {
@@ -1032,6 +1171,7 @@ export type Database = {
           name: string
           phone: string | null
           short_name: string | null
+          site_id: string | null
           supplier_image: string | null
           updated_at: string
           website: string | null
@@ -1049,6 +1189,7 @@ export type Database = {
           name: string
           phone?: string | null
           short_name?: string | null
+          site_id?: string | null
           supplier_image?: string | null
           updated_at?: string
           website?: string | null
@@ -1066,11 +1207,20 @@ export type Database = {
           name?: string
           phone?: string | null
           short_name?: string | null
+          site_id?: string | null
           supplier_image?: string | null
           updated_at?: string
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "Supplier_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       Task: {
         Row: {
@@ -1095,6 +1245,7 @@ export type Database = {
           positions: string[] | null
           sellPrice: number | null
           sellProductId: number | null
+          site_id: string | null
           status: string | null
           stoccaggiodate: string | null
           stoccato: boolean | null
@@ -1126,6 +1277,7 @@ export type Database = {
           positions?: string[] | null
           sellPrice?: number | null
           sellProductId?: number | null
+          site_id?: string | null
           status?: string | null
           stoccaggiodate?: string | null
           stoccato?: boolean | null
@@ -1157,6 +1309,7 @@ export type Database = {
           positions?: string[] | null
           sellPrice?: number | null
           sellProductId?: number | null
+          site_id?: string | null
           status?: string | null
           stoccaggiodate?: string | null
           stoccato?: boolean | null
@@ -1193,6 +1346,13 @@ export type Database = {
             columns: ["sellProductId"]
             isOneToOne: false
             referencedRelation: "SellProduct"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Task_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
           {
@@ -1285,6 +1445,7 @@ export type Database = {
           hours: number | null
           id: number
           minutes: number | null
+          site_id: string | null
           startTime: string | null
           task_id: number | null
           totalTime: number
@@ -1300,6 +1461,7 @@ export type Database = {
           hours?: number | null
           id?: number
           minutes?: number | null
+          site_id?: string | null
           startTime?: string | null
           task_id?: number | null
           totalTime: number
@@ -1315,6 +1477,7 @@ export type Database = {
           hours?: number | null
           id?: number
           minutes?: number | null
+          site_id?: string | null
           startTime?: string | null
           task_id?: number | null
           totalTime?: number
@@ -1327,6 +1490,13 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "User"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "Timetracking_site_id_fkey"
+            columns: ["site_id"]
+            isOneToOne: false
+            referencedRelation: "sites"
             referencedColumns: ["id"]
           },
           {
@@ -1343,6 +1513,7 @@ export type Database = {
           auth_id: string | null
           authId: string | null
           color: string | null
+          deactivated_at: string | null
           email: string
           enabled: boolean
           family_name: string | null
@@ -1356,6 +1527,7 @@ export type Database = {
           auth_id?: string | null
           authId?: string | null
           color?: string | null
+          deactivated_at?: string | null
           email: string
           enabled?: boolean
           family_name?: string | null
@@ -1369,6 +1541,7 @@ export type Database = {
           auth_id?: string | null
           authId?: string | null
           color?: string | null
+          deactivated_at?: string | null
           email?: string
           enabled?: boolean
           family_name?: string | null

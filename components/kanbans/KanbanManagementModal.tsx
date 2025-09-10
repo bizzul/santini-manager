@@ -63,6 +63,8 @@ interface KanbanManagementModalProps {
   trigger: React.ReactNode;
   mode?: ModalMode;
   hasTasks?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const iconOptions = [
@@ -121,17 +123,31 @@ export default function KanbanManagementModal({
   trigger,
   mode = "create",
   hasTasks = false,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
 }: KanbanManagementModalProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(kanban?.title || "");
   const [identifier, setIdentifier] = useState(kanban?.identifier || "");
-  const [columns, setColumns] = useState<Column[]>(kanban?.columns || []);
+  const [columns, setColumns] = useState<Column[]>(
+    kanban?.columns?.sort(
+      (a: any, b: any) => (a.position || 0) - (b.position || 0)
+    ) || []
+  );
   const [color, setColor] = useState(kanban?.color || "#1e293b");
   const { toast } = useToast();
 
+  // Use external open state if provided, otherwise use internal state
+  const isOpen = externalOpen !== undefined ? externalOpen : open;
+  const setIsOpen = externalOnOpenChange || setOpen;
+
   useEffect(() => {
     if (kanban?.columns) {
-      setColumns(kanban.columns);
+      setColumns(
+        kanban.columns.sort(
+          (a: any, b: any) => (a.position || 0) - (b.position || 0)
+        )
+      );
     }
   }, [kanban]);
 
@@ -181,6 +197,7 @@ export default function KanbanManagementModal({
       };
 
       await onSave(kanbanData);
+      setIsOpen(false);
       setOpen(false);
     } catch (error) {
       console.error("Error saving kanban:", error);
@@ -220,7 +237,7 @@ export default function KanbanManagementModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
@@ -307,7 +324,11 @@ export default function KanbanManagementModal({
                               const temp = arr[index - 1];
                               arr[index - 1] = arr[index];
                               arr[index] = temp;
-                              return arr;
+                              // Update positions
+                              return arr.map((col, i) => ({
+                                ...col,
+                                position: i + 1,
+                              }));
                             });
                           }
                         }}
@@ -326,7 +347,11 @@ export default function KanbanManagementModal({
                               const temp = arr[index + 1];
                               arr[index + 1] = arr[index];
                               arr[index] = temp;
-                              return arr;
+                              // Update positions
+                              return arr.map((col, i) => ({
+                                ...col,
+                                position: i + 1,
+                              }));
                             });
                           }
                         }}

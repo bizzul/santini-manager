@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../utils/supabase/server";
+import { getSiteData } from "../../../../../lib/fetchers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,23 +16,48 @@ export async function POST(req: NextRequest) {
     const { id, column, columnName } = body;
     const now = new Date();
 
+    // Extract site_id from request headers or domain
+    let siteId = null;
+    const siteIdFromHeader = req.headers.get("x-site-id");
+    const domain = req.headers.get("host");
+
+    if (siteIdFromHeader) {
+      siteId = siteIdFromHeader;
+    } else if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
     console.log("Move card request:", {
       id,
       column,
       columnName,
       userId: user.id,
+      siteId,
     });
 
-    const { data: task, error: findError } = await supabase
-      .from("tasks")
+    // Find task with site_id filtering if available
+    let taskQuery = supabase
+      .from("Task")
       .select(`
         *,
-        kanban_columns:column_id(*),
-        quality_control:task_id(*),
-        packing_control:task_id(*)
+        kanban_columns:kanbanColumnId(*),
+        quality_control:taskId(*),
+        packing_control:taskId(*)
       `)
-      .eq("id", id)
-      .single();
+      .eq("id", id);
+
+    if (siteId) {
+      taskQuery = taskQuery.eq("site_id", siteId);
+    }
+
+    const { data: task, error: findError } = await taskQuery.single();
 
     if (findError || !task) {
       console.error("Task not found:", id);
@@ -47,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     // Get the target column's position
     const { data: targetColumn, error: columnError } = await supabase
-      .from("kanban_columns")
+      .from("KanbanColumn")
       .select("*")
       .eq("id", column)
       .single();
@@ -67,9 +93,9 @@ export async function POST(req: NextRequest) {
 
     // Get the total number of columns in the kanban to calculate progress percentage
     const countRes = await supabase
-      .from("kanban_columns")
+      .from("KanbanColumn")
       .select("*", { count: "exact", head: true })
-      .eq("kanban_id", task?.kanban_id);
+      .eq("kanbanId", task?.kanbanId);
 
     if (countRes.error) throw countRes.error;
 
@@ -108,7 +134,7 @@ export async function POST(req: NextRequest) {
     //create the packing control and qualityControl objects
     if (columnName === "QCPROD" && task) {
       const { data: qcMasterItems, error: qcMasterError } = await supabase
-        .from("qc_master_items")
+        .from("QcMasterItems")
         .select("*");
 
       if (qcMasterError) throw qcMasterError;
@@ -120,11 +146,11 @@ export async function POST(req: NextRequest) {
           .map(async (position: any) => {
             // Create Quality Control entry
             const { data: qcControl, error: qcControlError } = await supabase
-              .from("quality_control")
+              .from("QualityControl")
               .insert({
-                task_id: task.id,
-                user_id: user.id,
-                position_nr: position,
+                taskId: task.id,
+                userId: user.id,
+                positionNr: position,
               })
               .select()
               .single();
@@ -134,10 +160,10 @@ export async function POST(req: NextRequest) {
             // For each standard QC item, create a QC item linked to the new QC entry
             const qcItemPromises = qcMasterItems.map((item) =>
               supabase
-                .from("qc_items")
+                .from("QcItems")
                 .insert({
                   name: item.name,
-                  quality_control_id: qcControl.id, // Link to the newly created QC entry
+                  qualityControlId: qcControl.id, // Link to the newly created QC entry
                 })
             );
 
@@ -153,7 +179,7 @@ export async function POST(req: NextRequest) {
     if (columnName === "IMBALLAGGIO" && task) {
       const { data: packingMasterItems, error: packingMasterError } =
         await supabase
-          .from("packing_master_items")
+          .from("PackingMasterItems")
           .select("*");
 
       if (packingMasterError) throw packingMasterError;
@@ -162,10 +188,10 @@ export async function POST(req: NextRequest) {
         // Create PackingControl if it doesn't exist
         const { data: packingControl, error: packingControlError } =
           await supabase
-            .from("packing_control")
+            .from("PackingControl")
             .insert({
-              task_id: task.id,
-              user_id: user.id,
+              taskId: task.id,
+              userId: user.id,
             })
             .select()
             .single();
@@ -175,10 +201,10 @@ export async function POST(req: NextRequest) {
         // For each standard packing item, create a packing item linked to the new packing entry
         const packingItemPromises = packingMasterItems.map((item) =>
           supabase
-            .from("packing_items")
+            .from("PackingItems")
             .insert({
               name: item.name,
-              packing_control_id: packingControl.id, // Link to the newly created packing entry
+              packingControlId: packingControl.id, // Link to the newly created packing entry
             })
         );
 
@@ -187,17 +213,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { data: response, error: updateError } = await supabase
-      .from("tasks")
+    // Update task with site_id filtering if available
+    let updateQuery = supabase
+      .from("Task")
       .update({
-        column_id: column,
+        kanbanColumnId: column,
         updated_at: now,
-        percent_status: progress,
+        percentStatus: progress,
       })
-      .eq("id", id)
+      .eq("id", id);
+
+    if (siteId) {
+      updateQuery = updateQuery.eq("site_id", siteId);
+    }
+
+    const { data: response, error: updateError } = await updateQuery
       .select(`
         *,
-        kanban_columns:column_id(*)
+        kanban_columns:kanbanColumnId(*)
       `)
       .single();
 
@@ -205,18 +238,25 @@ export async function POST(req: NextRequest) {
 
     if (response) {
       // Create a new Action record to track the user action
+      const actionData: any = {
+        type: "move_task",
+        data: {
+          taskId: id,
+          fromColumn: prevColumn,
+          toColumn: response.kanban_columns?.title,
+        },
+        user_id: user.id,
+        task_id: id,
+      };
+
+      // Add site_id if available
+      if (siteId) {
+        actionData.site_id = siteId;
+      }
+
       const { data: newAction, error: actionError } = await supabase
-        .from("actions")
-        .insert({
-          type: "move_task",
-          data: {
-            taskId: id,
-            fromColumn: prevColumn,
-            toColumn: response.kanban_columns?.title,
-          },
-          user_id: user.id,
-          task_id: id,
-        })
+        .from("Action")
+        .insert(actionData)
         .select()
         .single();
 

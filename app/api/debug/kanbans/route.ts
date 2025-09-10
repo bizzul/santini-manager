@@ -7,7 +7,7 @@ export async function GET() {
 
     // Get all kanbans
     const { data: kanbans, error: kanbansError } = await supabase
-      .from("kanbans")
+      .from("Kanban")
       .select("*")
       .order("title", { ascending: true });
 
@@ -15,7 +15,7 @@ export async function GET() {
 
     // Get all columns for all kanbans
     const { data: columns, error: columnsError } = await supabase
-      .from("kanban_columns")
+      .from("KanbanColumn")
       .select("*")
       .order("position", { ascending: true });
 
@@ -23,21 +23,21 @@ export async function GET() {
 
     // Get all tasks for all kanbans
     const { data: tasks, error: tasksError } = await supabase
-      .from("tasks")
-      .select("id, unique_code, title, kanban_id");
+      .from("Task")
+      .select("id, unique_code, title, kanbanId");
 
     if (tasksError) throw tasksError;
 
-    // Group columns and tasks by kanban_id
+    // Group columns and tasks by kanbanId
     const columnsByKanban = columns.reduce((acc, col: any) => {
-      if (!acc[col.kanban_id]) acc[col.kanban_id] = [];
-      acc[col.kanban_id].push(col);
+      if (!acc[col.kanbanId]) acc[col.kanbanId] = [];
+      acc[col.kanbanId].push(col);
       return acc;
     }, {} as Record<string, any[]>);
 
     const tasksByKanban = tasks.reduce((acc, task: any) => {
-      if (!acc[task.kanban_id]) acc[task.kanban_id] = [];
-      acc[task.kanban_id].push(task);
+      if (!acc[task.kanbanId]) acc[task.kanbanId] = [];
+      acc[task.kanbanId].push(task);
       return acc;
     }, {} as Record<string, any[]>);
 

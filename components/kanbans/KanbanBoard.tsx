@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useDrop } from "react-dnd";
 import Card from "./Card";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -89,6 +89,8 @@ const Column = ({
   history,
   areAllTabsClosed,
   isPreviewMode,
+  kanban,
+  domain,
 }: any) => {
   const [isMovingTask, setIsMovingTask] = useState(false);
   const [modalCreate, setModalCreate] = useState(false);
@@ -258,6 +260,8 @@ const Column = ({
                   <CreateProductForm
                     data={data}
                     handleClose={() => setModalCreate(false)}
+                    kanbanId={(kanban as any)?.id}
+                    domain={domain}
                   />
                 </DialogContent>
               </Dialog>
@@ -348,6 +352,7 @@ interface KanbanBoardTypes {
   initialTasks?: any[];
   kanban: any;
   snapshots: any[];
+  domain: string;
 }
 
 function KanbanBoard({
@@ -358,6 +363,7 @@ function KanbanBoard({
   initialTasks = [],
   kanban,
   snapshots,
+  domain,
 }: KanbanBoardTypes) {
   const [tasks, setTasks] = useState(() => {
     // Ensure initialTasks is always an array
@@ -376,11 +382,22 @@ function KanbanBoard({
     useState<string>("");
   const pollingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const tasksRef = useRef(tasks); // Keep a ref of current tasks to avoid unnecessary updates
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Update ref when tasks change
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
+
+  // Debounced function to prevent excessive API calls
+  const debouncedFetchAndUpdate = useCallback(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      fetchAndUpdateTasks(true);
+    }, 2000); // 2 second debounce
+  }, []);
 
   // Function to check for updates using last-modified timestamp
   const checkForUpdates = async () => {
@@ -449,13 +466,19 @@ function KanbanBoard({
     }
   };
 
-  // Real-time update system
+  // Real-time update system with visibility check
   useEffect(() => {
     let isActive = true;
     let isChecking = false;
 
     const startPolling = async () => {
       if (!isActive || isChecking) return;
+
+      // Skip polling if page is not visible
+      if (document.hidden) {
+        pollingIntervalRef.current = setTimeout(startPolling, 5000); // Check again in 5s if hidden
+        return;
+      }
 
       try {
         isChecking = true;
@@ -472,9 +495,9 @@ function KanbanBoard({
         isChecking = false;
       }
 
-      // Schedule next check
+      // Schedule next check - increased interval to reduce API calls
       if (isActive) {
-        pollingIntervalRef.current = setTimeout(startPolling, 1000);
+        pollingIntervalRef.current = setTimeout(startPolling, 15000); // 15 seconds for better performance
       }
     };
 
@@ -491,6 +514,9 @@ function KanbanBoard({
       isActive = false;
       if (pollingIntervalRef.current) {
         clearTimeout(pollingIntervalRef.current);
+      }
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
   }, []); // Empty dependency array since we want this to run once on mount
@@ -674,46 +700,7 @@ function KanbanBoard({
     setAreAllTabsClosed(!areAllTabsClosed);
   };
 
-  useEffect(() => {
-    // Check if tasks exists and has items before checking for preview
-    const isViewingSnapshot =
-      Array.isArray(tasks) &&
-      tasks.length > 0 &&
-      tasks.some((task) => task.isPreview);
-
-    if (isViewingSnapshot) {
-      return;
-    }
-
-    const pollForUpdates = async () => {
-      try {
-        const response = await fetch("/api/kanban/tasks", {
-          headers: {
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache",
-          },
-        });
-        const data = await response.json();
-
-        // Only update if we have new data and it's different
-        if (
-          data &&
-          Array.isArray(data) &&
-          JSON.stringify(data) !== JSON.stringify(tasks)
-        ) {
-          safeSetTasks(data);
-        } else if (!Array.isArray(data)) {
-          safeSetTasks([]); // Set empty array if data is not an array
-        }
-      } catch (error) {
-        console.error("Error polling for updates:", error);
-        safeSetTasks([]); // Set empty array on error
-      }
-    };
-
-    const intervalId = setInterval(pollForUpdates, 5000);
-    return () => clearInterval(intervalId);
-  }, [tasks]);
+  // REMOVED: Duplicate polling system - using the optimized checkForUpdates system instead
 
   const undoLastMove = () => {
     if (lastAction) {
@@ -729,7 +716,8 @@ function KanbanBoard({
 
   const handleSaveKanban = async (kanbanData: any) => {
     try {
-      await saveKanban(kanbanData);
+      // Use the domain passed as prop instead of window.location.hostname
+      await saveKanban(kanbanData, domain);
       // Refresh the page to get the updated kanban data
       window.location.reload();
     } catch (error) {
@@ -829,33 +817,37 @@ function KanbanBoard({
             } transition-all duration-500 pt-4 px-8 min-h-screen`}
           >
             <div className="grid grid-flow-col gap-4 pt-4">
-              {kanban.columns.map((column: KanbanColumn) => {
-                // Ensure tasks is an array before filtering
-                const columnCards = Array.isArray(tasks)
-                  ? tasks.filter(
-                      (task: Task) =>
-                        //@ts-ignore
-                        task?.column?.identifier === column.identifier &&
-                        task.archived !== true
-                    )
-                  : [];
+              {(kanban.columns || [])
+                .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+                .map((column: KanbanColumn) => {
+                  // Ensure tasks is an array before filtering
+                  const columnCards = Array.isArray(tasks)
+                    ? tasks.filter(
+                        (task: Task) =>
+                          //@ts-ignore
+                          task?.column?.identifier === column.identifier &&
+                          task.archived !== true
+                      )
+                    : [];
 
-                return (
-                  <Column
-                    key={column.id}
-                    column={column}
-                    data={{ clients, products }}
-                    cards={columnCards}
-                    moveCard={moveCard}
-                    openModal={openModal}
-                    setOpenModal={setOpenModal}
-                    setEditModalOpen={setEditModalOpen}
-                    history={history}
-                    areAllTabsClosed={areAllTabsClosed}
-                    isPreviewMode={isPreviewMode}
-                  />
-                );
-              })}
+                  return (
+                    <Column
+                      key={column.id}
+                      column={column}
+                      data={{ clients, products }}
+                      cards={columnCards}
+                      moveCard={moveCard}
+                      openModal={openModal}
+                      setOpenModal={setOpenModal}
+                      setEditModalOpen={setEditModalOpen}
+                      history={history}
+                      areAllTabsClosed={areAllTabsClosed}
+                      isPreviewMode={isPreviewMode}
+                      kanban={kanban}
+                      domain={domain}
+                    />
+                  );
+                })}
             </div>
           </div>
         </>
@@ -868,6 +860,18 @@ function KanbanBoard({
             <p className="mb-4">
               Seleziona un kanban esistente dal menu laterale o creane uno nuovo
             </p>
+            <KanbanManagementModal
+              kanban={null}
+              onSave={handleSaveKanban}
+              mode="create"
+              hasTasks={false}
+              trigger={
+                <Button variant="default" size="lg">
+                  <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                  Crea Nuovo Kanban
+                </Button>
+              }
+            />
           </div>
         </div>
       )}

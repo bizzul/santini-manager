@@ -9,9 +9,13 @@ export const validation = z.object({
   //password: z.string().min(100,"VA CHE LE TROP CORT"),
   name: z.string(),
   description: z.string().min(1),
-  address: z.string().min(1),
-  cap: z.preprocess((val) => Number(val), z.number().optional()),
-  location: z.string().min(1),
+  address: z.string().optional(),
+  cap: z.preprocess((val) => {
+    if (val === "" || val === undefined || val === null) return undefined;
+    const num = Number(val);
+    return isNaN(num) ? undefined : num;
+  }, z.number().optional()),
+  location: z.string().optional(),
   website: z.string().optional(),
   email: z.string().optional(),
   phone: z.string().optional(),

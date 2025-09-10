@@ -48,7 +48,7 @@ export async function PATCH(
 
       // Create a new Action record to track the user action
       const { data: newAction, error: actionError } = await supabase
-        .from("actions")
+        .from("Action")
         .insert({
           type: "edit_product",
           data: {

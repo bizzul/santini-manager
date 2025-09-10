@@ -6,6 +6,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { getUserContext } from "@/lib/auth-utils";
+import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
+import { GlobalKanbanModal } from "@/components/kanbans/GlobalKanbanModal";
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
@@ -112,20 +114,25 @@ export default async function SiteLayout({
     const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
     return (
-      <SidebarProvider defaultOpen={defaultOpen}>
-        {isImpersonating && impersonatedUser && originalSuperadminId && (
-          <ImpersonationBanner
-            impersonatedUser={impersonatedUser}
-            originalSuperadminId={originalSuperadminId}
-          />
-        )}
+      <KanbanModalProvider>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          {isImpersonating && impersonatedUser && originalSuperadminId && (
+            <ImpersonationBanner
+              impersonatedUser={impersonatedUser}
+              originalSuperadminId={originalSuperadminId}
+            />
+          )}
 
-        <AppSidebar />
-        <main className="w-full h-full">
-          <SidebarTrigger />
-          {children}
-        </main>
-      </SidebarProvider>
+          <AppSidebar />
+          <main className="w-full h-full">
+            <SidebarTrigger />
+            {children}
+          </main>
+
+          {/* Global Kanban Modal */}
+          <GlobalKanbanModal />
+        </SidebarProvider>
+      </KanbanModalProvider>
     );
   } catch (error) {
     console.error("Error in site layout:", error);

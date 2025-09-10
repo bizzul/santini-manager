@@ -1,16 +1,36 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function getKanbans() {
+export async function getKanbans(domain?: string) {
   try {
     const supabase = await createClient();
+    let siteId = null;
 
-    // Fetch all kanbans
-    const { data: kanbans, error: kanbansError } = await supabase
+    // Get site information
+    if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
+    // Fetch kanbans filtered by site_id if available
+    let kanbanQuery = supabase
       .from("Kanban")
       .select("*")
       .order("title", { ascending: true });
+
+    if (siteId) {
+      kanbanQuery = kanbanQuery.eq("site_id", siteId);
+    }
+
+    const { data: kanbans, error: kanbansError } = await kanbanQuery;
 
     if (kanbansError) {
       console.error("Error fetching kanbans:", kanbansError);

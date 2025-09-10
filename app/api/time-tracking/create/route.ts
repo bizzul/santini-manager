@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 
       // Get task ID from unique code
       const { data: task, error: taskError } = await supabase
-        .from("tasks")
+        .from("Task")
         .select("id")
         .eq("unique_code", data.task)
         .single();
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
       // Create action record
       const { data: action, error: actionError } = await supabase
-        .from("actions")
+        .from("Action")
         .insert({
           type: "timetracking_create",
           data: {

@@ -1,12 +1,13 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
+import { getSiteData } from "@/lib/fetchers";
 
 // Main function to save state and handle revalidation
-export async function saveState() {
+export async function saveState(domain?: string) {
   try {
     const supabase = await createClient();
-    const result = await saveKanbanState(supabase);
+    const result = await saveKanbanState(supabase, domain);
     if (result.success) {
       revalidatePath("/kanban");
       return { success: true };
@@ -19,12 +20,33 @@ export async function saveState() {
 }
 
 // Internal function to handle the actual saving of state
-async function saveKanbanState(supabase: any) {
+async function saveKanbanState(supabase: any, domain?: string) {
   try {
-    // Get all current tasks with their column and kanban information
-    const { data: currentTasks, error: currentTasksError } = await supabase
-      .from("task")
+    let siteId = null;
+
+    // Get site information
+    if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
+    // Get all current tasks with their column and kanban information (filter by site_id if available)
+    let tasksQuery = supabase
+      .from("Task")
       .select("*");
+
+    if (siteId) {
+      tasksQuery = tasksQuery.eq("site_id", siteId);
+    }
+
+    const { data: currentTasks, error: currentTasksError } = await tasksQuery;
+
     if (currentTasksError) {
       console.error("Error fetching current tasks:", currentTasksError);
       throw new Error("Failed to fetch current tasks");
@@ -32,7 +54,7 @@ async function saveKanbanState(supabase: any) {
 
     // Get the latest snapshot timestamp
     const { data: latestSnapshot, error: latestSnapshotError } = await supabase
-      .from("task_history")
+      .from("TaskHistory")
       .select("*")
       .order("createdAt", { ascending: false })
       .limit(1);
@@ -63,7 +85,7 @@ async function saveKanbanState(supabase: any) {
         };
 
         return supabase
-          .from("task_history")
+          .from("TaskHistory")
           .insert({
             taskId: task.id,
             snapshot: snapshotData,

@@ -11,14 +11,14 @@ export async function GET(request: Request) {
     // Get the latest modification time from tasks and actions
     const [latestTaskResult, latestActionResult] = await Promise.all([
       supabase
-        .from("tasks")
+        .from("Task")
         .select("updated_at")
         .order("updated_at", { ascending: false })
         .limit(1),
       supabase
-        .from("actions")
-        .select("created_at")
-        .order("created_at", { ascending: false })
+        .from("Action")
+        .select("createdAt")
+        .order("createdAt", { ascending: false })
         .limit(1),
     ]);
 
@@ -30,10 +30,23 @@ export async function GET(request: Request) {
 
     // Get the most recent timestamp between tasks and actions
     const taskTimestamp = latestTask?.updated_at;
-    const actionTimestamp = latestAction?.created_at;
-    const lastModified = taskTimestamp && actionTimestamp
-      ? new Date(Math.max(taskTimestamp.getTime(), actionTimestamp.getTime()))
-      : taskTimestamp || actionTimestamp || new Date();
+    const actionTimestamp = latestAction?.createdAt;
+
+    // Ensure we always have a valid Date object
+    let lastModified: Date;
+    if (taskTimestamp && actionTimestamp) {
+      const taskDate = new Date(taskTimestamp);
+      const actionDate = new Date(actionTimestamp);
+      lastModified = new Date(
+        Math.max(taskDate.getTime(), actionDate.getTime()),
+      );
+    } else if (taskTimestamp) {
+      lastModified = new Date(taskTimestamp);
+    } else if (actionTimestamp) {
+      lastModified = new Date(actionTimestamp);
+    } else {
+      lastModified = new Date(); // Fallback to current time
+    }
 
     const lastModifiedString = lastModified.toUTCString();
 

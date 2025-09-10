@@ -1,0 +1,12 @@
+[install]
+# Suppress async_hooks warnings
+silent = true
+
+[run]
+# Suppress warnings during development
+silent = false
+
+# Environment variables
+[env]
+# Suppress async_hooks warnings
+NODE_NO_WARNINGS = "1"

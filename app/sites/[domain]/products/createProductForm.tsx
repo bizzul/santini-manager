@@ -21,9 +21,10 @@ import { useToast } from "@/components/ui/use-toast";
 
 type Props = {
   handleClose: any;
+  domain: string;
 };
 
-const CreateProductForm = ({ handleClose }: Props) => {
+const CreateProductForm = ({ handleClose, domain }: Props) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -36,7 +37,7 @@ const CreateProductForm = ({ handleClose }: Props) => {
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       //@ts-ignore
-      await createSellProductAction(d);
+      await createSellProductAction(d, domain);
       handleClose(false);
       toast({
         description: `Elemento ${d.name} creato correttamente!`,

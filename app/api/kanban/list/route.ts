@@ -1,9 +1,11 @@
 import { getKanbans } from "@/app/sites/[domain]/kanban/actions/get-kanbans.action";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const kanbans = await getKanbans();
+    // Extract domain from request headers
+    const domain = req.headers.get("host");
+    const kanbans = await getKanbans(domain || undefined);
 
     const response = NextResponse.json(kanbans);
 

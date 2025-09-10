@@ -217,10 +217,10 @@ export const POST = async (req: NextRequest) => {
     const todayDate = new Date();
 
     const { data: task, error: taskError } = await supabase
-      .from("tasks")
+      .from("Task")
       .select(`
         *,
-        clients:client_id(*)
+        clients:clientId(*)
       `)
       .eq("id", taskNumber)
       .single();

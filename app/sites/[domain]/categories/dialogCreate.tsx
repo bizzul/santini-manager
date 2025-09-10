@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import CreateForm from "./createForm";
 
-function DialogCreate() {
+function DialogCreate({ domain }: { domain: string }) {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
@@ -28,7 +28,7 @@ function DialogCreate() {
           <DialogTitle>Crea categoria</DialogTitle>
           <DialogDescription>Crea una nuova categoria</DialogDescription>
         </DialogHeader>
-        <CreateForm handleClose={() => setOpen(false)} />
+        <CreateForm domain={domain} handleClose={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

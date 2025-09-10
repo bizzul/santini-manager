@@ -10,12 +10,12 @@ export async function GET(
     const { taskId } = await params;
 
     const { data: taskSuppliers, error } = await supabase
-      .from("task_suppliers")
+      .from("TaskSupplier")
       .select(`
         *,
-        suppliers:supplier_id(*)
+        supplier:Supplier(*)
       `)
-      .eq("task_id", parseInt(taskId));
+      .eq("taskId", parseInt(taskId));
 
     if (error) throw error;
 
@@ -39,22 +39,22 @@ export async function POST(
     const { supplierId, deliveryDate } = await request.json();
 
     const { data: existingSupplier, error: findError } = await supabase
-      .from("task_suppliers")
+      .from("TaskSupplier")
       .select("*")
-      .eq("task_id", parseInt(taskId))
-      .eq("supplier_id", supplierId)
+      .eq("taskId", parseInt(taskId))
+      .eq("supplierId", supplierId)
       .single();
 
     if (findError && findError.code !== "PGRST116") throw findError;
 
     if (existingSupplier) {
       const { data: updatedSupplier, error: updateError } = await supabase
-        .from("task_suppliers")
-        .update({ delivery_date: new Date(deliveryDate) })
+        .from("TaskSupplier")
+        .update({ deliveryDate: new Date(deliveryDate) })
         .eq("id", existingSupplier.id)
         .select(`
           *,
-          suppliers:supplier_id(*)
+          supplier:Supplier(*)
         `)
         .single();
 
@@ -63,15 +63,15 @@ export async function POST(
     }
 
     const { data: taskSupplier, error: createError } = await supabase
-      .from("task_suppliers")
+      .from("TaskSupplier")
       .insert({
-        task_id: parseInt(taskId),
-        supplier_id: supplierId,
-        delivery_date: new Date(deliveryDate),
+        taskId: parseInt(taskId),
+        supplierId: supplierId,
+        deliveryDate: new Date(deliveryDate),
       })
       .select(`
         *,
-        suppliers:supplier_id(*)
+        supplier:Supplier(*)
       `)
       .single();
 

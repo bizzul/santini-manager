@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "bun run --bun next dev",
-    "build": "bun run --bun next build",
-    "start": "bun run --bun next start"
+    "dev": "NODE_NO_WARNINGS=1 bun run --bun next dev",
+    "build": "NODE_NO_WARNINGS=1 bun run --bun next build",
+    "start": "NODE_NO_WARNINGS=1 bun run --bun next start"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.7.2",

@@ -6,7 +6,7 @@ export const GET = async () => {
     const supabase = await createClient();
 
     const { data, error } = await supabase
-      .from("sell_products")
+      .from("SellProduct")
       .select("*");
 
     if (error) throw error;

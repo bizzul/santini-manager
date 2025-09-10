@@ -7,7 +7,7 @@ export const GET = async () => {
 
     // First get all columns to find the SPEDITO column ID
     const { data: columns, error: columnsError } = await supabase
-      .from("kanban_columns")
+      .from("KanbanColumn")
       .select("id, identifier")
       .eq("identifier", "SPEDITO");
 
@@ -17,10 +17,10 @@ export const GET = async () => {
 
     // Get tasks that are not archived and not in SPEDITO column
     const { data: tasks, error: tasksError } = await supabase
-      .from("tasks")
+      .from("Task")
       .select("*")
       .eq("archived", false)
-      .neq("column_id", speditColumnId);
+      .neq("kanbanColumnId", speditColumnId);
 
     if (tasksError) throw tasksError;
 

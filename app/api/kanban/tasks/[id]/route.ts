@@ -11,15 +11,15 @@ export async function GET(
 
     // Fetch a single task
     const { data: task, error } = await supabase
-      .from("tasks")
+      .from("Task")
       .select(`
         *,
-        kanbans:kanban_id(*),
-        clients:client_id(*),
-        users:user_id(*),
-        kanban_columns:column_id(*),
+        kanbans:kanbanId(*),
+        clients:clientId(*),
+        users:userId(*),
+        kanban_columns:kanbanColumnId(*),
         files(*),
-        sell_products:sell_product_id(*)
+        sell_products:sellProductId(*)
       `)
       .eq("id", Number(taskId))
       .single();
@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest) {
     //Fetch a single task
     // console.log(req.body);
     const { data: task, error: findError } = await supabase
-      .from("tasks")
+      .from("Task")
       .select("*")
       .eq("id", Number(taskId))
       .single();
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest) {
 
     if (task) {
       const { data: taskData, error: updateError } = await supabase
-        .from("tasks")
+        .from("Task")
         .update({})
         .eq("id", Number(taskId))
         .select()
@@ -85,7 +85,7 @@ export async function DELETE(req: NextRequest) {
     const taskId = await req.json();
 
     const { data: task, error: findError } = await supabase
-      .from("tasks")
+      .from("Task")
       .select("*")
       .eq("id", Number(taskId))
       .single();
@@ -95,7 +95,7 @@ export async function DELETE(req: NextRequest) {
     if (task) {
       //Removing task
       const { error: deleteError } = await supabase
-        .from("tasks")
+        .from("Task")
         .delete()
         .eq("id", Number(taskId));
 

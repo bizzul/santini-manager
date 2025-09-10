@@ -1,4 +1,5 @@
 import "./globals.css";
+import "@/lib/suppress-warnings"; // Suppress Bun async_hooks warnings
 import { cal, inter } from "@/styles/fonts";
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
@@ -28,6 +29,10 @@ export const metadata: Metadata = {
   },
   metadataBase: new URL("https://vercel.app"),
 };
+
+import { config } from "@fortawesome/fontawesome-svg-core";
+import "@fortawesome/fontawesome-svg-core/styles.css";
+config.autoAddCss = false;
 
 export default function RootLayout({
   children,
