@@ -25,9 +25,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 type Props = {
   handleClose: any;
   data: SellProduct;
+  domain?: string;
 };
 
-const EditProductForm = ({ handleClose, data }: Props) => {
+const EditProductForm = ({ handleClose, data, domain }: Props) => {
   const { toast } = useToast();
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -48,7 +49,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     //@ts-expect-error
-    const response = await editSellProductAction(d, data?.id);
+    const response = await editSellProductAction(d, data?.id, domain);
     if (response?.error) {
       toast({
         description: `Errore! ${response.error}`,

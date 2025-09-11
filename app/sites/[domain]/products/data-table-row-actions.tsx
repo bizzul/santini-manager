@@ -19,10 +19,12 @@ import DialogEdit from "./dialogEdit";
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
+  domain?: string;
 }
 
 export function DataTableRowActions<TData>({
   row,
+  domain,
 }: DataTableRowActionsProps<TData>) {
   const data = row.original;
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -92,12 +94,14 @@ export function DataTableRowActions<TData>({
             data={selectedData}
             setData={setSelectedData}
             setOpen={setDeleteOpen}
+            domain={domain}
           />
           <DialogEdit
             isOpen={editOpen}
             data={selectedData}
             setData={setSelectedData}
             setOpen={setEditOpen}
+            domain={domain}
           />
         </>
       )}

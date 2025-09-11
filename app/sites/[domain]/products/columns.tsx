@@ -6,7 +6,7 @@ import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Check, X } from "lucide-react";
 
-export const columns: ColumnDef<SellProduct>[] = [
+export const createColumns = (domain?: string): ColumnDef<SellProduct>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => (
@@ -38,6 +38,6 @@ export const columns: ColumnDef<SellProduct>[] = [
   {
     id: "actions",
     header: "Azioni",
-    cell: ({ row }) => <DataTableRowActions row={row} />,
+    cell: ({ row }) => <DataTableRowActions row={row} domain={domain} />,
   },
 ];

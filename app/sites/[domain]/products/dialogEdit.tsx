@@ -13,9 +13,10 @@ type Props = {
   isOpen: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setData: React.Dispatch<React.SetStateAction<any>>;
+  domain?: string;
 };
 
-function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
+function DialogEdit({ data, setData, isOpen = false, setOpen, domain }: Props) {
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
       <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-scroll">
@@ -28,6 +29,7 @@ function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
           handleClose={() => {
             setOpen(false), setData(null);
           }}
+          domain={domain}
         />
       </DialogContent>
     </Dialog>

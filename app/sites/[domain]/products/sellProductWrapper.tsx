@@ -2,13 +2,19 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import React from "react";
 import { DataTable } from "./table";
-import { columns } from "./columns";
+import { createColumns } from "./columns";
 import { SellProduct } from "@/types/supabase";
 
-const SellProductWrapper = ({ data }: { data: SellProduct[] }) => {
+const SellProductWrapper = ({
+  data,
+  domain,
+}: {
+  data: SellProduct[];
+  domain: string;
+}) => {
   return (
     <div className="container mx-auto ">
-      <DataTable columns={columns} data={data} />
+      <DataTable columns={createColumns(domain)} data={data} domain={domain} />
     </div>
   );
 };
