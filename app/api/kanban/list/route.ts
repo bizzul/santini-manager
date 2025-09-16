@@ -3,8 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
-    // Extract domain from request headers
-    const domain = req.headers.get("host");
+    // Extract domain from query parameters first, then fallback to headers
+    const { searchParams } = new URL(req.url);
+    const domainFromQuery = searchParams.get("domain");
+    const domainFromHeader = req.headers.get("host");
+    const domain = domainFromQuery || domainFromHeader;
+
     const kanbans = await getKanbans(domain || undefined);
 
     const response = NextResponse.json(kanbans);

@@ -17,6 +17,7 @@ import { DateManager } from "../../package/utils/dates/date-manager";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 import { BellIcon } from "lucide-react";
 import { useToast } from "../ui/use-toast";
+import { useSiteId } from "@/hooks/use-site-id";
 import {
   Tooltip,
   TooltipContent,
@@ -77,6 +78,7 @@ export default function Card({
   columnIndex,
   history,
   isSmall: isSmallInitial,
+  domain,
 }: {
   id: number;
   title: string;
@@ -84,7 +86,9 @@ export default function Card({
   columnIndex: number;
   history: Action;
   isSmall: boolean;
+  domain?: string;
 }) {
+  const { siteId } = useSiteId(domain);
   const [showModal, setShowModal] = useState(false);
   const [isLocked, setIsLocked] = useState(data.locked);
   const [timeState, setTimeState] = useState("normal");
@@ -211,15 +215,22 @@ export default function Card({
   );
 
   async function handleFerramentaCheck(checked: boolean) {
-    const response = await fetch("api/kanban/tasks/ferramenta", {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Add site_id header if available
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+
+    const response = await fetch("/api/kanban/tasks/ferramenta", {
       method: "POST",
       body: JSON.stringify({
         id: id,
         ferramentaStatus: checked,
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (response.status === 200) {
@@ -235,15 +246,22 @@ export default function Card({
   }
 
   async function handleMetalliCheck(checked: boolean) {
-    const response = await fetch("api/kanban/tasks/metalli", {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Add site_id header if available
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+
+    const response = await fetch("/api/kanban/tasks/metalli", {
       method: "POST",
       body: JSON.stringify({
         id: id,
         metalliStatus: checked,
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (response.status === 200) {
@@ -261,16 +279,23 @@ export default function Card({
   async function handleStoccatoCheck(checked: boolean) {
     const currentDate = new Date().toISOString();
 
-    const response = await fetch("api/kanban/tasks/stoccato", {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Add site_id header if available
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+
+    const response = await fetch("/api/kanban/tasks/stoccato", {
       method: "POST",
       body: JSON.stringify({
         id: id,
         stoccatoStatus: checked,
         stoccatoDate: checked ? currentDate : null,
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (response.status === 200) {
@@ -287,15 +312,22 @@ export default function Card({
   }
 
   async function handleLegnoCheck(checked: boolean) {
-    const response = await fetch("api/kanban/tasks/legno", {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Add site_id header if available
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+
+    const response = await fetch("/api/kanban/tasks/legno", {
       method: "POST",
       body: JSON.stringify({
         id: id,
         legnoStatus: checked,
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
     if (response.status === 200) {
       toast({
@@ -310,15 +342,22 @@ export default function Card({
   }
 
   async function handleVerniceCheck(checked: boolean) {
-    const response = await fetch("api/kanban/tasks/vernice", {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Add site_id header if available
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+
+    const response = await fetch("/api/kanban/tasks/vernice", {
       method: "POST",
       body: JSON.stringify({
         id: id,
         verniceStatus: checked,
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
     if (response.status === 200) {
       toast({
@@ -333,15 +372,22 @@ export default function Card({
   }
 
   async function handleAltroCheck(checked: boolean) {
-    const response = await fetch("api/kanban/tasks/altro", {
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Add site_id header if available
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+
+    const response = await fetch("/api/kanban/tasks/altro", {
       method: "POST",
       body: JSON.stringify({
         id: id,
         altroStatus: checked,
       }),
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers,
     });
     if (response.status === 200) {
       toast({
@@ -649,7 +695,7 @@ export default function Card({
                         const isDeliveryLate =
                           ts.deliveryDate &&
                           new Date(ts.deliveryDate) < new Date();
-                        console.log("ts", ts);
+
                         return (
                           <div
                             key={ts.id}

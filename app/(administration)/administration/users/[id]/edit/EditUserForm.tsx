@@ -26,9 +26,10 @@ export function EditUserForm({
   const [loading, setLoading] = useState(false);
 
   // Filter available roles based on current user's role
-  const availableRoles = currentUserRole === "superadmin" 
-    ? ["user", "admin", "superadmin"]
-    : ["user", "admin"];
+  const availableRoles =
+    currentUserRole === "superadmin"
+      ? ["user", "admin", "superadmin"]
+      : ["user", "admin"];
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);

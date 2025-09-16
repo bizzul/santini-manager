@@ -52,17 +52,31 @@ async function saveKanbanState(supabase: any, domain?: string) {
       throw new Error("Failed to fetch current tasks");
     }
 
-    // Get the latest snapshot timestamp
-    const { data: latestSnapshot, error: latestSnapshotError } = await supabase
+    // Get the latest snapshot timestamp (filter by site_id if available)
+    let snapshotQuery = supabase
       .from("TaskHistory")
       .select("*")
       .order("createdAt", { ascending: false })
       .limit(1);
 
+    if (siteId) {
+      snapshotQuery = snapshotQuery.eq("site_id", siteId);
+    }
+
+    const { data: latestSnapshot, error: latestSnapshotError } =
+      await snapshotQuery;
+
+    if (latestSnapshotError) {
+      console.error("Error fetching latest snapshot:", latestSnapshotError);
+      // Continue without snapshot check if there's an error
+    }
+
     // Increase the cooldown to 5 minutes (300000 ms)
     if (
       !latestSnapshot ||
-      Date.now() - latestSnapshot[0].createdAt.getTime() > 300000
+      latestSnapshot.length === 0 ||
+      !latestSnapshot[0] ||
+      Date.now() - new Date(latestSnapshot[0].createdAt).getTime() > 300000
     ) {
       // Create history entries for all tasks, including column and position data
       const historyPromises = currentTasks.map((task: any) => {
@@ -89,6 +103,7 @@ async function saveKanbanState(supabase: any, domain?: string) {
           .insert({
             taskId: task.id,
             snapshot: snapshotData,
+            ...(siteId && { site_id: siteId }),
           })
           .select()
           .single();

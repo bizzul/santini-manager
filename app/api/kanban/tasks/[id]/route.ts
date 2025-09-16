@@ -1,5 +1,6 @@
 import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { getSiteData } from "../../../../../lib/fetchers";
 
 export async function GET(
   req: NextRequest,
@@ -9,8 +10,26 @@ export async function GET(
   try {
     const supabase = await createClient();
 
-    // Fetch a single task
-    const { data: task, error } = await supabase
+    // Extract site_id from request headers or domain
+    let siteId = null;
+    const siteIdFromHeader = req.headers.get("x-site-id");
+    const domain = req.headers.get("host");
+
+    if (siteIdFromHeader) {
+      siteId = siteIdFromHeader;
+    } else if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
+    // Fetch a single task (filter by site_id if available)
+    let taskQuery = supabase
       .from("Task")
       .select(`
         *,
@@ -21,8 +40,13 @@ export async function GET(
         files(*),
         sell_products:sellProductId(*)
       `)
-      .eq("id", Number(taskId))
-      .single();
+      .eq("id", Number(taskId));
+
+    if (siteId) {
+      taskQuery = taskQuery.eq("site_id", siteId);
+    }
+
+    const { data: task, error } = await taskQuery.single();
 
     if (error) throw error;
 
@@ -43,13 +67,35 @@ export async function PATCH(req: NextRequest) {
     const supabase = await createClient();
     const taskId = await req.json();
 
-    //Fetch a single task
-    // console.log(req.body);
-    const { data: task, error: findError } = await supabase
+    // Extract site_id from request headers or domain
+    let siteId = null;
+    const siteIdFromHeader = req.headers.get("x-site-id");
+    const domain = req.headers.get("host");
+
+    if (siteIdFromHeader) {
+      siteId = siteIdFromHeader;
+    } else if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
+
+    //Fetch a single task (filter by site_id if available)
+    let taskQuery = supabase
       .from("Task")
       .select("*")
-      .eq("id", Number(taskId))
-      .single();
+      .eq("id", Number(taskId));
+
+    if (siteId) {
+      taskQuery = taskQuery.eq("site_id", siteId);
+    }
+
+    const { data: task, error: findError } = await taskQuery.single();
 
     if (findError) throw findError;
 

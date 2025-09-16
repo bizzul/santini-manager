@@ -191,6 +191,7 @@ export interface Timetracking {
     description_category?: string;
     description_type?: string;
     created_at?: string;
+    site_id?: string;
     updated_at?: string;
 }
 

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { CompanyRoleManagement } from "@/components/administration/CompanyRoleManagement";
 
 export default async function UserViewPage({
   params,
@@ -20,13 +21,13 @@ export default async function UserViewPage({
 }) {
   const { id } = await params;
   const userContext = await getUserContext();
-  
+
   if (!userContext) {
     redirect("/login");
   }
 
   const { role, user } = userContext;
-  
+
   // Only allow admin and superadmin access
   if (role !== "admin" && role !== "superadmin") {
     redirect("/");
@@ -40,7 +41,7 @@ export default async function UserViewPage({
   ]);
   const userToView = users.find((u: any) => u.id === id);
   if (!userToView) return notFound();
-  
+
   // Check if user has access to view this user
   if (role === "admin") {
     const supabase = await createClient();
@@ -58,8 +59,12 @@ export default async function UserViewPage({
       redirect("/administration/users");
     }
 
-    const currentUserOrgIds = currentUserOrgs.map((uo: any) => uo.organization_id);
-    const targetUserOrgIds = targetUserOrgs.map((uo: any) => uo.organization_id);
+    const currentUserOrgIds = currentUserOrgs.map(
+      (uo: any) => uo.organization_id
+    );
+    const targetUserOrgIds = targetUserOrgs.map(
+      (uo: any) => uo.organization_id
+    );
 
     // Check if they share any organizations
     const hasSharedOrg = currentUserOrgIds.some((orgId: string) =>
@@ -81,38 +86,58 @@ export default async function UserViewPage({
           .join(", ")
       : "-";
 
+  // Get the first organization ID for role management (for now)
+  const primaryOrganizationId =
+    userOrganizations.length > 0
+      ? userOrganizations[0].organization_id
+      : undefined;
+
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-lg mx-auto">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
       <Link href="/administration/users">
         <Button variant="outline">Back to Users</Button>
       </Link>
-      <Card>
-        <CardHeader>
-          <CardTitle>User Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div>
-              <span className="font-semibold">Email:</span> {userToView.email}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* User Details Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>User Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <span className="font-semibold">Email:</span> {userToView.email}
+              </div>
+              <div>
+                <span className="font-semibold">System Role:</span>{" "}
+                {userToView.role}
+              </div>
+              <div>
+                <span className="font-semibold">Given Name:</span>{" "}
+                {profile?.given_name || "-"}
+              </div>
+              <div>
+                <span className="font-semibold">Family Name:</span>{" "}
+                {profile?.family_name || "-"}
+              </div>
+              <div>
+                <span className="font-semibold">Organizations:</span>{" "}
+                {organizationNames}
+              </div>
             </div>
-            <div>
-              <span className="font-semibold">Role:</span> {userToView.role}
-            </div>
-            <div>
-              <span className="font-semibold">Given Name:</span>{" "}
-              {profile?.given_name || "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Family Name:</span>{" "}
-              {profile?.family_name || "-"}
-            </div>
-            <div>
-              <span className="font-semibold">Organizations:</span>{" "}
-              {organizationNames}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Company Role Management */}
+        <div>
+          <CompanyRoleManagement
+            userId={id}
+            organizationId={primaryOrganizationId}
+            currentUserRole={userContext?.role}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -8,7 +8,7 @@ export const removeItem = async (formData: Timetracking) => {
   try {
     const supabase = await createClient();
     const { error: deleteError } = await supabase
-      .from("timetracking")
+      .from("Timetracking")
       .delete()
       .eq("id", Number(formData.id));
 

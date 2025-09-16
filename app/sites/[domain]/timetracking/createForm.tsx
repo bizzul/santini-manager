@@ -2,6 +2,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useEffect, useState } from "react";
 
 import {
   Form,
@@ -25,6 +26,7 @@ import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
 import { Roles, Task, User } from "@/types/supabase";
+import { useParams } from "next/navigation";
 
 export interface Typology {
   name: string;
@@ -42,6 +44,9 @@ const CreateProductForm = ({
   roles: Roles[];
 }) => {
   const { toast } = useToast();
+  const [userAssignedRoles, setUserAssignedRoles] = useState<Roles[]>([]);
+  const [loadingUserRoles, setLoadingUserRoles] = useState(false);
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -72,10 +77,64 @@ const CreateProductForm = ({
   ];
 
   const { isSubmitting, errors } = form.formState;
+  const params = useParams();
+  const domain = params.domain as string;
+
+  // Watch the selected user
+  const selectedUserId = form.watch("userId");
+
+  // Function to fetch user's assigned roles
+  const fetchUserAssignedRoles = async (userId: string) => {
+    if (!userId) {
+      setUserAssignedRoles([]);
+      return;
+    }
+
+    setLoadingUserRoles(true);
+    try {
+      const response = await fetch(`/api/users/${userId}/assigned-roles`);
+      const data = await response.json();
+
+      if (data.error) {
+        console.error("Error fetching user roles:", data.error);
+        setUserAssignedRoles([]);
+        return;
+      }
+
+      // Transform the assigned roles to match the Roles interface
+      const assignedRoles =
+        data.assignedRoles?.map((ar: any) => ({
+          id: ar.roleId,
+          name: ar.roleName,
+        })) || [];
+
+      setUserAssignedRoles(assignedRoles);
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      setUserAssignedRoles([]);
+    } finally {
+      setLoadingUserRoles(false);
+    }
+  };
+
+  // Effect to fetch roles when user changes
+  useEffect(() => {
+    if (selectedUserId) {
+      fetchUserAssignedRoles(selectedUserId);
+      // Reset the roles field when user changes
+      form.setValue("roles", "");
+    } else {
+      setUserAssignedRoles([]);
+      form.setValue("roles", "");
+    }
+  }, [selectedUserId]);
+
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
+      // If d is empty, get the data directly from form
+      const formData = Object.keys(d).length === 0 ? form.getValues() : d;
       //@ts-ignore
-      const timetracking = await createItem(d);
+      const timetracking = await createItem(formData, domain);
       if (timetracking) {
         handleClose(false);
         toast({
@@ -85,6 +144,7 @@ const CreateProductForm = ({
         form.reset();
       }
     } catch (e) {
+      console.error("Error creating timetracking:", e);
       toast({
         description: `Errore nel creare l'elemento! ${e}`,
       });
@@ -93,7 +153,12 @@ const CreateProductForm = ({
 
   return (
     <Form {...form}>
-      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
+      <form
+        className="space-y-4"
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          console.log("Form validation failed:", errors);
+        })}
+      >
         <FormField
           disabled={isSubmitting}
           control={form.control}
@@ -111,7 +176,8 @@ const CreateProductForm = ({
         />
 
         <FormField
-          // control={form.control}
+          disabled={isSubmitting}
+          control={form.control}
           name="userId"
           render={({ field }) => (
             <FormItem>
@@ -134,7 +200,7 @@ const CreateProductForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
+          disabled={isSubmitting || loadingUserRoles}
           control={form.control}
           name="roles"
           render={({ field }) => (
@@ -145,17 +211,33 @@ const CreateProductForm = ({
                 <Select
                   value={field.value}
                   onValueChange={field.onChange}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || loadingUserRoles || !selectedUserId}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleziona un ruolo" />
+                    <SelectValue
+                      placeholder={
+                        !selectedUserId
+                          ? "Seleziona prima un dipendente"
+                          : loadingUserRoles
+                          ? "Caricamento ruoli..."
+                          : "Seleziona un ruolo"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {roles.map((r: Roles) => (
-                      <SelectItem key={r.id} value={r.id.toString()}>
-                        {r.name}
-                      </SelectItem>
-                    ))}
+                    {userAssignedRoles.length === 0 &&
+                    selectedUserId &&
+                    !loadingUserRoles ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        Nessun ruolo assegnato
+                      </div>
+                    ) : (
+                      userAssignedRoles.map((r: Roles) => (
+                        <SelectItem key={r.id} value={r.id.toString()}>
+                          {r.name}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </FormControl>

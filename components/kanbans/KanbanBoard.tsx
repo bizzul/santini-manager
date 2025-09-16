@@ -40,6 +40,7 @@ import {
 } from "../../components/ui/dialog";
 import CreateProductForm from "@/app/sites/[domain]/kanban/createForm";
 import { useToast } from "../ui/use-toast";
+import { useSiteId } from "@/hooks/use-site-id";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -311,6 +312,7 @@ const Column = ({
                     columnIndex={column.position}
                     history={history}
                     isSmall={areAllTabsClosed}
+                    domain={domain}
                   />
                 ))}
           {/* {canDrop ? "Rilascia qui" : ""} */}
@@ -365,6 +367,7 @@ function KanbanBoard({
   snapshots,
   domain,
 }: KanbanBoardTypes) {
+  const { siteId } = useSiteId(domain);
   const [tasks, setTasks] = useState(() => {
     // Ensure initialTasks is always an array
     return Array.isArray(initialTasks) ? initialTasks : [];
@@ -565,16 +568,23 @@ function KanbanBoard({
       safeSetTasks(updatedTasks);
       tasksRef.current = updatedTasks;
 
-      const response = await fetch("api/kanban/tasks/move", {
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      // Add site_id header if available
+      if (siteId) {
+        headers["x-site-id"] = siteId;
+      }
+
+      const response = await fetch("/api/kanban/tasks/move", {
         method: "POST",
         body: JSON.stringify({
           id: id,
           column: column,
           columnName: columnName,
         }),
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -598,7 +608,8 @@ function KanbanBoard({
         if (card.id === id) {
           return {
             ...card,
-            percentStatus: responseData.data.percentStatus,
+            percentStatus:
+              responseData.data?.percentStatus || card.percentStatus,
           };
         }
         return card;

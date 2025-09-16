@@ -47,9 +47,7 @@ export async function POST(req: NextRequest) {
       .from("Task")
       .select(`
         *,
-        kanban_columns:kanbanColumnId(*),
-        quality_control:taskId(*),
-        packing_control:taskId(*)
+        kanban_columns:kanbanColumnId(*)
       `)
       .eq("id", id);
 
@@ -57,10 +55,36 @@ export async function POST(req: NextRequest) {
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
+    console.log("Task query with site_id:", siteId);
+
     const { data: task, error: findError } = await taskQuery.single();
 
     if (findError || !task) {
       console.error("Task not found:", id);
+      console.error("Find error:", findError);
+      console.error("Site ID used for filtering:", siteId);
+
+      // Let's also try to find the task without site_id filtering to see if it exists
+      const { data: taskWithoutSiteFilter, error: findErrorWithoutSite } =
+        await supabase
+          .from("Task")
+          .select(`
+            *,
+            kanban_columns:kanbanColumnId(*)
+          `)
+          .eq("id", id)
+          .single();
+
+      if (taskWithoutSiteFilter) {
+        console.log(
+          "Task exists but has site_id:",
+          taskWithoutSiteFilter.site_id,
+        );
+        console.log("Expected site_id:", siteId);
+      } else {
+        console.log("Task does not exist at all");
+      }
+
       return NextResponse.json({ error: "Task not found", status: 404 });
     }
 
@@ -246,7 +270,7 @@ export async function POST(req: NextRequest) {
           toColumn: response.kanban_columns?.title,
         },
         user_id: user.id,
-        task_id: id,
+        taskId: id,
       };
 
       // Add site_id if available

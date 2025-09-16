@@ -1,6 +1,7 @@
 import { validation } from "../../../../validation/timeTracking/create";
 import { createClient } from "../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { getSiteData } from "@/lib/fetchers";
 
 // Helper function to calculate total hours
 function calculateTotalHours(hours: number, minutes: number): number {
@@ -11,6 +12,24 @@ function calculateTotalHours(hours: number, minutes: number): number {
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
+
+    // Extract site_id from headers or domain
+    let siteId = null;
+    const siteIdHeader = req.headers.get("x-site-id");
+    const domain = req.headers.get("host");
+
+    if (siteIdHeader) {
+      siteId = siteIdHeader;
+    } else if (domain) {
+      try {
+        const siteResult = await getSiteData(domain);
+        if (siteResult?.data) {
+          siteId = siteResult.data.id;
+        }
+      } catch (error) {
+        console.error("Error fetching site data:", error);
+      }
+    }
 
     // Parse and validate request data
     const data = await req.json().catch(() => {
@@ -35,46 +54,76 @@ export async function POST(req: NextRequest) {
     // Process each time tracking entry
     for (const data of timetrackings) {
       const roundedTotalTime = calculateTotalHours(data.hours, data.minutes);
-      const useCNC = data.roles.id === 2;
+      // Handle both string and object formats for roles
+      const roleId = typeof data.roles === "string"
+        ? data.roles
+        : data.roles?.id?.toString();
+      const useCNC = roleId ? parseInt(roleId) === 2 : false;
 
-      // Get task ID from unique code
-      const { data: task, error: taskError } = await supabase
+      // Get task ID from unique code with site_id filtering
+      let taskQuery = supabase
         .from("Task")
         .select("id")
-        .eq("unique_code", data.task)
-        .single();
+        .eq("unique_code", data.task);
+
+      if (siteId) {
+        taskQuery = taskQuery.eq("site_id", siteId);
+      }
+
+      const { data: task, error: taskError } = await taskQuery.single();
 
       if (taskError) throw taskError;
 
       // Create timetracking entry
       const { data: timetracking, error: timetrackingError } = await supabase
-        .from("timetracking")
+        .from("Timetracking")
         .insert({
           description: data.description,
           description_type: data.descriptionCat,
           hours: data.hours,
           minutes: data.minutes,
-          total_time: roundedTotalTime,
+          totalTime: roundedTotalTime,
           use_cnc: useCNC,
-          role_id: data.roles.id,
           task_id: task.id,
-          user_id: data.userId,
+          employee_id: parseInt(data.userId),
         })
         .select()
         .single();
 
       if (timetrackingError) throw timetrackingError;
 
+      // Create role relationship if role is provided
+      if (roleId) {
+        const { error: roleError } = await supabase
+          .from("_RolesToTimetracking")
+          .insert({
+            A: parseInt(roleId),
+            B: timetracking.id,
+          });
+
+        if (roleError) {
+          console.error("Error creating role relationship:", roleError);
+          // Continue anyway, as the timetracking entry was created successfully
+        }
+      }
+
       // Create action record
+      const actionData: any = {
+        type: "timetracking_create",
+        data: {
+          timetracking: timetracking.id,
+        },
+        user_id: data.userId,
+      };
+
+      // Add site_id if available
+      if (siteId) {
+        actionData.site_id = siteId;
+      }
+
       const { data: action, error: actionError } = await supabase
         .from("Action")
-        .insert({
-          type: "timetracking_create",
-          data: {
-            timetracking: timetracking.id,
-          },
-          user_id: data.userId,
-        })
+        .insert(actionData)
         .select()
         .single();
 

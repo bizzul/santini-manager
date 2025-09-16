@@ -7,9 +7,13 @@ import { DataTableRowActions } from "./data-table-row-actions";
 import { CheckSquare, XIcon } from "lucide-react";
 export const columns: ColumnDef<Timetracking>[] = [
   {
-    // accessorKey: "user",
-    //@ts-ignore
-    accessorFn: (row) => `${row.user.family_name} ${row.user.given_name}`,
+    accessorKey: "user",
+    accessorFn: (row) =>
+      //@ts-ignore
+      row.user
+        ? //@ts-ignore
+          `${row.user.family_name} ${row.user.given_name}`
+        : "Unknown User",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Creato da" />
     ),
@@ -20,28 +24,31 @@ export const columns: ColumnDef<Timetracking>[] = [
     cell: ({ row }) => {
       //@ts-ignore
       const { user } = row.original;
-      return `${user.family_name} ${user.given_name}`;
+      if (user) {
+        return `${user.family_name} ${user.given_name}`;
+      }
+      return "Unknown User";
     },
   },
   {
     accessorKey: "roles",
     // header: "Tipo",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Reparto" />
+      <DataTableColumnHeader column={column} title="Ruolo" />
     ),
     cell: ({ row }) => {
       //@ts-ignore
       const { roles } = row.original;
-      if (roles.length) {
+      if (roles?.length) {
         return (
           <ul>
-            {roles.map((role: Roles) => (
-              <li key={role.id}>{role.name}</li>
+            {roles.map((roleEntry: any, index: number) => (
+              <li key={roleEntry.role?.id || index}>{roleEntry.role?.name}</li>
             ))}
           </ul>
         );
       } else {
-        return <p>roles.name</p>;
+        return "Nessun ruolo";
       }
     },
   },

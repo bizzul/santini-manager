@@ -12,20 +12,29 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
-  Button,
-  MultiSelect,
-  MultiSelectItem,
   Select,
+  SelectContent,
   SelectItem,
-} from "@tremor/react";
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { validation } from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import { SearchSelect } from "@/components/ui/search-select";
 import { editItem } from "./actions/edit-item.action";
 import { Roles, Task, User, Timetracking } from "@/types/supabase";
 import { Typology } from "./createForm";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useParams } from "next/navigation";
+
+interface RoleEntry {
+  role: {
+    id: number;
+    name: string;
+  };
+}
 
 function formatDate(date: Date) {
   // Padding function to add leading zeros if necessary
@@ -45,14 +54,22 @@ function formatDate(date: Date) {
 const EditForm = ({
   handleClose,
   data,
+  users: propUsers = [],
+  roles: propRoles = [],
+  tasks: propTasks = [],
 }: {
   handleClose: any;
-  data: Timetracking & { roles: Roles[] };
+  data: Timetracking & { roles: RoleEntry[] };
+  users?: User[];
+  roles?: Roles[];
+  tasks?: Task[];
 }) => {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Roles[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(propTasks);
+  const [users, setUsers] = useState<User[]>(propUsers);
+  const [roles, setRoles] = useState<Roles[]>(propRoles);
+  const [userAssignedRoles, setUserAssignedRoles] = useState<Roles[]>([]);
+  const [loadingUserRoles, setLoadingUserRoles] = useState(false);
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -85,54 +102,12 @@ const EditForm = ({
 
   const { setValue } = form;
 
+  // Update state when props change
   useEffect(() => {
-    const getTasks = async () => {
-      try {
-        const response = await fetch(`/api/tasks/`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch tasks list");
-        }
-        const t = await response.json();
-        setTasks(t);
-      } catch (error) {
-        console.error(error);
-        // Handle the error state appropriately
-      }
-    };
-
-    const getUsers = async () => {
-      try {
-        const response = await fetch(`/api/users/list/`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch users list");
-        }
-        const t = await response.json();
-        setUsers(t);
-      } catch (error) {
-        console.error(error);
-        // Handle the error state appropriately
-      }
-    };
-
-    const getRoles = async () => {
-      try {
-        const response = await fetch(`/api/roles/`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch roles list");
-        }
-        const t = await response.json();
-        setRoles(t);
-      } catch (error) {
-        console.error(error);
-        // Handle the error state appropriately
-      }
-    };
-
-    // Execute all fetches
-    getTasks();
-    getUsers();
-    getRoles();
-  }, []); // Empty dependency array means this effect runs once on mount
+    setTasks(propTasks);
+    setUsers(propUsers);
+    setRoles(propRoles);
+  }, [propTasks, propUsers, propRoles]);
 
   useEffect(() => {
     setValue(
@@ -146,40 +121,156 @@ const EditForm = ({
     setValue("hours", data.hours!);
     setValue("minutes", data.minutes!);
 
-    // Update this section to properly handle roles
-    if (data.roles) {
-      // If roles is an array of objects with id property
-      if (Array.isArray(data.roles) && data.roles.length > 0) {
-        setValue("roles", data.roles[0].id.toString());
-      }
-      // If roles is a single value
-      else if (data.roles) {
-        setValue("roles", data.roles.toString());
-      }
-    }
+    // Roles will be set after userAssignedRoles are loaded
+
+    console.log("Edit form data structure:", {
+      id: data.id,
+      employee_id: data.employee_id,
+      roles: data.roles,
+      task_id: data.task_id,
+    });
 
     setValue("task", data.task_id!.toString());
     setValue("userId", data.employee_id!.toString());
+
+    // Load assigned roles for the current user
+    if (data.employee_id) {
+      fetchUserAssignedRoles(data.employee_id.toString(), true);
+    }
   }, [data, setValue]);
 
   const { isSubmitting, errors } = form.formState;
+  const params = useParams();
+  const domain = params.domain as string;
+
+  // Watch the selected user
+  const selectedUserId = form.watch("userId");
+
+  // Function to fetch user's assigned roles
+  const fetchUserAssignedRoles = async (
+    userId: string,
+    preserveCurrentRole = false
+  ) => {
+    if (!userId) {
+      setUserAssignedRoles([]);
+      return;
+    }
+
+    setLoadingUserRoles(true);
+    try {
+      const response = await fetch(`/api/users/${userId}/assigned-roles`);
+      const apiResponse = await response.json();
+
+      if (apiResponse.error) {
+        console.error("Error fetching user roles:", apiResponse.error);
+        setUserAssignedRoles([]);
+        return;
+      }
+
+      // Transform the assigned roles to match the Roles interface
+      const assignedRoles =
+        apiResponse.assignedRoles?.map((ar: any) => ({
+          id: ar.roleId,
+          name: ar.roleName,
+        })) || [];
+
+      setUserAssignedRoles(assignedRoles);
+
+      // If this is the initial load, set the current role after roles are loaded
+      if (preserveCurrentRole) {
+        const currentRole = form.getValues("roles");
+        console.log("Setting role after loading assigned roles:", {
+          currentRole,
+          timetrackingRoles: data.roles,
+          assignedRoles: assignedRoles.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+          })),
+        });
+
+        // Handle case where timetracking has no roles assigned
+        if (
+          !data.roles ||
+          !Array.isArray(data.roles) ||
+          data.roles.length === 0
+        ) {
+          // Don't set any role if the timetracking doesn't have roles
+          return;
+        }
+
+        if (!currentRole) {
+          // Check if the role exists in the assigned roles
+          const roleId = data.roles[0].role?.id.toString();
+          const roleExists = assignedRoles.some(
+            (role: any) => role.id.toString() === roleId
+          );
+          console.log("Role check:", {
+            roleId,
+            roleExists,
+            assignedRolesIds: assignedRoles.map((r: any) => r.id.toString()),
+            dataRoleStructure: data.roles[0],
+          });
+
+          if (roleExists) {
+            form.setValue("roles", roleId);
+            console.log("✅ Role set to:", roleId);
+          } else {
+            console.log("❌ Role not found in assigned roles, leaving empty");
+          }
+        } else {
+          console.log("✅ Current role already set:", currentRole);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user roles:", error);
+      setUserAssignedRoles([]);
+    } finally {
+      setLoadingUserRoles(false);
+    }
+  };
+
+  // Effect to fetch roles when user changes
+  useEffect(() => {
+    if (selectedUserId) {
+      // Only reset roles if this is a different user than the initial data
+      const shouldResetRoles = data.employee_id?.toString() !== selectedUserId;
+      fetchUserAssignedRoles(selectedUserId);
+
+      if (shouldResetRoles) {
+        form.setValue("roles", "");
+      }
+    } else {
+      setUserAssignedRoles([]);
+      form.setValue("roles", "");
+    }
+  }, [selectedUserId]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
+      // If d is empty, get the data directly from form
+      const formData = Object.keys(d).length === 0 ? form.getValues() : d;
+
       //@ts-ignore
-      const timetracking = await editItem(d, data.id);
-      console.log("timetracking response server", timetracking);
-      if (timetracking) {
+      const timetracking = await editItem(formData, data.id, domain);
+      if (timetracking && timetracking.id) {
         handleClose(false);
         toast({
           //@ts-ignore
           description: `Elemento ${timetracking.id} aggiornato correttamente!`,
         });
         form.reset();
+      } else if (timetracking && timetracking.message) {
+        // Handle validation or server errors
+        toast({
+          description: timetracking.message,
+          variant: "destructive",
+        });
       }
     } catch (e) {
+      console.error("Error updating timetracking:", e);
       toast({
-        description: `Errore nel creare l'elemento! ${e}`,
+        description: `Errore nel aggiornare l'elemento! ${e}`,
+        variant: "destructive",
       });
     }
   };
@@ -204,26 +295,30 @@ const EditForm = ({
         />
         {users.length ? (
           <FormField
-            // control={form.control}
+            disabled={isSubmitting}
+            control={form.control}
             name="userId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Dipendente</FormLabel>
                 <FormControl>
                   <SearchSelect
-                    {...field}
-                    onChange={(e) => {
-                      // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(e);
-                    }}
+                    value={field.value}
+                    onValueChange={field.onChange}
                     disabled={isSubmitting}
-                  >
-                    {users.map((u: User) => (
-                      <SearchSelectItem key={u.id} value={u.id.toString()}>
-                        {u.given_name + " " + u.family_name}
-                      </SearchSelectItem>
-                    ))}
-                  </SearchSelect>
+                    options={
+                      Array.isArray(users)
+                        ? users.map((u: User) => ({
+                            value: u.id.toString(),
+                            label:
+                              (u.given_name || "") +
+                              " " +
+                              (u.family_name || ""),
+                          }))
+                        : []
+                    }
+                    placeholder="Seleziona dipendente..."
+                  />
                 </FormControl>
                 {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                 <FormMessage />
@@ -234,39 +329,51 @@ const EditForm = ({
           <Skeleton className="w-32 h-8" />
         )}
 
-        {roles.length ? (
-          <FormField
-            disabled={isSubmitting}
-            control={form.control}
-            name="roles"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Ruolo</FormLabel>
-                <FormControl>
-                  {/* @ts-ignore */}
-                  <Select
-                    {...field}
-                    onChange={(e) => {
-                      // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(e);
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    {roles.map((r: Roles) => (
-                      <SelectItem key={r.id} value={r.id.toString()}>
-                        {r.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                {/* <FormDescription>Il nome del prodotto</FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <Skeleton className="w-32 h-8" />
-        )}
+        <FormField
+          disabled={isSubmitting || loadingUserRoles}
+          control={form.control}
+          name="roles"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ruolo</FormLabel>
+              <FormControl>
+                <Select
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  disabled={isSubmitting || loadingUserRoles || !selectedUserId}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !selectedUserId
+                          ? "Seleziona prima un dipendente"
+                          : loadingUserRoles
+                          ? "Caricamento ruoli..."
+                          : "Seleziona un ruolo"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userAssignedRoles.length === 0 &&
+                    selectedUserId &&
+                    !loadingUserRoles ? (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        Nessun ruolo assegnato
+                      </div>
+                    ) : (
+                      userAssignedRoles.map((r: Roles) => (
+                        <SelectItem key={r.id} value={r.id.toString()}>
+                          {r.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         {tasks.length ? (
           <FormField
             disabled={isSubmitting}
@@ -277,19 +384,19 @@ const EditForm = ({
                 <FormLabel>Progetto</FormLabel>
                 <FormControl>
                   <SearchSelect
-                    {...field}
-                    onChange={(e) => {
-                      // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(e);
-                    }}
+                    value={field.value}
+                    onValueChange={field.onChange}
                     disabled={isSubmitting}
-                  >
-                    {tasks.map((t: Task) => (
-                      <SearchSelectItem key={t.id} value={t.id.toString()}>
-                        {t.unique_code}
-                      </SearchSelectItem>
-                    ))}
-                  </SearchSelect>
+                    options={
+                      Array.isArray(tasks)
+                        ? tasks.map((t: Task) => ({
+                            value: t.id.toString(),
+                            label: t.unique_code!,
+                          }))
+                        : []
+                    }
+                    placeholder="Seleziona progetto..."
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -354,19 +461,15 @@ const EditForm = ({
               <FormLabel>Tipologia</FormLabel>
               <FormControl>
                 <SearchSelect
-                  {...field}
-                  onChange={(e) => {
-                    // This ensures that the selected value updates the react-hook-form state
-                    field.onChange(e);
-                  }}
+                  value={field.value}
+                  onValueChange={field.onChange}
                   disabled={isSubmitting}
-                >
-                  {typology.map((t: Typology, index) => (
-                    <SearchSelectItem key={index} value={t.name}>
-                      {t.name}
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
+                  options={typology.map((t: Typology, index) => ({
+                    value: t.name,
+                    label: t.name,
+                  }))}
+                  placeholder="Seleziona tipologia..."
+                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />

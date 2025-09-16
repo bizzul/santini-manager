@@ -350,7 +350,9 @@ export function AppSidebar() {
   const [isLoadingKanbansLocal, setIsLoadingKanbansLocal] = useState(false);
 
   const fetchKanbansOptimized = useCallback(async () => {
-    const cacheKey = `kanbans_list_${domain || "default"}`;
+    if (!domain) return [];
+
+    const cacheKey = `kanbans_list_${domain}`;
     const cached = getCachedData(cacheKey);
 
     if (cached) {
@@ -359,11 +361,14 @@ export function AppSidebar() {
     }
 
     try {
-      const response = await fetch("/api/kanban/list", {
-        headers: {
-          host: window.location.hostname,
-        },
-      });
+      const response = await fetch(
+        `/api/kanban/list?domain=${encodeURIComponent(domain)}`,
+        {
+          headers: {
+            host: domain,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch kanbans");
       const data = await response.json();
       const kanbanData = Array.isArray(data) ? data : [];
@@ -381,31 +386,32 @@ export function AppSidebar() {
   }, [domain]);
 
   const refreshKanbansOptimized = useCallback(async () => {
-    if (!isOnline) {
-      toast({
-        title: "Impossibile aggiornare",
-        description: "Nessuna connessione internet disponibile",
-        variant: "destructive",
-      });
+    if (!isOnline || !domain) {
+      if (!isOnline) {
+        toast({
+          title: "Impossibile aggiornare",
+          description: "Nessuna connessione internet disponibile",
+          variant: "destructive",
+        });
+      }
       return;
     }
 
     setIsLoadingKanbansLocal(true);
     try {
-      const response = await fetch("/api/kanban/list", {
-        headers: {
-          host: window.location.hostname,
-        },
-      });
+      const response = await fetch(
+        `/api/kanban/list?domain=${encodeURIComponent(domain)}`,
+        {
+          headers: {
+            host: domain,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch kanbans");
       const data = await response.json();
       const kanbanData = Array.isArray(data) ? data : [];
 
-      setCachedData(
-        `kanbans_list_${domain || "default"}`,
-        kanbanData,
-        CACHE_TTL.KANBANS
-      );
+      setCachedData(`kanbans_list_${domain}`, kanbanData, CACHE_TTL.KANBANS);
       setKanbansLocal(kanbanData);
       setLastSyncTime(new Date());
 

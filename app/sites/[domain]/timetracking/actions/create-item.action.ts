@@ -1,36 +1,33 @@
 "use server";
 
-import {
-  Product,
-  Product_category,
-  Roles,
-  Supplier,
-  Timetracking,
-} from "@/types/supabase";
+import { Timetracking } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/timeTracking/createManual";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function createItem(props: Timetracking) {
+export async function createItem(props: Timetracking, domain?: string) {
   const result = validation.safeParse(props);
   const session = await getUserContext();
   let userId = null;
-  if (session && session.user && session.user.id) {
-    // Get the integer user ID from the User table using the authId
-    const supabase = await createClient();
-    const { data: userData, error: userError } = await supabase
-      .from("User")
-      .select("id")
-      .eq("authId", session.user.id)
-      .single();
+  let siteId = null;
 
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      return { error: true, message: "Errore nel recupero dei dati utente!" };
+  // Get site_id from domain if provided
+  if (domain) {
+    try {
+      const siteResult = await getSiteData(domain);
+      if (siteResult?.data) {
+        siteId = siteResult.data.id;
+      }
+    } catch (error) {
+      console.error("Error fetching site data:", error);
     }
+  }
 
-    userId = userData?.id;
+  if (session && session.user && session.user.id) {
+    // Use the authId directly for the Action table (it expects UUID, not integer)
+    userId = session.user.id;
   }
   if (result.success) {
     try {
@@ -40,28 +37,25 @@ export async function createItem(props: Timetracking) {
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
       // Check if the user used the CNC
       let useCNC = false;
-      if (result.data.roles === "2") {
+      if (result.data.roles === "CNC") {
         useCNC = true;
       } else {
         useCNC = false;
       }
 
       const { data: timetracking, error: timetrackingError } = await supabase
-        .from("timetracking")
+        .from("Timetracking")
         .insert({
           created_at: new Date(result.data.date),
           description: result.data.description,
           description_type: result.data.descriptionCat,
-          // startTime: start.toISOString(), // Convert to UTC string
-          // endTime: end.toISOString(), // Convert to UTC string
-          // totalTime: total,
           hours: result.data.hours,
           minutes: result.data.minutes,
-          totalTime: roundedTotalTime, // total time in hours rounded to half
+          totalTime: roundedTotalTime,
           use_cnc: useCNC,
-          roles: Number(result.data.roles),
           task_id: Number(result.data.task),
           employee_id: Number(result.data.userId),
+          site_id: siteId,
         })
         .select()
         .single();
@@ -74,27 +68,44 @@ export async function createItem(props: Timetracking) {
         };
       }
 
+      // Create role relationship if role is provided
+      if (result.data.roles) {
+        const { error: roleError } = await supabase
+          .from("_RolesToTimetracking")
+          .insert({
+            A: Number(result.data.roles),
+            B: timetracking.id,
+          });
+
+        if (roleError) {
+          console.error("Error creating role relationship:", roleError);
+          // Continue anyway, as the timetracking entry was created successfully
+        }
+      }
+
       const resultSave = timetracking;
 
       // Create a new Action record to track the user action
       if (timetracking && userId) {
+        const actionData: any = {
+          type: "timetracking_create",
+          data: {
+            timetrackingId: resultSave.id,
+          },
+          user_id: userId,
+        };
+
+        // Add site_id if available
+        if (siteId) {
+          actionData.site_id = siteId;
+        }
+
         const { error: actionError } = await supabase
           .from("Action")
-          .insert({
-            type: "timetracking_create",
-            data: {
-              timetrackingId: resultSave.id,
-            },
-            User: {
-              connect: {
-                authId: userId,
-              },
-            },
-            userId: userId,
-          });
+          .insert(actionData);
       }
 
-      // return revalidatePath("/suppliers");
+      revalidatePath(`/sites/${domain}/timetracking`);
       return resultSave;
     } catch (error: any) {
       console.error("Error creating timetracking:", error);

@@ -24,10 +24,16 @@ import DialogEdit from "./dialogEdit";
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
+  users?: any[];
+  roles?: any[];
+  tasks?: any[];
 }
 
 export function DataTableRowActions<TData>({
   row,
+  users = [],
+  roles = [],
+  tasks = [],
 }: DataTableRowActionsProps<TData>) {
   const data = row.original;
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -103,6 +109,9 @@ export function DataTableRowActions<TData>({
             data={selectedData}
             setData={setSelectedData}
             setOpen={setEditOpen}
+            users={users}
+            roles={roles}
+            tasks={tasks}
           />
         </>
       )}
