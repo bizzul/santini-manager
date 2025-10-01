@@ -53,10 +53,23 @@ export const columns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const { deliveryDate } = row.original;
 
-      // Check if website includes the protocol, if not, prepend it.
-      const formattedDate = deliveryDate?.toLocaleDateString();
+      // Check if deliveryDate exists and convert to Date object if needed
+      let formattedDate = null;
+      if (deliveryDate) {
+        try {
+          const dateObj =
+            deliveryDate instanceof Date
+              ? deliveryDate
+              : new Date(deliveryDate);
+          if (!isNaN(dateObj.getTime())) {
+            formattedDate = dateObj.toLocaleDateString();
+          }
+        } catch (error) {
+          console.error("Error formatting delivery date:", error);
+        }
+      }
 
-      return <div suppressHydrationWarning>{formattedDate}</div>;
+      return <div suppressHydrationWarning>{formattedDate || "-"}</div>;
     },
   },
   {
