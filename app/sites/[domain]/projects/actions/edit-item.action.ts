@@ -1,29 +1,34 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteData } from "@/lib/fetchers";
 
-export async function editItem(formData: any, id: number) {
+export async function editItem(formData: any, id: number, domain?: string) {
   const result = validation.safeParse(formData);
   const session = await getUserContext();
   let userId = null;
-  if (session && session.user && session.user.id) {
-    // Get the integer user ID from the User table using the authId
-    const supabase = await createClient();
-    const { data: userData, error: userError } = await supabase
-      .from("User")
-      .select("id")
-      .eq("authId", session.user.id)
-      .single();
+  let siteId = null;
+  let organizationId = null;
 
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      return { error: true, message: "Errore nel recupero dei dati utente!" };
+  // Get site information
+  if (domain) {
+    try {
+      const siteResult = await getSiteData(domain);
+      if (siteResult?.data) {
+        siteId = siteResult.data.id;
+        organizationId = siteResult.data.organization_id;
+      }
+    } catch (error) {
+      console.error("Error fetching site data:", error);
     }
+  }
 
-    userId = userData?.id;
+  if (session && session.user && session.user.id) {
+    // Use the authId directly from the session (Supabase Auth user ID)
+    userId = session.user.id;
   }
   // console.log("result", result.error);
   try {
@@ -48,6 +53,26 @@ export async function editItem(formData: any, id: number) {
         firstColumn = columnData;
       }
 
+      // Verify that the task belongs to the current site
+      if (siteId) {
+        const { data: existingTask, error: taskError } = await supabase
+          .from("Task")
+          .select("site_id")
+          .eq("id", id)
+          .single();
+
+        if (taskError || !existingTask) {
+          return { error: true, message: "Task non trovato!" };
+        }
+
+        if (existingTask.site_id !== siteId) {
+          return {
+            error: true,
+            message: "Non autorizzato a modificare questo task!",
+          };
+        }
+      }
+
       // if a position is not provided, it defaults to an empty string
       const positions = Array.from(
         { length: 8 },
@@ -57,7 +82,7 @@ export async function editItem(formData: any, id: number) {
       console.log("positions", positions);
 
       const { data: taskCreate, error: taskUpdateError } = await supabase
-        .from("task")
+        .from("Task")
         .update({
           unique_code: result.data?.unique_code || null,
           name: result.data?.name || null,
@@ -89,15 +114,24 @@ export async function editItem(formData: any, id: number) {
 
       // Create a new Action record to track the user action
       if (taskCreate && userId) {
+        const actionData: any = {
+          type: "task_update",
+          data: {
+            task: taskCreate.id,
+          },
+          user_id: session.user.id, // Use authId directly
+        };
+
+        if (siteId) {
+          actionData.site_id = siteId;
+        }
+        if (organizationId) {
+          actionData.organization_id = organizationId;
+        }
+
         const { error: actionError } = await supabase
           .from("Action")
-          .insert({
-            type: "task_update",
-            data: {
-              task: taskCreate.id,
-            },
-            userId: userId,
-          });
+          .insert(actionData);
 
         if (actionError) {
           console.error("Error creating action record:", actionError);

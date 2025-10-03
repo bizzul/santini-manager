@@ -16,12 +16,6 @@ export async function saveKanban(kanban: {
     icon?: string;
   }[];
 }, domain?: string) {
-  console.log("Starting saveKanban with data:", {
-    title: kanban.title,
-    identifier: kanban.identifier,
-    columnCount: kanban.columns.length,
-  });
-
   let siteId = null;
   let organizationId = null;
 
@@ -111,8 +105,6 @@ export async function saveKanban(kanban: {
       kanbanResult = newKanban;
     }
 
-    console.log("Kanban saved with ID:", kanbanResult.id);
-
     // Get existing columns
     const { data: existingColumns, error: columnsError } = await supabase
       .from("KanbanColumn")
@@ -124,19 +116,12 @@ export async function saveKanban(kanban: {
       throw new Error("Failed to fetch existing columns");
     }
 
-    console.log("Found existing columns:", existingColumns?.length || 0);
-
     // Delete columns that are no longer present
     const columnsToDelete = existingColumns?.filter(
       (existing) => !kanban.columns.some((col) => col.id === existing.id),
     ) || [];
 
     if (columnsToDelete.length > 0) {
-      console.log(
-        "Deleting columns:",
-        columnsToDelete.map((col) => col.id),
-      );
-
       const { error: deleteError } = await supabase
         .from("KanbanColumn")
         .delete()
@@ -150,8 +135,6 @@ export async function saveKanban(kanban: {
 
     // Update or create columns
     const columnPromises = kanban.columns.map(async (column) => {
-      console.log("Processing column:", column.title, column.identifier);
-
       if (column.id && column.id > 0) {
         // Update existing column
         const { data: updatedColumn, error: updateError } = await supabase
@@ -195,21 +178,16 @@ export async function saveKanban(kanban: {
     });
 
     const columns = await Promise.all(columnPromises);
-    console.log("All columns processed:", columns.length);
 
     const result = {
       ...kanbanResult,
       columns,
     };
 
-    console.log("Transaction completed successfully");
-
     // Comprehensive revalidation
     revalidatePath("/kanban");
     revalidatePath("/");
     revalidateTag("kanbans");
-
-    console.log("Revalidation completed");
 
     return result;
   } catch (error) {

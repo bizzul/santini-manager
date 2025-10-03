@@ -37,6 +37,7 @@ import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Data } from "./page";
 import { Client, SellProduct, Task, Kanban } from "@/types/supabase";
+import { useParams } from "next/navigation";
 
 type Props = {
   handleClose: any;
@@ -46,6 +47,8 @@ type Props = {
 const CreateProductForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const params = useParams();
+  const domain = params?.domain as string;
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -74,7 +77,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
   ) => {
     try {
       setIsSubmitting(true);
-      const res = await createItem({ data: formData });
+      const res = await createItem({ data: formData }, domain);
 
       if (res?.error) {
         toast({
@@ -110,7 +113,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Codice Identificativo</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -124,7 +127,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Nome</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               <FormMessage />
             </FormItem>

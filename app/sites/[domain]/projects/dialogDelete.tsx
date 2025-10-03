@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { removeItem } from "./actions/delete-item.action";
 import { useState } from "react";
+import { useParams } from "next/navigation";
 
 const initialState = {
   message: null,
@@ -27,11 +28,13 @@ type Props = {
 function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
   const { toast } = useToast();
   const [pending, setPending] = useState(false);
+  const params = useParams();
+  const domain = params?.domain as string;
 
   async function handleDelete(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
-    const response = await removeItem(data);
+    const response = await removeItem(data.id, domain);
     if (response?.message) {
       toast({
         description: `Errore! ${response.message}`,

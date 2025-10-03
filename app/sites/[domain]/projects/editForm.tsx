@@ -19,6 +19,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Client, SellProduct, Task, Kanban } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 import { Button } from "@/components/ui/button";
+import { useParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -44,6 +45,8 @@ type Props = {
 
 const EditForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
+  const params = useParams();
+  const domain = params?.domain as string;
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -73,25 +76,25 @@ const EditForm = ({ handleClose, data }: Props) => {
 
   useEffect(() => {
     const getClients = async () => {
-      const d = await fetch(`../api/clients/`);
+      const d = await fetch(`/api/clients/`);
       if (!d.ok) {
-        throw new Error("Failed to fetch suppliers");
+        throw new Error("Failed to fetch products");
       }
       const data = await d.json();
       setClients(data);
     };
 
     const getProducts = async () => {
-      const d = await fetch(`../api/sell-products/`);
+      const d = await fetch(`/api/sell-products/`);
       if (!d.ok) {
-        throw new Error("Failed to fetch suppliers");
+        throw new Error("Failed to fetch products");
       }
       const data = await d.json();
       setProducts(data);
     };
 
     const getKanbans = async () => {
-      const d = await fetch(`../api/kanban/list`);
+      const d = await fetch(`/api/kanban/list`);
       if (!d.ok) {
         throw new Error("Failed to fetch kanbans");
       }
@@ -105,7 +108,7 @@ const EditForm = ({ handleClose, data }: Props) => {
   }, []);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    const response = await editItem(d, data?.id);
+    const response = await editItem(d, data?.id, domain);
     if (response?.error) {
       toast({
         description: `Errore! ${response.error}`,

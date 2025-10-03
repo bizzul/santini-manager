@@ -10,8 +10,15 @@ export function GlobalKanbanModal() {
 
   const handleSaveKanban = async (kanbanData: any) => {
     try {
-      // Extract domain from window.location for client-side calls
-      const domain = window.location.hostname;
+      // Extract domain from window.location.pathname
+      const pathname = window.location.pathname;
+      const domainMatch = pathname.match(/\/sites\/([^\/]+)/);
+      const domain = domainMatch ? domainMatch[1] : null;
+
+      if (!domain) {
+        throw new Error("Could not extract domain from path");
+      }
+
       await saveKanban(kanbanData, domain);
       closeCreateModal();
       // Refresh the page to get the updated kanban data

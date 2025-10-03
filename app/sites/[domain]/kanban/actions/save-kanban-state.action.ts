@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 
 // Main function to save state and handle revalidation

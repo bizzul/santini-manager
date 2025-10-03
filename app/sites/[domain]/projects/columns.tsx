@@ -19,11 +19,16 @@ export const columns: ColumnDef<any>[] = [
     ),
   },
   {
-    accessorKey: "client.businessName",
+    accessorKey: "client",
     // header: "Tipo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Cliente" />
     ),
+    cell: ({ row }) => {
+      const rowData = row.original;
+      const clientName = rowData.Client?.businessName || "N/A";
+      return clientName;
+    },
   },
   {
     accessorKey: "column",
@@ -32,9 +37,10 @@ export const columns: ColumnDef<any>[] = [
       <DataTableColumnHeader column={column} title="Pos. Attuale" />
     ),
     cell: ({ row }) => {
-      //@ts-ignore
-      const { kanban, column } = row.original;
-      return `${kanban?.title} => ${column?.title}`;
+      const rowData = row.original;
+      const kanbanTitle = rowData.Kanban?.title || "N/A";
+      const columnTitle = rowData.KanbanColumn?.title || "N/A";
+      return `${kanbanTitle} -> ${columnTitle}`;
     },
   },
   {

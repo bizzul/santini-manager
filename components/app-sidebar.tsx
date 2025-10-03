@@ -558,7 +558,7 @@ export function AppSidebar() {
   const handleSaveKanban = useCallback(
     async (kanbanData: Kanban) => {
       try {
-        await saveKanban(kanbanData);
+        await saveKanban(kanbanData, domain || "");
         await refreshKanbansOptimized();
         toast({
           title: "Successo",
@@ -574,7 +574,7 @@ export function AppSidebar() {
         });
       }
     },
-    [refreshKanbansOptimized, toast]
+    [refreshKanbansOptimized, toast, domain]
   );
 
   // Cleanup on unmount

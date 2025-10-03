@@ -1,32 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 
 export async function archiveItem(archived: boolean, id: number) {
   const session = await getUserContext();
   let userId = null;
   if (session && session.user && session.user.id) {
-    // Get the integer user ID from the User table using the authId
-    const supabase = await createClient();
-    const { data: userData, error: userError } = await supabase
-      .from("User")
-      .select("id")
-      .eq("authId", session.user.id)
-      .single();
-
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      return { error: true, message: "Errore nel recupero dei dati utente!" };
-    }
-
-    userId = userData?.id;
+    // Use the authId directly from the session
+    userId = session.user.id;
   }
   try {
     const supabase = await createClient();
     const { data: archiveTask, error: archiveTaskError } = await supabase
-      .from("task")
+      .from("Task")
       .update({
         archived: archived,
       })
@@ -42,7 +30,7 @@ export async function archiveItem(archived: boolean, id: number) {
         data: {
           task: archiveTask.id,
         },
-        userId: userId,
+        user_id: userId,
       });
 
     return revalidatePath("/projects");

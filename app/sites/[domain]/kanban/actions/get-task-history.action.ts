@@ -1,5 +1,5 @@
 "use server";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 
 export async function getTaskHistory(taskId: number) {
   const supabase = await createClient();

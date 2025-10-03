@@ -25,6 +25,7 @@ import DialogEdit from "./dialogEdit";
 import { archiveItem } from "./actions/archived-item-action";
 import { removeItem } from "./actions/delete-item.action";
 import { useToast } from "@/components/ui/use-toast";
+import { useParams } from "next/navigation";
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
@@ -38,6 +39,8 @@ export function DataTableRowActions<TData>({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedData, setSelectedData] = useState();
   const { toast } = useToast();
+  const params = useParams();
+  const domain = params?.domain as string;
   function handleEditClick(row: any) {
     setSelectedData(row);
     setEditOpen(true);
@@ -52,7 +55,7 @@ export function DataTableRowActions<TData>({
   }
 
   async function handleDelete(row: any) {
-    const response = await removeItem(row.id);
+    const response = await removeItem(row.id, domain);
     if (response?.message) {
       toast({
         description: `Errore! ${response.message}`,

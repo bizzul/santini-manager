@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
-import { createClient } from "@/utils/server";
+import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 
 export async function createItem(props: any, domain?: string) {
