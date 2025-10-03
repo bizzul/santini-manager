@@ -119,7 +119,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
           data: {
             task: taskCreate.id,
           },
-          user_id: session.user.id, // Use authId directly
+          user_id: userId, // Use authId directly
         };
 
         if (siteId) {

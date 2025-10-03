@@ -28,8 +28,6 @@ export async function createItem(props: any, domain?: string) {
 
   if (session && session.user && session.user.id) {
     userId = session.user.id;
-    console.log("Using authId as userId:", userId);
-    console.log("session", session.user);
   }
   // console.log("result", result.error);
   try {
