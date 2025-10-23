@@ -14,7 +14,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button, Textarea } from "@tremor/react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
 import { useFormStatus } from "react-dom";
@@ -26,7 +27,13 @@ import {
   User,
 } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
 
@@ -202,23 +209,25 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel>Utente del report</FormLabel>
                 <FormControl>
-                  <SearchSelect
+                  <Select
                     {...field}
-                    onChange={(e) => {
+                    onValueChange={(value) => {
                       // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(e);
+                      field.onChange(value);
                     }}
                     disabled={isSubmitting}
                   >
-                    {users.map((user: User) => (
-                      <SearchSelectItem
-                        key={user.id}
-                        value={user.id.toString()}
-                      >
-                        {user.given_name + " " + user.family_name}
-                      </SearchSelectItem>
-                    ))}
-                  </SearchSelect>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user: User) => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.given_name + " " + user.family_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                 <FormMessage />
@@ -233,19 +242,22 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel> Categoria errore</FormLabel>
                 <FormControl>
-                  <SearchSelect
+                  <Select
                     {...field}
-                    onChange={(e) => {
+                    onValueChange={(value) => {
                       // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(e);
+                      field.onChange(value);
                     }}
                     disabled={isSubmitting}
                   >
-                    <SearchSelectItem value="fornitore">
-                      Fornitore
-                    </SearchSelectItem>
-                    <SearchSelectItem value="reparto">Reparto</SearchSelectItem>
-                  </SearchSelect>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fornitore">Fornitore</SelectItem>
+                      <SelectItem value="reparto">Reparto</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                 <FormMessage />
@@ -261,20 +273,25 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Progetto</FormLabel>
                   <FormControl>
-                    <SearchSelect
+                    <Select
                       {...field}
-                      onChange={(e) => {
+                      onValueChange={(value) => {
                         // This ensures that the selected value updates the react-hook-form state
-                        field.onChange(e);
+                        field.onChange(value);
                       }}
                       disabled={isSubmitting}
                     >
-                      {tasks.map((t: Task) => (
-                        <SearchSelectItem key={t.id} value={t.id.toString()}>
-                          {t.unique_code}
-                        </SearchSelectItem>
-                      ))}
-                    </SearchSelect>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tasks.map((t: Task) => (
+                          <SelectItem key={t.id} value={t.id.toString()}>
+                            {t.unique_code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                   <FormMessage />
@@ -291,32 +308,37 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel> Tipo errore</FormLabel>
                   <FormControl>
-                    <SearchSelect
+                    <Select
                       {...field}
-                      onChange={(e) => {
+                      onValueChange={(value) => {
                         // This ensures that the selected value updates the react-hook-form state
-                        field.onChange(e);
+                        field.onChange(value);
                       }}
                       disabled={isSubmitting}
                     >
-                      {form.watch("errorCategory") === "fornitore"
-                        ? categories.map((category: Product_category) => (
-                            <SearchSelectItem
-                              key={category.id}
-                              value={category.name?.toLowerCase() || ""}
-                            >
-                              {category.name || "Unnamed"}
-                            </SearchSelectItem>
-                          ))
-                        : roles.map((role) => (
-                            <SearchSelectItem
-                              key={role.id}
-                              value={role.id.toString()}
-                            >
-                              {role.name}
-                            </SearchSelectItem>
-                          ))}
-                    </SearchSelect>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {form.watch("errorCategory") === "fornitore"
+                          ? categories.map((category: Product_category) => (
+                              <SelectItem
+                                key={category.id}
+                                value={category.name?.toLowerCase() || ""}
+                              >
+                                {category.name || "Unnamed"}
+                              </SelectItem>
+                            ))
+                          : roles.map((role) => (
+                              <SelectItem
+                                key={role.id}
+                                value={role.id.toString()}
+                              >
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                   <FormMessage />
@@ -336,29 +358,34 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                   <FormItem>
                     <FormLabel>Fornitore</FormLabel>
                     <FormControl>
-                      <SearchSelect
+                      <Select
                         {...field}
-                        onChange={(e) => {
+                        onValueChange={(value) => {
                           // This ensures that the selected value updates the react-hook-form state
-                          field.onChange(e);
+                          field.onChange(value);
                         }}
                         disabled={isSubmitting}
                       >
-                        {suppliers
-                          .filter(
-                            (supplier: Supplier) =>
-                              supplier.category?.toLowerCase() ===
-                              form.watch("errorType")?.toLowerCase()
-                          )
-                          .map((supplier: Supplier) => (
-                            <SearchSelectItem
-                              key={supplier.id}
-                              value={supplier.id.toString()}
-                            >
-                              {supplier.name}
-                            </SearchSelectItem>
-                          ))}
-                      </SearchSelect>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {suppliers
+                            .filter(
+                              (supplier: Supplier) =>
+                                supplier.category?.toLowerCase() ===
+                                form.watch("errorType")?.toLowerCase()
+                            )
+                            .map((supplier: Supplier) => (
+                              <SelectItem
+                                key={supplier.id}
+                                value={supplier.id.toString()}
+                              >
+                                {supplier.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
                     </FormControl>
                     {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                     <FormMessage />
