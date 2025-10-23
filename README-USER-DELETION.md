@@ -14,7 +14,8 @@ This system provides a comprehensive way to delete users from both Supabase Auth
 - Prevents users from deleting themselves
 - Prevents non-superadmins from deleting superadmin users
 - Deletes user from Supabase Auth
-- Manually deletes user profile (as backup to trigger)
+- Manually cleans up all related records in proper dependency order
+- Handles foreign key constraints by deleting referenced records first
 
 ### 3. Database Trigger (`supabase/migrations/20241220000000_create_user_deletion_trigger.sql`)
 - Automatically cleans up all related records when a user is deleted
@@ -56,8 +57,17 @@ WHERE trigger_name = 'on_auth_user_deleted';
 1. **User clicks delete button** → Confirmation dialog appears
 2. **API endpoint called** → Validates permissions and user data
 3. **User deleted from Auth** → Supabase removes from `auth.users`
-4. **Trigger fires automatically** → Cleans up all related records
-5. **Manual cleanup** → API also deletes user profile as backup
+4. **Manual cleanup** → API deletes all related records in proper order
+5. **User profile deleted** → Finally removes from `User` table
+
+### Manual Cleanup Process
+The API now handles comprehensive cleanup by:
+1. **Finding the User table ID** for the auth user
+2. **Deleting from junction tables** first (`_RolesToUser`, `user_organizations`, `user_sites`)
+3. **Deleting from reference tables** (`Action`, `Errortracking`, `PackingControl`, `QualityControl`, `Task`, `Timetracking`, `tenants`)
+4. **Finally deleting the User profile** from the `User` table
+
+This ensures all foreign key constraints are respected and prevents deletion errors.
 
 ### Automatic Cleanup
 The trigger automatically deletes records from:

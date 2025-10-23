@@ -68,20 +68,24 @@ export default async function SelectSitePage() {
         </CardContent>
       </Card>
 
-      {/* Administration button for superadmin users */}
-      {userRole === "superadmin" ||
-        (userRole === "admin" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Administration</CardTitle>
-            </CardHeader>
-            <CardContent>
+      {/* Administration button for admin and superadmin users */}
+      {(userRole === "superadmin" || userRole === "admin") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Administration</CardTitle>
+            <CardContent className="pt-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                {userRole === "superadmin"
+                  ? "Manage all organizations, sites, and users across the platform."
+                  : "Manage your organization's sites and users."}
+              </p>
               <Link href="/administration">
                 <Button className="w-full">Go to Administration</Button>
               </Link>
             </CardContent>
-          </Card>
-        ))}
+          </CardHeader>
+        </Card>
+      )}
     </div>
   );
 }

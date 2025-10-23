@@ -94,37 +94,86 @@ export async function DELETE(
         console.log("Manually cleaning up user data...");
 
         try {
-            // Delete user-organization relationships
-            const { error: orgDeleteError } = await supabase
-                .from("user_organizations")
-                .delete()
-                .eq("user_id", userId);
+            // First, get the User table ID for this auth user
+            const { data: userRecord, error: userLookupError } = await supabase
+                .from("User")
+                .select("id")
+                .eq("authId", userId)
+                .single();
 
-            if (orgDeleteError) {
-                console.warn(
-                    "Error deleting user-organization relationships:",
-                    orgDeleteError,
-                );
-            } else {
-                console.log("User-organization relationships deleted");
+            if (userLookupError || !userRecord) {
+                console.error("Error finding user record:", userLookupError);
+                return NextResponse.json({
+                    error: "User record not found in database",
+                }, { status: 404 });
             }
 
-            // Delete user-site relationships
-            const { error: siteDeleteError } = await supabase
-                .from("user_sites")
-                .delete()
-                .eq("user_id", userId);
+            const userTableId = userRecord.id;
+            console.log("Found user table ID:", userTableId);
 
-            if (siteDeleteError) {
-                console.warn(
-                    "Error deleting user-site relationships:",
-                    siteDeleteError,
-                );
-            } else {
-                console.log("User-site relationships deleted");
+            // Delete from tables that reference User.id (in dependency order)
+            const tablesToClean = [
+                // Junction tables first
+                "_RolesToUser",
+                "user_organizations",
+                "user_sites",
+                // Then tables with user references
+                "Action",
+                "Errortracking",
+                "PackingControl",
+                "QualityControl",
+                "Task",
+                "Timetracking",
+            ];
+
+            for (const tableName of tablesToClean) {
+                try {
+                    // Handle different column names for user references
+                    let deleteQuery = supabase.from(tableName).delete();
+
+                    if (tableName === "_RolesToUser") {
+                        deleteQuery = deleteQuery.eq("B", userTableId);
+                    } else if (
+                        tableName === "user_organizations" ||
+                        tableName === "user_sites"
+                    ) {
+                        deleteQuery = deleteQuery.eq("user_id", userId);
+                    } else if (tableName === "Action") {
+                        deleteQuery = deleteQuery.eq("userId", userTableId);
+                    } else if (
+                        tableName === "Errortracking" ||
+                        tableName === "Timetracking"
+                    ) {
+                        deleteQuery = deleteQuery.eq(
+                            "employee_id",
+                            userTableId,
+                        );
+                    } else if (
+                        tableName === "PackingControl" ||
+                        tableName === "QualityControl" || tableName === "Task"
+                    ) {
+                        deleteQuery = deleteQuery.eq("userId", userTableId);
+                    }
+
+                    const { error: deleteError } = await deleteQuery;
+
+                    if (deleteError) {
+                        console.warn(
+                            `Error deleting from ${tableName}:`,
+                            deleteError,
+                        );
+                    } else {
+                        console.log(`Successfully cleaned up ${tableName}`);
+                    }
+                } catch (tableError) {
+                    console.warn(
+                        `Error processing table ${tableName}:`,
+                        tableError,
+                    );
+                }
             }
 
-            // Delete user profile from User table
+            // Finally, delete user profile from User table
             const { error: profileDeleteError } = await supabase
                 .from("User")
                 .delete()
