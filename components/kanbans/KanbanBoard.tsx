@@ -799,13 +799,14 @@ function KanbanBoard({
               onSave={handleSaveKanban}
               mode="edit"
               hasTasks={tasks.length > 0}
+              domain={domain}
               trigger={
                 <Button
                   variant="outline"
                   size="sm"
                   className="text-xs bg-background hover:bg-accent"
                 >
-                  {tasks.length > 0 ? "Modifica Icone" : "Modifica Kanban"}
+                  Modifica Kanban
                 </Button>
               }
             />
@@ -876,6 +877,7 @@ function KanbanBoard({
               onSave={handleSaveKanban}
               mode="create"
               hasTasks={false}
+              domain={domain}
               trigger={
                 <Button variant="default" size="lg">
                   <FontAwesomeIcon icon={faPlus} className="mr-2" />

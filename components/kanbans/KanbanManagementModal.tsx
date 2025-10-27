@@ -47,6 +47,18 @@ import {
   SelectValue,
 } from "../ui/select";
 import { DialogFooter } from "../ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import { deleteKanban } from "@/app/sites/[domain]/kanban/actions/delete-kanban.action";
 
 type Column = {
   title: string;
@@ -65,6 +77,7 @@ interface KanbanManagementModalProps {
   hasTasks?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  domain?: string;
 }
 
 const iconOptions = [
@@ -125,6 +138,7 @@ export default function KanbanManagementModal({
   hasTasks = false,
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
+  domain,
 }: KanbanManagementModalProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(kanban?.title || "");
@@ -205,6 +219,35 @@ export default function KanbanManagementModal({
         variant: "destructive",
         title: "Errore",
         description: "Si è verificato un errore durante il salvataggio",
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!kanban?.id) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Impossibile eliminare il kanban",
+      });
+      return;
+    }
+
+    try {
+      await deleteKanban(kanban.id, domain);
+      toast({
+        title: "Successo",
+        description: "Kanban eliminato con successo",
+      });
+    } catch (error) {
+      console.error("Error deleting kanban:", error);
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Si è verificato un errore durante l'eliminazione",
       });
     }
   };
@@ -425,9 +468,46 @@ export default function KanbanManagementModal({
             )}
           </div>
           <DialogFooter>
-            <Button type="submit">
-              {mode === "create" ? "Crea" : "Salva Modifiche"}
-            </Button>
+            <div className="flex justify-between w-full">
+              {mode === "edit" && kanban?.id && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" type="button">
+                      <FontAwesomeIcon icon={faTrash} className="mr-2" />
+                      Elimina Kanban
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Sei sicuro di voler eliminare il kanban "{kanban.title}
+                        "? Questa azione non può essere annullata.
+                        {hasTasks && (
+                          <span className="block mt-2 text-red-600 font-semibold">
+                            ATTENZIONE: Questo kanban contiene task associati.
+                            Elimina prima tutti i task prima di procedere.
+                          </span>
+                        )}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-red-600 hover:bg-red-700"
+                        disabled={hasTasks}
+                      >
+                        Elimina
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <Button type="submit">
+                {mode === "create" ? "Crea" : "Salva Modifiche"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
