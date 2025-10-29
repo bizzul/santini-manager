@@ -48,7 +48,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
         const { data: tasks, error: tasksError } = await supabase
             .from("Task")
             .select("id")
-            .eq("kanbanId", kanbanId);
+            .eq("kanban_id", kanbanId);
 
         if (tasksError) {
             console.error("Error checking tasks:", tasksError);
@@ -65,7 +65,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
         const { error: columnsDeleteError } = await supabase
             .from("KanbanColumn")
             .delete()
-            .eq("kanbanId", kanbanId);
+            .eq("kanban_id", kanbanId);
 
         if (columnsDeleteError) {
             console.error("Error deleting kanban columns:", columnsDeleteError);

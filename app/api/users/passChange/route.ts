@@ -26,12 +26,18 @@ export async function POST(req: NextRequest) {
 
     const email = await req.json();
 
+    // Get base URL - prioritize NEXT_PUBLIC_URL, then VERCEL_URL, then localhost
+    let baseUrl = process.env.NEXT_PUBLIC_URL;
+    if (!baseUrl && process.env.VERCEL_URL) {
+      baseUrl = `https://${process.env.VERCEL_URL}`;
+    }
+    if (!baseUrl) {
+      baseUrl = "http://localhost:3000";
+    }
+
     // Send password reset email using Supabase
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${
-        process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL ||
-        "http://localhost:3000"
-      }/auth/reset-password`,
+      redirectTo: `${baseUrl}/auth/reset-password`,
     });
 
     if (error) {

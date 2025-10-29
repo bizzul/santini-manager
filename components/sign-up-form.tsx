@@ -40,11 +40,13 @@ export function SignUpForm({
     }
 
     try {
+      // Use the base URL helper to ensure correct URL in production
+      const baseUrl = window.location.origin;
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
+          emailRedirectTo: `${baseUrl}/auth/confirm?type=signup&next=/auth/sign-up-success`,
         },
       });
       if (error) throw error;

@@ -28,7 +28,10 @@ NODE_ENV=production
 ### 3. Domain Configuration
 ```bash
 NEXT_PUBLIC_ROOT_DOMAIN=your-actual-domain.vercel.app
+NEXT_PUBLIC_URL=https://your-actual-domain.vercel.app
 ```
+
+**Important**: `NEXT_PUBLIC_URL` is used for email confirmation links and password reset links. Set this to your production domain so that email links point to the correct environment instead of localhost:3000.
 
 ## How to Set in Vercel
 
@@ -60,6 +63,10 @@ NEXT_PUBLIC_ROOT_DOMAIN=your-actual-domain.vercel.app
 
 - **Name**: `NEXT_PUBLIC_ROOT_DOMAIN`
 - **Value**: `your-actual-domain.vercel.app`
+- **Environment**: Production, Preview, Development
+
+- **Name**: `NEXT_PUBLIC_URL`
+- **Value**: `https://your-actual-domain.vercel.app` (use your actual production domain)
 - **Environment**: Production, Preview, Development
 
 ## Important Notes
@@ -136,10 +143,22 @@ This endpoint will show you:
 - **Cause**: Variables not set in Vercel or wrong environment
 - **Solution**: Ensure variables are set for Production, Preview, AND Development
 
+## Email Confirmation Links
+
+The app now automatically detects the environment and uses the correct URL for email confirmation links:
+
+- **Local**: Uses `http://localhost:3000` (default)
+- **Production**: Uses `NEXT_PUBLIC_URL` or `VERCEL_URL` if not set
+- **Priority**: `NEXT_PUBLIC_URL` > `VERCEL_URL` > `localhost:3000`
+
+**Make sure** to set `NEXT_PUBLIC_URL` in Vercel to your production domain to avoid email links pointing to localhost.
+
+**Also check**: In your Supabase dashboard, go to Authentication > URL Configuration and ensure your production domain is in the "Redirect URLs" list.
+
 ## Verification Checklist
 
 After setting environment variables:
-- [ ] All 6 required variables are set
+- [ ] All 7 required variables are set (includes NEXT_PUBLIC_URL)
 - [ ] `NODE_ENV=production`
 - [ ] `COOKIE_NAME=reactive-app:session`
 - [ ] `NEXT_PUBLIC_ROOT_DOMAIN` is your actual Vercel domain

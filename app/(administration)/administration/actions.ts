@@ -278,13 +278,21 @@ export async function createOrganizationAndInviteUser(
         const supabaseService = createServiceClient();
 
         // Use inviteUserByEmail which handles existing users gracefully
+        // Get base URL - prioritize NEXT_PUBLIC_URL, then VERCEL_URL, then localhost
+        let baseUrl = process.env.NEXT_PUBLIC_URL || process.env.APP_URL;
+        if (!baseUrl && process.env.VERCEL_URL) {
+            baseUrl = `https://${process.env.VERCEL_URL}`;
+        }
+        if (!baseUrl) {
+            baseUrl = "http://localhost:3000";
+        }
+
         const { data: inviteData, error: inviteError } = await supabaseService
             .auth.admin
             .inviteUserByEmail(adminEmail, {
-                redirectTo:
-                    `${process.env.APP_URL}/auth/complete-signup?email=${
-                        encodeURIComponent(adminEmail)
-                    }`,
+                redirectTo: `${baseUrl}/auth/complete-signup?email=${
+                    encodeURIComponent(adminEmail)
+                }`,
             });
 
         if (inviteError) {
@@ -1163,13 +1171,20 @@ export async function createUser(
 
         // Use invitation flow instead of creating user directly
         // This will send an invitation email and let the user complete their profile
+
+        // Get base URL - prioritize NEXT_PUBLIC_URL, then VERCEL_URL, then localhost
+        let baseUrl = process.env.NEXT_PUBLIC_URL;
+        if (!baseUrl && process.env.VERCEL_URL) {
+            baseUrl = `https://${process.env.VERCEL_URL}`;
+        }
+        if (!baseUrl) {
+            baseUrl = "http://localhost:3000";
+        }
+
         const { data: inviteData, error: inviteError } = await supabaseService
             .auth.admin
             .inviteUserByEmail(email, {
-                redirectTo: `${
-                    process.env.NEXT_PUBLIC_SITE_URL ||
-                    process.env.VERCEL_URL || "http://localhost:3000"
-                }/auth/complete-signup?email=${
+                redirectTo: `${baseUrl}/auth/complete-signup?email=${
                     encodeURIComponent(email)
                 }&name=${encodeURIComponent(name)}&last_name=${
                     encodeURIComponent(last_name)
