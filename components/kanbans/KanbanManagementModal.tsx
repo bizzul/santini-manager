@@ -496,7 +496,6 @@ export default function KanbanManagementModal({
                       <AlertDialogAction
                         onClick={handleDelete}
                         className="bg-red-600 hover:bg-red-700"
-                        disabled={hasTasks}
                       >
                         Elimina
                       </AlertDialogAction>

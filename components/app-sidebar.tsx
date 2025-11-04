@@ -117,6 +117,7 @@ type MenuItem = {
   items?: MenuItem[];
   customComponent?: React.ReactNode;
   moduleName?: string;
+  id?: string | number; // Add unique identifier for kanban items
 };
 
 // Optimized domain extraction function
@@ -513,6 +514,7 @@ export function AppSidebar() {
                 icon: "faTable" as const,
                 href: `${basePath}/kanban?name=${kanban.identifier}`,
                 alert: false,
+                id: kanban.id || kanban.identifier, // Add unique identifier
               }))),
           {
             label: "Crea Kanban",
@@ -651,8 +653,8 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                   {item.items && !collapsedMenus[item.label] && (
                     <div className="pl-4">
-                      {item.items.map((subItem: MenuItem) => (
-                        <SidebarMenuItem key={subItem.label}>
+                      {item.items.map((subItem: MenuItem, index: number) => (
+                        <SidebarMenuItem key={subItem.id || subItem.href || `${subItem.label}-${index}`}>
                           {subItem.customComponent ? (
                             <KanbanManagementModal
                               onSave={handleSaveKanban}
