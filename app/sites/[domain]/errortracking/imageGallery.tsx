@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Image from "next/image";
-import { Button } from "@tremor/react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
@@ -35,16 +35,16 @@ function ImageGallery({ files }: { files: any }) {
       {/* </a> */}
       <div className="flex flex-row gap-2 pt-2 ">
         <Button
-          size="xs"
-          variant="light"
+          size="sm"
+          variant="outline"
           disabled={currentImage === 0}
           onClick={handlePrevClickImages}
         >
           Prec.
         </Button>
         <Button
-          size="xs"
-          variant="light"
+          size="sm"
+          variant="outline"
           disabled={currentImage == files.length - 1 ? true : false}
           onClick={handleNextClickImages}
         >

@@ -13,13 +13,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@tremor/react";
+import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/products/create";
 import { useToast } from "@/components/ui/use-toast";
 import { useFormState, useFormStatus } from "react-dom";
 import { Product_category, Supplier } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Props = {
   handleClose: any;
@@ -118,20 +124,22 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Categoria</FormLabel>
               <FormControl>
-                <SearchSelect
-                  {...field}
-                  onChange={(e) => {
-                    // This ensures that the selected value updates the react-hook-form state
-                    field.onChange(e);
-                  }}
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
                   disabled={isSubmitting}
                 >
-                  {categories.map((cat: Product_category) => (
-                    <SearchSelectItem key={cat.id} value={cat.id.toString()}>
-                      {cat.name}
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat: Product_category) => (
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
@@ -144,21 +152,22 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Fornitore</FormLabel>
               <FormControl>
-                <SearchSelect
-                  {...field}
-                  onChange={(e) => {
-                    // This ensures that the selected value updates the react-hook-form state
-                    field.onChange(e);
-                  }}
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
                   disabled={isSubmitting}
                 >
-                  {suppliers.map((sup: Supplier) => (
-                    //@ts-expect-error
-                    <SearchSelectItem key={sup.id} value={sup.id}>
-                      {sup.name}
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona fornitore" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((sup: Supplier) => (
+                      <SelectItem key={sup.id} value={sup.id.toString()}>
+                        {sup.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 {/* <Input  {...field} /> */}
               </FormControl>
               {/* <FormDescription>Fornitore del prodotto</FormDescription> */}
