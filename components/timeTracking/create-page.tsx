@@ -381,8 +381,8 @@ const CreatePage = ({
     setRows(updatedRows);
   };
 
-  const handleSelectChange = (e: number) => {
-    // Assuming e.target.value is the task ID
+  const handleSelectChange = (e: string) => {
+    // Assuming e is the task ID as a string
     console.log(e);
     const selectedTaskId = e;
     const selectedTask = data.tasks.find(
