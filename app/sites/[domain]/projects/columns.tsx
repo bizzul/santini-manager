@@ -26,7 +26,13 @@ export const columns: ColumnDef<any>[] = [
     ),
     cell: ({ row }) => {
       const rowData = row.original;
-      const clientName = rowData.Client?.businessName || "N/A";
+
+      const clientName =
+        rowData.Client?.businessName ||
+        `${rowData.Client?.individualFirstName || ""} ${
+          rowData.Client?.individualLastName || ""
+        }`.trim() ||
+        "N/A";
       return clientName;
     },
   },

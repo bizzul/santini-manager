@@ -71,11 +71,11 @@ const EditProductForm = ({ handleClose, data, domain }: Props) => {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome</FormLabel>
+              <FormLabel>Categoria</FormLabel>
               <FormControl>
                 <Input {...field} />
               </FormControl>
-              <FormDescription>Il nome del prodotto</FormDescription>
+              <FormDescription>La categoria del prodotto</FormDescription>
               <FormMessage />
             </FormItem>
           )}

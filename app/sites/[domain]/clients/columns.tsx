@@ -26,6 +26,13 @@ export const columns: ColumnDef<Client>[] = [
     ),
   },
   {
+    accessorKey: "individualLastName",
+    // header: "Tipo",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Cognome" />
+    ),
+  },
+  {
     accessorKey: "zipCode",
     // header: "Tipo",
     header: ({ column }) => (

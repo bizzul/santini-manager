@@ -139,7 +139,7 @@ const EditForm = ({ handleClose, data }: Props) => {
             </FormItem>
           )}
         />
-
+        {/* 
         <FormField
           control={form.control}
           name="name"
@@ -149,11 +149,11 @@ const EditForm = ({ handleClose, data }: Props) => {
               <FormControl>
                 <Input {...field} />
               </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
+
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
 
         <FormField
           name="clientId"
@@ -237,7 +237,7 @@ const EditForm = ({ handleClose, data }: Props) => {
                 <SelectContent>
                   {products.map((p: SellProduct) => (
                     <SelectItem key={p.id} value={p.id.toString()}>
-                      {p.name}
+                      {p.name} - {p.type}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -253,7 +253,7 @@ const EditForm = ({ handleClose, data }: Props) => {
           control={form.control}
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Data di carico in sede</FormLabel>
+              <FormLabel>Termine</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>

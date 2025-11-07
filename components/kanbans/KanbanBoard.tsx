@@ -38,7 +38,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../components/ui/dialog";
-import CreateProductForm from "@/app/sites/[domain]/kanban/createForm";
+import CreateProductForm from "@/app/sites/[domain]/projects/createForm";
 import { useToast } from "../ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
 import {
@@ -392,16 +392,6 @@ function KanbanBoard({
     tasksRef.current = tasks;
   }, [tasks]);
 
-  // Debounced function to prevent excessive API calls
-  const debouncedFetchAndUpdate = useCallback(() => {
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-    debounceTimeoutRef.current = setTimeout(() => {
-      fetchAndUpdateTasks(true);
-    }, 2000); // 2 second debounce
-  }, []);
-
   // Function to check for updates using last-modified timestamp
   const checkForUpdates = async () => {
     try {
@@ -752,15 +742,39 @@ function KanbanBoard({
     }
   };
 
+  // Function to determine if text should be black or white based on background color
+  const getContrastColor = (hexColor: string): string => {
+    // Default to white if no color provided
+    if (!hexColor) return "#ffffff";
+
+    // Remove # if present
+    const hex = hexColor.replace("#", "");
+
+    // Convert to RGB
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    // Calculate relative luminance using WCAG formula
+    // https://www.w3.org/TR/WCAG20-TECHS/G17.html
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? "#000000" : "#ffffff";
+  };
+
   return (
     <>
       {kanban && (
         <div className="w-full pt-4 pb-2 px-8">
           <h1
-            className="text-2xl font-bold mb-4 p-4 rounded-lg text-white"
-            style={{ backgroundColor: kanban.color || "#1e293b" }}
+            className="text-2xl font-bold mb-4 p-4 rounded-lg"
+            style={{
+              backgroundColor: kanban.color || "#1e293b",
+              color: getContrastColor(kanban.color || "#1e293b"),
+            }}
           >
-            KANBAN {kanban.title}
+            {kanban.title.toUpperCase()}
           </h1>
           <div className="flex justify-between items-center gap-4 max-w-[1000px]">
             <h4

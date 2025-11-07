@@ -454,12 +454,12 @@ export default function Card({
             className={`p-1 ${
               timeState === "late"
                 ? "text-white"
-                : timeState === "normal" && "text-white dark:text-black"
+                : timeState === "normal" && "text-white"
             }`}
           >
             {!isSmall ? (
               <div className="pointer-events-none">
-                <div className=" border-b flex flex-row justify-between align-top items-start">
+                <div className=" border-b dark:border-white flex flex-row justify-between align-top items-start">
                   <div className="flex flex-col">
                     <p className="font-bold">{data.unique_code}</p>
                     <span className="text-xs font-light">
@@ -484,7 +484,7 @@ export default function Card({
                   </div>
                 </div>
 
-                <div className="font-bold text-lg flex flex-row border-b mb-2">
+                <div className="font-bold text-lg flex flex-row border-b dark:border-white mb-2">
                   <p>{data.client?.businessName || data.client?.name}</p>
                 </div>
 
@@ -495,7 +495,7 @@ export default function Card({
                         {data.positions.map(
                           (position: string, index: number) => (
                             <p
-                              className="border-[0.75px]  text-center pl-1 text-xs"
+                              className="border-[0.75px] dark:border-white text-center pl-1 text-xs"
                               key={index}
                             >
                               {position}
@@ -510,7 +510,7 @@ export default function Card({
                       <p>{(currentValue / 1000).toFixed(2)} K</p>
                       <p>{data.columnPosition}</p>
                     </div>
-                    <div className="border-l border-r border-b flex justify-center items-center">
+                    <div className="border-l dark:border-white border-r  border-b flex justify-center items-center">
                       <p> {(data.sellPrice / 1000).toFixed(2)} K</p>
                     </div>
                     {/* Valori */}
@@ -544,7 +544,7 @@ export default function Card({
                             e.stopPropagation();
                             handleFerramentaCheck(!ferramentaCheck);
                           }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
+                          className={`text-xs px-3 py-2 border dark:border-white bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
                             ferramentaCheck
                               ? " bg-green-500 text-white border-white"
                               : ""
@@ -683,7 +683,7 @@ export default function Card({
                   )}
                 </div>
 
-                <div className="mt-2 border-t pt-2">
+                <div className="mt-2 border-t dark:border-white pt-2">
                   <p className="text-sm font-semibold mb-2">Fornitori</p>
                   <div className="flex flex-wrap gap-2">
                     {taskSuppliers &&

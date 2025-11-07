@@ -10,7 +10,7 @@ export const createColumns = (domain?: string): ColumnDef<SellProduct>[] => [
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Nome" />
+      <DataTableColumnHeader column={column} title="Categoria" />
     ),
   },
   {

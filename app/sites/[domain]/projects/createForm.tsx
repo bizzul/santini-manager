@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -7,7 +7,6 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -42,9 +41,11 @@ import { useParams } from "next/navigation";
 type Props = {
   handleClose: any;
   data: Data & { kanbans: Kanban[] };
+  kanbanId?: number;
+  domain?: string;
 };
 
-const CreateProductForm = ({ handleClose, data }: Props) => {
+const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const params = useParams();
@@ -68,7 +69,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
       productId: null,
       sellPrice: 0,
       unique_code: "",
-      kanbanId: undefined,
+      kanbanId: kanbanId ?? undefined,
     },
   });
 
@@ -120,7 +121,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
           )}
         />
 
-        <FormField
+        {/* <FormField
           control={form.control}
           name="name"
           render={({ field }) => (
@@ -132,7 +133,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
 
         <FormField
           name="kanbanId"
@@ -233,7 +234,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
           control={form.control}
           render={({ field }) => (
             <FormItem className="flex flex-col">
-              <FormLabel>Data di carico in sede</FormLabel>
+              <FormLabel>Termine</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
@@ -277,7 +278,7 @@ const CreateProductForm = ({ handleClose, data }: Props) => {
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{`Posizione ${i + 1}`}</FormLabel>
+                  <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
                   <FormControl>
                     <Input
                       {...field}

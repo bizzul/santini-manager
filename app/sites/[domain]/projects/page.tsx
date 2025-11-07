@@ -34,8 +34,6 @@ async function getData(domain?: string): Promise<Data> {
     }
   }
 
-  console.log("site_id", site_id);
-
   // Get clients filtered by site_id if available
   let clientsQuery = supabase.from("Client").select("*");
   if (site_id) {
@@ -88,7 +86,9 @@ async function getData(domain?: string): Promise<Data> {
         title
       ),
       Client!clientId (
-        businessName
+        businessName,
+        individualFirstName,
+        individualLastName
       ),
       SellProduct!sellProductId (
         name
