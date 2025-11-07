@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 import {
   Form,
@@ -47,6 +48,7 @@ type Props = {
 
 const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
   const { toast } = useToast();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const params = useParams();
   const domain = params?.domain as string;
@@ -94,6 +96,9 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
       });
       form.reset();
       handleClose(false);
+
+      // Refresh the page to show the new card
+      router.refresh();
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -246,22 +251,23 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       )}
                       disabled={isSubmitting}
                     >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Seleziona una data</span>
-                      )}
+                      {field.value
+                        ? field.value.toLocaleDateString("it-IT")
+                        : "Seleziona una data"}
                       <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent
+                  className="w-[20rem] overflow-hidden p-0"
+                  align="start"
+                >
                   <Calendar
                     mode="single"
                     selected={field.value || undefined}
+                    captionLayout="dropdown"
                     onSelect={field.onChange}
                     disabled={(date) => date < new Date()}
-                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
