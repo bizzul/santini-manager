@@ -23,7 +23,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
-import { Select, SelectItem } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { DataTableRowActions } from "./data-table-row-actions";
 
@@ -117,26 +123,32 @@ export function DataTable<TData, TValue>({
         />
 
         <Select
-          //@ts-ignore
-          value={table.getColumn("fullName")?.getFilterValue() ?? ""}
-          onChange={(event) =>
-            table.getColumn("fullName")?.setFilterValue(event)
+          value={
+            (table.getColumn("fullName")?.getFilterValue() as string) ?? "all"
           }
-          className="max-w-sm"
-          aria-label="Filtro utente"
+          onValueChange={(value) =>
+            table
+              .getColumn("fullName")
+              ?.setFilterValue(value === "all" ? undefined : value)
+          }
         >
-          <SelectItem value="" aria-label="Mostra tutti gli utenti">
-            Tutti
-          </SelectItem>
-          {uniqueUsers.map((userName) => (
-            <SelectItem
-              key={userName}
-              value={userName}
-              aria-label={`Filtra per ${userName}`}
-            >
-              {userName}
+          <SelectTrigger className="max-w-sm" aria-label="Filtro utente">
+            <SelectValue placeholder="Tutti" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" aria-label="Mostra tutti gli utenti">
+              Tutti
             </SelectItem>
-          ))}
+            {uniqueUsers.map((userName) => (
+              <SelectItem
+                key={userName}
+                value={userName}
+                aria-label={`Filtra per ${userName}`}
+              >
+                {userName}
+              </SelectItem>
+            ))}
+          </SelectContent>
         </Select>
       </div>
       <div className="rounded-md border" role="table" aria-label="Dati tabella">

@@ -16,7 +16,13 @@ import {
 } from "@tremor/react";
 import { itCH } from "date-fns/locale";
 import { useState } from "react";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 import { PackingControl, QualityControl, Supplier, Task } from "@/types/supabase";
 function GridReports({
   suppliers,
@@ -386,21 +392,22 @@ function GridReports({
         </CardHeader>
         <CardContent>
           <div className="pb-4">
-            <SearchSelect
-              
-              value={supplier}
-              onValueChange={setSupplier}
-              enableClear
-            >
-              {suppliers.map((supplier) => (
-                <SearchSelectItem
-                  key={supplier.id}
-                  value={supplier.id.toString()}
-                >
-                  {supplier.name}
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
+            <Select value={supplier} onValueChange={setSupplier}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona fornitore" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                {suppliers.map((supplier) => (
+                  <SelectItem
+                    key={supplier.id}
+                    value={supplier.id.toString()}
+                  >
+                    {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <DateRangePicker
             className="max-w-md"
@@ -450,18 +457,18 @@ function GridReports({
         </CardHeader>
         <CardContent>
           <div className="pb-4">
-            <SearchSelect
-              
-              value={selectedTask}
-              onValueChange={setSelectedTask}
-              enableClear
-            >
-              {task.map((t) => (
-                <SearchSelectItem key={t.id} value={t.id.toString()}>
-                  {t.unique_code}
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
+            <Select value={selectedTask} onValueChange={setSelectedTask}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona progetto" />
+              </SelectTrigger>
+              <SelectContent>
+                {task.map((t) => (
+                  <SelectItem key={t.id} value={t.id.toString()}>
+                    {t.unique_code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
         <CardFooter>

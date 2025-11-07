@@ -2,7 +2,7 @@ import { FC, Fragment, useEffect, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { TaskWithDays } from "./navbar";
 import { Button } from "../../ui/button";
-import { Card } from "@tremor/react";
+import { Card } from "../../ui/card";
 
 type Props = {
   data: TaskWithDays[] | undefined;

@@ -3,7 +3,13 @@ import React, { useEffect, useState } from "react";
 //import TasksFilter from "../errorTracking/filterTasks";
 import { useToast } from "../ui/use-toast";
 import { Input } from "../ui/input";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 // Define types based on Supabase schema
 interface Roles {
@@ -490,18 +496,22 @@ const CreatePage = ({
           {index === rows.length - 1 && ( // show only for the last row
             <div className="flex flex-col items-center w-1/2  ">
               <label>Progetto</label>
-              {/* @ts-ignore */}
-              <SearchSelect onChange={handleSelectChange}>
-                {data.tasks.map((task, index) => (
-                  <SearchSelectItem value={task.id.toString()} key={task.id}>
-                    {task.unique_code}
-                    {/* @ts-ignore */}
-                    {task.client?.businessName &&
-                      //@ts-ignore
-                      " - " + task.client?.businessName}
-                  </SearchSelectItem>
-                ))}
-              </SearchSelect>
+              <Select onValueChange={handleSelectChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona progetto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.tasks.map((task, index) => (
+                    <SelectItem value={task.id.toString()} key={task.id}>
+                      {task.unique_code}
+                      {/* @ts-ignore */}
+                      {task.client?.businessName &&
+                        //@ts-ignore
+                        " - " + task.client?.businessName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -522,13 +532,18 @@ const CreatePage = ({
                 handleCheckboxChange(index, values)
               }
             /> */}
-              <SearchSelect onChange={(e) => handleSelectChangeRole(e, index)}>
-                {rolesOptions.map((role, index) => (
-                  <SearchSelectItem value={role.id.toString()} key={role.id}>
-                    {role.name}
-                  </SearchSelectItem>
-                ))}
-              </SearchSelect>
+              <Select onValueChange={(e) => handleSelectChangeRole(e, index)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona reparto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {rolesOptions.map((role, index) => (
+                    <SelectItem value={role.id.toString()} key={role.id}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               {/* <input
               type="hidden"
               name="roles"

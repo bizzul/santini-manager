@@ -29,7 +29,7 @@ import Image from "next/image";
 import Logo from "../../../public/logo_short.svg";
 import { UserDrawerType } from "../navbar/navbar";
 import { ChevronFirst, ChevronLast, MoreVertical } from "lucide-react";
-import { Button } from "@tremor/react";
+import { Button } from "@/components/ui/button";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -266,8 +266,8 @@ export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {
             />
             <Button
               onClick={() => setSlim((curr) => !curr)}
-              variant="secondary"
-              size="xs"
+              variant="ghost"
+              size="sm"
               className="rounded-none"
             >
               {slim ? <ChevronLast /> : <ChevronFirst />}

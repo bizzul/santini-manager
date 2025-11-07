@@ -8,7 +8,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
 import { useToast } from "../ui/use-toast";
-import { SearchSelect, SearchSelectItem, Textarea } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Textarea } from "../ui/textarea";
 
 import {
   Form,
@@ -186,23 +193,21 @@ function MobilePage({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel> Categoria errore</FormLabel>
-                        <FormControl>
-                          <SearchSelect
-                            {...field}
-                            onChange={(e) => {
-                              // This ensures that the selected value updates the react-hook-form state
-                              field.onChange(e);
-                            }}
-                            disabled={isSubmitting}
-                          >
-                            <SearchSelectItem value="fornitore">
-                              Fornitore
-                            </SearchSelectItem>
-                            <SearchSelectItem value="reparto">
-                              Reparto
-                            </SearchSelectItem>
-                          </SearchSelect>
-                        </FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isSubmitting}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona categoria" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="fornitore">Fornitore</SelectItem>
+                            <SelectItem value="reparto">Reparto</SelectItem>
+                          </SelectContent>
+                        </Select>
                         {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                         <FormMessage />
                       </FormItem>
@@ -216,25 +221,24 @@ function MobilePage({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Progetto</FormLabel>
-                        <FormControl>
-                          <SearchSelect
-                            {...field}
-                            onChange={(e) => {
-                              // This ensures that the selected value updates the react-hook-form state
-                              field.onChange(e);
-                            }}
-                            disabled={isSubmitting}
-                          >
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isSubmitting}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona progetto" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
                             {data.tasks.map((t: Task) => (
-                              <SearchSelectItem
-                                key={t.id}
-                                value={t.id.toString()}
-                              >
+                              <SelectItem key={t.id} value={t.id.toString()}>
                                 {t.unique_code}
-                              </SearchSelectItem>
+                              </SelectItem>
                             ))}
-                          </SearchSelect>
-                        </FormControl>
+                          </SelectContent>
+                        </Select>
                         {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                         <FormMessage />
                       </FormItem>
@@ -249,36 +253,38 @@ function MobilePage({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel> Tipo errore</FormLabel>
-                        <FormControl>
-                          <SearchSelect
-                            {...field}
-                            onChange={(e) => {
-                              // This ensures that the selected value updates the react-hook-form state
-                              field.onChange(e);
-                            }}
-                            disabled={isSubmitting}
-                          >
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isSubmitting}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleziona tipo errore" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
                             {form.watch("errorCategory") === "fornitore"
                               ? data.categories.map(
                                   (category: Product_category) => (
-                                    <SearchSelectItem
+                                    <SelectItem
                                       key={category.id}
                                       value={category.name.toLowerCase()}
                                     >
                                       {category.name}
-                                    </SearchSelectItem>
+                                    </SelectItem>
                                   )
                                 )
                               : data.roles.map((role) => (
-                                  <SearchSelectItem
+                                  <SelectItem
                                     key={role.id}
                                     value={role.id.toString()}
                                   >
                                     {role.name}
-                                  </SearchSelectItem>
+                                  </SelectItem>
                                 ))}
-                          </SearchSelect>
-                        </FormControl>
+                          </SelectContent>
+                        </Select>
                         {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                         <FormMessage />
                       </FormItem>
@@ -296,15 +302,17 @@ function MobilePage({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Fornitore</FormLabel>
-                          <FormControl>
-                            <SearchSelect
-                              {...field}
-                              onChange={(e) => {
-                                // This ensures that the selected value updates the react-hook-form state
-                                field.onChange(e);
-                              }}
-                              disabled={isSubmitting}
-                            >
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={isSubmitting}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona fornitore" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
                               {data.suppliers
                                 .filter(
                                   (supplier: Supplier) =>
@@ -312,15 +320,15 @@ function MobilePage({
                                     form.watch("errorType")?.toLowerCase()
                                 )
                                 .map((supplier: Supplier) => (
-                                  <SearchSelectItem
+                                  <SelectItem
                                     key={supplier.id}
                                     value={supplier.id.toString()}
                                   >
                                     {supplier.name}
-                                  </SearchSelectItem>
+                                  </SelectItem>
                                 ))}
-                            </SearchSelect>
-                          </FormControl>
+                            </SelectContent>
+                          </Select>
                           {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                           <FormMessage />
                         </FormItem>
