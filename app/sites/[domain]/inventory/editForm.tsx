@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// @ts-ignore
 type Props = {
   handleClose: any;
   data: any;
