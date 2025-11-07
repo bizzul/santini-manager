@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
-import { Checkbox } from "flowbite-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function SinglePageComponent({ data, user }: { data: any; user: any }) {
   const router = useRouter();
@@ -90,7 +90,7 @@ function SinglePageComponent({ data, user }: { data: any; user: any }) {
             >
               <Checkbox
                 checked={!!checkedState.get(item.id)}
-                onChange={() =>
+                onCheckedChange={() =>
                   handleCheckboxChange(item.id, !checkedState.get(item.id))
                 }
               />

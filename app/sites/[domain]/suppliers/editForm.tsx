@@ -13,10 +13,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@tremor/react";
+import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/supplier/edit";
 import { useToast } from "@/components/ui/use-toast";
-import { SearchSelect, SearchSelectItem } from "@tremor/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Product_category, Supplier } from "@/types/supabase";
 import ImageUploader from "@/components/uploaders/ImageUploader";
 import Image from "next/image";
@@ -160,20 +166,22 @@ const EditProductForm = ({
               <FormLabel>Categoria</FormLabel>
               <FormControl>
                 {categories?.length && (
-                  <SearchSelect
-                    {...field}
-                    onChange={(e) => {
-                      // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(e);
-                    }}
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
                     disabled={isSubmitting}
                   >
-                    {categories.map((cat: Product_category) => (
-                      <SearchSelectItem key={cat.id} value={cat.name || ""}>
-                        {cat.name || "Unnamed"}
-                      </SearchSelectItem>
-                    ))}
-                  </SearchSelect>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat: Product_category) => (
+                        <SelectItem key={cat.id} value={cat.name || ""}>
+                          {cat.name || "Unnamed"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
