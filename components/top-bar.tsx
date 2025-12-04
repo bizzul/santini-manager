@@ -7,87 +7,56 @@ import { Button } from "@/components/ui/button";
 export default function TopBar({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
 
-  console.log("user", user);
   useEffect(() => {
-    if (user || user === null) {
-      setLoading(false);
-    }
-  }, [user]);
+    setLoading(false);
+  }, []);
 
-  const handleLogout = async () => {
-    try {
-      // Use a simple redirect instead of Supabase client-side logout
-      // The server-side auth will handle the session cleanup
-      window.location.href = "/logout";
-    } catch (error) {
-      console.error("Error during logout:", error);
-      // Fallback to direct redirect
-      window.location.href = "/logout";
-    }
+  const handleLogout = () => {
+    window.location.href = "/logout";
   };
+
+  const isAdmin = user?.role === "admin" || user?.role === "superadmin";
+
+  const topBarClasses =
+    "w-full h-16 bg-white/10 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-6";
 
   if (loading) {
     return (
-      <div className="w-full h-16 bg-white/10 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-6">
+      <div className={topBarClasses}>
         <div className="w-24 h-8 bg-white/20 rounded animate-pulse" />
         <div className="w-24 h-8 bg-white/20 rounded animate-pulse" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="w-full h-16 bg-white/10 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-6">
-        <div className="flex items-center space-x-4">
-          <Link
-            href="/"
-            className="text-xl font-semibold text-white hover:text-white/80 transition-colors"
-          >
-            Matris Manager
-          </Link>
-        </div>
-        <div className="text-sm text-center font-bold">
-          <Link href="/login">
-            <Button variant="outline" className="hover:bg-white/20">
-              Login
-            </Button>
-          </Link>
-        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-16 bg-white/10 backdrop-blur-md border-b border-white/20 flex items-center justify-between px-6">
-      <div className="flex items-center space-x-4">
-        <Link
-          href="/"
-          className="text-xl font-semibold text-white hover:text-white/80 transition-colors"
-        >
-          Matris Manager
-        </Link>
-      </div>
+    <div className={topBarClasses}>
+      <Link
+        href="/"
+        className="text-xl font-semibold text-white hover:text-white/80 transition-colors"
+      >
+        matris.pro
+      </Link>
 
-      <div className="flex items-center space-x-4">
+      <nav className="flex items-center gap-3">
         {user ? (
           <>
-            {user.role === "admin" ||
-              (user.role === "superadmin" && (
-                <Link href="/administration">
-                  <Button
-                    variant="outline"
-                    className="hover:bg-white/20 text-white border-white/30"
-                  >
-                    Go to administration
-                  </Button>
-                </Link>
-              ))}
+            {isAdmin && (
+              <Link href="/administration">
+                <Button
+                  variant="outline"
+                  className="hover:bg-white/20 text-white border-white/30"
+                >
+                  Admin
+                </Button>
+              </Link>
+            )}
             <Link href="/sites/select">
               <Button
                 variant="outline"
                 className="hover:bg-white/20 text-white border-white/30"
               >
-                Go to your sites
+                Manager
               </Button>
             </Link>
             <Button
@@ -99,18 +68,16 @@ export default function TopBar({ user }: { user: any }) {
             </Button>
           </>
         ) : (
-          <>
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="hover:bg-white/20 text-white border-white/30"
-              >
-                Login
-              </Button>
-            </Link>
-          </>
+          <Link href="/login">
+            <Button
+              variant="outline"
+              className="hover:bg-white/20 text-white border-white/30"
+            >
+              Login
+            </Button>
+          </Link>
         )}
-      </div>
+      </nav>
     </div>
   );
 }
