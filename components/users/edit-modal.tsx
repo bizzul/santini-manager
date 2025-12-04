@@ -14,7 +14,13 @@ import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/users/editInfo";
 import { Roles } from "@/types/supabase";
-import { Dropdown } from "flowbite-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import ImageUploader from "../uploaders/ImageUploader";
 import Image from "next/image";
 type Props = {
@@ -267,37 +273,44 @@ export const EditInfoModal: FC<Props> = ({
                     Ruolo dipendente
                   </h1>
                   <div className="w-full flex gap-4 pt-4 justify-center">
-                    <Dropdown
-                      style={{ backgroundColor: "#565656", borderRadius: 0 }}
-                      label="Modifica i ruoli"
-                    >
-                      {employeeRoles.map((role: Roles) => {
-                        const isChecked = focusedUser?.incarichi[0]?.some(
-                          (userRole: any) => userRole.id === role.id
-                        );
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="secondary"
+                          className="bg-[#565656] text-white"
+                        >
+                          Modifica i ruoli
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56">
+                        {employeeRoles.map((role: Roles) => {
+                          const isChecked = focusedUser?.incarichi[0]?.some(
+                            (userRole: any) => userRole.id === role.id
+                          );
 
-                        return (
-                          <Dropdown.Item key={role.id}>
-                            <div className="flex items-center">
-                              <label
-                                key={role.id}
-                                className="inline-flex items-center mr-4"
-                              >
-                                <input
-                                  type="checkbox"
-                                  value={role.id}
-                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-700 dark:focus:ring-offset-gray-700 focus:ring-2 dark:bg-gray-600 dark:border-gray-500"
-                                  {...register("incarico")}
-                                  disabled={loading || isSubmitting}
-                                  defaultChecked={isChecked}
-                                />
-                                <span className="ml-2">{role.name}</span>
-                              </label>
-                            </div>
-                          </Dropdown.Item>
-                        );
-                      })}
-                    </Dropdown>
+                          return (
+                            <DropdownMenuItem
+                              key={role.id}
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              <div className="flex items-center">
+                                <label className="inline-flex items-center mr-4 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    value={role.id}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500"
+                                    {...register("incarico")}
+                                    disabled={loading || isSubmitting}
+                                    defaultChecked={isChecked}
+                                  />
+                                  <span className="ml-2">{role.name}</span>
+                                </label>
+                              </div>
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   {errors.incarico && <span>Campo necessario</span>}
                 </div>
