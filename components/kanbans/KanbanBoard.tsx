@@ -381,138 +381,6 @@ function KanbanBoard({
     from: any;
     to: any;
   } | null>(null);
-  const [lastModifiedTimestamp, setLastModifiedTimestamp] =
-    useState<string>("");
-  const pollingIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const tasksRef = useRef(tasks); // Keep a ref of current tasks to avoid unnecessary updates
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  // Update ref when tasks change
-  useEffect(() => {
-    tasksRef.current = tasks;
-  }, [tasks]);
-
-  // Function to check for updates using last-modified timestamp
-  const checkForUpdates = async () => {
-    try {
-      const response = await fetch("/api/kanban/tasks/check-updates", {
-        headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-          "If-Modified-Since": lastModifiedTimestamp,
-        },
-      });
-
-      if (response.status === 304) {
-        // No changes
-        return false;
-      }
-
-      if (!response.ok) throw new Error("Failed to check for updates");
-
-      const newTimestamp = response.headers.get("Last-Modified");
-      if (newTimestamp && newTimestamp !== lastModifiedTimestamp) {
-        setLastModifiedTimestamp(newTimestamp);
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error("Error checking for updates:", error);
-      return false;
-    }
-  };
-
-  // Function to fetch and update tasks
-  const fetchAndUpdateTasks = async (forceFetch = false) => {
-    try {
-      const response = await fetch("/api/kanban/tasks", {
-        headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch tasks");
-
-      const newTimestamp = response.headers.get("Last-Modified");
-      if (newTimestamp) {
-        setLastModifiedTimestamp(newTimestamp);
-      }
-
-      const newTasks = await response.json();
-
-      // Only update if the data has actually changed
-      if (
-        Array.isArray(newTasks) &&
-        JSON.stringify(newTasks) !== JSON.stringify(tasksRef.current)
-      ) {
-        safeSetTasks(newTasks);
-      }
-    } catch (error) {
-      console.error("Error fetching tasks:", error);
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: "Impossibile aggiornare i dati",
-      });
-    }
-  };
-
-  // Real-time update system with visibility check
-  useEffect(() => {
-    let isActive = true;
-    let isChecking = false;
-
-    const startPolling = async () => {
-      if (!isActive || isChecking) return;
-
-      // Skip polling if page is not visible
-      if (document.hidden) {
-        pollingIntervalRef.current = setTimeout(startPolling, 5000); // Check again in 5s if hidden
-        return;
-      }
-
-      try {
-        isChecking = true;
-        // Check for updates
-        const hasUpdates = await checkForUpdates();
-
-        if (hasUpdates) {
-          // If there are updates, fetch the new data
-          await fetchAndUpdateTasks(true);
-        }
-      } catch (error) {
-        console.error("Error in polling:", error);
-      } finally {
-        isChecking = false;
-      }
-
-      // Schedule next check - increased interval to reduce API calls
-      if (isActive) {
-        pollingIntervalRef.current = setTimeout(startPolling, 15000); // 15 seconds for better performance
-      }
-    };
-
-    // Initial fetch
-    fetchAndUpdateTasks(true).then(() => {
-      // Start polling after initial fetch
-      if (isActive) {
-        startPolling();
-      }
-    });
-
-    // Cleanup
-    return () => {
-      isActive = false;
-      if (pollingIntervalRef.current) {
-        clearTimeout(pollingIntervalRef.current);
-      }
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
-      }
-    };
-  }, []); // Empty dependency array since we want this to run once on mount
 
   // Optimize moveCard function
   const moveCard = async (id: any, column: any, columnName: any) => {
@@ -556,7 +424,6 @@ function KanbanBoard({
       });
 
       safeSetTasks(updatedTasks);
-      tasksRef.current = updatedTasks;
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -588,10 +455,6 @@ function KanbanBoard({
       }
 
       const responseData = await response.json();
-      const newTimestamp = response.headers.get("Last-Modified");
-      if (newTimestamp) {
-        setLastModifiedTimestamp(newTimestamp);
-      }
 
       // Update the card with server response data
       const finalTasks = updatedTasks.map((card) => {
@@ -606,7 +469,6 @@ function KanbanBoard({
       });
 
       safeSetTasks(finalTasks);
-      tasksRef.current = finalTasks;
 
       if (responseData.qc?.length > 0 && responseData.pc?.length > 0) {
         toast({
@@ -635,7 +497,6 @@ function KanbanBoard({
           return card;
         });
         safeSetTasks(revertedTasks);
-        tasksRef.current = revertedTasks;
       }
 
       const errorMessage =
@@ -652,8 +513,8 @@ function KanbanBoard({
 
   const handlePreviewSnapshot = async (timestamp: Date | null) => {
     if (!timestamp) {
-      // Reset to original state and fetch latest data
-      await fetchAndUpdateTasks();
+      // Reset to original state - reload page to get fresh data
+      window.location.reload();
       return;
     }
 

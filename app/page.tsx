@@ -76,7 +76,7 @@ export default async function Home() {
                     variant="outline"
                     className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg px-8 py-6 font-semibold"
                   >
-                    Vai ai tuoi siti →
+                    I miei spazi →
                   </Button>
                 </Link>
               ) : (
@@ -84,18 +84,10 @@ export default async function Home() {
                   <Link href="/login">
                     <Button
                       size="lg"
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 hover:scale-105 text-white border-0 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg px-8 py-6 font-semibold"
-                    >
-                      Accedi →
-                    </Button>
-                  </Link>
-                  <Link href="/auth">
-                    <Button
-                      size="lg"
                       variant="outline"
                       className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg px-8 py-6 font-semibold"
                     >
-                      Registrati
+                      Accedi →
                     </Button>
                   </Link>
                 </>

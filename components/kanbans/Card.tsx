@@ -463,7 +463,7 @@ export default function Card({
                   <div className="flex flex-col">
                     <p className="font-bold">{data.unique_code}</p>
                     <span className="text-xs font-light">
-                      {data.sellProduct?.name}
+                      {data.sellProduct?.type}
                     </span>
                     <span className="text-xs font-medium">{data.name}</span>
                   </div>
@@ -542,22 +542,6 @@ export default function Card({
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            handleFerramentaCheck(!ferramentaCheck);
-                          }}
-                          className={`text-xs px-3 py-2 border dark:border-white bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                            ferramentaCheck
-                              ? " bg-green-500 text-white border-white"
-                              : ""
-                          }`}
-                        >
-                          Ferr.
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
                             handleVerniceCheck(!verniceCheck);
                           }}
                           className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
@@ -587,38 +571,6 @@ export default function Card({
                       </>
                     ) : (
                       <>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleFerramentaCheck(!ferramentaCheck);
-                          }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                            ferramentaCheck
-                              ? " bg-green-500 text-white border-white"
-                              : ""
-                          }`}
-                        >
-                          Ferr.
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleMetalliCheck(!metalliCheck);
-                          }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                            metalliCheck
-                              ? " bg-green-500 text-white border-white"
-                              : ""
-                          }`}
-                        >
-                          Metal.
-                        </Button>
                         {data.column?.identifier === "IMBALLAGGIO" && (
                           <Button
                             variant="default"

@@ -1,4 +1,23 @@
 import { getSiteData } from "@/lib/fetchers";
+import {
+  Layers,
+  Factory,
+  AlertCircle,
+  DollarSign,
+  Users,
+  TrendingUp,
+  Clock,
+  FileText,
+  Clipboard,
+  Package,
+  Settings,
+  Building,
+  FolderKanban,
+  TrendingDown,
+} from "lucide-react";
+import OffersCard from "@/components/dashboard/OffersCard";
+import ProductionOrdersCard from "@/components/dashboard/ProductionOrdersCard";
+import OffersChartCard from "@/components/dashboard/OffersChartCard";
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
@@ -32,141 +51,56 @@ export default async function SiteDashboardPage({
   const site = siteData.data;
 
   return (
-    <div className="space-y-4 p-4 md:p-8 w-full">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {site.name} Dashboard
-        </h2>
-      </div>
-      <div className="space-y-4">
+    <div className="space-y-6 p-4 md:p-8 w-full">
+      {/* Header */}
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold tracking-tight">Dashboard Home</h1>
         <p className="text-muted-foreground">
-          Welcome to your site dashboard. Manage your projects, tasks, and
-          resources.
+          Stato generale – aggiornamento odierno
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Quick Stats Cards */}
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">
-              Active Projects
-            </h3>
-          </div>
-          <div className="p-6 pt-0">
-            <div className="text-2xl font-bold text-blue-600">12</div>
-          </div>
-        </div>
+      {/* Top Cards with Production Orders and Offers */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Ordini totali in produzione - 50% */}
+        <ProductionOrdersCard />
 
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Open Tasks</h3>
-          </div>
-          <div className="p-6 pt-0">
-            <div className="text-2xl font-bold text-green-600">45</div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Team Members</h3>
-          </div>
-          <div className="p-6 pt-0">
-            <div className="text-2xl font-bold text-purple-600">8</div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">Site Status</h3>
-          </div>
-          <div className="p-6 pt-0">
-            <div className="text-2xl font-bold text-green-600">Active</div>
-          </div>
-        </div>
+        {/* Offerte totali - 50% */}
+        <OffersChartCard />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Quick Actions */}
-        <div className="col-span-4 rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">
-              Quick Actions
-            </h3>
-          </div>
-          <div className="p-6 pt-0">
-            <div className="space-y-2">
-              <a
-                href={`/sites/${domain}/kanban`}
-                className="block p-3 bg-blue-50 dark:bg-blue-900/20 text-black rounded-sm hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-              >
-                View Kanban Boards
-              </a>
-              <a
-                href={`/sites/${domain}/projects`}
-                className="block p-3 bg-green-50 dark:bg-green-900/20 text-black rounded-sm hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-              >
-                Manage Projects
-              </a>
-              <a
-                href={`/sites/${domain}/inventory`}
-                className="block p-3 bg-orange-50 dark:bg-orange-900/20 text-black rounded-sm hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
-              >
-                Check Inventory
-              </a>
+      {/* Offerte Card - Expanded */}
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <OffersCard />
+
+        {/* Saldo del conto */}
+        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-blue-500" />
             </div>
+            <span className="text-green-500 text-xs font-medium bg-green-500/10 px-2 py-1 rounded">
+              +12%
+            </span>
           </div>
+          <p className="text-xs text-muted-foreground font-medium mb-2">
+            Saldo del conto
+          </p>
+          <h3 className="text-2xl font-bold">CHF 487k</h3>
         </div>
 
-        {/* Recent Activity */}
-        <div className="col-span-3 rounded-xl border bg-card text-card-foreground shadow-sm">
-          <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-            <h3 className="tracking-tight text-sm font-medium">
-              Recent Activity
-            </h3>
+        {/* HR */}
+        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+              <Users className="w-5 h-5 text-green-500" />
+            </div>
+            <span className="text-green-500 text-xs font-medium bg-green-500/10 px-2 py-1 rounded">
+              +12%
+            </span>
           </div>
-          <div className="p-6 pt-0">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm">
-                  New task created in Project Alpha
-                </span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm">Kanban board updated</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span className="text-sm">Inventory item restocked</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Site Info */}
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
-        <div className="p-6 flex flex-row items-center justify-between space-y-0 pb-2">
-          <h3 className="tracking-tight text-sm font-medium">
-            Site Information
-          </h3>
-        </div>
-        <div className="p-6 pt-0">
-          <div className="grid gap-4 md:grid-cols-3 text-sm">
-            <div>
-              <span className="font-medium">Domain:</span> {domain}
-            </div>
-            <div>
-              <span className="font-medium">Description:</span>{" "}
-              {site.description || "No description"}
-            </div>
-            <div>
-              <span className="font-medium">Created:</span>{" "}
-              {new Date().toLocaleDateString()}
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground font-medium mb-2">HR</p>
+          <h3 className="text-2xl font-bold">24 / 26</h3>
         </div>
       </div>
     </div>

@@ -454,30 +454,6 @@ export function AppSidebar() {
     }
   }, [kanbansLocal.length, isOnline, fetchKanbansOptimized]);
 
-  // Reduced refresh frequency for better performance
-  useEffect(() => {
-    if (!isOnline) return;
-
-    const interval = setInterval(() => {
-      const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-      if (!lastSyncTime || lastSyncTime < fifteenMinutesAgo) {
-        refreshKanbansOptimized();
-      }
-    }, 300000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [isOnline, lastSyncTime, refreshKanbansOptimized]);
-
-  useEffect(() => {
-    if (isOnline && lastOnlineTime) {
-      refreshKanbansOptimized();
-      toast({
-        title: "Connessione ripristinata",
-        description: "I dati sono stati aggiornati automaticamente",
-      });
-    }
-  }, [isOnline, lastOnlineTime, refreshKanbansOptimized]);
-
   // Optimized menu items generation
   const menuItems = useMemo(() => {
     const items = getMenuItems(
