@@ -26,7 +26,7 @@ const font: Font = {
   // },
 };
 
-const template: Template = {
+const template: any = {
   basePdf: basePdfIta,
   schemas: [
     {
@@ -202,7 +202,7 @@ const template: Template = {
         fontName: "suisseframe",
       },
     },
-  ],
+  ] as any,
 };
 
 export const POST = async (req: NextRequest) => {
