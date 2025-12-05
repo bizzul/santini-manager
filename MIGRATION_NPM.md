@@ -38,7 +38,9 @@ Spostate da `devDependencies` a `dependencies` (richieste per build su Vercel):
 "@tailwindcss/postcss": "^4.1.17",
 "tailwindcss": "^4.1.17",
 "postcss": "^8.5.6",
-"typescript": "^5.9.3"
+"typescript": "^5.9.3",
+"@types/react": "19.1.12",
+"@types/react-dom": "19.1.9"
 ```
 
 Aggiunte `optionalDependencies` per garantire installazione binari lightningcss su Vercel:
