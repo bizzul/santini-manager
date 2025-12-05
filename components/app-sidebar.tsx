@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback, memo } from "react";
+import React, { useState, useMemo, useCallback, memo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -10,8 +10,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
+  SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useUserContext } from "@/hooks/use-user-context";
 import { UserContext } from "@/lib/auth-utils";
 import { usePathname } from "next/navigation";
@@ -24,9 +34,9 @@ import { useKanbanStore } from "../store/kanban-store";
 import { Kanban } from "../store/kanban-store";
 import Link from "next/link";
 import { useOnlineStatus } from "@/hooks/use-online-status";
-import { NetworkStatus } from "@/components/ui/network-status";
 import { useSiteModules } from "@/hooks/use-site-modules";
 import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faWaveSquare,
@@ -41,6 +51,15 @@ import {
   faUsers,
   faWrench,
   faPlus,
+  faBuilding,
+  faTruckField,
+  faUserTie,
+  faWarehouse,
+  faCalendarDays,
+  faCalendarCheck,
+  faBriefcase,
+  faIndustry,
+  faListUl,
 } from "@fortawesome/free-solid-svg-icons";
 
 // Icon mapping for sidebar
@@ -57,56 +76,37 @@ const iconMap = {
   faUsers,
   faWrench,
   faPlus,
+  faBuilding,
+  faTruckField,
+  faUserTie,
+  faWarehouse,
+  faCalendarDays,
+  faCalendarCheck,
+  faBriefcase,
+  faIndustry,
+  faListUl,
 };
 
-// Cache for API responses with improved TTL management
-const apiCache = new Map<
-  string,
-  { data: any; timestamp: number; ttl: number }
->();
+// Fetch functions for React Query
+async function fetchSiteData(domain: string) {
+  const response = await fetch(`/api/sites/${domain}`);
+  if (!response.ok) throw new Error("Failed to fetch site data");
+  const data = await response.json();
+  return {
+    name: data.name || domain,
+    organization: { name: data.organization?.name || "" },
+  };
+}
 
-// Optimized cache TTL values
-const CACHE_TTL = {
-  KANBANS: 5 * 60 * 1000, // 5 minutes
-  USER_DATA: 10 * 60 * 1000, // 10 minutes
-  ORGANIZATION: 30 * 60 * 1000, // 30 minutes
-  SITE_DATA: 15 * 60 * 1000, // 15 minutes (reduced from 1 hour)
-};
-
-// Enhanced cache management
-const getCachedData = (key: string): any | null => {
-  const cached = apiCache.get(key);
-  if (!cached) return null;
-
-  const now = Date.now();
-  if (now - cached.timestamp > cached.ttl) {
-    apiCache.delete(key);
-    return null;
-  }
-
-  return cached.data;
-};
-
-const setCachedData = (key: string, data: any, ttl: number): void => {
-  apiCache.set(key, {
-    data,
-    timestamp: Date.now(),
-    ttl,
-  });
-};
-
-// Clear expired cache entries periodically
-const cleanupCache = () => {
-  const now = Date.now();
-  apiCache.forEach((value, key) => {
-    if (now - value.timestamp > value.ttl) {
-      apiCache.delete(key);
-    }
-  });
-};
-
-// Run cache cleanup every 5 minutes
-setInterval(cleanupCache, 5 * 60 * 1000);
+async function fetchKanbans(domain: string): Promise<Kanban[]> {
+  const response = await fetch(
+    `/api/kanban/list?domain=${encodeURIComponent(domain)}`,
+    { headers: { host: domain } }
+  );
+  if (!response.ok) throw new Error("Failed to fetch kanbans");
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
 
 type MenuItem = {
   label: string;
@@ -143,9 +143,116 @@ const getMenuItems = (
     {
       label: "Kanban",
       icon: "faTable",
-      href: `${basePath}/kanban`,
       alert: true,
       moduleName: "kanban",
+      items: [
+        {
+          label: "Kanban Ufficio",
+          icon: "faBriefcase",
+          href: `${basePath}/kanban?type=office`,
+          alert: false,
+          moduleName: "kanban",
+        },
+        {
+          label: "Kanban Produzione",
+          icon: "faIndustry",
+          href: `${basePath}/kanban?type=production`,
+          alert: false,
+          moduleName: "kanban",
+        },
+      ],
+    },
+    {
+      label: "Calendari",
+      icon: "faCalendarDays",
+      alert: false,
+      items: [
+        {
+          label: "Data Produzione",
+          icon: "faCalendarCheck",
+          href: `${basePath}/calendar`,
+          alert: false,
+          moduleName: "calendar",
+        },
+        {
+          label: "Data Posa",
+          icon: "faCalendarDays",
+          href: `${basePath}/calendar-installation`,
+          alert: false,
+          moduleName: "calendar",
+        },
+      ],
+    },
+    {
+      label: "Ore",
+      icon: "faClock",
+      href: `${basePath}/timetracking`,
+      alert: false,
+      moduleName: "timetracking",
+    },
+    {
+      label: "Contatti",
+      icon: "faUsers",
+      alert: false,
+      items: [
+        {
+          label: "Clienti",
+          icon: "faUser",
+          href: `${basePath}/clients`,
+          alert: false,
+          moduleName: "clients",
+        },
+        {
+          label: "Fornitori",
+          icon: "faHelmetSafety",
+          href: `${basePath}/suppliers`,
+          alert: false,
+          moduleName: "suppliers",
+        },
+        {
+          label: "Produttori",
+          icon: "faIndustry",
+          href: `${basePath}/manufacturers`,
+          alert: false,
+          moduleName: "manufacturers",
+        },
+        {
+          label: "Collaboratori",
+          icon: "faUserTie",
+          href: `${basePath}/collaborators`,
+          alert: false,
+          moduleName: "collaborators",
+        },
+      ],
+    },
+    {
+      label: "Magazzino",
+      icon: "faWarehouse",
+      alert: false,
+      moduleName: "inventory",
+      items: [
+        {
+          label: "Inventario",
+          icon: "faBox",
+          href: `${basePath}/inventory`,
+          alert: false,
+          moduleName: "inventory",
+        },
+        {
+          label: "Categorie",
+          icon: "faListUl",
+          href: `${basePath}/categories`,
+          alert: false,
+          moduleName: "categories",
+        },
+      ],
+    },
+    {
+      label: "Prodotti",
+      icon: "faBox",
+      href: `${basePath}/products`,
+      alert: false,
+      moduleName: "products",
     },
     {
       label: "Progetti",
@@ -155,32 +262,11 @@ const getMenuItems = (
       moduleName: "projects",
     },
     {
-      label: "Calendario",
-      icon: "faClock",
-      href: `${basePath}/calendar`,
-      alert: false,
-      moduleName: "calendar",
-    },
-    {
-      label: "Clienti",
-      icon: "faUser",
-      href: `${basePath}/clients`,
-      alert: false,
-      moduleName: "clients",
-    },
-    {
       label: "Errori",
       icon: "faExclamation",
       href: `${basePath}/errortracking`,
       alert: false,
       moduleName: "errortracking",
-    },
-    {
-      label: "Ore",
-      icon: "faClock",
-      href: `${basePath}/timetracking`,
-      alert: false,
-      moduleName: "timetracking",
     },
     {
       label: "Reports",
@@ -218,34 +304,6 @@ const getMenuItems = (
           moduleName: "boxing",
         },
       ],
-    },
-    {
-      label: "Inventario",
-      icon: "faBox",
-      href: `${basePath}/inventory`,
-      alert: false,
-      moduleName: "inventory",
-    },
-    {
-      label: "Prodotti",
-      icon: "faBox",
-      href: `${basePath}/products`,
-      alert: false,
-      moduleName: "products",
-    },
-    {
-      label: "Fornitori",
-      icon: "faHelmetSafety",
-      href: `${basePath}/suppliers`,
-      alert: false,
-      moduleName: "suppliers",
-    },
-    {
-      label: "Categorie",
-      icon: "faTable",
-      href: `${basePath}/categories`,
-      alert: false,
-      moduleName: "categories",
     },
   ];
 
@@ -303,88 +361,38 @@ export function AppSidebar() {
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
     {}
   );
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  const [organizationName, setOrganizationName] = useState<string>("");
-  const [siteData, setSiteData] = useState<{
-    name: string;
-    organization: { name: string };
-  } | null>(null);
   const { toast } = useToast();
-  const { isOnline, lastOnlineTime } = useOnlineStatus();
+  const { isOnline } = useOnlineStatus();
+  const queryClient = useQueryClient();
 
   // Optimized domain extraction
   const domain = useMemo(() => extractDomainFromPath(pathname), [pathname]);
   const basePath = useMemo(() => (domain ? `/sites/${domain}` : ""), [domain]);
 
-  // Enhanced site modules hook usage
+  // Enhanced site modules hook usage (already uses React Query)
   const { enabledModules } = useSiteModules(domain || "");
 
-  // Optimized data fetching functions
-  const fetchSiteData = useCallback(async (domain: string) => {
-    const cacheKey = `site_data_${domain}`;
-    const cached = getCachedData(cacheKey);
+  // OPTIMIZED: Use React Query for site data caching
+  const { data: siteData } = useQuery({
+    queryKey: ["site-data", domain],
+    queryFn: () => fetchSiteData(domain!),
+    enabled: !!domain,
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 60 * 60 * 1000, // 1 hour
+  });
 
-    if (cached) {
-      setSiteData(cached);
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/sites/${domain}`);
-      if (response.ok) {
-        const data = await response.json();
-        const siteInfo = {
-          name: data.name || domain,
-          organization: { name: data.organization?.name || "" },
-        };
-        setCachedData(cacheKey, siteInfo, CACHE_TTL.SITE_DATA);
-        setSiteData(siteInfo);
-      }
-    } catch (error) {
-      console.error("Error fetching site data:", error);
-      setSiteData(null);
-    }
-  }, []);
-
-  // Optimized kanban management
-  const [kanbansLocal, setKanbansLocal] = useState<Kanban[]>([]);
-  const [isLoadingKanbansLocal, setIsLoadingKanbansLocal] = useState(false);
-
-  const fetchKanbansOptimized = useCallback(async () => {
-    if (!domain) return [];
-
-    const cacheKey = `kanbans_list_${domain}`;
-    const cached = getCachedData(cacheKey);
-
-    if (cached) {
-      setKanbansLocal(cached);
-      return cached;
-    }
-
-    try {
-      const response = await fetch(
-        `/api/kanban/list?domain=${encodeURIComponent(domain)}`,
-        {
-          headers: {
-            host: domain,
-          },
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch kanbans");
-      const data = await response.json();
-      const kanbanData = Array.isArray(data) ? data : [];
-
-      setCachedData(cacheKey, kanbanData, CACHE_TTL.KANBANS);
-      setKanbansLocal(kanbanData);
-      setLastSyncTime(new Date());
-
-      return kanbanData;
-    } catch (error) {
-      console.error("Error fetching kanbans:", error);
-      setKanbansLocal([]);
-      return [];
-    }
-  }, [domain]);
+  // OPTIMIZED: Use React Query for kanbans caching
+  const {
+    data: kanbansLocal = [],
+    isLoading: isLoadingKanbansLocal,
+    refetch: refetchKanbans,
+  } = useQuery({
+    queryKey: ["kanbans-list", domain],
+    queryFn: () => fetchKanbans(domain!),
+    enabled: !!domain && isOnline,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 30 * 60 * 1000, // 30 minutes
+  });
 
   const refreshKanbansOptimized = useCallback(async () => {
     if (!isOnline || !domain) {
@@ -398,24 +406,8 @@ export function AppSidebar() {
       return;
     }
 
-    setIsLoadingKanbansLocal(true);
     try {
-      const response = await fetch(
-        `/api/kanban/list?domain=${encodeURIComponent(domain)}`,
-        {
-          headers: {
-            host: domain,
-          },
-        }
-      );
-      if (!response.ok) throw new Error("Failed to fetch kanbans");
-      const data = await response.json();
-      const kanbanData = Array.isArray(data) ? data : [];
-
-      setCachedData(`kanbans_list_${domain}`, kanbanData, CACHE_TTL.KANBANS);
-      setKanbansLocal(kanbanData);
-      setLastSyncTime(new Date());
-
+      await refetchKanbans();
       toast({
         title: "Aggiornamento completato",
         description: "Lista kanban aggiornata con successo",
@@ -427,32 +419,8 @@ export function AppSidebar() {
         description: "Impossibile aggiornare la lista kanban",
         variant: "destructive",
       });
-    } finally {
-      setIsLoadingKanbansLocal(false);
     }
-  }, [isOnline, toast, domain]);
-
-  // Optimized effects
-  useEffect(() => {
-    if (!userContext) {
-      // No fetchUserData needed as userContext is now directly available
-    }
-  }, [userContext]);
-
-  useEffect(() => {
-    if (domain) {
-      fetchSiteData(domain);
-    }
-  }, [domain, fetchSiteData]);
-
-  useEffect(() => {
-    if (kanbansLocal.length === 0 && isOnline) {
-      setIsLoadingKanbansLocal(true);
-      fetchKanbansOptimized().finally(() => {
-        setIsLoadingKanbansLocal(false);
-      });
-    }
-  }, [kanbansLocal.length, isOnline, fetchKanbansOptimized]);
+  }, [isOnline, toast, domain, refetchKanbans]);
 
   // Optimized menu items generation
   const menuItems = useMemo(() => {
@@ -464,39 +432,104 @@ export function AppSidebar() {
 
     return items.map((item: MenuItem) => {
       if (item.label === "Kanban") {
+        // Filtra i kanban per tipo (ufficio vs produzione)
+        const officeKanbans = kanbansLocal.filter(
+          (k) => !k.type || k.type === "office"
+        );
+        const productionKanbans = kanbansLocal.filter(
+          (k) => k.type === "production"
+        );
+
+        const isSuperAdmin = userContext?.role === "superadmin";
+
         const kanbanSubItems = [
-          ...(isLoadingKanbansLocal
-            ? [
-                {
-                  label: "Caricamento...",
-                  icon: "faWrench" as const,
-                  href: "#",
-                  alert: false,
-                },
-              ]
-            : kanbansLocal.length === 0
-            ? [
-                {
-                  label: isOnline
-                    ? "Nessun kanban disponibile"
-                    : "Dati non disponibili offline",
-                  icon: "faTable" as const,
-                  href: "#",
-                  alert: false,
-                },
-              ]
-            : kanbansLocal.map((kanban) => ({
-                label: kanban.title,
-                icon: "faTable" as const,
-                href: `${basePath}/kanban?name=${kanban.identifier}`,
-                alert: false,
-                id: kanban.id || kanban.identifier, // Add unique identifier
-              }))),
           {
-            label: "Crea Kanban",
-            icon: "faPlus" as const,
-            action: () => openCreateModal(),
+            label: "Kanban Ufficio",
+            icon: "faBriefcase" as const,
             alert: false,
+            items: [
+              ...(isLoadingKanbansLocal
+                ? [
+                    {
+                      label: "Caricamento...",
+                      icon: "faWrench" as const,
+                      href: "#",
+                      alert: false,
+                    },
+                  ]
+                : officeKanbans.length === 0
+                ? [
+                    {
+                      label: isOnline
+                        ? "Nessun kanban disponibile"
+                        : "Dati non disponibili offline",
+                      icon: "faTable" as const,
+                      href: "#",
+                      alert: false,
+                    },
+                  ]
+                : officeKanbans.map((kanban) => ({
+                    label: kanban.title,
+                    icon: "faTable" as const,
+                    href: `${basePath}/kanban?name=${kanban.identifier}&type=office`,
+                    alert: false,
+                    id: kanban.id || kanban.identifier,
+                  }))),
+              ...(isSuperAdmin
+                ? [
+                    {
+                      label: "Crea Kanban Ufficio",
+                      icon: "faPlus" as const,
+                      action: () => openCreateModal(),
+                      alert: false,
+                    },
+                  ]
+                : []),
+            ],
+          },
+          {
+            label: "Kanban Produzione",
+            icon: "faIndustry" as const,
+            alert: false,
+            items: [
+              ...(isLoadingKanbansLocal
+                ? [
+                    {
+                      label: "Caricamento...",
+                      icon: "faWrench" as const,
+                      href: "#",
+                      alert: false,
+                    },
+                  ]
+                : productionKanbans.length === 0
+                ? [
+                    {
+                      label: isOnline
+                        ? "Nessun kanban disponibile"
+                        : "Dati non disponibili offline",
+                      icon: "faTable" as const,
+                      href: "#",
+                      alert: false,
+                    },
+                  ]
+                : productionKanbans.map((kanban) => ({
+                    label: kanban.title,
+                    icon: "faTable" as const,
+                    href: `${basePath}/kanban?name=${kanban.identifier}&type=production`,
+                    alert: false,
+                    id: kanban.id || kanban.identifier,
+                  }))),
+              ...(isSuperAdmin
+                ? [
+                    {
+                      label: "Crea Kanban Produzione",
+                      icon: "faPlus" as const,
+                      action: () => openCreateModal(),
+                      alert: false,
+                    },
+                  ]
+                : []),
+            ],
           },
         ];
 
@@ -514,6 +547,8 @@ export function AppSidebar() {
     kanbansLocal,
     isLoadingKanbansLocal,
     isOnline,
+    userContext,
+    openCreateModal,
   ]);
 
   // Optimized utility functions
@@ -537,7 +572,8 @@ export function AppSidebar() {
     async (kanbanData: Kanban) => {
       try {
         await saveKanban(kanbanData, domain || "");
-        await refreshKanbansOptimized();
+        // Invalidate cache to refetch
+        queryClient.invalidateQueries({ queryKey: ["kanbans-list", domain] });
         toast({
           title: "Successo",
           description: "Kanban salvato correttamente",
@@ -552,15 +588,8 @@ export function AppSidebar() {
         });
       }
     },
-    [refreshKanbansOptimized, toast, domain]
+    [queryClient, toast, domain]
   );
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      apiCache.clear();
-    };
-  }, []);
 
   // Optimized display values
   const displayTitle = useMemo(() => {
@@ -569,133 +598,317 @@ export function AppSidebar() {
         ? `${siteData.organization.name} - ${siteData.name}`
         : siteData.name;
     }
-    return organizationName || "Organization";
-  }, [siteData, organizationName]);
+    return "Organization";
+  }, [siteData]);
+
+  // Raggruppa i menu items per categoria
+  const groupedMenuItems = useMemo(() => {
+    const core = menuItems.filter((item) => item.label === "Dashboard");
+    const projects = menuItems.filter((item) => item.label === "Kanban");
+    const calendars = menuItems.filter((item) => item.label === "Calendari");
+    const time = menuItems.filter((item) => item.label === "Ore");
+    const contacts = menuItems.filter((item) => item.label === "Contatti");
+    const warehouse = menuItems.filter((item) => item.label === "Magazzino");
+    const products = menuItems.filter((item) => item.label === "Prodotti");
+    const others = menuItems.filter(
+      (item) =>
+        ![
+          "Dashboard",
+          "Kanban",
+          "Calendari",
+          "Ore",
+          "Contatti",
+          "Magazzino",
+          "Prodotti",
+        ].includes(item.label)
+    );
+
+    return {
+      core,
+      projects,
+      calendars,
+      time,
+      contacts,
+      warehouse,
+      products,
+      others,
+    };
+  }, [menuItems]);
+
+  const renderMenuItem = (item: MenuItem) => {
+    // If item has subitems, use Collapsible
+    if (item.items) {
+      return (
+        <Collapsible
+          key={item.label}
+          open={!collapsedMenus[item.label]}
+          onOpenChange={() => toggleMenu(item.label)}
+          className="group/collapsible"
+        >
+          <SidebarMenuItem>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuButton
+                tooltip={item.label}
+                isActive={item.href ? isActive(item.href) : false}
+              >
+                <FontAwesomeIcon
+                  icon={iconMap[item.icon]}
+                  className="w-4 h-4"
+                />
+                <span>{item.label}</span>
+              </SidebarMenuButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub>
+                {item.items.map((subItem: MenuItem, index: number) => {
+                  if (subItem.items) {
+                    // Nested collapsible for third level
+                    return (
+                      <Collapsible
+                        key={
+                          subItem.id ||
+                          subItem.href ||
+                          `${subItem.label}-${index}`
+                        }
+                        open={!collapsedMenus[subItem.label]}
+                        onOpenChange={() => toggleMenu(subItem.label)}
+                        className="group/collapsible"
+                      >
+                        <SidebarMenuSubItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuSubButton>
+                              <FontAwesomeIcon
+                                icon={iconMap[subItem.icon]}
+                                className="w-4 h-4"
+                              />
+                              <span>{subItem.label}</span>
+                            </SidebarMenuSubButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {subItem.items.map(
+                                (nestedItem: MenuItem, nestedIndex: number) => (
+                                  <SidebarMenuSubItem
+                                    key={
+                                      nestedItem.id ||
+                                      nestedItem.href ||
+                                      `${nestedItem.label}-${nestedIndex}`
+                                    }
+                                  >
+                                    <SidebarMenuSubButton
+                                      asChild={
+                                        !!nestedItem.href && !nestedItem.action
+                                      }
+                                      isActive={
+                                        nestedItem.href
+                                          ? isActive(nestedItem.href)
+                                          : false
+                                      }
+                                      onClick={nestedItem.action}
+                                      className={
+                                        nestedItem.action
+                                          ? "[&>div>span]:whitespace-normal [&>div>span]:break-words"
+                                          : ""
+                                      }
+                                    >
+                                      {nestedItem.action ? (
+                                        <div className="flex items-center gap-2">
+                                          <FontAwesomeIcon
+                                            icon={iconMap[nestedItem.icon]}
+                                            className="w-4 h-4 flex-shrink-0"
+                                          />
+                                          <span className="whitespace-normal break-words">
+                                            {nestedItem.label}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <Link href={nestedItem.href!}>
+                                          <FontAwesomeIcon
+                                            icon={iconMap[nestedItem.icon]}
+                                            className="w-4 h-4"
+                                          />
+                                          <span>{nestedItem.label}</span>
+                                        </Link>
+                                      )}
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                )
+                              )}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuSubItem>
+                      </Collapsible>
+                    );
+                  }
+
+                  return (
+                    <SidebarMenuSubItem
+                      key={
+                        subItem.id ||
+                        subItem.href ||
+                        `${subItem.label}-${index}`
+                      }
+                    >
+                      {subItem.customComponent ? (
+                        subItem.customComponent
+                      ) : (
+                        <SidebarMenuSubButton
+                          asChild={!!subItem.href && !subItem.action}
+                          isActive={
+                            subItem.href ? isActive(subItem.href) : false
+                          }
+                          onClick={subItem.action}
+                          className={
+                            subItem.action
+                              ? "[&>div>span]:whitespace-normal [&>div>span]:break-words"
+                              : ""
+                          }
+                        >
+                          {subItem.action ? (
+                            <div className="flex items-center gap-2 cursor-pointer">
+                              <FontAwesomeIcon
+                                icon={iconMap[subItem.icon]}
+                                className="w-4 h-4 flex-shrink-0"
+                              />
+                              <span className="whitespace-normal break-words">
+                                {subItem.label}
+                              </span>
+                            </div>
+                          ) : (
+                            <Link href={subItem.href!}>
+                              <FontAwesomeIcon
+                                icon={iconMap[subItem.icon]}
+                                className="w-4 h-4"
+                              />
+                              <span>{subItem.label}</span>
+                            </Link>
+                          )}
+                        </SidebarMenuSubButton>
+                      )}
+                    </SidebarMenuSubItem>
+                  );
+                })}
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuItem>
+        </Collapsible>
+      );
+    }
+
+    // Regular menu item without subitems
+    return (
+      <SidebarMenuItem key={item.label}>
+        <SidebarMenuButton
+          asChild={!!item.href && !item.action}
+          tooltip={item.label}
+          isActive={item.href ? isActive(item.href) : false}
+          onClick={item.action}
+        >
+          {item.action ? (
+            <div className="flex items-center gap-2 cursor-pointer">
+              <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
+              <span>{item.label}</span>
+            </div>
+          ) : (
+            <Link href={item.href!}>
+              <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
+              <span>{item.label}</span>
+            </Link>
+          )}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
+        {/* Overview Section */}
         <SidebarGroup>
           <SidebarGroupLabel>{displayTitle}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item: MenuItem) => (
-                <React.Fragment key={item.label}>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      asChild={!item.items}
-                      isActive={item.href ? isActive(item.href) : false}
-                      className={
-                        item.href && isActive(item.href)
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                          : ""
-                      }
-                      onClick={
-                        item.items
-                          ? () => toggleMenu(item.label)
-                          : item.action
-                          ? item.action
-                          : undefined
-                      }
-                    >
-                      {item.items ? (
-                        <>
-                          <FontAwesomeIcon
-                            icon={iconMap[item.icon]}
-                            className="w-4 h-4"
-                          />
-                          <span>{item.label}</span>
-                        </>
-                      ) : item.action ? (
-                        <div className="flex items-center gap-2">
-                          <FontAwesomeIcon
-                            icon={iconMap[item.icon]}
-                            className="w-4 h-4"
-                          />
-                          <span>{item.label}</span>
-                        </div>
-                      ) : (
-                        <Link href={item.href!}>
-                          <div className="flex items-center gap-2">
-                            <FontAwesomeIcon
-                              icon={iconMap[item.icon]}
-                              className="w-4 h-4"
-                            />
-                            <span>{item.label}</span>
-                          </div>
-                        </Link>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  {item.items && !collapsedMenus[item.label] && (
-                    <div className="pl-4">
-                      {item.items.map((subItem: MenuItem, index: number) => (
-                        <SidebarMenuItem key={subItem.id || subItem.href || `${subItem.label}-${index}`}>
-                          {subItem.customComponent ? (
-                            <KanbanManagementModal
-                              onSave={handleSaveKanban}
-                              trigger={
-                                <div className="w-full flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent rounded-sm">
-                                  <FontAwesomeIcon
-                                    icon={iconMap[subItem.icon]}
-                                    className="w-4 h-4"
-                                  />
-                                  <span>{subItem.label}</span>
-                                </div>
-                              }
-                            />
-                          ) : (
-                            <SidebarMenuButton
-                              asChild={!!subItem.href}
-                              isActive={
-                                subItem.href ? isActive(subItem.href) : false
-                              }
-                              className={
-                                subItem.href && isActive(subItem.href)
-                                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                  : ""
-                              }
-                              onClick={subItem.action}
-                            >
-                              {subItem.action ? (
-                                <div className="flex items-center gap-2">
-                                  <FontAwesomeIcon
-                                    icon={iconMap[subItem.icon]}
-                                    className="w-4 h-4"
-                                  />
-                                  <span>{subItem.label}</span>
-                                </div>
-                              ) : (
-                                <Link href={subItem.href!}>
-                                  <div className="flex items-center gap-2">
-                                    <FontAwesomeIcon
-                                      icon={iconMap[subItem.icon]}
-                                      className="w-4 h-4"
-                                    />
-                                    <span>{subItem.label}</span>
-                                  </div>
-                                </Link>
-                              )}
-                            </SidebarMenuButton>
-                          )}
-                        </SidebarMenuItem>
-                      ))}
-                    </div>
-                  )}
-                </React.Fragment>
-              ))}
+              {groupedMenuItems.core.map(renderMenuItem)}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Project Management */}
+        {groupedMenuItems.projects.length > 0 && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {groupedMenuItems.projects.map(renderMenuItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {/* Calendari */}
+        {groupedMenuItems.calendars.length > 0 && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {groupedMenuItems.calendars.map(renderMenuItem)}
+                  {groupedMenuItems.time.map(renderMenuItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {/* Contacts */}
+        {groupedMenuItems.contacts.length > 0 && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {groupedMenuItems.contacts.map(renderMenuItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {/* Warehouse & Products */}
+        {(groupedMenuItems.warehouse.length > 0 ||
+          groupedMenuItems.products.length > 0) && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {groupedMenuItems.warehouse.map(renderMenuItem)}
+                  {groupedMenuItems.products.map(renderMenuItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
+
+        {/* Others */}
+        {groupedMenuItems.others.length > 0 && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {groupedMenuItems.others.map(renderMenuItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-col gap-2">
-          <div className="flex items-start">
-            <ThemeSwitcher />
-          </div>
-          <div className="px-2 py-1">
-            <NetworkStatus size="sm" />
-          </div>
+          <ThemeSwitcher />
           {userContext && <UserSection user={userContext} />}
         </div>
       </SidebarFooter>

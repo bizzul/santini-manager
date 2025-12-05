@@ -6,6 +6,7 @@ export interface Kanban {
   title: string;
   identifier: string;
   color?: string;
+  type?: "office" | "production";
   columns: {
     id?: number;
     title: string;

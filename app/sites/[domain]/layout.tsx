@@ -5,9 +5,50 @@ import { Metadata } from "next";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
-import { getUserContext } from "@/lib/auth-utils";
+import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
 import { GlobalKanbanModal } from "@/components/kanbans/GlobalKanbanModal";
+import { createClient } from "@/utils/supabase/server";
+
+/**
+ * Check if user has access to a specific site
+ * OPTIMIZED: Takes site data directly to avoid extra query
+ * Only queries user_sites if organization check fails
+ */
+async function checkSiteAccess(
+  siteId: string,
+  siteOrganizationId: string | null,
+  userContext: UserContext,
+): Promise<boolean> {
+  // Superadmin can access all sites
+  if (userContext.canAccessAllOrganizations) {
+    return true;
+  }
+
+  // Check if user belongs to the site's organization (no query needed!)
+  if (
+    siteOrganizationId &&
+    userContext.organizationIds?.includes(siteOrganizationId)
+  ) {
+    return true;
+  }
+
+  // Only query user_sites if organization check fails
+  const supabase = await createClient();
+  const { data: userSite, error: userSiteError } = await supabase
+    .from("user_sites")
+    .select("site_id")
+    .eq("user_id", userContext.userId || userContext.user.id)
+    .eq("site_id", siteId)
+    .maybeSingle();
+
+  if (userSiteError) {
+    console.error("Error checking user_sites:", userSiteError);
+    return false;
+  }
+
+  return !!userSite;
+}
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
@@ -104,6 +145,21 @@ export default async function SiteLayout({
     if (!userContext) {
       console.log("User context not found, redirecting to login");
       redirect("/login");
+    }
+
+    // Check if user has access to this site
+    // OPTIMIZED: Pass organization_id directly to avoid extra query
+    const hasAccess = await checkSiteAccess(data.id, data.organization_id, userContext);
+    if (!hasAccess) {
+      console.log(
+        "User does not have access to site:",
+        data.name,
+        "Site org:",
+        data.organization_id,
+        "User orgs:",
+        userContext.organizationIds,
+      );
+      redirect("/sites/select?error=no_access");
     }
 
     const isImpersonating = userContext?.isImpersonating;

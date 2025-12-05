@@ -121,7 +121,7 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Bell />
-                Notifications
+                Notifiche
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />

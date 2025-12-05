@@ -3,9 +3,14 @@
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { RiMoonClearFill, RiSunFill } from "react-icons/ri";
+import { useSidebar } from "@/components/ui/sidebar";
+
 export function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
+  
   const [isOn, setIsOn] = useState(() => {
     if (theme === "light") {
       return true;
@@ -32,11 +37,11 @@ export function ThemeSwitcher() {
   return (
     <div
       onClick={toggleSwitch}
-      className={`flex-start flex h-[50px] w-[100px]   p-[8px]  hover:cursor-pointer  ${
-        isOn && "place-content-end"
-      }`}
+      className={`flex items-center justify-center p-2 hover:cursor-pointer ${
+        isCollapsed ? "w-[40px]" : "w-[100px] flex-start"
+      } ${!isCollapsed && isOn && "place-content-end"}`}
     >
-      <div className="flex h-[40px] w-[40px] items-center justify-center  ">
+      <div className="flex h-[40px] w-[40px] items-center justify-center">
         {isOn ? (
           <RiSunFill className="h-6 w-6 text-yellow-300" />
         ) : (

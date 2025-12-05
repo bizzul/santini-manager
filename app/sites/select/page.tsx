@@ -7,12 +7,19 @@ import { Building2, Home, Settings, LogOut } from "lucide-react";
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
 
-export default async function SelectSitePage() {
+export default async function SelectSitePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   // Fetch the sites the current user has access to
   const sites = await getUserSites();
 
   const userContext = await getUserContext();
   const userRole = userContext?.role;
+
+  const params = await searchParams;
+  const error = params.error;
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -77,6 +84,16 @@ export default async function SelectSitePage() {
             <p className="text-white/70 text-center">
               Seleziona uno spazio per accedere alla dashboard
             </p>
+
+            {/* Error Message */}
+            {error === "no_access" && (
+              <div className="backdrop-blur-xl bg-red-500/20 border-2 border-red-500/50 rounded-2xl p-4 max-w-md">
+                <p className="text-white text-center text-sm">
+                  ⚠️ Non hai accesso a questo spazio. Per favore contatta
+                  l'amministratore per richiedere l'accesso.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -20,11 +20,16 @@ export async function getKanbans(domain?: string) {
       }
     }
 
-    // Fetch kanbans filtered by site_id if available
+    // OPTIMIZED: Single query with JOIN to get kanbans AND columns together
+    // This eliminates N+1 query problem (was: 1 query for kanbans + N queries for columns)
     let kanbanQuery = supabase
       .from("Kanban")
-      .select("*")
-      .order("title", { ascending: true });
+      .select(`
+        *,
+        columns:KanbanColumn(*)
+      `)
+      .order("title", { ascending: true })
+      .order("position", { referencedTable: "KanbanColumn", ascending: true });
 
     if (siteId) {
       kanbanQuery = kanbanQuery.eq("site_id", siteId);
@@ -37,32 +42,7 @@ export async function getKanbans(domain?: string) {
       throw new Error("Failed to fetch kanbans");
     }
 
-    // For each kanban, fetch its columns
-    const kanbansWithColumns = await Promise.all(
-      kanbans.map(async (kanban) => {
-        const { data: columns, error: columnsError } = await supabase
-          .from("KanbanColumn")
-          .select("*")
-          .eq("kanbanId", kanban.id)
-          .order("position", { ascending: true });
-
-        if (columnsError) {
-          console.error(
-            "Error fetching columns for kanban:",
-            kanban.id,
-            columnsError,
-          );
-          throw new Error(`Failed to fetch columns for kanban ${kanban.id}`);
-        }
-
-        return {
-          ...kanban,
-          columns: columns || [],
-        };
-      }),
-    );
-
-    return kanbansWithColumns;
+    return kanbans || [];
   } catch (error) {
     console.error("Error fetching kanbans:", error);
     throw new Error("Failed to fetch kanbans");

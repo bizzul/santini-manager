@@ -14,8 +14,10 @@ export default function ClientsFilter({
     query === ""
       ? clients
       : clients.filter((client: any) => {
-          const business = `${client.businessName}`;
-          return business
+          const clientName = client.clientType === "BUSINESS"
+            ? client.businessName || ""
+            : `${client.individualFirstName || ""} ${client.individualLastName || ""}`.trim();
+          return clientName
             .toLowerCase()
             .replace(/\s+/g, "")
             .includes(query.toLowerCase().replace(/\s+/g, ""));
@@ -70,7 +72,9 @@ export default function ClientsFilter({
                             selected ? "font-medium" : "font-normal"
                           }`}
                         >
-                          {`${client.businessName}`}
+                          {client.clientType === "BUSINESS"
+                            ? client.businessName || "-"
+                            : `${client.individualFirstName || ""} ${client.individualLastName || ""}`.trim() || "-"}
                         </span>
                         {selected ? (
                           <span

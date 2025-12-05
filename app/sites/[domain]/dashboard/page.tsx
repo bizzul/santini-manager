@@ -54,7 +54,7 @@ export default async function SiteDashboardPage({
     <div className="space-y-6 p-4 md:p-8 w-full">
       {/* Header */}
       <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">Dashboard Home</h1>
+        <h1 className="text-4xl font-bold tracking-tight">Home</h1>
         <p className="text-muted-foreground">
           Stato generale – aggiornamento odierno
         </p>

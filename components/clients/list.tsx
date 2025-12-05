@@ -75,13 +75,12 @@ export const List: FC<Props> = ({
       <table className="w-full shadow-xl table-default table-auto text-left">
         <thead>
           <tr className="h-14 bg-[#334155] text-white">
-            <th className="pl-2 font-semibold ">Azienda</th>
+            <th className="pl-2 font-semibold">Tipo</th>
             <th className="pl-2 font-semibold ">Nome</th>
+            <th className="pl-2 font-semibold ">Indirizzo</th>
             <th className="pl-2 font-semibold">CAP</th>
             <th className="pl-2 font-semibold">Citta</th>
-            <th className="pl-2 font-semibold ">Indirizzo</th>
             <th className="pl-2 font-semibold">Telefono</th>
-            <th className="pl-2 font-semibold">Tipologia</th>
             <th className="pl-2 font-semibold">Azioni</th>
           </tr>
         </thead>
@@ -96,13 +95,16 @@ export const List: FC<Props> = ({
                     handleRowClick(i.id);
                   }}
                 >
-                  <td>{i.businessName}</td>
-                  <td>{i.individualFirstName + " " + i.individualLastName}</td>
+                  <td>{i.clientType === "BUSINESS" ? "Azienda" : "Privato"}</td>
+                  <td>
+                    {i.clientType === "BUSINESS"
+                      ? i.businessName || "-"
+                      : `${i.individualFirstName || ""} ${i.individualLastName || ""}`.trim() || "-"}
+                  </td>
+                  <td>{i.address}</td>
                   <td>{i.zipCode}</td>
                   <td>{i.city}</td>
-                  <td>{i.address}</td>
                   <td>{i.phone}</td>
-                  <td>{i.clientType}</td>
                   <td onClick={(e) => e.stopPropagation()}>
                     <Menu as="div" className="relative inline-block text-left">
                       <div>

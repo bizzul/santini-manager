@@ -1,13 +1,19 @@
 "use client";
 
 import { Factory } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ApexOptions } from "apexcharts";
+
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
 
 export default function ProductionOrdersCard() {
   // Dati mockup per reparto
   const departments = [
     {
       name: "Arredamento",
-      color: "blue",
+      color: "#3b82f6",
       projects: 12,
       items: 20,
       value: 345000,
@@ -17,7 +23,7 @@ export default function ProductionOrdersCard() {
     },
     {
       name: "Serramenti",
-      color: "yellow",
+      color: "#eab308",
       projects: 8,
       items: 20,
       value: 178000,
@@ -27,7 +33,7 @@ export default function ProductionOrdersCard() {
     },
     {
       name: "Porte",
-      color: "orange",
+      color: "#f97316",
       projects: 15,
       items: 30,
       value: 412000,
@@ -37,7 +43,7 @@ export default function ProductionOrdersCard() {
     },
     {
       name: "Service",
-      color: "green",
+      color: "#22c55e",
       projects: 6,
       items: 34,
       value: 89000,
@@ -53,7 +59,127 @@ export default function ProductionOrdersCard() {
   );
   const totalItems = departments.reduce((sum, dept) => sum + dept.items, 0);
   const totalValue = departments.reduce((sum, dept) => sum + dept.value, 0);
-  const maxValue = Math.max(...departments.map((d) => d.value));
+
+  // Prepara i dati per ApexCharts
+  const chartOptions: ApexOptions = {
+    chart: {
+      type: "bar",
+      height: 400,
+      animations: {
+        enabled: true,
+        speed: 1200,
+        animateGradually: {
+          enabled: true,
+          delay: 200,
+        },
+        dynamicAnimation: {
+          enabled: true,
+          speed: 400,
+        },
+      },
+      toolbar: {
+        show: false,
+      },
+      background: "transparent",
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 10,
+        borderRadiusApplication: "end",
+        columnWidth: "65%",
+        dataLabels: {
+          position: "top",
+        },
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      offsetY: -25,
+      style: {
+        fontSize: "14px",
+        fontWeight: "bold",
+        colors: ["#18181b"],
+      },
+      background: {
+        enabled: true,
+        foreColor: "#ffffff",
+        borderRadius: 6,
+        padding: 6,
+        opacity: 0.95,
+        borderWidth: 1,
+        borderColor: "#d1d5db",
+      },
+      dropShadow: {
+        enabled: false,
+      },
+    },
+    xaxis: {
+      categories: departments.map((d) => d.name),
+      labels: {
+        style: {
+          colors: "#a1a1aa",
+          fontSize: "12px",
+          fontWeight: 600,
+        },
+      },
+      axisBorder: {
+        show: false,
+      },
+      axisTicks: {
+        show: false,
+      },
+    },
+    yaxis: {
+      show: false,
+    },
+    fill: {
+      type: "gradient",
+      gradient: {
+        shade: "dark",
+        type: "vertical",
+        shadeIntensity: 0.3,
+        gradientToColors: departments.map((d) => d.color),
+        inverseColors: false,
+        opacityFrom: 0.95,
+        opacityTo: 0.95,
+        stops: [0, 100],
+      },
+    },
+    grid: {
+      show: false,
+    },
+    legend: {
+      position: "bottom",
+      horizontalAlign: "center",
+      labels: {
+        colors: "#a1a1aa",
+      },
+      markers: {
+        size: 6,
+        strokeWidth: 0,
+      },
+    },
+    tooltip: {
+      theme: "dark",
+      y: {
+        formatter: (value) => {
+          return value.toString();
+        },
+      },
+    },
+    colors: departments.map((d) => d.color),
+  };
+
+  const chartSeries = [
+    {
+      name: "Progetti",
+      data: departments.map((d) => d.projects),
+    },
+    {
+      name: "Elementi",
+      data: departments.map((d) => d.items),
+    },
+  ];
 
   return (
     <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden">
@@ -64,7 +190,7 @@ export default function ProductionOrdersCard() {
             <Factory className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Ordini totali in produzione</h3>
+            <h3 className="text-xl font-bold">Ordini</h3>
             <div className="backdrop-blur-sm bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1.5 mt-2 inline-block">
               <p className="text-sm font-semibold">
                 <span className="text-blue-400">{totalProjects} progetti</span>
@@ -82,104 +208,31 @@ export default function ProductionOrdersCard() {
         </div>
       </div>
 
-      {/* Vertical Bar Chart */}
+      {/* ApexCharts Bar Chart */}
       <div className="mb-4">
-        <div
-          className="flex items-end justify-around gap-4"
-          style={{ height: "400px" }}
-        >
-          {departments.map((dept, index) => {
-            const maxProjects = Math.max(...departments.map((d) => d.projects));
-            const maxItems = Math.max(...departments.map((d) => d.items));
+        <ReactApexChart
+          options={chartOptions}
+          series={chartSeries}
+          type="bar"
+          height={400}
+        />
+      </div>
 
-            return (
-              <div key={index} className="flex flex-col items-center flex-1">
-                {/* Bars Container */}
-                <div
-                  className="w-full flex flex-col items-center gap-2 mb-3"
-                  style={{ height: "340px" }}
-                >
-                  {/* Value Badge - Attached to bars */}
-                  <div
-                    className={`backdrop-blur-md ${dept.bgLight} border border-white/20 rounded px-1.5 py-0.5`}
-                  >
-                    <p className={`text-[10px] font-medium ${dept.textColor}`}>
-                      CHF {(dept.value / 1000).toFixed(0)}k
-                    </p>
-                  </div>
-
-                  {/* Bars */}
-                  <div className="w-full flex justify-center items-end gap-2 flex-1">
-                    {/* Projects Bar */}
-                    <div className="flex flex-col items-center flex-1">
-                      <div className="w-full flex flex-col justify-end h-full relative">
-                        <div
-                          className={`w-full bg-gradient-to-t ${dept.bgGradient} rounded-t-lg transition-all duration-700 ease-out relative group`}
-                          style={{
-                            height: `${(dept.projects / maxProjects) * 95}%`,
-                            minHeight: "100px",
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg" />
-                          {/* Number inside bar */}
-                          <span className="absolute top-3 left-1/2 -translate-x-1/2 font-bold text-white text-base drop-shadow-lg">
-                            {dept.projects}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Elements Bar */}
-                    <div className="flex flex-col items-center flex-1">
-                      <div className="w-full flex flex-col justify-end h-full relative">
-                        <div
-                          className={`w-full bg-gradient-to-t ${dept.bgGradient} rounded-t-lg transition-all duration-700 ease-out relative group opacity-70`}
-                          style={{
-                            height: `${(dept.items / maxItems) * 95}%`,
-                            minHeight: "100px",
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg" />
-                          {/* Number inside bar */}
-                          <span className="absolute top-3 left-1/2 -translate-x-1/2 font-bold text-white text-base drop-shadow-lg">
-                            {dept.items}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Department Info */}
-                <div
-                  className={`w-full ${dept.bgLight} rounded-xl p-2 text-center`}
-                >
-                  <h4
-                    className={`font-semibold text-sm ${dept.textColor} mb-1`}
-                  >
-                    {dept.name}
-                  </h4>
-                  <div className="flex justify-around text-xs text-muted-foreground">
-                    <span>P</span>
-                    <span>E</span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Legend */}
-        <div className="flex justify-center gap-6 mt-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500 rounded"></div>
-            <span className="text-xs text-muted-foreground">Progetti (P)</span>
+      {/* Value badges per department */}
+      <div className="grid grid-cols-4 gap-3 mt-4">
+        {departments.map((dept, index) => (
+          <div
+            key={index}
+            className={`backdrop-blur-md ${dept.bgLight} border border-white/20 rounded-lg px-3 py-2 text-center`}
+          >
+            <p className={`text-xs font-medium ${dept.textColor} mb-1`}>
+              {dept.name}
+            </p>
+            <p className={`text-sm font-bold ${dept.textColor}`}>
+              CHF {(dept.value / 1000).toFixed(0)}k
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500/70 rounded"></div>
-            <span className="text-xs text-muted-foreground">Elementi (E)</span>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );

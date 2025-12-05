@@ -13,59 +13,53 @@ import {
 } from "@/components/ui/tooltip";
 export const columns: ColumnDef<Client>[] = [
   {
-    accessorKey: "businessName",
+    accessorKey: "clientType",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Azienda" />
+      <DataTableColumnHeader column={column} title="Tipo" />
     ),
+    cell: ({ row }) => {
+      const clientType = row.original.clientType;
+      return clientType === "BUSINESS" ? "Azienda" : "Privato";
+    },
   },
   {
-    accessorKey: "individualFirstName",
-    // header: "Tipo",
+    accessorKey: "businessName",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Nome" />
     ),
+    cell: ({ row }) => {
+      const client = row.original;
+      if (client.clientType === "BUSINESS") {
+        return client.businessName || "-";
+      } else {
+        const firstName = client.individualFirstName || "";
+        const lastName = client.individualLastName || "";
+        return `${firstName} ${lastName}`.trim() || "-";
+      }
+    },
   },
   {
-    accessorKey: "individualLastName",
-    // header: "Tipo",
+    accessorKey: "address",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Cognome" />
+      <DataTableColumnHeader column={column} title="Indirizzo" />
     ),
   },
   {
     accessorKey: "zipCode",
-    // header: "Tipo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="CAP" />
     ),
   },
   {
     accessorKey: "city",
-    // header: "Tipo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Citta" />
     ),
   },
   {
-    accessorKey: "address",
-
-    // header: "Tipo",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Indirizzo" />
-    ),
-  },
-  {
     accessorKey: "mobilePhone",
-    // header: "Tipo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Telefono" />
-    ),
-  },
-  {
-    accessorKey: "clientType",
-    // header: "Tipo",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Tipologia" />
     ),
   },
   // {

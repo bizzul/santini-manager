@@ -131,9 +131,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId, domain }: Props) => {
                   {(data.clients as any[]).map((client) => (
                     <SelectItem key={client.id} value={client.id.toString()}>
                       {client.businessName ||
-                        (client.individualFirstName
-                          ? `N/A ${client.individualFirstName}`
-                          : "N/A")}
+                        `${client.individualFirstName || "N/A"} ${client.individualLastName || "N/A"}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

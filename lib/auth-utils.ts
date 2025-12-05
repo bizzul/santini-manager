@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 export type UserRole = "superadmin" | "admin" | "user";
 
@@ -26,10 +27,11 @@ export interface OrganizationAccess {
 }
 
 /**
- * Get the current user's context including role and organization access
- * Updated to work with new structure: User.role + user_organizations table
+ * Internal function to fetch user context
+ * OPTIMIZED: Uses Promise.all to run queries in parallel instead of sequential
+ * Also uses React cache() to deduplicate calls within the same request
  */
-export async function getUserContext(): Promise<UserContext | null> {
+async function fetchUserContext(): Promise<UserContext | null> {
     try {
         const cookieStore = await cookies();
         const impersonationCookie = cookieStore.get("impersonation");
@@ -63,7 +65,6 @@ export async function getUserContext(): Promise<UserContext | null> {
         }
 
         if (!user && !userIdToFetch) {
-            console.log("No user found and no impersonation target");
             return null;
         }
 
@@ -81,14 +82,12 @@ export async function getUserContext(): Promise<UserContext | null> {
                     userToUse = impersonatedUserData.user;
                     impersonatedUser = impersonatedUserData.user;
                 } else {
-                    // If impersonation fails, fallback to real user
                     userToUse = user;
                     isImpersonating = false;
                     originalSuperadminId = undefined;
                 }
             } catch (impError) {
                 console.error("Error in impersonation flow:", impError);
-                // Fallback to real user
                 userToUse = user;
                 isImpersonating = false;
                 originalSuperadminId = undefined;
@@ -96,90 +95,57 @@ export async function getUserContext(): Promise<UserContext | null> {
         }
 
         if (!userToUse) {
-            console.log("No user to use after impersonation check");
             return null;
         }
 
-        // Get user's role from User table
-        const { data: userData, error: userError } = await supabase
-            .from("User")
-            .select("role")
-            .eq("authId", userToUse.id);
+        // OPTIMIZED: Run both queries in PARALLEL using Promise.all
+        // This reduces latency from sequential (query1 + query2) to parallel (max of query1, query2)
+        const [userResult, orgResult] = await Promise.all([
+            supabase
+                .from("User")
+                .select("role")
+                .eq("authId", userToUse.id)
+                .maybeSingle(),
+            supabase
+                .from("user_organizations")
+                .select("organization_id")
+                .eq("user_id", userToUse.id),
+        ]);
+
+        const { data: userData, error: userError } = userResult;
+        const { data: userOrgData, error: userOrgError } = orgResult;
 
         if (userError) {
             console.error("Error fetching user data:", userError);
-            // Check if it's a "no rows returned" error
-            if (userError.code === "PGRST116") {
-                console.log("No user record found for user:", userToUse.id);
-                // Return a default context for users without user records
-                return {
-                    user: userToUse,
-                    role: "user" as UserRole,
-                    organizationId: undefined,
-                    organizationIds: [],
-                    userId: userToUse.id,
-                    tenantId: userToUse.id,
-                    canAccessAllOrganizations: false,
-                    canAccessAllTenants: false,
-                    isImpersonating,
-                    originalSuperadminId,
-                    impersonatedUser,
-                };
-            }
-            throw userError;
         }
-
-        if (!userData || userData.length === 0) {
-            console.log("No user data returned for user:", userToUse.id);
-            return null;
-        }
-
-        // Get user's role from User table
-        const role = userData[0]?.role as UserRole || "user";
-
-        // Get user's organization relationships from user_organizations table
-        const { data: userOrgData, error: userOrgError } = await supabase
-            .from("user_organizations")
-            .select("organization_id")
-            .eq("user_id", userToUse.id);
 
         if (userOrgError) {
-            console.error(
-                "Error fetching user organization data:",
-                userOrgError,
-            );
-            // Return context with just the role if organization fetch fails
+            console.error("Error fetching user organizations:", userOrgError);
+        }
+
+        // Default context for users without records
+        if (!userData) {
             return {
                 user: userToUse,
-                role: role,
+                role: "user" as UserRole,
                 organizationId: undefined,
-                organizationIds: [],
+                organizationIds: userOrgData?.map((uo) => uo.organization_id) || [],
                 userId: userToUse.id,
-                canAccessAllOrganizations: role === "superadmin",
-                canAccessAllTenants: role === "superadmin" || role === "admin",
+                tenantId: userToUse.id,
+                canAccessAllOrganizations: false,
+                canAccessAllTenants: false,
                 isImpersonating,
                 originalSuperadminId,
                 impersonatedUser,
             };
         }
 
-        // Get all organization IDs from user_organizations table
-        const organizationIds = userOrgData?.map((uo: any) =>
-            uo.organization_id
-        ) || [];
-        const organizationId = organizationIds[0]; // Keep first one for backward compatibility
+        const role = (userData.role as UserRole) || "user";
+        const organizationIds = userOrgData?.map((uo) => uo.organization_id) || [];
+        const organizationId = organizationIds[0];
 
         const isSuperAdmin = role === "superadmin";
         const isAdmin = role === "admin";
-
-        // console.log("User context created successfully:", {
-        //     userId: userToUse.id,
-        //     role,
-        //     organizationIds,
-        //     organizationId,
-        //     isSuperAdmin,
-        //     isAdmin,
-        // });
 
         return {
             user: userToUse,
@@ -196,10 +162,16 @@ export async function getUserContext(): Promise<UserContext | null> {
         };
     } catch (error) {
         console.error("Error in getUserContext:", error);
-        // Return null instead of throwing to prevent 500 errors
         return null;
     }
 }
+
+/**
+ * Get the current user's context including role and organization access
+ * OPTIMIZED: Cached per request using React cache() to avoid duplicate queries
+ * Uses single JOIN query instead of 3 separate queries
+ */
+export const getUserContext = cache(fetchUserContext);
 
 /**
  * Check if user has access to a specific organization

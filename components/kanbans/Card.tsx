@@ -485,7 +485,15 @@ export default function Card({
                 </div>
 
                 <div className="font-bold text-lg flex flex-row border-b dark:border-white mb-2">
-                  <p>{data.client?.businessName || data.client?.name}</p>
+                  <p>
+                    {data.client?.clientType === "BUSINESS"
+                      ? data.client?.businessName || "-"
+                      : `${data.client?.individualFirstName || ""} ${
+                          data.client?.individualLastName || ""
+                        }`.trim() ||
+                        data.client?.name ||
+                        "-"}
+                  </p>
                 </div>
 
                 <div className="flex flex-row gap-2">
@@ -705,7 +713,13 @@ export default function Card({
                       </div>
                     </div>
                     <div className="flex flex-row text-sm">
-                      <p>{data.client?.businessName} </p>
+                      <p>
+                        {data.client?.clientType === "BUSINESS"
+                          ? data.client?.businessName || "-"
+                          : `${data.client?.individualFirstName || ""} ${
+                              data.client?.individualLastName || ""
+                            }`.trim() || "-"}
+                      </p>
                     </div>
                   </div>
                   <div className="flex flex-row gap-2 justify-end align-middle items-center">

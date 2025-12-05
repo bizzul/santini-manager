@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  FileText,
-  TrendingUp,
-  TrendingDown,
-  CheckCircle,
-  XCircle,
-} from "lucide-react";
+import { FileText, TrendingUp, CheckCircle, XCircle } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,6 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import dynamic from "next/dynamic";
+import { ApexOptions } from "apexcharts";
+
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
 
 export default function OffersCard() {
   const [period, setPeriod] = useState<"week" | "month" | "year">("month");
@@ -48,7 +48,113 @@ export default function OffersCard() {
   };
 
   const data = offersData[period];
-  const maxValue = Math.max(data.todo, data.inProgress, data.sent);
+
+  const chartOptions: ApexOptions = {
+    chart: {
+      type: "bar",
+      height: 250,
+      animations: {
+        enabled: true,
+        speed: 1000,
+        animateGradually: {
+          enabled: true,
+          delay: 150,
+        },
+        dynamicAnimation: {
+          enabled: true,
+          speed: 400,
+        },
+      },
+      toolbar: {
+        show: false,
+      },
+      background: "transparent",
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 12,
+        borderRadiusApplication: "end",
+        columnWidth: "70%",
+        dataLabels: {
+          position: "top",
+        },
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      offsetY: -25,
+      style: {
+        fontSize: "16px",
+        fontWeight: "bold",
+        colors: ["#18181b"],
+      },
+      background: {
+        enabled: true,
+        foreColor: "#ffffff",
+        borderRadius: 8,
+        padding: 8,
+        opacity: 0.95,
+        borderWidth: 1,
+        borderColor: "#d1d5db",
+      },
+      dropShadow: {
+        enabled: false,
+      },
+    },
+    xaxis: {
+      categories: ["To do", "In elaborazione", "Inviate"],
+      labels: {
+        style: {
+          colors: "#a1a1aa",
+          fontSize: "12px",
+          fontWeight: 600,
+        },
+      },
+      axisBorder: {
+        show: false,
+      },
+      axisTicks: {
+        show: false,
+      },
+    },
+    yaxis: {
+      show: false,
+    },
+    fill: {
+      type: "gradient",
+      gradient: {
+        shade: "dark",
+        type: "vertical",
+        shadeIntensity: 0.3,
+        inverseColors: false,
+        opacityFrom: 0.95,
+        opacityTo: 0.95,
+        stops: [0, 100],
+      },
+    },
+    grid: {
+      show: false,
+    },
+    legend: {
+      show: false,
+    },
+    tooltip: {
+      theme: "dark",
+      y: {
+        formatter: (value) => {
+          return value + " offerte";
+        },
+      },
+    },
+    colors: ["#eab308", "#3b82f6", "#22c55e"],
+  };
+
+  const chartSeries = [
+    {
+      name: "Offerte",
+      data: [data.todo, data.inProgress, data.sent],
+    },
+  ];
 
   return (
     <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 col-span-2 lg:col-span-3">
@@ -78,68 +184,14 @@ export default function OffersCard() {
         </Select>
       </div>
 
-      {/* Grafico a colonne */}
+      {/* ApexCharts Column Chart */}
       <div className="mb-6">
-        <div className="flex items-end justify-around gap-4 h-48">
-          {/* Todo */}
-          <div className="flex flex-col items-center flex-1">
-            <div className="w-full flex flex-col justify-end h-40 mb-2">
-              <div
-                className="w-full bg-gradient-to-t from-yellow-500 to-yellow-400 rounded-t-lg transition-all duration-500 relative group"
-                style={{
-                  height: `${(data.todo / maxValue) * 100}%`,
-                  minHeight: "20px",
-                }}
-              >
-                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg" />
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 font-bold text-lg">
-                  {data.todo}
-                </span>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-center">To do</span>
-          </div>
-
-          {/* In elaborazione */}
-          <div className="flex flex-col items-center flex-1">
-            <div className="w-full flex flex-col justify-end h-40 mb-2">
-              <div
-                className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-500 relative group"
-                style={{
-                  height: `${(data.inProgress / maxValue) * 100}%`,
-                  minHeight: "20px",
-                }}
-              >
-                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg" />
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 font-bold text-lg">
-                  {data.inProgress}
-                </span>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-center">
-              In elaborazione
-            </span>
-          </div>
-
-          {/* Inviate */}
-          <div className="flex flex-col items-center flex-1">
-            <div className="w-full flex flex-col justify-end h-40 mb-2">
-              <div
-                className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-lg transition-all duration-500 relative group"
-                style={{
-                  height: `${(data.sent / maxValue) * 100}%`,
-                  minHeight: "20px",
-                }}
-              >
-                <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-t-lg" />
-                <span className="absolute -top-6 left-1/2 -translate-x-1/2 font-bold text-lg">
-                  {data.sent}
-                </span>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-center">Inviate</span>
-          </div>
-        </div>
+        <ReactApexChart
+          options={chartOptions}
+          series={chartSeries}
+          type="bar"
+          height={250}
+        />
       </div>
 
       {/* Statistiche */}
