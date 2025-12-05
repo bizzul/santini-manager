@@ -37,7 +37,8 @@ Spostate da `devDependencies` a `dependencies` (richieste per build su Vercel):
 ```json
 "@tailwindcss/postcss": "^4.1.17",
 "tailwindcss": "^4.1.17",
-"postcss": "^8.5.6"
+"postcss": "^8.5.6",
+"typescript": "^5.9.3"
 ```
 
 Aggiunte `optionalDependencies` per garantire installazione binari lightningcss su Vercel:

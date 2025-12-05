@@ -131,6 +131,7 @@
     "tailwindcss": "^4.1.17",
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-animated": "^1.1.2",
+    "typescript": "^5.9.3",
     "unist-util-visit": "^5.0.0",
     "uuid": "^11.1.0",
     "xlsx": "^0.18.5",
@@ -154,8 +155,7 @@
     "@typescript-eslint/eslint-plugin": "^8.41.0",
     "@typescript-eslint/parser": "^8.41.0",
     "eslint": "^8.57.0",
-    "eslint-config-next": "15.5.2",
-    "typescript": "^5.9.3"
+    "eslint-config-next": "15.5.2"
   },
   "browser": {
     "fs": false,
