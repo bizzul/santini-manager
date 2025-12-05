@@ -54,9 +54,9 @@ Aggiunte `optionalDependencies` per garantire installazione binari lightningcss 
 ```
 
 #### `styles/fonts.ts`
-- **Rimossi font locali** (`CalSans-SemiBold.otf`) che causavano problemi su Vercel
-- Usati solo **Google Fonts** (Inter, Lora, Work_Sans) che sono sempre affidabili
-- `cal` e `calTitle` ora puntano a `Lora` per compatibilità con il codice esistente
+- **File completamente eliminato** per semplificare e risolvere problemi
+- Font ora importati direttamente in `app/layout.tsx`
+- Usato solo **Inter** (Google Font) che è sempre affidabile
 
 #### `next.config.js`
 - Rimosso: `serverExternalPackages: ["@supabase/supabase-js"]`
@@ -112,15 +112,22 @@ Il `package-lock.json` include tutti i binari nativi di lightningcss per tutte l
 - `lightningcss-linux-x64-gnu` (Linux x64 - usato da Vercel) ✅
 - Altri binari per diverse architetture
 
-### 3. Font Locali → Google Fonts
-**Problema**: I font locali (`CalSans-SemiBold.otf`) causavano errori su Vercel con `next/font`.
+### 3. Semplificazione Font
+**Problema**: Il file `styles/fonts.ts` con font locali causava errori su Vercel con `next/font`.
 
-**Soluzione**: Rimossi completamente i font locali e usati solo Google Fonts:
-- `Inter` - font principale
-- `Lora` - font titoli (sostituisce CalSans)
-- `Work_Sans` - font alternativo
-
-Le variabili `cal` e `calTitle` ora puntano a `Lora` per mantenere la compatibilità con il codice esistente senza modifiche.
+**Soluzione**: 
+- **Eliminato completamente** `styles/fonts.ts`
+- Font importato direttamente in `app/layout.tsx`:
+  ```typescript
+  import { Inter } from "next/font/google";
+  
+  const inter = Inter({
+    subsets: ["latin"],
+    variable: "--font-inter",
+    display: "swap",
+  });
+  ```
+- Semplificazione drastica: un solo font, zero problemi di path, zero complessità.
 
 ### 3. Build Locale
 Il build funziona correttamente in locale con warnings di performance su bundle size:

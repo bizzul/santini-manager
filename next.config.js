@@ -12,7 +12,7 @@ const nextConfig = {
       "flagcdn.com",
       "s.gravatar.com",
       "res.cloudinary.com",
-      "reactive-manager.vercel.app",
+      "manager.matris.pro",
       "avatar.vercel.sh",
     ],
   },

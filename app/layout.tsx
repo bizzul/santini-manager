@@ -1,11 +1,18 @@
 import "./globals.css";
 import "@/lib/suppress-warnings"; // Suppress Bun async_hooks warnings
-import { cal, inter } from "@/styles/fonts";
+import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
 import { Metadata } from "next";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/toaster";
+
+// Font configuration
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 const title = "Matris Manager";
 const description = "A B2B Saas Platform";
@@ -41,7 +48,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={cn(cal.variable, inter.variable)}>
+      <body className={cn(inter.variable, "font-sans")}>
         <Providers>
           {children}
           <Toaster />

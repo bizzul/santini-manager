@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "installCommand": "npm ci --legacy-peer-deps --include=optional",
+  "installCommand": "npm ci",
   "headers": [
     {
       "source": "/(.*)",
