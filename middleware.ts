@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 
+// Force Node.js runtime instead of Edge Runtime for Supabase compatibility
+export const runtime = 'nodejs';
+
 export const config = {
   matcher: ["/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)"],
 };

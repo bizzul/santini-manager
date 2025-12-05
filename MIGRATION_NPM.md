@@ -58,6 +58,11 @@ Aggiunte `optionalDependencies` per garantire installazione binari lightningcss 
 - Font ora importati direttamente in `app/layout.tsx`
 - Usato solo **Inter** (Google Font) che è sempre affidabile
 
+#### `middleware.ts`
+- Aggiunto `export const runtime = 'nodejs'` per forzare Node.js runtime
+- **Motivo**: Supabase usa API Node.js (`process.versions`, `process.version`) non disponibili nell'Edge Runtime
+- Risolve errore: "A Node.js API is used which is not supported in the Edge Runtime"
+
 #### `next.config.js`
 - Rimosso: `serverExternalPackages: ["@supabase/supabase-js"]`
 - Rimosso: commento "Optimize for Bun runtime"
