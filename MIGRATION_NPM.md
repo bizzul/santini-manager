@@ -33,15 +33,25 @@ Aggiunta dipendenza esplicita:
 "lightningcss": "^1.30.2"
 ```
 
-Spostate da `devDependencies` a `dependencies` (richieste per build su Vercel):
+Spostate da `devDependencies` a `dependencies` (richieste per build e type checking su Vercel):
 ```json
 "@tailwindcss/postcss": "^4.1.17",
 "tailwindcss": "^4.1.17",
 "postcss": "^8.5.6",
 "typescript": "^5.9.3",
 "@types/react": "19.1.12",
-"@types/react-dom": "19.1.9"
+"@types/react-dom": "19.1.9",
+"@types/node": "^18.19.123",
+"@types/qrcode": "^1.5.5",
+"@types/express": "^4.17.23",
+"@types/react-datepicker": "^4.19.6",
+"@types/formidable": "^2.0.6",
+"@types/fs-extra": "^11.0.4",
+"@types/js-cookie": "^3.0.6",
+"@types/multer": "^1.4.13"
 ```
+
+**Motivo**: Next.js su Vercel esegue type checking durante il build di produzione e richiede TUTTI i type definitions usati nel progetto.
 
 Aggiunte `optionalDependencies` per garantire installazione binari lightningcss su Vercel:
 ```json
