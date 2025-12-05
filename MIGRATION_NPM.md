@@ -35,9 +35,22 @@ Aggiunta dipendenza esplicita:
 
 Spostate da `devDependencies` a `dependencies` (richieste per build su Vercel):
 ```json
-"@tailwindcss/postcss": "^4.1.12",
-"tailwindcss": "^4.1.12",
+"@tailwindcss/postcss": "^4.1.17",
+"tailwindcss": "^4.1.17",
 "postcss": "^8.5.6"
+```
+
+Aggiunte `optionalDependencies` per garantire installazione binari lightningcss su Vercel:
+```json
+"lightningcss-darwin-arm64": "^1.30.2",
+"lightningcss-darwin-x64": "^1.30.2",
+"lightningcss-linux-arm-gnueabihf": "^1.30.2",
+"lightningcss-linux-arm64-gnu": "^1.30.2",
+"lightningcss-linux-arm64-musl": "^1.30.2",
+"lightningcss-linux-x64-gnu": "^1.30.2",  // ← Richiesto da Vercel
+"lightningcss-linux-x64-musl": "^1.30.2",
+"lightningcss-win32-arm64-msvc": "^1.30.2",
+"lightningcss-win32-x64-msvc": "^1.30.2"
 ```
 
 #### `styles/fonts.ts`
@@ -85,10 +98,10 @@ npm ci --legacy-peer-deps --include=optional
 ### 1. `.npmrc`
 File creato con `legacy-peer-deps=true` perché `@pdfme/generator@4.5.2` ha conflitti di peer dependencies con `@pdfme/common`.
 
-### 2. Tailwind CSS v4 in Production Dependencies
-Spostati da `devDependencies` a `dependencies`:
-- `@tailwindcss/postcss@4.1.12` - Richiesto da postcss.config.js durante il build
-- `tailwindcss@4.1.12` - Core di Tailwind CSS v4  
+### 2. Tailwind CSS v4.1.17 (Aggiornato) in Production Dependencies
+Spostati da `devDependencies` a `dependencies` e **aggiornati all'ultima versione**:
+- `@tailwindcss/postcss@4.1.17` - Richiesto da postcss.config.js durante il build (era 4.1.12)
+- `tailwindcss@4.1.17` - Core di Tailwind CSS v4 (era 4.1.12)
 - `postcss@8.5.6` - Richiesto da Next.js durante il build
 - `lightningcss@1.30.2` - Engine CSS nativo usato da Tailwind v4
 

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     images: [image],
     creator: "@vercel",
   },
-  metadataBase: new URL("https://vercel.app"),
+  metadataBase: new URL("https://manager.matris.pro"),
 };
 
 import { config } from "@fortawesome/fontawesome-svg-core";
