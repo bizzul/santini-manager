@@ -28,10 +28,14 @@ Per un progetto multitenant in produzione con architettura complessa, la stabili
 }
 ```
 
-Aggiunta dipendenza esplicita:
+Aggiunte dipendenze esplicite (spostate da devDependencies a dependencies):
 ```json
-"lightningcss": "^1.30.2"
+"lightningcss": "^1.30.2",
+"@tailwindcss/postcss": "^4.1.12",
+"tailwindcss": "^4.1.12"
 ```
+
+**Motivo**: Tailwind CSS v4 richiede questi pacchetti durante il build su Vercel (non solo in dev)
 
 #### `next.config.js`
 - Rimosso: `serverExternalPackages: ["@supabase/supabase-js"]`
@@ -73,10 +77,17 @@ npm ci --legacy-peer-deps --include=optional
 ### 1. `.npmrc`
 File creato con `legacy-peer-deps=true` perché `@pdfme/generator@4.5.2` ha conflitti di peer dependencies con `@pdfme/common`.
 
-### 2. `lightningcss`
-Aggiunto esplicitamente come dipendenza per Tailwind CSS v4. Il `package-lock.json` include tutti i binari nativi per tutte le piattaforme:
+### 2. Tailwind CSS v4 in Production Dependencies
+Spostati da `devDependencies` a `dependencies`:
+- `@tailwindcss/postcss@4.1.12` - Richiesto da postcss.config.js durante il build
+- `tailwindcss@4.1.12` - Core di Tailwind CSS v4
+- `lightningcss@1.30.2` - Engine CSS nativo usato da Tailwind v4
+
+**Motivo**: Next.js su Vercel necessita di questi pacchetti durante il build (non solo in sviluppo). L'errore originale era `Cannot find module '@tailwindcss/postcss'` su Vercel.
+
+Il `package-lock.json` include tutti i binari nativi di lightningcss per tutte le piattaforme:
 - `lightningcss-darwin-arm64` (macOS ARM)
-- `lightningcss-linux-x64-gnu` (Linux x64 - usato da Vercel)
+- `lightningcss-linux-x64-gnu` (Linux x64 - usato da Vercel) ✅
 - Altri binari per diverse architetture
 
 ### 3. Build Locale

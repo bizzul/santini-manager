@@ -133,12 +133,13 @@
     "xlsx": "^0.18.5",
     "xml2js": "^0.6.2",
     "zod": "^3.25.76",
-    "zustand": "^4.5.7"
+    "zustand": "^4.5.7",
+    "@tailwindcss/postcss": "^4.1.12",
+    "tailwindcss": "^4.1.12"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "15.5.2",
     "@tailwindcss/forms": "^0.5.10",
-    "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/eslint-plugin-query": "^4.39.1",
     "@types/formidable": "^2.0.6",
@@ -154,7 +155,6 @@
     "eslint": "^8.57.0",
     "eslint-config-next": "15.5.2",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2"
   },
   "browser": {
