@@ -5,6 +5,8 @@ export const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
 });
+
+// Local font - path relativo a questo file (styles/fonts.ts)
 export const cal = localFont({
   src: "./CalSans-SemiBold.otf",
   variable: "--font-cal",

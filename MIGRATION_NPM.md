@@ -28,14 +28,21 @@ Per un progetto multitenant in produzione con architettura complessa, la stabili
 }
 ```
 
-Aggiunte dipendenze esplicite (spostate da devDependencies a dependencies):
+Aggiunta dipendenza esplicita:
 ```json
-"lightningcss": "^1.30.2",
-"@tailwindcss/postcss": "^4.1.12",
-"tailwindcss": "^4.1.12"
+"lightningcss": "^1.30.2"
 ```
 
-**Motivo**: Tailwind CSS v4 richiede questi pacchetti durante il build su Vercel (non solo in dev)
+Spostate da `devDependencies` a `dependencies` (richieste per build su Vercel):
+```json
+"@tailwindcss/postcss": "^4.1.12",
+"tailwindcss": "^4.1.12",
+"postcss": "^8.5.6"
+```
+
+#### `styles/fonts.ts`
+- Mantenuto path relativo `./CalSans-SemiBold.otf` per font locali
+- Funziona correttamente con Next.js 15
 
 #### `next.config.js`
 - Rimosso: `serverExternalPackages: ["@supabase/supabase-js"]`
@@ -80,15 +87,19 @@ File creato con `legacy-peer-deps=true` perché `@pdfme/generator@4.5.2` ha conf
 ### 2. Tailwind CSS v4 in Production Dependencies
 Spostati da `devDependencies` a `dependencies`:
 - `@tailwindcss/postcss@4.1.12` - Richiesto da postcss.config.js durante il build
-- `tailwindcss@4.1.12` - Core di Tailwind CSS v4
+- `tailwindcss@4.1.12` - Core di Tailwind CSS v4  
+- `postcss@8.5.6` - Richiesto da Next.js durante il build
 - `lightningcss@1.30.2` - Engine CSS nativo usato da Tailwind v4
 
-**Motivo**: Next.js su Vercel necessita di questi pacchetti durante il build (non solo in sviluppo). L'errore originale era `Cannot find module '@tailwindcss/postcss'` su Vercel.
+**Motivo**: Next.js su Vercel necessita di questi pacchetti durante il build di produzione (non solo in sviluppo). L'errore originale era `Cannot find module '@tailwindcss/postcss'` su Vercel.
 
 Il `package-lock.json` include tutti i binari nativi di lightningcss per tutte le piattaforme:
 - `lightningcss-darwin-arm64` (macOS ARM)
 - `lightningcss-linux-x64-gnu` (Linux x64 - usato da Vercel) ✅
 - Altri binari per diverse architetture
+
+### 3. Font Locali
+Il file `styles/fonts.ts` usa path relativi (`./CalSans-SemiBold.otf`) che funzionano correttamente con Next.js 15 e `next/font`.
 
 ### 3. Build Locale
 Il build funziona correttamente in locale con warnings di performance su bundle size:
@@ -117,8 +128,13 @@ npm audit fix --legacy-peer-deps
 ### Build Locale
 ```bash
 npm run build
-# ✅ Completato con successo (76s)
+# ✅ Completato con successo (14.3s con cache)
 ```
+
+**Warnings (non bloccanti)**:
+- Bundle size per `static/chunks/477d4af2.302e9df7fd8b4888.js` (557 KiB)
+- Entrypoint size per `app/sites/[domain]/kanban/page` (601 KiB)
+- API route size per `app/api/reports/imb/route.js` (4.95 MiB)
 
 ### Dev Server
 ```bash
