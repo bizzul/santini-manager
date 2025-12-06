@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 
-// Force Node.js runtime instead of Edge Runtime for Supabase compatibility
-export const runtime = 'nodejs';
-
 export const config = {
   matcher: ["/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)"],
 };
@@ -47,7 +44,7 @@ function extractSubdomain(request: NextRequest): string | null {
   return isSubdomain ? hostname.replace(`.${rootDomainFormatted}`, "") : null;
 }
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const supabaseResponse = await updateSession(req);
   const subdomain = extractSubdomain(req);
