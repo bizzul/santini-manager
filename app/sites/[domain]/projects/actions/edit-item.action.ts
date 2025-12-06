@@ -35,22 +35,43 @@ export async function editItem(formData: any, id: number, domain?: string) {
     if (result.success) {
       const supabase = await createClient();
 
-      // Get the first column of the selected kanban if kanban is being changed
-      let firstColumn;
+      // Determine the kanban column ID to use
+      let columnIdToUse = null;
+      
       if (result.data.kanbanId) {
-        const { data: columnData, error: columnError } = await supabase
-          .from("KanbanColumn")
-          .select("*")
-          .eq("kanbanId", result.data.kanbanId)
-          .eq("position", 1)
-          .single();
+        // If kanbanColumnId is explicitly provided, use it
+        if (result.data.kanbanColumnId) {
+          // Verify the column belongs to the selected kanban
+          const { data: columnData, error: columnError } = await supabase
+            .from("KanbanColumn")
+            .select("*")
+            .eq("id", result.data.kanbanColumnId)
+            .eq("kanbanId", result.data.kanbanId)
+            .single();
 
-        if (columnError) {
-          console.error("Error fetching first column:", columnError);
-          return { error: true, message: "Errore nel recupero della colonna!" };
+          if (columnError || !columnData) {
+            console.error("Error fetching specified column:", columnError);
+            return { error: true, message: "La colonna selezionata non è valida per questa kanban!" };
+          }
+
+          columnIdToUse = columnData.id;
+        } else {
+          // Otherwise, default to the first column
+          const { data: firstColumnData, error: firstColumnError } = await supabase
+            .from("KanbanColumn")
+            .select("*")
+            .eq("kanbanId", result.data.kanbanId)
+            .order("position")
+            .limit(1)
+            .single();
+
+          if (firstColumnError) {
+            console.error("Error fetching first column:", firstColumnError);
+            return { error: true, message: "Errore nel recupero della colonna!" };
+          }
+
+          columnIdToUse = firstColumnData.id;
         }
-
-        firstColumn = columnData;
       }
 
       // Verify that the task belongs to the current site
@@ -100,7 +121,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
           kanbanId: result.data?.kanbanId
             ? Number(result.data?.kanbanId)
             : null,
-          kanbanColumnId: firstColumn ? firstColumn.id : null, // Only update column if kanban was changed
+          kanbanColumnId: columnIdToUse,
           positions: positions || null,
         })
         .eq("id", Number(id))

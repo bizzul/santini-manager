@@ -28,7 +28,6 @@ import { usePathname } from "next/navigation";
 import { NavUser } from "./nav-user";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import KanbanManagementModal from "./kanbans/KanbanManagementModal";
-import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { useToast } from "./ui/use-toast";
 import { useKanbanStore } from "../store/kanban-store";
 import { Kanban } from "../store/kanban-store";
@@ -104,6 +103,16 @@ async function fetchKanbans(domain: string): Promise<Kanban[]> {
     { headers: { host: domain } }
   );
   if (!response.ok) throw new Error("Failed to fetch kanbans");
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchKanbanCategories(domain: string) {
+  const response = await fetch(
+    `/api/kanban/categories?domain=${encodeURIComponent(domain)}`,
+    { headers: { host: domain } }
+  );
+  if (!response.ok) throw new Error("Failed to fetch kanban categories");
   const data = await response.json();
   return Array.isArray(data) ? data : [];
 }
@@ -394,6 +403,16 @@ export function AppSidebar() {
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
+  // OPTIMIZED: Use React Query for kanban categories caching
+  const { data: kanbanCategories = [], isLoading: isLoadingCategories } =
+    useQuery({
+      queryKey: ["kanban-categories", domain],
+      queryFn: () => fetchKanbanCategories(domain!),
+      enabled: !!domain && isOnline,
+      staleTime: 10 * 60 * 1000, // 10 minutes
+      gcTime: 60 * 60 * 1000, // 1 hour
+    });
+
   const refreshKanbansOptimized = useCallback(async () => {
     if (!isOnline || !domain) {
       if (!isOnline) {
@@ -432,20 +451,65 @@ export function AppSidebar() {
 
     return items.map((item: MenuItem) => {
       if (item.label === "Kanban") {
-        // Filtra i kanban per tipo (ufficio vs produzione)
-        const officeKanbans = kanbansLocal.filter(
-          (k) => !k.type || k.type === "office"
-        );
-        const productionKanbans = kanbansLocal.filter(
-          (k) => k.type === "production"
-        );
-
         const isSuperAdmin = userContext?.role === "superadmin";
 
-        const kanbanSubItems = [
-          {
-            label: "Kanban Ufficio",
-            icon: "faBriefcase" as const,
+        // Se non ci sono categorie, mostra tutte le kanban senza raggruppamento
+        if (kanbanCategories.length === 0) {
+          const kanbanSubItems = [
+            ...(isLoadingKanbansLocal
+              ? [
+                  {
+                    label: "Caricamento...",
+                    icon: "faWrench" as const,
+                    href: "#",
+                    alert: false,
+                  },
+                ]
+              : kanbansLocal.length === 0
+              ? [
+                  {
+                    label: isOnline
+                      ? "Nessun kanban disponibile"
+                      : "Dati non disponibili offline",
+                    icon: "faTable" as const,
+                    href: "#",
+                    alert: false,
+                  },
+                ]
+              : kanbansLocal.map((kanban) => ({
+                  label: kanban.title,
+                  icon: "faTable" as const,
+                  href: `${basePath}/kanban?name=${kanban.identifier}`,
+                  alert: false,
+                  id: kanban.id || kanban.identifier,
+                }))),
+            ...(isSuperAdmin
+              ? [
+                  {
+                    label: "Crea Kanban",
+                    icon: "faPlus" as const,
+                    action: () => openCreateModal(null),
+                    alert: false,
+                  },
+                ]
+              : []),
+          ];
+
+          return {
+            ...item,
+            items: kanbanSubItems,
+          };
+        }
+
+        // Raggruppa le kanban per categoria
+        const kanbanSubItems = kanbanCategories.map((category: any) => {
+          const categoryKanbans = kanbansLocal.filter(
+            (k) => k.category_id === category.id
+          );
+
+          return {
+            label: category.name,
+            icon: "faListUl" as const,
             alert: false,
             items: [
               ...(isLoadingKanbansLocal
@@ -457,7 +521,7 @@ export function AppSidebar() {
                       alert: false,
                     },
                   ]
-                : officeKanbans.length === 0
+                : categoryKanbans.length === 0
                 ? [
                     {
                       label: isOnline
@@ -468,28 +532,34 @@ export function AppSidebar() {
                       alert: false,
                     },
                   ]
-                : officeKanbans.map((kanban) => ({
+                : categoryKanbans.map((kanban) => ({
                     label: kanban.title,
                     icon: "faTable" as const,
-                    href: `${basePath}/kanban?name=${kanban.identifier}&type=office`,
+                    href: `${basePath}/kanban?name=${kanban.identifier}&category=${category.identifier}`,
                     alert: false,
                     id: kanban.id || kanban.identifier,
                   }))),
               ...(isSuperAdmin
                 ? [
                     {
-                      label: "Crea Kanban Ufficio",
+                      label: `Crea Kanban ${category.name}`,
                       icon: "faPlus" as const,
-                      action: () => openCreateModal(),
+                      action: () => openCreateModal(category.id),
                       alert: false,
                     },
                   ]
                 : []),
             ],
-          },
-          {
-            label: "Kanban Produzione",
-            icon: "faIndustry" as const,
+          };
+        });
+
+        // Aggiungi le kanban senza categoria
+        const uncategorizedKanbans = kanbansLocal.filter((k) => !k.category_id);
+
+        if (uncategorizedKanbans.length > 0 || isSuperAdmin) {
+          kanbanSubItems.push({
+            label: "Senza Categoria",
+            icon: "faListUl" as const,
             alert: false,
             items: [
               ...(isLoadingKanbansLocal
@@ -501,37 +571,28 @@ export function AppSidebar() {
                       alert: false,
                     },
                   ]
-                : productionKanbans.length === 0
-                ? [
-                    {
-                      label: isOnline
-                        ? "Nessun kanban disponibile"
-                        : "Dati non disponibili offline",
-                      icon: "faTable" as const,
-                      href: "#",
-                      alert: false,
-                    },
-                  ]
-                : productionKanbans.map((kanban) => ({
+                : uncategorizedKanbans.length === 0
+                ? []
+                : uncategorizedKanbans.map((kanban) => ({
                     label: kanban.title,
                     icon: "faTable" as const,
-                    href: `${basePath}/kanban?name=${kanban.identifier}&type=production`,
+                    href: `${basePath}/kanban?name=${kanban.identifier}`,
                     alert: false,
                     id: kanban.id || kanban.identifier,
                   }))),
               ...(isSuperAdmin
                 ? [
                     {
-                      label: "Crea Kanban Produzione",
+                      label: "Crea Kanban",
                       icon: "faPlus" as const,
-                      action: () => openCreateModal(),
+                      action: () => openCreateModal(null),
                       alert: false,
                     },
                   ]
                 : []),
             ],
-          },
-        ];
+          });
+        }
 
         return {
           ...item,
@@ -545,6 +606,7 @@ export function AppSidebar() {
     enabledModules,
     basePath,
     kanbansLocal,
+    kanbanCategories,
     isLoadingKanbansLocal,
     isOnline,
     userContext,
@@ -567,29 +629,6 @@ export function AppSidebar() {
       [label]: !prev[label],
     }));
   }, []);
-
-  const handleSaveKanban = useCallback(
-    async (kanbanData: Kanban) => {
-      try {
-        await saveKanban(kanbanData, domain || "");
-        // Invalidate cache to refetch
-        queryClient.invalidateQueries({ queryKey: ["kanbans-list", domain] });
-        toast({
-          title: "Successo",
-          description: "Kanban salvato correttamente",
-        });
-      } catch (error) {
-        console.error("Error saving kanban:", error);
-        toast({
-          variant: "destructive",
-          title: "Errore",
-          description:
-            "Si è verificato un errore durante il salvataggio del kanban",
-        });
-      }
-    },
-    [queryClient, toast, domain]
-  );
 
   // Optimized display values
   const displayTitle = useMemo(() => {
@@ -707,17 +746,17 @@ export function AppSidebar() {
                                       onClick={nestedItem.action}
                                       className={
                                         nestedItem.action
-                                          ? "[&>div>span]:whitespace-normal [&>div>span]:break-words"
-                                          : ""
+                                          ? "[&>div>span]:line-clamp-2"
+                                          : "[&>span:last-child]:line-clamp-2"
                                       }
                                     >
                                       {nestedItem.action ? (
                                         <div className="flex items-center gap-2">
                                           <FontAwesomeIcon
                                             icon={iconMap[nestedItem.icon]}
-                                            className="w-4 h-4 flex-shrink-0"
+                                            className="w-4 h-4 shrink-0"
                                           />
-                                          <span className="whitespace-normal break-words">
+                                          <span className="whitespace-normal wrap-break-words">
                                             {nestedItem.label}
                                           </span>
                                         </div>
@@ -760,17 +799,17 @@ export function AppSidebar() {
                           onClick={subItem.action}
                           className={
                             subItem.action
-                              ? "[&>div>span]:whitespace-normal [&>div>span]:break-words"
-                              : ""
+                              ? "[&>div>span]:line-clamp-2"
+                              : "[&>span:last-child]:line-clamp-2"
                           }
                         >
                           {subItem.action ? (
                             <div className="flex items-center gap-2 cursor-pointer">
                               <FontAwesomeIcon
                                 icon={iconMap[subItem.icon]}
-                                className="w-4 h-4 flex-shrink-0"
+                                className="w-4 h-4 shrink-0"
                               />
-                              <span className="whitespace-normal break-words">
+                              <span className="whitespace-normal wrap-break-words">
                                 {subItem.label}
                               </span>
                             </div>

@@ -166,13 +166,14 @@ export default async function Page({
     console.error("Error fetching site data:", error);
   }
 
-  // Fetch kanban data server-side with site_id filtering
+  // Fetch kanban data server-side with site_id filtering and category info
   let kanbanQuery = supabase
     .from("Kanban")
     .select(
       `
       *,
-      columns:KanbanColumn(*)
+      columns:KanbanColumn(*),
+      category:KanbanCategory(*)
     `
     )
     .eq("identifier", kanName)

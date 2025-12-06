@@ -66,6 +66,7 @@ const EditForm = ({ handleClose, data }: Props) => {
       unique_code: data.unique_code ?? "",
       other: data.other ?? "",
       kanbanId: data.kanbanId ?? undefined,
+      kanbanColumnId: data.kanbanColumnId ?? undefined,
     },
   });
   const { isSubmitting } = form.formState;
@@ -73,6 +74,8 @@ const EditForm = ({ handleClose, data }: Props) => {
   const [clients, setClients] = useState([]);
   const [products, setProducts] = useState([]);
   const [kanbans, setKanbans] = useState<Kanban[]>([]);
+  const [kanbanColumns, setKanbanColumns] = useState<any[]>([]);
+  const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(data.kanbanId || null);
 
   useEffect(() => {
     const getClients = async () => {
@@ -106,6 +109,36 @@ const EditForm = ({ handleClose, data }: Props) => {
     getProducts();
     getKanbans();
   }, []);
+
+  // Load columns when kanban changes
+  useEffect(() => {
+    const loadColumns = async () => {
+      if (selectedKanbanId) {
+        try {
+          console.log("🔍 Fetching columns for kanban:", selectedKanbanId);
+          const response = await fetch(`/api/kanban-columns/${selectedKanbanId}`);
+          console.log("📡 Response status:", response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("❌ Response error:", errorText);
+            throw new Error(`Failed to fetch columns: ${response.status}`);
+          }
+          
+          const columnsData = await response.json();
+          console.log("✅ Columns loaded:", columnsData);
+          setKanbanColumns(Array.isArray(columnsData) ? columnsData : []);
+        } catch (error) {
+          console.error("Error fetching columns:", error);
+          setKanbanColumns([]);
+        }
+      } else {
+        setKanbanColumns([]);
+      }
+    };
+
+    loadColumns();
+  }, [selectedKanbanId]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     const response = await editItem(d, data?.id, domain);
@@ -196,13 +229,19 @@ const EditForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Kanban</FormLabel>
               <Select
-                onValueChange={(value) => field.onChange(Number(value))}
+                onValueChange={(value) => {
+                  const kanbanId = value ? Number(value) : null;
+                  field.onChange(kanbanId);
+                  setSelectedKanbanId(kanbanId);
+                  // Reset column when kanban changes
+                  form.setValue("kanbanColumnId", undefined);
+                }}
                 defaultValue={field.value?.toString()}
                 disabled={isSubmitting}
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleziona una kanban" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -217,6 +256,43 @@ const EditForm = ({ handleClose, data }: Props) => {
             </FormItem>
           )}
         />
+
+        {/* Column Selection - only shown if kanban is selected */}
+        {selectedKanbanId && (
+          <FormField
+            name="kanbanColumnId"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Colonna</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                  defaultValue={field.value?.toString()}
+                  disabled={isSubmitting || kanbanColumns.length === 0}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona una colonna" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {kanbanColumns.map((column) => (
+                      <SelectItem key={column.id} value={column.id.toString()}>
+                        {column.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {kanbanColumns.length === 0 && (
+                  <FormDescription className="text-yellow-600">
+                    Nessuna colonna disponibile. La task sarà assegnata alla prima colonna.
+                  </FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           name="productId"

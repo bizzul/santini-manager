@@ -20,13 +20,14 @@ export async function getKanbans(domain?: string) {
       }
     }
 
-    // OPTIMIZED: Single query with JOIN to get kanbans AND columns together
+    // OPTIMIZED: Single query with JOIN to get kanbans, columns, and category together
     // This eliminates N+1 query problem (was: 1 query for kanbans + N queries for columns)
     let kanbanQuery = supabase
       .from("Kanban")
       .select(`
         *,
-        columns:KanbanColumn(*)
+        columns:KanbanColumn(*),
+        category:KanbanCategory(*)
       `)
       .order("title", { ascending: true })
       .order("position", { referencedTable: "KanbanColumn", ascending: true });

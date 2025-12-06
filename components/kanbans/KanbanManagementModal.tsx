@@ -59,6 +59,9 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { deleteKanban } from "@/app/sites/[domain]/kanban/actions/delete-kanban.action";
+import { KanbanCategorySelector } from "./KanbanCategorySelector";
+import { Badge } from "../ui/badge";
+import { getKanbanCategories, type KanbanCategory } from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
 
 type Column = {
   title: string;
@@ -78,6 +81,7 @@ interface KanbanManagementModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   domain?: string;
+  preSelectedCategoryId?: number | null;
 }
 
 const iconOptions = [
@@ -139,31 +143,68 @@ export default function KanbanManagementModal({
   open: externalOpen,
   onOpenChange: externalOnOpenChange,
   domain,
+  preSelectedCategoryId,
 }: KanbanManagementModalProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(kanban?.title || "");
   const [identifier, setIdentifier] = useState(kanban?.identifier || "");
-  const [columns, setColumns] = useState<Column[]>(
-    kanban?.columns?.sort(
+  const [columns, setColumns] = useState<Column[]>(() => {
+    const cols = kanban?.columns?.sort(
       (a: any, b: any) => (a.position || 0) - (b.position || 0)
-    ) || []
-  );
+    ) || [];
+    console.log("📊 Modal initialized with columns:", cols);
+    console.log("📊 Full kanban object:", kanban);
+    return cols;
+  });
   const [color, setColor] = useState(kanban?.color || "#1e293b");
+  const [categoryId, setCategoryId] = useState<number | null>(
+    kanban?.category_id || null
+  );
+  const [categories, setCategories] = useState<KanbanCategory[]>([]);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  // Load categories when domain is available
+  useEffect(() => {
+    if (domain) {
+      getKanbanCategories(domain)
+        .then(setCategories)
+        .catch((error) => console.error("Error loading categories:", error));
+    }
+  }, [domain]);
 
   // Use external open state if provided, otherwise use internal state
   const isOpen = externalOpen !== undefined ? externalOpen : open;
   const setIsOpen = externalOnOpenChange || setOpen;
 
+  // Reset all form data when kanban changes or modal opens
   useEffect(() => {
-    if (kanban?.columns) {
-      setColumns(
-        kanban.columns.sort(
+    if (isOpen) {
+      console.log("🔄 Modal opened/changed, resetting state for kanban:", kanban?.title);
+      setTitle(kanban?.title || "");
+      setIdentifier(kanban?.identifier || "");
+      setColor(kanban?.color || "#1e293b");
+      
+      // Use preSelectedCategoryId if provided and in create mode, otherwise use kanban's category
+      if (mode === "create" && preSelectedCategoryId !== undefined) {
+        setCategoryId(preSelectedCategoryId);
+        console.log("🎯 Pre-selected category ID:", preSelectedCategoryId);
+      } else {
+        setCategoryId(kanban?.category_id || null);
+      }
+      
+      if (kanban?.columns) {
+        const sortedColumns = kanban.columns.sort(
           (a: any, b: any) => (a.position || 0) - (b.position || 0)
-        )
-      );
+        );
+        setColumns(sortedColumns);
+        console.log("🔄 Loaded columns:", sortedColumns.length);
+      } else {
+        setColumns([]);
+      }
     }
-  }, [kanban]);
+  }, [kanban, isOpen, preSelectedCategoryId, mode]);
 
   // Auto-generate kanban identifier when title changes
   useEffect(() => {
@@ -204,11 +245,18 @@ export default function KanbanManagementModal({
         title,
         identifier,
         color,
+        category_id: categoryId,
         columns: columns.map((col, index) => ({
           ...col,
           position: index + 1,
         })),
+        // When there are tasks, we can update column titles/icons but not add/remove columns
+        skipColumnUpdates: false, // Always allow column updates now
       };
+
+      console.log("💾 Saving kanban with data:", kanbanData);
+      console.log("💾 Number of columns:", columns.length);
+      console.log("💾 Skip column updates:", mode === "edit" && hasTasks);
 
       await onSave(kanbanData);
       setIsOpen(false);
@@ -223,7 +271,12 @@ export default function KanbanManagementModal({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setDeleteConfirmName("");
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!kanban?.id) {
       toast({
         variant: "destructive",
@@ -233,12 +286,36 @@ export default function KanbanManagementModal({
       return;
     }
 
-    try {
-      await deleteKanban(kanban.id, domain);
+    if (deleteConfirmName !== kanban.title) {
       toast({
-        title: "Successo",
-        description: "Kanban eliminato con successo",
+        variant: "destructive",
+        title: "Errore",
+        description: "Il nome inserito non corrisponde",
       });
+      return;
+    }
+
+    try {
+      const result = await deleteKanban(kanban.id, domain);
+      
+      if (result.success) {
+        toast({
+          title: "Successo",
+          description: result.tasksDisconnected 
+            ? `Kanban eliminato. ${result.tasksDisconnected} task sono state scollegate.`
+            : "Kanban eliminato con successo",
+        });
+        setIsDeleteDialogOpen(false);
+        setIsOpen(false);
+        // Refresh the page
+        window.location.reload();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Errore",
+          description: result.error || "Impossibile eliminare il kanban",
+        });
+      }
     } catch (error) {
       console.error("Error deleting kanban:", error);
       toast({
@@ -284,9 +361,28 @@ export default function KanbanManagementModal({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {mode === "create" ? "Crea Nuovo Kanban" : "Modifica Kanban"}
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>
+              {mode === "create" ? "Crea Nuovo Kanban" : "Modifica Kanban"}
+            </DialogTitle>
+            {categoryId && categories.length > 0 && (() => {
+              const selectedCategory = categories.find((c) => c.id === categoryId);
+              if (selectedCategory) {
+                return (
+                  <Badge
+                    style={{ 
+                      backgroundColor: selectedCategory.color || "#3B82F6",
+                      color: "white"
+                    }}
+                    className="text-xs px-2 py-1"
+                  >
+                    📁 {selectedCategory.name}
+                  </Badge>
+                );
+              }
+              return null;
+            })()}
+          </div>
           <DialogDescription>
             {mode === "create"
               ? "Crea una nuova board kanban"
@@ -330,6 +426,13 @@ export default function KanbanManagementModal({
               />
             </div>
           </div>
+          {domain && (
+            <KanbanCategorySelector
+              domain={domain}
+              value={categoryId}
+              onChange={setCategoryId}
+            />
+          )}
           <div className="space-y-2">
             <Label>Colonne</Label>
             <div className="flex items-center gap-2 font-semibold text-xs text-muted-foreground px-1">
@@ -410,9 +513,7 @@ export default function KanbanManagementModal({
                       handleColumnChange(index, "title", e.target.value)
                     }
                     className="flex-1"
-                    disabled={
-                      mode !== "create" && (mode !== "edit" || hasTasks)
-                    }
+                    placeholder="Nome colonna"
                   />
                   <Input
                     value={column.identifier}
@@ -420,9 +521,8 @@ export default function KanbanManagementModal({
                       handleColumnChange(index, "identifier", e.target.value)
                     }
                     className="flex-1"
-                    disabled={
-                      mode !== "create" && (mode !== "edit" || hasTasks)
-                    }
+                    disabled={mode === "edit"} // Identifier cannot be changed after creation
+                    placeholder="identificatore"
                   />
                   <Select
                     value={column.icon}
@@ -470,38 +570,14 @@ export default function KanbanManagementModal({
           <DialogFooter>
             <div className="flex justify-between w-full">
               {mode === "edit" && kanban?.id && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" type="button">
-                      <FontAwesomeIcon icon={faTrash} className="mr-2" />
-                      Elimina Kanban
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Sei sicuro di voler eliminare il kanban "{kanban.title}
-                        "? Questa azione non può essere annullata.
-                        {hasTasks && (
-                          <span className="block mt-2 text-red-600 font-semibold">
-                            ATTENZIONE: Questo kanban contiene task associati.
-                            Elimina prima tutti i task prima di procedere.
-                          </span>
-                        )}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annulla</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleDelete}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Elimina
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button 
+                  variant="destructive" 
+                  type="button"
+                  onClick={handleDeleteClick}
+                >
+                  <FontAwesomeIcon icon={faTrash} className="mr-2" />
+                  Elimina Kanban
+                </Button>
               )}
               <Button type="submit">
                 {mode === "create" ? "Crea" : "Salva Modifiche"}
@@ -510,6 +586,63 @@ export default function KanbanManagementModal({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Conferma Eliminazione Kanban</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Stai per eliminare la kanban <strong>"{kanban?.title}"</strong>.
+              </p>
+              
+              {hasTasks && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
+                  <p className="text-yellow-800 font-semibold">
+                    ⚠️ ATTENZIONE
+                  </p>
+                  <p className="text-yellow-700 text-sm mt-1">
+                    Questo kanban contiene task associati. Le task verranno <strong>scollegate</strong> 
+                    dal kanban ma <strong>NON eliminate</strong>. Potrai trovarle nella sezione task 
+                    senza kanban assegnato.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm-name" className="text-sm font-medium">
+                  Per confermare, digita il nome esatto della kanban:
+                </Label>
+                <Input
+                  id="confirm-name"
+                  value={deleteConfirmName}
+                  onChange={(e) => setDeleteConfirmName(e.target.value)}
+                  placeholder={kanban?.title}
+                  className="font-mono"
+                  autoComplete="off"
+                />
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Questa azione non può essere annullata.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmName("")}>
+              Annulla
+            </AlertDialogCancel>
+            <Button
+              onClick={handleDeleteConfirm}
+              variant="destructive"
+              disabled={deleteConfirmName !== kanban?.title}
+            >
+              Elimina Definitivamente
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

@@ -36,4 +36,8 @@ export const validation = z.object({
     .refine((val) => val !== null && val !== undefined, {
       message: "È necessario selezionare un kanban",
     }),
+  kanbanColumnId: z
+    .preprocess((val) => (val ? Number(val) : null), z.number())
+    .optional()
+    .nullable(),
 });

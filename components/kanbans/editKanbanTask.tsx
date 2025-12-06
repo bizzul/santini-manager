@@ -87,6 +87,10 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
   const [newSupplier, setNewSupplier] = useState<string>("");
   const [newDeliveryDate, setNewDeliveryDate] = useState<string>("");
+  const [kanbans, setKanbans] = useState<any[]>([]);
+  const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(resource?.kanbanId || null);
+  const [kanbanColumns, setKanbanColumns] = useState<any[]>([]);
+  const [selectedColumnId, setSelectedColumnId] = useState<number | null>(resource?.kanbanColumnId || null);
 
   useEffect(() => {
     if (!resource) return;
@@ -149,6 +153,18 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
       }
     };
 
+    const getKanbans = async () => {
+      try {
+        const response = await fetch(`/api/kanban/list`);
+        if (!response.ok) throw new Error("Failed to fetch kanbans");
+        const data = await response.json();
+        setKanbans(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching kanbans:", error);
+        setKanbans([]);
+      }
+    };
+
     const initializeForm = async () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue("deliveryDate", new Date(resource.deliveryDate!));
@@ -164,12 +180,42 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     };
 
     const loadData = async () => {
-      await Promise.all([getClients(), getProducts(), initializeForm()]);
+      await Promise.all([getClients(), getProducts(), getKanbans(), initializeForm()]);
       setIsLoading(false);
     };
 
     loadData();
   }, [resource, form.setValue]);
+
+  // Load columns when kanban changes
+  useEffect(() => {
+    const loadColumns = async () => {
+      if (selectedKanbanId) {
+        try {
+          const response = await fetch(`/api/kanban-columns/${selectedKanbanId}`);
+          if (!response.ok) throw new Error("Failed to fetch columns");
+          const data = await response.json();
+          setKanbanColumns(Array.isArray(data) ? data : []);
+          
+          // If the selected column doesn't belong to this kanban, reset it
+          if (selectedColumnId) {
+            const columnExists = data.some((col: any) => col.id === selectedColumnId);
+            if (!columnExists) {
+              setSelectedColumnId(null);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching columns:", error);
+          setKanbanColumns([]);
+        }
+      } else {
+        setKanbanColumns([]);
+        setSelectedColumnId(null);
+      }
+    };
+
+    loadColumns();
+  }, [selectedKanbanId]);
 
   useEffect(() => {
     const loadSuppliers = async () => {
@@ -196,7 +242,14 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
   console.log(errors);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    const response = await editItem(d, resource?.id);
+    // Add kanbanId and kanbanColumnId to the data
+    const dataWithKanban = {
+      ...d,
+      kanbanId: selectedKanbanId,
+      kanbanColumnId: selectedColumnId,
+    };
+    
+    const response = await editItem(dataWithKanban, resource?.id);
     if (response && typeof response === "object" && "error" in response) {
       toast({
         description: `Errore! ${response.error}`,
@@ -540,6 +593,57 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
               </FormItem>
             )}
           />
+
+          {/* Kanban Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Kanban</label>
+            <Select
+              value={selectedKanbanId?.toString() || ""}
+              onValueChange={(value) => setSelectedKanbanId(value ? parseInt(value) : null)}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona una kanban" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Nessuna kanban</SelectItem>
+                {kanbans.map((kanban) => (
+                  <SelectItem key={kanban.id} value={kanban.id.toString()}>
+                    {kanban.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Column Selection (only shown if kanban is selected) */}
+          {selectedKanbanId && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Colonna</label>
+              <Select
+                value={selectedColumnId?.toString() || ""}
+                onValueChange={(value) => setSelectedColumnId(value ? parseInt(value) : null)}
+                disabled={isSubmitting || kanbanColumns.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona una colonna" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nessuna colonna</SelectItem>
+                  {kanbanColumns.map((column) => (
+                    <SelectItem key={column.id} value={column.id.toString()}>
+                      {column.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {kanbanColumns.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nessuna colonna disponibile per questa kanban
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-rows-2 grid-cols-4 gap-2">
             {Array.from({ length: 8 }, (_, i) => (

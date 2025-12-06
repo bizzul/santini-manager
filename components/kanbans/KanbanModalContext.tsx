@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState } from "react";
 
 interface KanbanModalContextType {
   isCreateModalOpen: boolean;
-  openCreateModal: () => void;
+  preSelectedCategoryId: number | null;
+  openCreateModal: (categoryId?: number | null) => void;
   closeCreateModal: () => void;
 }
 
@@ -18,14 +19,23 @@ export function KanbanModalProvider({
   children: React.ReactNode;
 }) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [preSelectedCategoryId, setPreSelectedCategoryId] = useState<number | null>(null);
 
-  const openCreateModal = () => setIsCreateModalOpen(true);
-  const closeCreateModal = () => setIsCreateModalOpen(false);
+  const openCreateModal = (categoryId?: number | null) => {
+    setPreSelectedCategoryId(categoryId || null);
+    setIsCreateModalOpen(true);
+  };
+  
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setPreSelectedCategoryId(null); // Reset when closing
+  };
 
   return (
     <KanbanModalContext.Provider
       value={{
         isCreateModalOpen,
+        preSelectedCategoryId,
         openCreateModal,
         closeCreateModal,
       }}

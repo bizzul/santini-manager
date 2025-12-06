@@ -1,3 +1,11 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -70,7 +78,7 @@ export type Database = {
         Row: {
           clientId: number | null;
           createdAt: string;
-          data: JSON;
+          data: Json;
           id: number;
           organization_id: string | null;
           productId: number | null;
@@ -83,7 +91,7 @@ export type Database = {
         Insert: {
           clientId?: number | null;
           createdAt?: string;
-          data: JSON;
+          data: Json;
           id?: number;
           organization_id?: string | null;
           productId?: number | null;
@@ -96,7 +104,7 @@ export type Database = {
         Update: {
           clientId?: number | null;
           createdAt?: string;
-          data?: JSON;
+          data?: Json;
           id?: number;
           organization_id?: string | null;
           productId?: number | null;
@@ -155,8 +163,8 @@ export type Database = {
         Row: {
           action: string;
           id: string;
-          new_data: JSON | null;
-          old_data: JSON | null;
+          new_data: Json | null;
+          old_data: Json | null;
           record_id: string | null;
           table_name: string;
           timestamp: string | null;
@@ -165,8 +173,8 @@ export type Database = {
         Insert: {
           action: string;
           id?: string;
-          new_data?: JSON | null;
-          old_data?: JSON | null;
+          new_data?: Json | null;
+          old_data?: Json | null;
           record_id?: string | null;
           table_name: string;
           timestamp?: string | null;
@@ -175,8 +183,8 @@ export type Database = {
         Update: {
           action?: string;
           id?: string;
-          new_data?: JSON | null;
-          old_data?: JSON | null;
+          new_data?: Json | null;
+          old_data?: Json | null;
           record_id?: string | null;
           table_name?: string;
           timestamp?: string | null;
@@ -562,6 +570,7 @@ export type Database = {
       };
       Kanban: {
         Row: {
+          category_id: number | null;
           color: string | null;
           id: number;
           identifier: string;
@@ -569,6 +578,7 @@ export type Database = {
           title: string;
         };
         Insert: {
+          category_id?: number | null;
           color?: string | null;
           id?: number;
           identifier: string;
@@ -576,6 +586,7 @@ export type Database = {
           title: string;
         };
         Update: {
+          category_id?: number | null;
           color?: string | null;
           id?: number;
           identifier?: string;
@@ -584,7 +595,61 @@ export type Database = {
         };
         Relationships: [
           {
+            foreignKeyName: "Kanban_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "KanbanCategory";
+            referencedColumns: ["id"];
+          },
+          {
             foreignKeyName: "Kanban_site_id_fkey";
+            columns: ["site_id"];
+            isOneToOne: false;
+            referencedRelation: "sites";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      KanbanCategory: {
+        Row: {
+          color: string | null;
+          created_at: string;
+          description: string | null;
+          display_order: number | null;
+          icon: string | null;
+          id: number;
+          identifier: string;
+          name: string;
+          site_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          color?: string | null;
+          created_at?: string;
+          description?: string | null;
+          display_order?: number | null;
+          icon?: string | null;
+          id?: number;
+          identifier: string;
+          name: string;
+          site_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          color?: string | null;
+          created_at?: string;
+          description?: string | null;
+          display_order?: number | null;
+          icon?: string | null;
+          id?: number;
+          identifier?: string;
+          name?: string;
+          site_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "KanbanCategory_site_id_fkey";
             columns: ["site_id"];
             isOneToOne: false;
             referencedRelation: "sites";
@@ -1229,6 +1294,7 @@ export type Database = {
           material: boolean;
           metalli: boolean;
           name: string | null;
+          numero_pezzi: number | null;
           other: string | null;
           percentStatus: number | null;
           positions: string[] | null;
@@ -1238,6 +1304,7 @@ export type Database = {
           status: string | null;
           stoccaggiodate: string | null;
           stoccato: boolean | null;
+          termine_produzione: string | null;
           title: string | null;
           unique_code: string | null;
           updated_at: string;
@@ -1261,6 +1328,7 @@ export type Database = {
           material?: boolean;
           metalli?: boolean;
           name?: string | null;
+          numero_pezzi?: number | null;
           other?: string | null;
           percentStatus?: number | null;
           positions?: string[] | null;
@@ -1270,6 +1338,7 @@ export type Database = {
           status?: string | null;
           stoccaggiodate?: string | null;
           stoccato?: boolean | null;
+          termine_produzione?: string | null;
           title?: string | null;
           unique_code?: string | null;
           updated_at?: string;
@@ -1293,6 +1362,7 @@ export type Database = {
           material?: boolean;
           metalli?: boolean;
           name?: string | null;
+          numero_pezzi?: number | null;
           other?: string | null;
           percentStatus?: number | null;
           positions?: string[] | null;
@@ -1302,6 +1372,7 @@ export type Database = {
           status?: string | null;
           stoccaggiodate?: string | null;
           stoccato?: boolean | null;
+          termine_produzione?: string | null;
           title?: string | null;
           unique_code?: string | null;
           updated_at?: string;
@@ -1357,19 +1428,19 @@ export type Database = {
         Row: {
           createdAt: string;
           id: number;
-          snapshot: JSON;
+          snapshot: Json;
           taskId: number;
         };
         Insert: {
           createdAt?: string;
           id?: number;
-          snapshot: JSON;
+          snapshot: Json;
           taskId: number;
         };
         Update: {
           createdAt?: string;
           id?: number;
-          snapshot?: JSON;
+          snapshot?: Json;
           taskId?: number;
         };
         Relationships: [
@@ -1715,13 +1786,15 @@ export type TablesInsert<
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
-  } ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
       "Tables"
     ]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
-} ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
     "Tables"
   ][TableName] extends {
     Insert: infer I;
@@ -1740,13 +1813,15 @@ export type TablesUpdate<
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
-  } ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
       "Tables"
     ]
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
-} ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]][
     "Tables"
   ][TableName] extends {
     Update: infer U;
@@ -1765,13 +1840,15 @@ export type Enums<
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
-  } ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]][
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]][
       "Enums"
     ]
     : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
-} ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][
     EnumName
   ]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
@@ -1784,13 +1861,15 @@ export type CompositeTypes<
     | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
-  } ? keyof DatabaseWithoutInternals[
+  }
+    ? keyof DatabaseWithoutInternals[
       PublicCompositeTypeNameOrOptions["schema"]
     ]["CompositeTypes"]
     : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals;
-} ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]][
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]][
     "CompositeTypes"
   ][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends
