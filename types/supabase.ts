@@ -37,6 +37,7 @@ export interface Task {
     deliveryDate?: string;
     other?: string;
     kanbanId?: number; // Alternative property name
+    kanbanColumnId?: number; // Alternative property name for column_id
     material?: boolean;
     metalli?: boolean;
     ferramenta?: boolean;
