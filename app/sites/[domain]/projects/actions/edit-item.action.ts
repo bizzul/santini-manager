@@ -108,9 +108,13 @@ export async function editItem(formData: any, id: number, domain?: string) {
           unique_code: result.data?.unique_code || null,
           name: result.data?.name || null,
           deliveryDate: result.data.deliveryDate || null,
+          termine_produzione: result.data.termine_produzione || null,
           other: result.data?.other || null,
           sellPrice: result.data?.sellPrice
             ? Number(result.data?.sellPrice)
+            : null,
+          numero_pezzi: result.data?.numero_pezzi
+            ? Number(result.data?.numero_pezzi)
             : null,
           clientId: result.data?.clientId
             ? Number(result.data?.clientId)

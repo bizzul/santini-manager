@@ -52,6 +52,7 @@ const EditForm = ({ handleClose, data }: Props) => {
     defaultValues: {
       clientId: data.clientId ?? undefined,
       deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : undefined,
+      termine_produzione: (data as any).termine_produzione ? new Date((data as any).termine_produzione) : undefined,
       name: data.name ?? "",
       position1: data.positions?.[0] ?? "",
       position2: data.positions?.[1] ?? "",
@@ -63,6 +64,7 @@ const EditForm = ({ handleClose, data }: Props) => {
       position8: data.positions?.[7] ?? "",
       productId: data.sellProductId ?? undefined,
       sellPrice: data.sellPrice ?? 0,
+      numero_pezzi: (data as any).numero_pezzi ?? null,
       unique_code: data.unique_code ?? "",
       other: data.other ?? "",
       kanbanId: data.kanbanId ?? undefined,
@@ -324,67 +326,141 @@ const EditForm = ({ handleClose, data }: Props) => {
           )}
         />
 
-        <FormField
-          name="deliveryDate"
-          control={form.control}
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Termine</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                      disabled={isSubmitting}
-                    >
-                      {field.value ? (
-                        format(field.value, "PPP")
-                      ) : (
-                        <span>Seleziona una data</span>
-                      )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            name="termine_produzione"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Termine di produzione</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                        disabled={isSubmitting}
+                      >
+                        {field.value
+                          ? field.value.toLocaleDateString("it-IT")
+                          : "Seleziona una data"}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[20rem] overflow-hidden p-0"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={field.value || undefined}
+                      captionLayout="dropdown"
+                      onSelect={field.onChange}
+                      startMonth={new Date(new Date().getFullYear(), 0)}
+                      endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <div className="grid grid-rows-2 grid-cols-4 gap-2">
-          {Array.from({ length: 8 }, (_, i) => (
+          <FormField
+            name="deliveryDate"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Data di posa</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                        disabled={isSubmitting}
+                      >
+                        {field.value
+                          ? field.value.toLocaleDateString("it-IT")
+                          : "Seleziona una data"}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[20rem] overflow-hidden p-0"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={field.value || undefined}
+                      captionLayout="dropdown"
+                      onSelect={field.onChange}
+                      startMonth={new Date(new Date().getFullYear(), 0)}
+                      endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="flex">
+          <div className="w-1/2 pr-4">
+            <div className="grid grid-rows-2 grid-cols-4 gap-2">
+              {Array.from({ length: 8 }, (_, i) => (
+                <FormField
+                  key={i}
+                  //@ts-ignore
+                  name={`position${i + 1}`}
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
+                      <FormControl>
+                        {/* @ts-ignore */}
+                        <Input {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="border-l border-border" />
+
+          <div className="w-1/2 pl-4 flex items-center justify-center">
             <FormField
-              key={i}
-              //@ts-ignore
-              name={`position${i + 1}`}
+              name="numero_pezzi"
               control={form.control}
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{`Posizione ${i + 1}`}</FormLabel>
+                <FormItem className="w-full max-w-32">
+                  <FormLabel>Numero pezzi</FormLabel>
                   <FormControl>
-                    {/* @ts-ignore */}
-                    <Input {...field} />
+                    <Input
+                      {...field}
+                      type="number"
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
-                  {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
             />
-          ))}
+          </div>
         </div>
 
         <FormField
@@ -394,9 +470,8 @@ const EditForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Commenti</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <Textarea {...field} disabled={isSubmitting} />
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -407,11 +482,10 @@ const EditForm = ({ handleClose, data }: Props) => {
           control={form.control}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Costo di produzione</FormLabel>
+              <FormLabel>Valore totale</FormLabel>
               <FormControl>
-                <Input {...field} type="number" />
+                <Input {...field} type="number" disabled={isSubmitting} />
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
