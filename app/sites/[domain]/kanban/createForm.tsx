@@ -181,7 +181,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId, domain }: Props) => {
               <FormLabel>Data di carico in sede</FormLabel>
               <FormControl>
                 <DatePicker
-                  date={field.value}
+                  date={field.value ?? undefined}
                   onValueChange={(date) => {
                     console.log("DatePicker onValueChange called with:", date);
                     field.onChange(date);
