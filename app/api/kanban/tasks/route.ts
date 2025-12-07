@@ -26,7 +26,34 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get all non-archived tasks (filter by site_id if available)
+    // STEP 1: Get kanbans filtered by site_id FIRST (needed to filter columns)
+    let kanbansQuery = supabase.from("Kanban").select("*");
+    if (siteId) {
+      kanbansQuery = kanbansQuery.eq("site_id", siteId);
+    }
+    const { data: kanbans, error: kanbansError } = await kanbansQuery;
+
+    if (kanbansError) {
+      console.error("Error fetching kanbans:", kanbansError);
+      throw kanbansError;
+    }
+
+    // Get kanban IDs for filtering columns
+    const kanbanIds = kanbans?.map((k) => k.id) || [];
+
+    // STEP 2: Get columns only for kanbans of this site (OPTIMIZED)
+    let columnsQuery = supabase.from("KanbanColumn").select("*");
+    if (kanbanIds.length > 0) {
+      columnsQuery = columnsQuery.in("kanbanId", kanbanIds);
+    }
+    const { data: columns, error: columnsError } = await columnsQuery;
+
+    if (columnsError) {
+      console.error("Error fetching columns:", columnsError);
+      throw columnsError;
+    }
+
+    // STEP 3: Get all non-archived tasks (filter by site_id if available)
     let tasksQuery = supabase
       .from("Task")
       .select("*")
@@ -46,70 +73,60 @@ export async function GET(req: NextRequest) {
     // Get related data for all tasks
     const taskIds = tasks.map((task) => task.id);
 
-    const { data: columns, error: columnsError } = await supabase
-      .from("KanbanColumn")
-      .select("*");
-
-    if (columnsError) {
-      console.error("Error fetching columns:", columnsError);
-      throw columnsError;
+    // STEP 4: Get clients filtered by site_id (OPTIMIZED)
+    let clientsQuery = supabase.from("Client").select("*");
+    if (siteId) {
+      clientsQuery = clientsQuery.eq("site_id", siteId);
     }
-
-    const { data: clients, error: clientsError } = await supabase
-      .from("Client")
-      .select("*");
+    const { data: clients, error: clientsError } = await clientsQuery;
 
     if (clientsError) {
       console.error("Error fetching clients:", clientsError);
       throw clientsError;
     }
 
-    // Get kanbans filtered by site_id if available
-    let kanbansQuery = supabase
-      .from("Kanban")
-      .select("*");
-
+    // STEP 5: Get sellProducts filtered by site_id (OPTIMIZED)
+    let sellProductsQuery = supabase.from("SellProduct").select("*");
     if (siteId) {
-      kanbansQuery = kanbansQuery.eq("site_id", siteId);
+      sellProductsQuery = sellProductsQuery.eq("site_id", siteId);
     }
-
-    const { data: kanbans, error: kanbansError } = await kanbansQuery;
-
-    if (kanbansError) {
-      console.error("Error fetching kanbans:", kanbansError);
-      throw kanbansError;
-    }
-
-    const { data: files, error: filesError } = await supabase
-      .from("File")
-      .select("*");
-
-    if (filesError) {
-      console.error("Error fetching files:", filesError);
-      throw filesError;
-    }
-
-    const { data: sellProducts, error: sellProductsError } = await supabase
-      .from("SellProduct")
-      .select("*");
+    const { data: sellProducts, error: sellProductsError } = await sellProductsQuery;
 
     if (sellProductsError) {
       console.error("Error fetching sellProducts:", sellProductsError);
       throw sellProductsError;
     }
 
-    const { data: qualityControl, error: qcError } = await supabase
-      .from("QualityControl")
-      .select("*");
+    // STEP 6: Get files only for tasks of this site (OPTIMIZED)
+    let filesQuery = supabase.from("File").select("*");
+    if (taskIds.length > 0) {
+      filesQuery = filesQuery.in("taskId", taskIds);
+    }
+    const { data: files, error: filesError } = await filesQuery;
+
+    if (filesError) {
+      console.error("Error fetching files:", filesError);
+      throw filesError;
+    }
+
+    // STEP 7: Get qualityControl only for tasks of this site (OPTIMIZED)
+    let qcQuery = supabase.from("QualityControl").select("*");
+    if (taskIds.length > 0) {
+      qcQuery = qcQuery.in("taskId", taskIds);
+    }
+    const { data: qualityControl, error: qcError } = await qcQuery;
 
     if (qcError) {
       console.error("Error fetching qualityControl:", qcError);
       throw qcError;
     }
 
-    const { data: packingControl, error: pcError } = await supabase
-      .from("PackingControl")
-      .select("*");
+    // STEP 8: Get packingControl only for tasks of this site (OPTIMIZED)
+    let pcQuery = supabase.from("PackingControl").select("*");
+    if (taskIds.length > 0) {
+      pcQuery = pcQuery.in("taskId", taskIds);
+    }
+    const { data: packingControl, error: pcError } = await pcQuery;
 
     if (pcError) {
       console.error("Error fetching packingControl:", pcError);

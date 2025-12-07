@@ -9,7 +9,7 @@ import { getSiteData } from "@/lib/fetchers";
 
 // Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60;
 
 async function getData(domain?: string): Promise<any> {
   const supabase = await createClient();
@@ -30,63 +30,55 @@ async function getData(domain?: string): Promise<any> {
   }
 
   // Get clients filtered by site_id if available
-  let clientsQuery = supabase.from("Client").select("*");
-  if (siteId) {
-    clientsQuery = clientsQuery.eq("site_id", siteId);
-  }
+  let clientsQuery = supabase.from("Client").select("*").eq("site_id", siteId);
   const { data: clients, error: clientsError } = await clientsQuery;
 
   // Get products filtered by site_id if available
-  let productsQuery = supabase.from("SellProduct").select("*");
-  if (siteId) {
-    productsQuery = productsQuery.eq("site_id", siteId);
-  }
+  let productsQuery = supabase
+    .from("SellProduct")
+    .select("*")
+    .eq("site_id", siteId);
   const { data: products, error: productsError } = await productsQuery;
 
   // Get history filtered by site_id if available
-  let historyQuery = supabase.from("Action").select("*");
-  if (siteId) {
-    historyQuery = historyQuery.eq("site_id", siteId);
-  }
+  let historyQuery = supabase.from("Action").select("*").eq("site_id", siteId);
   const { data: history, error: historyError } = await historyQuery;
+
+  // Get kanbans filtered by site_id FIRST (needed to filter columns)
+  const { data: kanbans, error: kanbansError } = await supabase
+    .from("Kanban")
+    .select("*")
+    .eq("site_id", siteId);
+
+  if (kanbansError) {
+    console.error("Error fetching kanbans:", kanbansError);
+  }
+
+  // Get kanban IDs for filtering columns
+  const kanbanIds = kanbans?.map((k) => k.id) || [];
+
+  // Get columns only for kanbans of this site (OPTIMIZED)
+  const { data: columns, error: columnsError } = await supabase
+    .from("KanbanColumn")
+    .select("*")
+    .in("kanbanId", kanbanIds.length > 0 ? kanbanIds : [-1]); // -1 ensures no results if no kanbans
+
+  if (columnsError) {
+    console.error("Error fetching columns:", columnsError);
+  }
 
   // Get all non-archived tasks (filter by site_id if available)
   let tasksQuery = supabase
     .from("Task")
     .select("*")
+    .eq("site_id", siteId)
     .eq("archived", false);
-
-  if (siteId) {
-    tasksQuery = tasksQuery.eq("site_id", siteId);
-  }
 
   const { data: tasks, error: tasksError } = await tasksQuery;
 
   if (tasksError) {
     console.error("Error fetching tasks:", tasksError);
     return { clients, products, history, tasks: [] };
-  }
-
-  // Get related data for all tasks
-  const { data: columns, error: columnsError } = await supabase
-    .from("KanbanColumn")
-    .select("*");
-
-  if (columnsError) {
-    console.error("Error fetching columns:", columnsError);
-  }
-
-  // Get kanbans filtered by site_id if available
-  let kanbansQuery = supabase.from("Kanban").select("*");
-
-  if (siteId) {
-    kanbansQuery = kanbansQuery.eq("site_id", siteId);
-  }
-
-  const { data: kanbans, error: kanbansError } = await kanbansQuery;
-
-  if (kanbansError) {
-    console.error("Error fetching kanbans:", kanbansError);
   }
 
   const { data: files, error: filesError } = await supabase
@@ -114,18 +106,21 @@ async function getData(domain?: string): Promise<any> {
   }
 
   // Build the response with relationships
-  const tasksWithRelations = tasks?.map((task) => ({
-    ...task,
-    column: columns?.find((col) => col.id === task.kanbanColumnId),
-    client: clients?.find((client) => client.id === task.clientId),
-    kanban: kanbans?.find((kanban) => kanban.id === task.kanbanId),
-    files: files?.filter((file) => file.taskId === task.id) || [],
-    sellProduct: products?.find((product) => product.id === task.sellProductId),
-    QualityControl:
-      qualityControl?.filter((qc) => qc.taskId === task.id) || [],
-    PackingControl:
-      packingControl?.filter((pc) => pc.taskId === task.id) || [],
-  })) || [];
+  const tasksWithRelations =
+    tasks?.map((task) => ({
+      ...task,
+      column: columns?.find((col) => col.id === task.kanbanColumnId),
+      client: clients?.find((client) => client.id === task.clientId),
+      kanban: kanbans?.find((kanban) => kanban.id === task.kanbanId),
+      files: files?.filter((file) => file.taskId === task.id) || [],
+      sellProduct: products?.find(
+        (product) => product.id === task.sellProductId
+      ),
+      QualityControl:
+        qualityControl?.filter((qc) => qc.taskId === task.id) || [],
+      PackingControl:
+        packingControl?.filter((pc) => pc.taskId === task.id) || [],
+    })) || [];
 
   return { clients, products, history, tasks: tasksWithRelations };
 }

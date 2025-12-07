@@ -70,10 +70,17 @@ export async function saveKanban(kanban: {
         updateData.site_id = siteId;
       }
 
-      const { data: updatedKanban, error: updateError } = await supabase
+      let updateQuery = supabase
         .from("Kanban")
         .update(updateData)
-        .eq("identifier", kanban.identifier)
+        .eq("identifier", kanban.identifier);
+      
+      // Filter by site_id to avoid updating kanbans in other sites with the same identifier
+      if (siteId) {
+        updateQuery = updateQuery.eq("site_id", siteId);
+      }
+      
+      const { data: updatedKanban, error: updateError } = await updateQuery
         .select()
         .single();
 
