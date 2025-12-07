@@ -168,7 +168,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {data.kanbans.map((kanban: Kanban) => (
+                    {data.kanbans?.map((kanban: Kanban) => (
                       <SelectItem key={kanban.id} value={kanban.id.toString()}>
                         {kanban.title}
                       </SelectItem>
