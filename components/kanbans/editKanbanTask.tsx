@@ -580,7 +580,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                 <FormLabel>Data di carico in sede</FormLabel>
                 <FormControl>
                   <DatePicker
-                    date={field.value}
+                    date={field.value ?? undefined}
                     onValueChange={(selectedDate) => {
                       console.log(selectedDate);
                       field.onChange(selectedDate);
