@@ -17,6 +17,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Collapsible,
   CollapsibleContent,
@@ -93,6 +94,7 @@ async function fetchSiteData(domain: string) {
   const data = await response.json();
   return {
     name: data.name || domain,
+    image: data.image || null,
     organization: { name: data.organization?.name || "" },
   };
 }
@@ -379,10 +381,12 @@ export function AppSidebar() {
   const basePath = useMemo(() => (domain ? `/sites/${domain}` : ""), [domain]);
 
   // Enhanced site modules hook usage (already uses React Query)
-  const { enabledModules } = useSiteModules(domain || "");
+  const { enabledModules, loading: loadingModules } = useSiteModules(
+    domain || ""
+  );
 
   // OPTIMIZED: Use React Query for site data caching
-  const { data: siteData } = useQuery({
+  const { data: siteData, isLoading: loadingSiteData } = useQuery({
     queryKey: ["site-data", domain],
     queryFn: () => fetchSiteData(domain!),
     enabled: !!domain,
@@ -640,6 +644,8 @@ export function AppSidebar() {
     return "Organization";
   }, [siteData]);
 
+  const siteImage = useMemo(() => siteData?.image || null, [siteData]);
+
   // Raggruppa i menu items per categoria
   const groupedMenuItems = useMemo(() => {
     const core = menuItems.filter((item) => item.label === "Dashboard");
@@ -673,6 +679,185 @@ export function AppSidebar() {
       others,
     };
   }, [menuItems]);
+
+  // Combined loading state for sidebar
+  const isLoadingSidebar = useMemo(() => {
+    // Only show skeleton when we're on a site page and data is still loading
+    if (!domain) return false;
+    return loadingModules || loadingSiteData;
+  }, [domain, loadingModules, loadingSiteData]);
+
+  // Skeleton component for loading state - Content
+  const SidebarSkeletonContent = () => (
+    <>
+      {/* Logo skeleton */}
+      <SidebarGroup>
+        <SidebarGroupLabel className="h-auto py-2">
+          <Skeleton className="h-10 w-28" />
+        </SidebarGroupLabel>
+        {/* Dashboard skeleton */}
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-2">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarSeparator />
+
+      {/* Kanban section skeleton with nested categories */}
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {/* Kanban header */}
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-2">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </SidebarMenuItem>
+            {/* Category: Ufficio */}
+            <div className="pl-4 mt-1 space-y-1">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-14" />
+              </div>
+              <div className="pl-4 space-y-1">
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-14" />
+                </div>
+              </div>
+            </div>
+            {/* Category: Produzione */}
+            <div className="pl-4 mt-1 space-y-1">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
+              <div className="pl-4 space-y-1">
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <Skeleton className="h-3 w-3 rounded" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+            {/* Category: Senza Categoria */}
+            <div className="pl-4 mt-1 space-y-1">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-28" />
+              </div>
+            </div>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarSeparator />
+
+      {/* Calendari section skeleton */}
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-2">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </SidebarMenuItem>
+            <div className="pl-4 mt-1 space-y-1">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-28" />
+              </div>
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
+            </div>
+            {/* Ore item */}
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-2">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-8" />
+              </div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+
+      <SidebarSeparator />
+
+      {/* Contatti section skeleton */}
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-2">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </SidebarMenuItem>
+            <div className="pl-4 mt-1 space-y-1">
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-14" />
+              </div>
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-16" />
+              </div>
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-20" />
+              </div>
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-3.5 w-24" />
+              </div>
+            </div>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </>
+  );
+
+  // Skeleton component for loading state - Footer
+  const SidebarSkeletonFooter = () => (
+    <div className="flex flex-col gap-2">
+      {/* Theme switcher skeleton */}
+      <div className="flex justify-start px-2 py-2">
+        <Skeleton className="h-8 w-8 rounded-full" />
+      </div>
+      {/* User section skeleton */}
+      <div className="flex items-center gap-3 px-2 py-2 rounded-md">
+        <Skeleton className="h-9 w-9 rounded-md shrink-0" />
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-3 w-16" />
+        </div>
+        <Skeleton className="h-4 w-4 rounded shrink-0" />
+      </div>
+    </div>
+  );
 
   const renderMenuItem = (item: MenuItem) => {
     // If item has subitems, use Collapsible
@@ -862,94 +1047,115 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {/* Overview Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel>{displayTitle}</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {groupedMenuItems.core.map(renderMenuItem)}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Project Management */}
-        {groupedMenuItems.projects.length > 0 && (
+        {isLoadingSidebar ? (
+          <SidebarSkeletonContent />
+        ) : (
           <>
-            <SidebarSeparator />
+            {/* Overview Section */}
             <SidebarGroup>
+              <SidebarGroupLabel className="h-auto py-2">
+                {siteImage ? (
+                  <img
+                    src={siteImage}
+                    alt={displayTitle}
+                    className="max-h-10 w-auto object-contain"
+                    title={displayTitle}
+                  />
+                ) : (
+                  displayTitle
+                )}
+              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {groupedMenuItems.projects.map(renderMenuItem)}
+                  {groupedMenuItems.core.map(renderMenuItem)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-          </>
-        )}
 
-        {/* Calendari */}
-        {groupedMenuItems.calendars.length > 0 && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {groupedMenuItems.calendars.map(renderMenuItem)}
-                  {groupedMenuItems.time.map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
+            {/* Project Management */}
+            {groupedMenuItems.projects.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.projects.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
 
-        {/* Contacts */}
-        {groupedMenuItems.contacts.length > 0 && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {groupedMenuItems.contacts.map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
+            {/* Calendari */}
+            {groupedMenuItems.calendars.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.calendars.map(renderMenuItem)}
+                      {groupedMenuItems.time.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
 
-        {/* Warehouse & Products */}
-        {(groupedMenuItems.warehouse.length > 0 ||
-          groupedMenuItems.products.length > 0) && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {groupedMenuItems.warehouse.map(renderMenuItem)}
-                  {groupedMenuItems.products.map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
+            {/* Contacts */}
+            {groupedMenuItems.contacts.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.contacts.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
 
-        {/* Others */}
-        {groupedMenuItems.others.length > 0 && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {groupedMenuItems.others.map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {/* Warehouse & Products */}
+            {(groupedMenuItems.warehouse.length > 0 ||
+              groupedMenuItems.products.length > 0) && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.warehouse.map(renderMenuItem)}
+                      {groupedMenuItems.products.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
+            {/* Others */}
+            {groupedMenuItems.others.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.others.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
           </>
         )}
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex flex-col gap-2">
-          <ThemeSwitcher />
-          {userContext && <UserSection user={userContext} />}
-        </div>
+        {isLoadingSidebar ? (
+          <SidebarSkeletonFooter />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <ThemeSwitcher />
+            {userContext && <UserSection user={userContext} />}
+          </div>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

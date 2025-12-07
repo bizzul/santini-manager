@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { generateUniqueCode } from "@/utils/unique-code";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -61,16 +62,25 @@ export async function createItem(props: any, domain?: string) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
+      // Generate unique code to avoid duplicates (appends .1, .2, etc. if needed)
+      const uniqueCode = await generateUniqueCode(
+        supabase,
+        result.data.unique_code,
+        siteId
+      );
+
       const insertData: any = {
         title: "",
         name: result.data.name,
         clientId: result.data.clientId!,
         deliveryDate: result.data.deliveryDate,
-        unique_code: result.data.unique_code,
+        termine_produzione: result.data.termine_produzione,
+        unique_code: uniqueCode,
         sellProductId: result.data.productId!,
         kanbanId: result.data.kanbanId,
         kanbanColumnId: firstColumn.id,
         sellPrice: result.data.sellPrice,
+        numero_pezzi: result.data.numero_pezzi,
         other: result.data.other,
         positions: positions,
       };

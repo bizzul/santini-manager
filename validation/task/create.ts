@@ -18,9 +18,11 @@ export const validation = z.object({
     .optional()
     .nullable(),
   productId: z.preprocess((val) => Number(val), z.number()).nullable(),
-  deliveryDate: z.date(),
+  deliveryDate: z.date().optional().nullable(),
+  termine_produzione: z.date().optional().nullable(),
   name: z.string().optional(),
   sellPrice: z.preprocess((val) => Number(val), z.number()),
+  numero_pezzi: z.preprocess((val) => (val ? Number(val) : null), z.number()).optional().nullable(),
   other: z.string().optional(),
   fileIds: z.array(z.number()).optional(),
   position1: z.string().optional(),

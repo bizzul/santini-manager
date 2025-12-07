@@ -37,9 +37,9 @@ export function ThemeSwitcher() {
   return (
     <div
       onClick={toggleSwitch}
-      className={`flex items-center justify-center p-2 hover:cursor-pointer ${
-        isCollapsed ? "w-[40px]" : "w-[100px] flex-start"
-      } ${!isCollapsed && isOn && "place-content-end"}`}
+      className={`flex items-center justify-start p-2 hover:cursor-pointer ${
+        isCollapsed ? "w-[40px]" : "w-full"
+      }`}
     >
       <div className="flex h-[40px] w-[40px] items-center justify-center">
         {isOn ? (

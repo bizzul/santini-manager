@@ -5,6 +5,7 @@ import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
+import { generateUniqueCode } from "@/utils/unique-code";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -53,13 +54,20 @@ export async function createItem(props: any, domain?: string) {
         throw new Error("Kanban non valido: nessuna colonna trovata!");
       }
 
+      // Generate unique code to avoid duplicates (appends .1, .2, etc. if needed)
+      const uniqueCode = await generateUniqueCode(
+        supabase,
+        result.data.unique_code,
+        siteId
+      );
+
       // Prepare insert data with site_id
       const insertData: any = {
         //@ts-ignore
         title: "",
         clientId: result.data.clientId!,
         deliveryDate: result.data.deliveryDate,
-        unique_code: result.data.unique_code,
+        unique_code: uniqueCode,
         sellProductId: result.data.productId!,
         kanbanId: result.data.kanbanId, // Use kanbanId from form
         kanbanColumnId: firstColumn.id, // Use first column of the kanban

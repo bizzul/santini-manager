@@ -2,6 +2,7 @@ import { createClient } from "../../../../../utils/supabase/server";
 import { validation } from "../../../../../validation/task/create"; //? <--- The validation schema
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
+import { generateUniqueCode } from "../../../../../utils/unique-code";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,12 +70,19 @@ export async function POST(req: NextRequest) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
+      // Generate unique code to avoid duplicates (appends .1, .2, etc. if needed)
+      const uniqueCode = await generateUniqueCode(
+        supabase,
+        result.data.unique_code,
+        siteId
+      );
+
       // Prepare insert data with site_id
       const insertData: any = {
         title: "",
         clientId: result.data.clientId,
         deliveryDate: result.data.deliveryDate,
-        unique_code: result.data.unique_code,
+        unique_code: uniqueCode,
         sellProductId: result.data.productId,
         name: result.data.name,
         kanbanId: kanban.id,

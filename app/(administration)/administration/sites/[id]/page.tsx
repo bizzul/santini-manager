@@ -92,6 +92,17 @@ export default async function SiteDetailsPage({
           <CardTitle>{site.name}</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Site Image */}
+          {site.image && (
+            <div className="mb-6">
+              <img
+                src={site.image}
+                alt={`${site.name} image`}
+                className="w-full max-w-md h-auto max-h-64 object-contain rounded-lg shadow-sm bg-muted/30"
+              />
+            </div>
+          )}
+
           <div className="mb-6 space-y-3">
             <div className="flex items-center gap-2">
               <span className="font-semibold min-w-[120px]">Subdomain:</span>
@@ -207,6 +218,9 @@ export default async function SiteDetailsPage({
                 </div>
                 <div>
                   <strong>Organization ID:</strong> {site.organization_id}
+                </div>
+                <div>
+                  <strong>Image URL:</strong> {site.image || "No image"}
                 </div>
                 <div>
                   <strong>Organization Data:</strong>{" "}

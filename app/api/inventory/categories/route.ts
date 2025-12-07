@@ -34,10 +34,14 @@ export const GET = async (req: NextRequest) => {
 
     const { data: categories, error } = await categoryQuery;
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching categories:", error);
+      return NextResponse.json([], { status: 200 });
+    }
 
-    return NextResponse.json(categories);
+    return NextResponse.json(categories || []);
   } catch (err: any) {
-    return NextResponse.json(err.message);
+    console.error("Error in categories API:", err);
+    return NextResponse.json([], { status: 200 });
   }
 };

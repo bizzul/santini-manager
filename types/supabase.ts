@@ -94,9 +94,29 @@ export interface Product {
     length?: number;
     type?: string;
     unit?: string;
+    unit_price?: number;
     total_price?: number;
     created_at?: string;
     updated_at?: string;
+    // New inventory fields from CSV
+    category?: string;
+    category_code?: string;
+    subcategory?: string;
+    subcategory_code?: string;
+    subcategory2?: string;
+    subcategory2_code?: string;
+    color?: string;
+    color_code?: string;
+    internal_code?: string;
+    warehouse_number?: string;
+    supplier_code?: string;
+    producer?: string;
+    producer_code?: string;
+    url_tds?: string;
+    image_url?: string;
+    thickness?: number;
+    diameter?: number;
+    sell_price?: number;
 }
 
 export interface Product_category {
