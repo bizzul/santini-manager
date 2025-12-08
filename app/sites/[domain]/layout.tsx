@@ -3,7 +3,11 @@ import { notFound, redirect } from "next/navigation";
 import { getSiteData } from "@/lib/fetchers";
 import { Metadata } from "next";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import {
+  SidebarProvider,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
@@ -18,7 +22,7 @@ import { createClient } from "@/utils/supabase/server";
 async function checkSiteAccess(
   siteId: string,
   siteOrganizationId: string | null,
-  userContext: UserContext,
+  userContext: UserContext
 ): Promise<boolean> {
   // Superadmin can access all sites
   if (userContext.canAccessAllOrganizations) {
@@ -106,7 +110,7 @@ export async function generateMetadata({
       title,
       description,
       images: [image],
-      creator: "@vercel",
+      creator: "@MatrisPro",
     },
     icons: [logo],
     metadataBase: new URL(`https://${domain}`),
@@ -149,7 +153,11 @@ export default async function SiteLayout({
 
     // Check if user has access to this site
     // OPTIMIZED: Pass organization_id directly to avoid extra query
-    const hasAccess = await checkSiteAccess(data.id, data.organization_id, userContext);
+    const hasAccess = await checkSiteAccess(
+      data.id,
+      data.organization_id,
+      userContext
+    );
     if (!hasAccess) {
       console.log(
         "User does not have access to site:",
@@ -157,7 +165,7 @@ export default async function SiteLayout({
         "Site org:",
         data.organization_id,
         "User orgs:",
-        userContext.organizationIds,
+        userContext.organizationIds
       );
       redirect("/sites/select?error=no_access");
     }
@@ -184,9 +192,7 @@ export default async function SiteLayout({
             <header className="flex h-12 shrink-0 items-center border-b px-4">
               <SidebarTrigger className="-ml-1" />
             </header>
-            <div className="flex-1 overflow-auto">
-              {children}
-            </div>
+            <div className="flex-1 overflow-auto">{children}</div>
           </SidebarInset>
 
           {/* Global Kanban Modal */}

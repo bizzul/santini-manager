@@ -15,13 +15,13 @@ const inter = Inter({
 });
 
 const title = "Matris Manager";
-const description = "A B2B Saas Platform";
-const image = "https://vercel.pub/thumbnail.png";
+const description = "A B2B Saas Manager";
+const image = "https://manager.matris.pro/thumbnail.png";
 
 export const metadata: Metadata = {
   title,
   description,
-  icons: ["https://vercel.pub/favicon.ico"],
+  icons: ["https://manager.matris.pro/favicon.ico"],
   openGraph: {
     title,
     description,
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     title,
     description,
     images: [image],
-    creator: "@vercel",
+    creator: "@MatrisPro",
   },
   metadataBase: new URL("https://manager.matris.pro"),
 };
