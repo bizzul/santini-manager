@@ -228,7 +228,7 @@ const EditForm = ({ handleClose, data }: Props) => {
                   options={
                     kanbans.map((kanban) => ({
                       value: kanban.id,
-                      label: kanban.title,
+                      label: kanban.title || "Senza titolo",
                     }))
                   }
                   emptyMessage="Nessun kanban trovato."

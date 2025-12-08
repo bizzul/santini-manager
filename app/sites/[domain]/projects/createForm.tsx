@@ -159,7 +159,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                     options={
                       data.kanbans?.map((kanban: Kanban) => ({
                         value: kanban.id,
-                        label: kanban.title,
+                        label: kanban.title || "Senza titolo",
                       })) || []
                     }
                     emptyMessage="Nessun kanban trovato."
