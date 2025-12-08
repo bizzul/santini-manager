@@ -41,6 +41,8 @@ import {
 import CreateProductForm from "@/app/sites/[domain]/projects/createForm";
 import { useToast } from "../ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
+import { useRealtimeKanban } from "@/hooks/use-realtime-kanban";
+import { logger } from "@/lib/logger";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -368,9 +370,38 @@ function KanbanBoard({
   domain,
 }: KanbanBoardTypes) {
   const { siteId } = useSiteId(domain);
+
   const [tasks, setTasks] = useState(() => {
     // Ensure initialTasks is always an array
     return Array.isArray(initialTasks) ? initialTasks : [];
+  });
+
+  // Function to refetch tasks from the API
+  const refetchTasks = useCallback(async () => {
+    try {
+      const headers: HeadersInit = {};
+      if (siteId) {
+        headers["x-site-id"] = siteId;
+      }
+      const response = await fetch("/api/kanban/tasks", { headers });
+      if (response.ok) {
+        const data = await response.json();
+        // Filter tasks for current kanban
+        const kanbanTasks = Array.isArray(data)
+          ? data.filter((t: any) => t.kanbanId === kanban?.id)
+          : [];
+        setTasks(kanbanTasks);
+      }
+    } catch (error) {
+      logger.error("Error refetching tasks:", error);
+    }
+  }, [siteId, kanban?.id]);
+
+  // 🔄 Subscribe to realtime updates - when another user moves a card, we see it
+  useRealtimeKanban(siteId, (payload) => {
+    logger.debug("Received realtime update:", payload.eventType);
+    // Refetch tasks when we receive an update from another user
+    refetchTasks();
   });
   const [openModal, setOpenModal] = useState<string | null>(null);
   const [setEditModalOpen] = useState<boolean>(false);

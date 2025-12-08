@@ -63,15 +63,16 @@ export default async function proxy(req: NextRequest) {
       return ensureCookies(response);
     }
 
-    // For the root path on a subdomain, rewrite to the subdomain page
-    if (pathname === "/") {
-      const fullDomain = `${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
-      console.log("Rewriting to:", `/sites/${fullDomain}`);
-      const response = NextResponse.rewrite(
-        new URL(`/sites/${fullDomain}`, req.url),
-      );
-      return ensureCookies(response);
+    // Non riscrivere se già dentro /sites/
+    if (pathname.startsWith("/sites/")) {
+      return ensureCookies(supabaseResponse);
     }
+
+    // Rewrite usando solo il subdomain (non il full domain)
+    const newPath = `/sites/${subdomain}${pathname}`;
+    console.log("Rewriting to:", newPath);
+    const response = NextResponse.rewrite(new URL(newPath, req.url));
+    return ensureCookies(response);
   }
 
   // Handle app. and admin. subdomains
@@ -79,16 +80,16 @@ export default async function proxy(req: NextRequest) {
     .get("host")!
     .replace(".localhost:3000", `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`);
 
-  if (hostname.startsWith("app.")) {
-    const url = req.nextUrl;
-    if (url.pathname.startsWith("/app")) {
-      url.pathname = url.pathname.replace("/app", "");
-    }
-    const res = NextResponse.rewrite(new URL(`/app${url.pathname}`, req.url), {
-      request: req,
-    });
-    return ensureCookies(res);
-  }
+  // if (hostname.startsWith("app.")) {
+  //   const url = req.nextUrl;
+  //   if (url.pathname.startsWith("/app")) {
+  //     url.pathname = url.pathname.replace("/app", "");
+  //   }
+  //   const res = NextResponse.rewrite(new URL(`/app${url.pathname}`, req.url), {
+  //     request: req,
+  //   });
+  //   return ensureCookies(res);
+  // }
 
   if (hostname == `admin.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`) {
     const rewriteUrl = new URL(

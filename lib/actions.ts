@@ -73,7 +73,7 @@ export const createSite = async (formData: FormData) => {
     if (error) throw error;
 
     revalidateTag(
-      `${subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}-metadata`,
+      `${subdomain}-metadata`,
     );
     return response;
   } catch (error: any) {
@@ -186,7 +186,7 @@ export const updateSite = withSiteAuth(
       }
 
       revalidateTag(
-        `${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}-metadata`,
+        `${site.subdomain}-metadata`,
       );
       if (site.customDomain) {
         revalidateTag(`${site.customDomain}-metadata`);
@@ -222,7 +222,7 @@ export const deleteSite = withSiteAuth(
       if (error) throw error;
 
       revalidateTag(
-        `${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}-metadata`,
+        `${site.subdomain}-metadata`,
       );
       if (site.customDomain) {
         revalidateTag(`${site.customDomain}-metadata`);

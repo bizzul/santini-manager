@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useOptimistic, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -35,11 +35,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import { useClients, useSellProducts } from "@/hooks/use-api";
+import { logger } from "@/lib/logger";
 
 type Props = {
-  handleClose: any;
+  handleClose: (close: boolean) => void;
   data: Task;
 };
 
@@ -47,12 +48,15 @@ const EditForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
   const params = useParams();
   const domain = params?.domain as string;
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
       clientId: data.clientId ?? undefined,
       deliveryDate: data.deliveryDate ? new Date(data.deliveryDate) : undefined,
-      termine_produzione: (data as any).termine_produzione ? new Date((data as any).termine_produzione) : undefined,
+      termine_produzione: (data as any).termine_produzione
+        ? new Date((data as any).termine_produzione)
+        : undefined,
       name: data.name ?? "",
       position1: data.positions?.[0] ?? "",
       position2: data.positions?.[1] ?? "",
@@ -73,42 +77,36 @@ const EditForm = ({ handleClose, data }: Props) => {
   });
   const { isSubmitting } = form.formState;
 
-  const [clients, setClients] = useState([]);
-  const [products, setProducts] = useState([]);
+  // Use React Query for clients and products
+  const { data: clients = [], isLoading: loadingClients } = useClients(domain);
+  const { data: products = [], isLoading: loadingProducts } =
+    useSellProducts(domain);
+
   const [kanbans, setKanbans] = useState<Kanban[]>([]);
   const [kanbanColumns, setKanbanColumns] = useState<any[]>([]);
-  const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(data.kanbanId || null);
+  const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(
+    data.kanbanId || null
+  );
+  const [loadingKanbans, setLoadingKanbans] = useState(true);
 
+  // Fetch kanbans
   useEffect(() => {
-    const getClients = async () => {
-      const d = await fetch(`/api/clients/`);
-      if (!d.ok) {
-        throw new Error("Failed to fetch products");
-      }
-      const data = await d.json();
-      setClients(data);
-    };
-
-    const getProducts = async () => {
-      const d = await fetch(`/api/sell-products/`);
-      if (!d.ok) {
-        throw new Error("Failed to fetch products");
-      }
-      const data = await d.json();
-      setProducts(data);
-    };
-
     const getKanbans = async () => {
-      const d = await fetch(`/api/kanban/list`);
-      if (!d.ok) {
-        throw new Error("Failed to fetch kanbans");
+      try {
+        const response = await fetch(`/api/kanban/list`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch kanbans");
+        }
+        const kanbansData = await response.json();
+        setKanbans(Array.isArray(kanbansData) ? kanbansData : []);
+      } catch (error) {
+        logger.error("Error fetching kanbans:", error);
+        setKanbans([]);
+      } finally {
+        setLoadingKanbans(false);
       }
-      const data = await d.json();
-      setKanbans(data);
     };
 
-    getClients();
-    getProducts();
     getKanbans();
   }, []);
 
@@ -117,21 +115,20 @@ const EditForm = ({ handleClose, data }: Props) => {
     const loadColumns = async () => {
       if (selectedKanbanId) {
         try {
-          console.log("🔍 Fetching columns for kanban:", selectedKanbanId);
-          const response = await fetch(`/api/kanban-columns/${selectedKanbanId}`);
-          console.log("📡 Response status:", response.status);
-          
+          logger.debug("Fetching columns for kanban:", selectedKanbanId);
+          const response = await fetch(
+            `/api/kanban-columns/${selectedKanbanId}`
+          );
+
           if (!response.ok) {
-            const errorText = await response.text();
-            console.error("❌ Response error:", errorText);
             throw new Error(`Failed to fetch columns: ${response.status}`);
           }
-          
+
           const columnsData = await response.json();
-          console.log("✅ Columns loaded:", columnsData);
+          logger.debug("Columns loaded:", columnsData.length);
           setKanbanColumns(Array.isArray(columnsData) ? columnsData : []);
         } catch (error) {
-          console.error("Error fetching columns:", error);
+          logger.error("Error fetching columns:", error);
           setKanbanColumns([]);
         }
       } else {
@@ -157,6 +154,17 @@ const EditForm = ({ handleClose, data }: Props) => {
     }
   };
 
+  const isLoading = loadingClients || loadingProducts || loadingKanbans;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <span className="ml-2 text-gray-500">Caricamento dati...</span>
+      </div>
+    );
+  }
+
   return (
     <Form {...form}>
       <form className="space-y-8" onSubmit={form.handleSubmit(onSubmit)}>
@@ -169,26 +177,10 @@ const EditForm = ({ handleClose, data }: Props) => {
               <FormControl>
                 <Input {...field} />
               </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
-        {/* 
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-
-              <FormMessage />
-            </FormItem>
-          )}
-        /> */}
 
         <FormField
           name="clientId"
@@ -203,7 +195,7 @@ const EditForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleziona un cliente" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -218,7 +210,6 @@ const EditForm = ({ handleClose, data }: Props) => {
                   ))}
                 </SelectContent>
               </Select>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -268,7 +259,9 @@ const EditForm = ({ handleClose, data }: Props) => {
               <FormItem>
                 <FormLabel>Colonna</FormLabel>
                 <Select
-                  onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                  onValueChange={(value) =>
+                    field.onChange(value ? Number(value) : null)
+                  }
                   defaultValue={field.value?.toString()}
                   disabled={isSubmitting || kanbanColumns.length === 0}
                 >
@@ -287,7 +280,8 @@ const EditForm = ({ handleClose, data }: Props) => {
                 </Select>
                 {kanbanColumns.length === 0 && (
                   <FormDescription className="text-yellow-600">
-                    Nessuna colonna disponibile. La task sarà assegnata alla prima colonna.
+                    Nessuna colonna disponibile. La task sarà assegnata alla
+                    prima colonna.
                   </FormDescription>
                 )}
                 <FormMessage />
@@ -309,7 +303,7 @@ const EditForm = ({ handleClose, data }: Props) => {
               >
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleziona un prodotto" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -320,7 +314,6 @@ const EditForm = ({ handleClose, data }: Props) => {
                   ))}
                 </SelectContent>
               </Select>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
@@ -420,15 +413,17 @@ const EditForm = ({ handleClose, data }: Props) => {
               {Array.from({ length: 8 }, (_, i) => (
                 <FormField
                   key={i}
-                  //@ts-ignore
-                  name={`position${i + 1}`}
+                  name={`position${i + 1}` as keyof z.infer<typeof validation>}
                   control={form.control}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
                       <FormControl>
-                        {/* @ts-ignore */}
-                        <Input {...field} disabled={isSubmitting} />
+                        <Input
+                          {...field}
+                          value={field.value?.toString() ?? ""}
+                          disabled={isSubmitting}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -452,7 +447,11 @@ const EditForm = ({ handleClose, data }: Props) => {
                       {...field}
                       type="number"
                       value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
                       disabled={isSubmitting}
                     />
                   </FormControl>
@@ -499,8 +498,8 @@ const EditForm = ({ handleClose, data }: Props) => {
         >
           {isSubmitting ? (
             <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
               <span>Salvataggio in corso...</span>
-              <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
             </div>
           ) : (
             "Salva"

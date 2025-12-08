@@ -25,9 +25,8 @@ export async function signIn(formData: FormData) {
   if (sites && sites.length === 1) {
     // Redirect directly to the only site
     const site = sites[0];
-    const domain = site.domain || site.subdomain || site.id;
-    const fullDomain = `${domain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
-    return redirect(`/sites/${fullDomain}`);
+    const subdomain = site.subdomain || site.id;
+    return redirect(`/sites/${subdomain}`);
   } else if (sites && sites.length > 1) {
     // Redirect to site selection page
     return redirect("/sites/select");

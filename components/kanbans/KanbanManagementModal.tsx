@@ -61,7 +61,10 @@ import {
 import { deleteKanban } from "@/app/sites/[domain]/kanban/actions/delete-kanban.action";
 import { KanbanCategorySelector } from "./KanbanCategorySelector";
 import { Badge } from "../ui/badge";
-import { getKanbanCategories, type KanbanCategory } from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
+import {
+  getKanbanCategories,
+  type KanbanCategory,
+} from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
 
 type Column = {
   title: string;
@@ -149,11 +152,10 @@ export default function KanbanManagementModal({
   const [title, setTitle] = useState(kanban?.title || "");
   const [identifier, setIdentifier] = useState(kanban?.identifier || "");
   const [columns, setColumns] = useState<Column[]>(() => {
-    const cols = kanban?.columns?.sort(
-      (a: any, b: any) => (a.position || 0) - (b.position || 0)
-    ) || [];
-    console.log("📊 Modal initialized with columns:", cols);
-    console.log("📊 Full kanban object:", kanban);
+    const cols =
+      kanban?.columns?.sort(
+        (a: any, b: any) => (a.position || 0) - (b.position || 0)
+      ) || [];
     return cols;
   });
   const [color, setColor] = useState(kanban?.color || "#1e293b");
@@ -181,25 +183,22 @@ export default function KanbanManagementModal({
   // Reset all form data when kanban changes or modal opens
   useEffect(() => {
     if (isOpen) {
-      console.log("🔄 Modal opened/changed, resetting state for kanban:", kanban?.title);
       setTitle(kanban?.title || "");
       setIdentifier(kanban?.identifier || "");
       setColor(kanban?.color || "#1e293b");
-      
+
       // Use preSelectedCategoryId if provided and in create mode, otherwise use kanban's category
       if (mode === "create" && preSelectedCategoryId !== undefined) {
         setCategoryId(preSelectedCategoryId);
-        console.log("🎯 Pre-selected category ID:", preSelectedCategoryId);
       } else {
         setCategoryId(kanban?.category_id || null);
       }
-      
+
       if (kanban?.columns) {
         const sortedColumns = kanban.columns.sort(
           (a: any, b: any) => (a.position || 0) - (b.position || 0)
         );
         setColumns(sortedColumns);
-        console.log("🔄 Loaded columns:", sortedColumns.length);
       } else {
         setColumns([]);
       }
@@ -254,9 +253,9 @@ export default function KanbanManagementModal({
         skipColumnUpdates: false, // Always allow column updates now
       };
 
-      console.log("💾 Saving kanban with data:", kanbanData);
-      console.log("💾 Number of columns:", columns.length);
-      console.log("💾 Skip column updates:", mode === "edit" && hasTasks);
+      // console.log("💾 Saving kanban with data:", kanbanData);
+      // console.log("💾 Number of columns:", columns.length);
+      // console.log("💾 Skip column updates:", mode === "edit" && hasTasks);
 
       await onSave(kanbanData);
       setIsOpen(false);
@@ -297,11 +296,11 @@ export default function KanbanManagementModal({
 
     try {
       const result = await deleteKanban(kanban.id, domain);
-      
+
       if (result.success) {
         toast({
           title: "Successo",
-          description: result.tasksDisconnected 
+          description: result.tasksDisconnected
             ? `Kanban eliminato. ${result.tasksDisconnected} task sono state scollegate.`
             : "Kanban eliminato con successo",
         });
@@ -365,23 +364,27 @@ export default function KanbanManagementModal({
             <DialogTitle>
               {mode === "create" ? "Crea Nuovo Kanban" : "Modifica Kanban"}
             </DialogTitle>
-            {categoryId && categories.length > 0 && (() => {
-              const selectedCategory = categories.find((c) => c.id === categoryId);
-              if (selectedCategory) {
-                return (
-                  <Badge
-                    style={{ 
-                      backgroundColor: selectedCategory.color || "#3B82F6",
-                      color: "white"
-                    }}
-                    className="text-xs px-2 py-1"
-                  >
-                    📁 {selectedCategory.name}
-                  </Badge>
+            {categoryId &&
+              categories.length > 0 &&
+              (() => {
+                const selectedCategory = categories.find(
+                  (c) => c.id === categoryId
                 );
-              }
-              return null;
-            })()}
+                if (selectedCategory) {
+                  return (
+                    <Badge
+                      style={{
+                        backgroundColor: selectedCategory.color || "#3B82F6",
+                        color: "white",
+                      }}
+                      className="text-xs px-2 py-1"
+                    >
+                      📁 {selectedCategory.name}
+                    </Badge>
+                  );
+                }
+                return null;
+              })()}
           </div>
           <DialogDescription>
             {mode === "create"
@@ -570,8 +573,8 @@ export default function KanbanManagementModal({
           <DialogFooter>
             <div className="flex justify-between w-full">
               {mode === "edit" && kanban?.id && (
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   type="button"
                   onClick={handleDeleteClick}
                 >
@@ -588,7 +591,10 @@ export default function KanbanManagementModal({
       </DialogContent>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>⚠️ Conferma Eliminazione Kanban</AlertDialogTitle>
@@ -596,16 +602,15 @@ export default function KanbanManagementModal({
               <p>
                 Stai per eliminare la kanban <strong>"{kanban?.title}"</strong>.
               </p>
-              
+
               {hasTasks && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
-                  <p className="text-yellow-800 font-semibold">
-                    ⚠️ ATTENZIONE
-                  </p>
+                  <p className="text-yellow-800 font-semibold">⚠️ ATTENZIONE</p>
                   <p className="text-yellow-700 text-sm mt-1">
-                    Questo kanban contiene task associati. Le task verranno <strong>scollegate</strong> 
-                    dal kanban ma <strong>NON eliminate</strong>. Potrai trovarle nella sezione task 
-                    senza kanban assegnato.
+                    Questo kanban contiene task associati. Le task verranno{" "}
+                    <strong>scollegate</strong>
+                    dal kanban ma <strong>NON eliminate</strong>. Potrai
+                    trovarle nella sezione task senza kanban assegnato.
                   </p>
                 </div>
               )}

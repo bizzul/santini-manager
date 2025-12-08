@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { logger } from "@/lib/logger";
 
 export function CompleteSignupForm({
   className,
@@ -88,27 +89,16 @@ export function CompleteSignupForm({
               organizations =
                 organizations || nextUrl.searchParams.get("organizations");
 
-              console.log("Found invitation data in 'next' parameter:");
-              console.log("Decoded next URL:", decodedNext);
-              console.log("Email:", email);
-              console.log("Name:", name);
-              console.log("Role:", role);
-              console.log("Organizations:", organizations);
+              logger.debug("Found invitation data in 'next' parameter");
             } catch (decodeError) {
-              console.warn("Failed to decode 'next' parameter:", decodeError);
+              logger.warn("Failed to decode 'next' parameter:", decodeError);
             }
           }
         }
 
         // If we have invitation data, this is a valid invitation
         if (email && name && last_name && role && organizations) {
-          console.log(
-            "Found invitation data (from main URL or next parameter)"
-          );
-          console.log("Email:", email);
-          console.log("Name:", name);
-          console.log("Role:", role);
-          console.log("Organizations:", organizations);
+          logger.debug("Found invitation data for:", email);
 
           // Set user data
           setUserEmail(email);
@@ -129,16 +119,12 @@ export function CompleteSignupForm({
         const inviteType = searchParams.get("type");
 
         if (tokenHash && inviteType === "invite") {
-          console.log(
-            "Found invitation token:",
-            tokenHash.substring(0, 20) + "..."
-          );
-          console.log("Invitation type:", inviteType);
+          logger.debug("Found invitation token");
 
           // This is a valid Supabase invitation
           // The invitation data should be in the 'next' parameter or main URL
           if (email && name && last_name && role && organizations) {
-            console.log("Invitation data found with token, proceeding...");
+            logger.debug("Invitation data found with token, proceeding...");
 
             // Set user data
             setUserEmail(email);
@@ -153,7 +139,7 @@ export function CompleteSignupForm({
             setIsValidating(false);
             return;
           } else {
-            console.error("Invitation token found but missing invitation data");
+            logger.error("Invitation token found but missing invitation data");
             setError("Invalid invitation: Missing user information");
             setIsValidating(false);
             return;
@@ -162,14 +148,7 @@ export function CompleteSignupForm({
 
         // Check if we have an access token (from other invitation types)
         if (accessToken) {
-          console.log(
-            "Found access token in URL hash:",
-            accessToken.substring(0, 20) + "..."
-          );
-
-          // Since we have an access token, the invitation is valid
-          // Skip session validation and go directly to form
-          console.log("Access token found, skipping session validation...");
+          logger.debug("Access token found, skipping session validation...");
 
           // Try to get pre-filled data from the URL parameters
           if (email) {
@@ -198,8 +177,7 @@ export function CompleteSignupForm({
           error: sessionError,
         } = await supabase.auth.getSession();
 
-        console.log("Session check (fallback):", session);
-        console.log("Session error:", sessionError);
+        logger.debug("Session check (fallback):", !!session);
 
         if (sessionError || !session) {
           setError(
@@ -245,7 +223,7 @@ export function CompleteSignupForm({
         setUserEmail(user.email || null);
         setIsValidating(false);
       } catch (error) {
-        console.error("Error validating invitation:", error);
+        logger.error("Error validating invitation:", error);
         setError(
           "Error validating invitation. Please contact your administrator."
         );
@@ -312,22 +290,15 @@ export function CompleteSignupForm({
 
       // Now try to update the password using the server action
       try {
-        console.log(
-          "Attempting to update password for user:",
-          existingUser.authId
-        );
+        logger.debug("Attempting to update password for user");
 
         const passwordResult = await updateUserPassword(
           existingUser.authId,
           password
         );
 
-        console.log("Password update result:", passwordResult);
-
         if (passwordResult.success) {
-          console.log(
-            "Password updated successfully, user should be confirmed now"
-          );
+          logger.debug("Password updated successfully");
           toast.success(
             `Profile completed successfully! Welcome to ${
               organizationNames.length === 1
@@ -341,7 +312,7 @@ export function CompleteSignupForm({
           );
           router.push("/sites/select");
         } else {
-          console.error("Password update failed:", passwordResult.message);
+          logger.error("Password update failed:", passwordResult.message);
           // Password update failed, but profile is updated
           toast.success(
             `Profile completed! Welcome to ${
@@ -357,7 +328,7 @@ export function CompleteSignupForm({
           router.push("/login");
         }
       } catch (passwordError) {
-        console.error("Password update failed:", passwordError);
+        logger.error("Password update failed:", passwordError);
         // Profile is still updated, redirect to login
         toast.success(
           `Profile completed! Welcome to ${

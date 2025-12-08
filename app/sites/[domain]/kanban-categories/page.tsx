@@ -1,6 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
+import { requireServerSiteContext } from "@/lib/server-data";
 import { KanbanCategoryManager } from "@/components/kanbans/KanbanCategoryManager";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,11 @@ export default async function KanbanCategoriesPage({
 }: {
   params: Promise<{ domain: string }>;
 }) {
-  const userContext = await getUserContext();
+  const { domain } = await params;
 
-  if (!userContext || !userContext.user) {
+  // Authentication & Authorization
+  const userContext = await getUserContext();
+  if (!userContext?.user) {
     return redirect("/login");
   }
 
@@ -22,8 +25,8 @@ export default async function KanbanCategoriesPage({
     return redirect("/unauthorized");
   }
 
-  const resolvedParams = await params;
-  const domain = resolvedParams.domain;
+  // Validate site context
+  await requireServerSiteContext(domain);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -38,4 +41,3 @@ export default async function KanbanCategoriesPage({
     </div>
   );
 }
-

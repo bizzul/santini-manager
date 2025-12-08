@@ -1,61 +1,58 @@
 import React from "react";
-import SellProductWrapper from "./sellProductWrapper";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
+import { requireServerSiteContext } from "@/lib/server-data";
 import { createClient } from "@/utils/supabase/server";
+import SellProductWrapper from "./sellProductWrapper";
 
-// Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function getSellProducts(): Promise<any[]> {
-  // Fetch all the products from supabase
+async function getPackingControl(siteId: string) {
+    const supabase = await createClient();
 
-  const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("PackingControl")
+        .select("*")
+        .eq("site_id", siteId);
 
-  const { data, error } = await supabase
-    .from("packing_control")
-    .select("*")
-    .eq("task.archived", false)
-    .not("task.column.identifier", "eq", "SPEDITO");
+    if (error) {
+        return [];
+    }
 
-  if (error) {
-    console.error("Error fetching packing control:", error);
-    return [];
-  }
-
-  return data;
+    return data || [];
 }
 
-async function Page() {
-  //get initial data
-  const data = await getSellProducts();
+export default async function Page({
+    params,
+}: {
+    params: Promise<{ domain: string }>;
+}) {
+    const { domain } = await params;
 
-  const userContext = await getUserContext();
+    // Authentication
+    const userContext = await getUserContext();
+    if (!userContext?.user) {
+        return redirect("/login");
+    }
 
-  if (!userContext || !userContext.user) {
-    // Handle the absence of a session. Redirect or return an error.
-    // For example, you might redirect to the login page:
-    return redirect("/login");
-  }
-  // Now it's safe to use session.user
-  const { user } = userContext;
+    // Get site context (required)
+    const { siteId } = await requireServerSiteContext(domain);
 
-  return (
-    // <SWRProvider>
-    // <Structure titleIcon={faBox} titleText="Packing Control" user={user}>
+    // Fetch data
+    const data = await getPackingControl(siteId);
 
-    <div className="container">
-      {data ? (
-        <SellProductWrapper data={data} />
-      ) : (
-        <div className="w-full h-full text-center">
-          <h1 className="font-bold text-2xl">Nessun packing control creato!</h1>
+    return (
+        <div className="container">
+            {data.length > 0 ? (
+                <SellProductWrapper data={data} />
+            ) : (
+                <div className="w-full h-full text-center">
+                    <h1 className="font-bold text-2xl">
+                        Nessun packing control creato!
+                    </h1>
+                </div>
+            )}
         </div>
-      )}
-    </div>
-    // </Structure>
-  );
+    );
 }
-
-export default Page;

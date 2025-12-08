@@ -4,11 +4,11 @@ import LoadingDots from "@/components/icons/loading-dots";
 import { cn } from "@/lib/utils";
 import { useParams, useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
-import DomainStatus from "./domain-status";
-import DomainConfiguration from "./domain-configuration";
+import DomainStatus from "@/components/domain-status";
+import DomainConfiguration from "@/components/domain-configuration";
 import Uploader from "./uploader";
 import va from "@vercel/analytics";
-import {  useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Form({
   title,
@@ -74,7 +74,7 @@ export default function Form({
             defaultValue={inputAttrs.defaultValue}
             name={inputAttrs.name}
           />
-        ) :  inputAttrs.name === "subdomain" ? (
+        ) : inputAttrs.name === "subdomain" ? (
           <div className="flex w-full max-w-md">
             <input
               {...inputAttrs}
@@ -131,7 +131,7 @@ function FormButton() {
         "flex h-8 w-32 items-center justify-center space-x-2 rounded-md border text-sm transition-all focus:outline-hidden sm:h-10",
         pending
           ? "cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300"
-          : "border-black bg-black text-white hover:bg-white hover:text-black dark:border-stone-700 dark:hover:border-stone-200 dark:hover:bg-black dark:hover:text-white dark:active:bg-stone-800",
+          : "border-black bg-black text-white hover:bg-white hover:text-black dark:border-stone-700 dark:hover:border-stone-200 dark:hover:bg-black dark:hover:text-white dark:active:bg-stone-800"
       )}
       disabled={pending}
     >

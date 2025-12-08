@@ -1,13 +1,16 @@
-import { FC, useEffect, useState } from "react";
-import { Modal } from "../../package/components/modal";
+"use client";
 
+import { Dispatch, FC, SetStateAction } from "react";
+import { Modal } from "../../package/components/modal";
 import { EditModalForm } from "./edit-modal-form";
+import { useClient } from "@/hooks/use-api";
+import { Loader2 } from "lucide-react";
 
 type Props = {
   open: boolean;
-  setOpen: any;
+  setOpen: Dispatch<SetStateAction<boolean>>;
   resourceId: number | null;
-  setOpenModal: any;
+  setOpenModal: Dispatch<SetStateAction<boolean>>;
 };
 
 export const EditModal: FC<Props> = ({
@@ -16,30 +19,8 @@ export const EditModal: FC<Props> = ({
   setOpenModal,
   resourceId,
 }) => {
-  const [data, setData] = useState<any>(null);
-
-  const get = async (id: number) => {
-    await fetch(`/api/clients/${id}`)
-      .then((r) => r.json())
-      .then((d: any) => {
-        setData(d);
-      });
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (resourceId) {
-        await get(resourceId);
-      }
-    };
-
-    fetchData();
-  }, [resourceId]);
-
-  /**
-   * Api update call
-   * @param data
-   */
+  // Use React Query hook instead of manual fetch
+  const { data, isLoading, error } = useClient(resourceId);
 
   return (
     <Modal
@@ -48,16 +29,22 @@ export const EditModal: FC<Props> = ({
       setOpen={setOpen}
       setOpenModal={setOpenModal}
     >
-      {data ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center h-32 text-red-500">
+          Errore nel caricamento del cliente
+        </div>
+      ) : data ? (
         <EditModalForm
           preloadedValues={data}
           setOpen={setOpen}
           open={open}
           setOpenModal={setOpenModal}
         />
-      ) : (
-        <div>Loading...</div>
-      )}
+      ) : null}
     </Modal>
   );
 };

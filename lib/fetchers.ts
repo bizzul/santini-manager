@@ -8,49 +8,40 @@ export async function getSiteData(domain: string) {
 
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost";
 
-    // Check if it's a subdomain by looking for root domain pattern
-    // Handle for port: "santini.localhost:3000" or "santini.localhost"
+    // Check if it's a full domain (contains root domain) or just subdomain
     const domainWithoutPort = decodedDomain.split(":")[0];
-    const isSubdomain = domainWithoutPort.endsWith(`.${rootDomain}`);
+    const isFullDomain = domainWithoutPort.endsWith(`.${rootDomain}`);
 
-    let query;
-    if (isSubdomain) {
-      // Extract subdomain from the domain without port
-      const subdomain = domainWithoutPort.replace(`.${rootDomain}`, "");
+    // Extract the subdomain - either it's already just the subdomain,
+    // or we need to strip the root domain
+    const subdomain = isFullDomain
+      ? domainWithoutPort.replace(`.${rootDomain}`, "")
+      : domainWithoutPort;
 
-      // Use service client to bypass RLS for public site access
-      const supabase = createServiceClient();
-      query = supabase.from("sites").select("*").eq("subdomain", subdomain);
-    } else {
-      // It's a custom domain
-      const supabase = createServiceClient();
-      query = supabase.from("sites").select("*").eq(
-        "custom_domain",
-        decodedDomain,
-      );
-    }
+    // Use service client to bypass RLS for public site access
+    const supabase = createServiceClient();
+
+    // Always query by subdomain column
+    const query = supabase.from("sites").select("*").eq("subdomain", subdomain);
 
     return unstable_cache(
       async () => {
         try {
           const result = await query.single();
-
           return result;
         } catch (error) {
           console.error("Error in getSiteData query:", error);
-          // Return null instead of throwing to prevent 500 errors
           return null;
         }
       },
-      [`${domain}-metadata`],
+      [`${subdomain}-metadata`], // Use subdomain for cache key
       {
         revalidate: 900,
-        tags: [`${domain}-metadata`],
+        tags: [`${subdomain}-metadata`],
       },
     )();
   } catch (error) {
     console.error("Error in getSiteData:", error);
-    // Return null instead of throwing to prevent 500 errors
     return null;
   }
 }

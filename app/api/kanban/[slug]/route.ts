@@ -1,73 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { getSiteData } from "@/lib/fetchers";
+import { getSiteContext } from "@/lib/site-context";
+import { logger } from "@/lib/logger";
+
+const log = logger.scope("Kanban");
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> },
+    req: NextRequest,
+    { params }: { params: Promise<{ slug: string }> },
 ) {
-  const { slug: filteredKanban } = await params;
-  try {
-    const supabase = await createClient();
+    const { slug: filteredKanban } = await params;
 
-    // Extract site_id from request headers or domain
-    let siteId = null;
-    const siteIdFromHeader = req.headers.get("x-site-id");
-    const domain = req.headers.get("host");
+    try {
+        const supabase = await createClient();
+        const { siteId } = await getSiteContext(req);
 
-    if (siteIdFromHeader) {
-      siteId = siteIdFromHeader;
-    } else if (domain) {
-      try {
-        const siteResult = await getSiteData(domain);
-        if (siteResult?.data) {
-          siteId = siteResult.data.id;
+        // In multi-tenant, siteId is required
+        if (!siteId) {
+            log.warn("Kanban API called without siteId");
+            return NextResponse.json(
+                { error: "Site ID required" },
+                { status: 400 },
+            );
         }
-      } catch (error) {
-        console.error("Error fetching site data:", error);
-      }
+
+        // Query directly with site filter
+        const { data: kanban, error: kanbanError } = await supabase
+            .from("Kanban")
+            .select("*")
+            .eq("identifier", filteredKanban)
+            .eq("site_id", siteId)
+            .single();
+
+        if (kanbanError) {
+            log.warn("Kanban not found:", filteredKanban);
+            return NextResponse.json(
+                { error: "Kanban not found" },
+                { status: 404 },
+            );
+        }
+
+        // Get columns for this kanban
+        const { data: columns, error: columnsError } = await supabase
+            .from("KanbanColumn")
+            .select("*")
+            .eq("kanbanId", kanban.id)
+            .order("position", { ascending: true });
+
+        if (columnsError) {
+            log.error("Error fetching columns:", columnsError);
+            return NextResponse.json(
+                { error: "Failed to fetch columns" },
+                { status: 500 },
+            );
+        }
+
+        // Return kanban with columns
+        return NextResponse.json({
+            ...kanban,
+            columns: columns || [],
+        });
+    } catch (error) {
+        log.error("Error in kanban API:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 },
+        );
     }
-
-    // First get the kanban (filter by site_id if available)
-    let kanbanQuery = supabase
-      .from("Kanban")
-      .select("*")
-      .eq("identifier", filteredKanban);
-
-    if (siteId) {
-      kanbanQuery = kanbanQuery.eq("site_id", siteId);
-    }
-
-    const { data: kanban, error: kanbanError } = await kanbanQuery.single();
-
-    if (kanbanError) {
-      console.error("Error fetching kanban:", kanbanError);
-      return NextResponse.json({ error: "Kanban not found" }, { status: 404 });
-    }
-
-    // Then get the columns for this kanban
-    const { data: columns, error: columnsError } = await supabase
-      .from("KanbanColumn")
-      .select("*")
-      .eq("kanbanId", kanban.id)
-      .order("position", { ascending: true });
-
-    if (columnsError) {
-      console.error("Error fetching columns:", columnsError);
-      return NextResponse.json({ error: "Failed to fetch columns" }, {
-        status: 500,
-      });
-    }
-
-    // Return kanban with columns
-    return NextResponse.json({
-      ...kanban,
-      columns: columns || [],
-    });
-  } catch (error) {
-    console.error("Error in kanban API:", error);
-    return NextResponse.json({ error: "Internal server error" }, {
-      status: 500,
-    });
-  }
 }

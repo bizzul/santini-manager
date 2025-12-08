@@ -5,7 +5,6 @@ import { ClientAddressType } from "./client-type-definitions";
 import GoogleAutocompleteEdit from "./google-autocomplete-edit.js";
 import { countries } from "./countries";
 import { jobsType } from "./jobs";
-import { preload } from "swr";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/clients/create";
 import { faSave } from "@fortawesome/free-solid-svg-icons";

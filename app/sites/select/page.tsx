@@ -133,11 +133,7 @@ export default async function SelectSitePage({
                     </p>
                   )}
 
-                  <Link
-                    href={`/sites/${site.domain || site.subdomain || site.id}.${
-                      process.env.NEXT_PUBLIC_ROOT_DOMAIN
-                    }/dashboard`}
-                  >
+                  <Link href={`/sites/${site.subdomain}/dashboard`}>
                     <Button
                       variant="outline"
                       className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 font-semibold"

@@ -1,60 +1,55 @@
 import React from "react";
-import { getUserContext } from "@/lib/auth-utils";
-
-import DialogCreate from "./dialogCreate";
-import { createClient } from "@/utils/supabase/server";
-import DataWrapper from "./dataWrapper";
 import { redirect } from "next/navigation";
+import { getUserContext } from "@/lib/auth-utils";
+import {
+  requireServerSiteContext,
+  fetchErrorTracking,
+  fetchTasks,
+  fetchUsers,
+  fetchRoles,
+  fetchSuppliers,
+  fetchCategories,
+} from "@/lib/server-data";
+import DialogCreate from "./dialogCreate";
+import DataWrapper from "./dataWrapper";
 
-// Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function getData(): Promise<any> {
-  const supabase = await createClient();
-  const { data: errors, error: errorsError } = await supabase
-    .from("errortracking")
-    .select("*");
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ domain: string }>;
+}) {
+  const { domain } = await params;
 
-  const { data: tasks, error: tasksError } = await supabase
-    .from("task")
-    .select("*")
-    .order("created_at", { ascending: false });
-  const users = await supabase
-    .from("user")
-    .select("*")
-    .order("family_name", { ascending: true });
-  const { data: roles, error: rolesError } = await supabase
-    .from("roles")
-    .select("*");
-  const { data: suppliers, error: suppliersError } = await supabase
-    .from("supplier")
-    .select("*");
-  const { data: categories, error: categoriesError } = await supabase
-    .from("product_category")
-    .select("*");
-
-  return { tasks, roles, suppliers, categories, errors, users };
-}
-
-async function Page() {
-  //get initial data
-  const data = await getData();
-
+  // Authentication
   const userContext = await getUserContext();
-  if (!userContext || !userContext.user) {
-    // Handle the absence of a session. Redirect or return an error.
-    // For example, you might redirect to the login page:
+  if (!userContext?.user) {
     return redirect("/login");
   }
-  // Now it's safe to use session.user
+
+  // Get site context (required)
+  const { siteId } = await requireServerSiteContext(domain);
+
+  // Fetch all data in parallel
+  const [errors, tasks, users, roles, suppliers, categories] =
+    await Promise.all([
+      fetchErrorTracking(siteId),
+      fetchTasks(siteId),
+      fetchUsers(siteId),
+      fetchRoles(siteId),
+      fetchSuppliers(siteId),
+      fetchCategories(siteId),
+    ]);
+
+  const data = { errors, tasks, users, roles, suppliers, categories };
 
   return (
-    //  <Structure titleIcon={faCrosshairs} titleText="ErrorTracking" user={user}>
     <div className="container">
       <DialogCreate data={data} />
-      {data.errors.length > 0 ? (
-        <DataWrapper data={data.errors} />
+      {errors.length > 0 ? (
+        <DataWrapper data={errors} />
       ) : (
         <div className="w-full h-full text-center">
           <h1 className="font-bold text-2xl">Nessun errore registrato!</h1>
@@ -62,8 +57,5 @@ async function Page() {
         </div>
       )}
     </div>
-    // </Structure>
   );
 }
-
-export default Page;

@@ -1,37 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "../../../utils/supabase/server";
-import { getSiteData } from "@/lib/fetchers";
+import { createClient } from "@/utils/supabase/server";
+import { getSiteContext } from "@/lib/site-context";
+import { logger } from "@/lib/logger";
 
-export const GET = async (req: NextRequest) => {
-  try {
-    const supabase = await createClient();
+const log = logger.scope("SellProducts");
 
-    // Get domain from header
-    const domain = req.headers.get("host");
-    let siteId = null;
+export async function GET(req: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const { siteId } = await getSiteContext(req);
 
-    if (domain) {
-      try {
-        const siteResult = await getSiteData(domain);
-        if (siteResult?.data) {
-          siteId = siteResult.data.id;
+        // In multi-tenant, siteId is required
+        if (!siteId) {
+            log.warn("SellProducts API called without siteId");
+            return NextResponse.json(
+                { error: "Site ID required" },
+                { status: 400 },
+            );
         }
-      } catch (error) {
-        console.error("Error fetching site data:", error);
-      }
+
+        // Query directly with site filter
+        const { data, error } = await supabase
+            .from("SellProduct")
+            .select("*")
+            .eq("site_id", siteId)
+            .eq("active", true);
+
+        if (error) {
+            log.error("Error fetching sell products:", error);
+            throw error;
+        }
+
+        return NextResponse.json(data);
+    } catch (err: unknown) {
+        log.error("SellProducts API error:", err);
+        return NextResponse.json(
+            { error: err instanceof Error ? err.message : "Unknown error" },
+            { status: 500 },
+        );
     }
-
-    let query = supabase.from("SellProduct").select("*").eq("active", true);
-    if (siteId) {
-      query = query.eq("site_id", siteId);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json(err.message);
-  }
-};
+}

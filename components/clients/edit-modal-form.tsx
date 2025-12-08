@@ -17,7 +17,6 @@ import { validation } from "../../validation/clients/create";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { ClientAddressesEdit } from "./edit-addresses";
-import { preload } from "swr";
 
 type Props = {
   preloadedValues: any;

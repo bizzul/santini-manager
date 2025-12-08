@@ -32,6 +32,7 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 type Props = {
   handleClose: any;
@@ -88,9 +89,13 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
   const [newSupplier, setNewSupplier] = useState<string>("");
   const [newDeliveryDate, setNewDeliveryDate] = useState<string>("");
   const [kanbans, setKanbans] = useState<any[]>([]);
-  const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(resource?.kanbanId || null);
+  const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(
+    resource?.kanbanId || null
+  );
   const [kanbanColumns, setKanbanColumns] = useState<any[]>([]);
-  const [selectedColumnId, setSelectedColumnId] = useState<number | null>(resource?.kanbanColumnId || null);
+  const [selectedColumnId, setSelectedColumnId] = useState<number | null>(
+    resource?.kanbanColumnId || null
+  );
 
   useEffect(() => {
     if (!resource) return;
@@ -99,56 +104,36 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
 
     const getClients = async () => {
       try {
-        console.log("Fetching clients...");
+        logger.debug("Fetching clients...");
         const d = await fetch(`/api/clients/`);
-        console.log("Client response status:", d.status);
-        console.log("Client response ok:", d.ok);
 
         if (!d.ok) {
           throw new Error("Failed to fetch clients");
         }
 
         const data = await d.json();
-        console.log("Clients data:", data);
-        console.log("Clients data type:", typeof data);
-        console.log("Clients is array:", Array.isArray(data));
-        console.log(
-          "Clients length:",
-          Array.isArray(data) ? data.length : "not an array"
-        );
-
-        // Ensure data is an array
+        logger.debug("Clients loaded:", Array.isArray(data) ? data.length : 0);
         setClients(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("Error fetching clients:", error);
+        logger.error("Error fetching clients:", error);
         setClients([]);
       }
     };
 
     const getProducts = async () => {
       try {
-        console.log("Fetching products...");
+        logger.debug("Fetching products...");
         const d = await fetch(`/api/sell-products/`);
-        console.log("Product response status:", d.status);
-        console.log("Product response ok:", d.ok);
 
         if (!d.ok) {
           throw new Error("Failed to fetch products");
         }
 
         const data = await d.json();
-        console.log("Products data:", data);
-        console.log("Products data type:", typeof data);
-        console.log("Products is array:", Array.isArray(data));
-        console.log(
-          "Products length:",
-          Array.isArray(data) ? data.length : "not an array"
-        );
-
-        // Ensure data is an array
+        logger.debug("Products loaded:", Array.isArray(data) ? data.length : 0);
         setProducts(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        logger.error("Error fetching products:", error);
         setProducts([]);
       }
     };
@@ -160,7 +145,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
         const data = await response.json();
         setKanbans(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("Error fetching kanbans:", error);
+        logger.error("Error fetching kanbans:", error);
         setKanbans([]);
       }
     };
@@ -180,7 +165,12 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     };
 
     const loadData = async () => {
-      await Promise.all([getClients(), getProducts(), getKanbans(), initializeForm()]);
+      await Promise.all([
+        getClients(),
+        getProducts(),
+        getKanbans(),
+        initializeForm(),
+      ]);
       setIsLoading(false);
     };
 
@@ -192,20 +182,24 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     const loadColumns = async () => {
       if (selectedKanbanId) {
         try {
-          const response = await fetch(`/api/kanban-columns/${selectedKanbanId}`);
+          const response = await fetch(
+            `/api/kanban-columns/${selectedKanbanId}`
+          );
           if (!response.ok) throw new Error("Failed to fetch columns");
           const data = await response.json();
           setKanbanColumns(Array.isArray(data) ? data : []);
-          
+
           // If the selected column doesn't belong to this kanban, reset it
           if (selectedColumnId) {
-            const columnExists = data.some((col: any) => col.id === selectedColumnId);
+            const columnExists = data.some(
+              (col: any) => col.id === selectedColumnId
+            );
             if (!columnExists) {
               setSelectedColumnId(null);
             }
           }
         } catch (error) {
-          console.error("Error fetching columns:", error);
+          logger.error("Error fetching columns:", error);
           setKanbanColumns([]);
         }
       } else {
@@ -230,7 +224,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
         const taskSuppData = await taskSuppResponse.json();
         setTaskSuppliers(Array.isArray(taskSuppData) ? taskSuppData : []);
       } catch (error) {
-        console.error("Error loading suppliers:", error);
+        logger.error("Error loading suppliers:", error);
         setTaskSuppliers([]);
       }
     };
@@ -239,7 +233,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
   }, [resource.id]);
 
   const { errors, isSubmitting } = form.formState;
-  console.log(errors);
+  logger.debug("Form errors:", errors);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     // Add kanbanId and kanbanColumnId to the data
@@ -248,7 +242,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
       kanbanId: selectedKanbanId,
       kanbanColumnId: selectedColumnId,
     };
-    
+
     const response = await editItem(dataWithKanban, resource?.id);
     if (response && typeof response === "object" && "error" in response) {
       toast({
@@ -268,7 +262,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     const canvas = document.createElement("canvas");
     QCode.toCanvas(canvas, data, { width: 400 }, (error) => {
       if (error) {
-        console.error(error);
+        logger.error("QR Code error:", error);
         return;
       }
 
@@ -345,7 +339,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
         });
       }
     } catch (error) {
-      console.error("Error deleting supplier:", error);
+      logger.error("Error deleting supplier:", error);
       toast({
         variant: "destructive",
         description: "Errore durante la rimozione del fornitore",
@@ -507,10 +501,6 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                         (client.individualLastName ?? "N/A"),
                   }))
                 : [];
-              console.log("Client options:", clientOptions);
-              console.log("Clients state:", clients);
-              console.log("Client options length:", clientOptions.length);
-
               return (
                 <FormItem>
                   <FormLabel>Cliente</FormLabel>
@@ -582,7 +572,6 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                   <DatePicker
                     date={field.value ?? undefined}
                     onValueChange={(selectedDate) => {
-                      console.log(selectedDate);
                       field.onChange(selectedDate);
                     }}
                     disabled={isSubmitting}
@@ -599,7 +588,9 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
             <label className="text-sm font-medium">Kanban</label>
             <Select
               value={selectedKanbanId?.toString() || ""}
-              onValueChange={(value) => setSelectedKanbanId(value ? parseInt(value) : null)}
+              onValueChange={(value) =>
+                setSelectedKanbanId(value ? parseInt(value) : null)
+              }
               disabled={isSubmitting}
             >
               <SelectTrigger>
@@ -622,7 +613,9 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
               <label className="text-sm font-medium">Colonna</label>
               <Select
                 value={selectedColumnId?.toString() || ""}
-                onValueChange={(value) => setSelectedColumnId(value ? parseInt(value) : null)}
+                onValueChange={(value) =>
+                  setSelectedColumnId(value ? parseInt(value) : null)
+                }
                 disabled={isSubmitting || kanbanColumns.length === 0}
               >
                 <SelectTrigger>

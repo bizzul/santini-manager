@@ -1,25 +1,28 @@
+"use client";
+
 import {
   faTimes,
   faUserPlus,
   faSignIn,
-  faIdBadge,
   faSave,
   faWarning,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Menu, Transition } from "@headlessui/react";
-import { Dispatch, FC, Fragment, useEffect, useState } from "react";
+import { Dispatch, FC, SetStateAction, useEffect, useState } from "react";
 import { Modal } from "../../package/components/modal";
 import { useForm } from "react-hook-form";
-import { Client, Product, Task } from "@/types/supabase";
+import { Client, Product } from "@/types/supabase";
 import FilterProducts from "../kanbans/FilterProducts";
 import FilterClients from "../kanbans/FilterClients";
+import { useTask } from "@/hooks/use-api";
+import { Loader2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 type Props = {
   open: boolean;
-  setOpen: any;
+  setOpen: Dispatch<SetStateAction<boolean>>;
   resourceId: number | null;
-  setOpenModal: any;
+  setOpenModal: Dispatch<SetStateAction<boolean>>;
   clients: Client[];
   products: Product[];
 };
@@ -32,72 +35,44 @@ export const EditModal: FC<Props> = ({
   clients,
   products,
 }) => {
-  const [data, setData] = useState<Task>();
-
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  // Use React Query hook instead of manual fetch
+  const { data, isLoading } = useTask(resourceId);
+
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    // resolver: zodResolver(validation),
-  });
+    formState: { errors },
+  } = useForm();
 
-  const get = async (id: number) => {
-    await fetch(`/api/tasks/${id}`)
-      .then((r) => r.json())
-      .then((d: any) => {
-        setData(d);
-      });
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (resourceId) {
-        await get(resourceId);
-      }
-    };
-
-    fetchData();
-  }, [resourceId]);
-
+  // Initialize form when data loads
   useEffect(() => {
     if (data) {
-      clients.find((c) => {
-        if (c.id === data.clientId) {
-          setSelectedClient(c);
-        }
-      });
-      products.find((c) => {
-        if (c.id === data.sellProductId) {
-          setSelectedProduct(c);
-        }
+      const client = clients.find((c) => c.id === data.clientId);
+      if (client) setSelectedClient(client);
+
+      const product = products.find((p) => p.id === data.sellProductId);
+      if (product) setSelectedProduct(product);
+
+      setValue("unique_code", data.unique_code);
+      setValue(
+        "deliveryDate",
+        data.deliveryDate ? data.deliveryDate.substring(0, 16) : ""
+      );
+      setValue("other", data.other);
+      setValue("sellPrice", data.sellPrice);
+      setValue("clientId", data.clientId);
+
+      data.positions?.forEach((position: string, index: number) => {
+        setValue(`position${index + 1}`, position);
       });
     }
-    setValue("unique_code", data?.unique_code);
-    //@ts-ignore
-    setValue("deliveryDate", data?.deliveryDate?.substr(0, 16));
-    setValue("other", data?.other);
-    setValue("sellPrice", data?.sellPrice);
-    setValue("clientId", data?.clientId);
-    data?.positions?.map((position: any, index: number) => {
-      setValue(`position${index + 1}`, position);
-    });
-
-    console.log("positions", data?.positions);
   }, [data, clients, products, setValue]);
-
-  /**
-   * Api update call
-   * @param data
-   */
 
   useEffect(() => {
     if (selectedClient) {
@@ -111,31 +86,36 @@ export const EditModal: FC<Props> = ({
     }
   }, [selectedProduct, setValue]);
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (formData: Record<string, unknown>) => {
     setError(null);
     setLoading(true);
-    fetch(`/api/tasks/${resourceId}`, {
-      method: "PATCH",
-      headers: new Headers({
-        "Content-Type": "application/json",
-      }),
-      body: JSON.stringify(data),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setLoading(false);
-        if (data.error) {
-          setError(data.message);
-        } else if (data.issues) {
-          setError("Invalid data found.");
-        } else {
-          setOpen(false);
-          setOpenModal(false);
-        }
+
+    try {
+      const response = await fetch(`/api/tasks/${resourceId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
       });
+
+      const result = await response.json();
+
+      if (result.error) {
+        setError(result.message);
+      } else if (result.issues) {
+        setError("Invalid data found.");
+      } else {
+        setOpen(false);
+        setOpenModal(false);
+      }
+    } catch (err) {
+      logger.error("Error updating task:", err);
+      setError("Errore durante il salvataggio");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  console.log(errors);
+  logger.debug("Form errors:", errors);
 
   return (
     <Modal
@@ -144,7 +124,11 @@ export const EditModal: FC<Props> = ({
       setOpen={setOpen}
       setOpenModal={setOpenModal}
     >
-      {data ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      ) : data ? (
         <>
           <div className="p-4 flex">
             <div className="w-3/4">
@@ -266,11 +250,11 @@ export const EditModal: FC<Props> = ({
                     <h1 className="text-slate-400 font-bold">Posizioni</h1>
                     <div className="text-xl text-slate-400">
                       <div className="grid grid-rows-2 grid-cols-4">
-                        {data?.positions?.map((position, i) => (
+                        {data.positions?.map((_: string, i: number) => (
                           <input
                             key={i}
                             type="text"
-                            {...register(`position${i + 1}`)} // create an input field for each position
+                            {...register(`position${i + 1}`)}
                           />
                         ))}
                       </div>
@@ -306,15 +290,7 @@ export const EditModal: FC<Props> = ({
                 )}
                 {loading && (
                   <div className="rounded-md border shadow-xs flex gap-1 px-4 py-2 text-slate-500 text-base font-medium">
-                    <div
-                      className="w-5 h-5 
-              border-4
-              border-t-slate-500
-              mt-0.5  
-              mr-2
-              rounded-full 
-              animate-spin"
-                    ></div>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                     Salvataggio in corso...
                   </div>
                 )}
@@ -323,7 +299,9 @@ export const EditModal: FC<Props> = ({
           </div>
         </>
       ) : (
-        <div>Loading...</div>
+        <div className="flex items-center justify-center h-32 text-gray-500">
+          Nessun dato trovato
+        </div>
       )}
     </Modal>
   );

@@ -1,47 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "../../../../utils/supabase/server";
-import { getSiteData } from "@/lib/fetchers";
+import { createClient } from "@/utils/supabase/server";
+import { getSiteContext } from "@/lib/site-context";
+import { logger } from "@/lib/logger";
 
-export const GET = async (req: NextRequest) => {
-  try {
-    const supabase = await createClient();
+const log = logger.scope("Categories");
 
-    // Extract domain from request headers
-    const domain = req.headers.get("host");
-    let siteId = null;
+export async function GET(req: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const { siteId } = await getSiteContext(req);
 
-    // Get site information
-    if (domain) {
-      try {
-        const siteResult = await getSiteData(domain);
-        if (siteResult?.data) {
-          siteId = siteResult.data.id;
+        // In multi-tenant, siteId is required
+        if (!siteId) {
+            log.warn("Categories API called without siteId");
+            return NextResponse.json(
+                { error: "Site ID required" },
+                { status: 400 },
+            );
         }
-      } catch (error) {
-        console.error("Error fetching site data:", error);
-      }
+
+        // Query directly with site filter
+        const { data: categories, error } = await supabase
+            .from("Product_category")
+            .select("*")
+            .eq("site_id", siteId)
+            .order("name", { ascending: true });
+
+        if (error) {
+            log.error("Error fetching categories:", error);
+            return NextResponse.json([], { status: 200 });
+        }
+
+        return NextResponse.json(categories || []);
+    } catch (err: unknown) {
+        log.error("Error in categories API:", err);
+        return NextResponse.json([], { status: 200 });
     }
-
-    // Fetch categories filtered by site_id if available
-    let categoryQuery = supabase
-      .from("Product_category")
-      .select("*")
-      .order("name", { ascending: true });
-
-    if (siteId) {
-      categoryQuery = categoryQuery.eq("site_id", siteId);
-    }
-
-    const { data: categories, error } = await categoryQuery;
-
-    if (error) {
-      console.error("Error fetching categories:", error);
-      return NextResponse.json([], { status: 200 });
-    }
-
-    return NextResponse.json(categories || []);
-  } catch (err: any) {
-    console.error("Error in categories API:", err);
-    return NextResponse.json([], { status: 200 });
-  }
-};
+}

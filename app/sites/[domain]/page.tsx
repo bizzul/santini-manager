@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { getSiteData } from "@/lib/fetchers";
+import { getServerSiteContext } from "@/lib/server-data";
 
-// Force dynamic rendering to prevent static/dynamic conflicts
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
@@ -12,25 +11,12 @@ export default async function SiteHomePage({
 }) {
   const { domain } = await params;
 
-  // Check if domain includes the root domain, if not, append it
-  let fullDomain = domain;
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost";
+  const siteContext = await getServerSiteContext(domain);
 
-  if (!domain.includes(rootDomain)) {
-    fullDomain = `${domain}.${rootDomain}`;
-  }
-
-  console.log(`Processing domain: ${domain} -> ${fullDomain}`);
-
-  const [data] = await Promise.all([getSiteData(fullDomain)]);
-
-  if (!data?.data) {
-    console.log(`Site not found for domain: ${fullDomain}`);
+  if (!siteContext) {
     notFound();
   }
 
-  console.log(`Redirecting to dashboard for site: ${data.data.name}`);
-
-  // Redirect to the site-specific dashboard
-  redirect(`/sites/${fullDomain}/dashboard`);
+  // Redirect to dashboard using just the subdomain from URL
+  redirect(`/sites/${domain}/dashboard`);
 }
