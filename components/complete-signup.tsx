@@ -46,7 +46,7 @@ export function CompleteSignupForm({
       .in("id", orgIds);
 
     if (!error && orgs) {
-      const names = orgs.map((org) => org.name).filter(Boolean);
+      const names = orgs.map((org: { name: string | null }) => org.name).filter(Boolean);
       setOrganizationNames(names);
     }
   };
