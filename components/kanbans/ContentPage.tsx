@@ -1,7 +1,5 @@
 "use client";
 import React from "react";
-import { DndProvider } from "react-dnd-multi-backend";
-import { HTML5toTouch } from "rdndmb-html5-to-touch";
 import KanbanBoard from "../kanbans/KanbanBoard";
 
 function ContentPage({
@@ -25,20 +23,18 @@ function ContentPage({
 }) {
   return (
     <div className="w-auto h-auto">
-      <DndProvider options={HTML5toTouch}>
-        <div className="mx-auto mt-2 w-auto h-auto">
-          <KanbanBoard
-            name={kanName}
-            clients={clients}
-            products={products}
-            history={history}
-            initialTasks={initialTasks}
-            kanban={kanban}
-            snapshots={snapshots}
-            domain={domain}
-          />
-        </div>
-      </DndProvider>
+      <div className="mx-auto mt-2 w-auto h-auto">
+        <KanbanBoard
+          name={kanName}
+          clients={clients}
+          products={products}
+          history={history}
+          initialTasks={initialTasks}
+          kanban={kanban}
+          snapshots={snapshots}
+          domain={domain}
+        />
+      </div>
     </div>
   );
 }

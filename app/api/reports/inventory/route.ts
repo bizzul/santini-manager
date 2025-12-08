@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export const dynamic = "force-dynamic";
 
@@ -39,9 +39,8 @@ export const GET = async () => {
     if (categoriesError) throw categoriesError;
 
     const categoryValues = categories.map((category) => ({
-      [category.name]: getCategoryTotalValue(
-        filterInventories(category.id, products),
-      ),
+      name: category.name,
+      value: getCategoryTotalValue(filterInventories(category.id, products)),
     }));
 
     // Group inventories by category name
@@ -63,7 +62,29 @@ export const GET = async () => {
       .sort(([a], [b]) => a.localeCompare(b))
       .flatMap(([_, inventories]) => inventories);
 
-    //Add inventories to the worksheet
+    const date = new Date();
+    const fileName = `Rapporto_inventario_al_${date.getFullYear()}-${
+      date.getMonth() + 1
+    }-${date.getDate()}.xlsx`;
+
+    const workbook = new ExcelJS.Workbook();
+
+    // Create inventory worksheet
+    const inventoryWorksheet = workbook.addWorksheet("Inventario");
+    inventoryWorksheet.columns = [
+      { header: "Nome", key: "Nome", width: 25 },
+      { header: "Categoria", key: "Categoria", width: 20 },
+      { header: "Desc no.", key: "Desc no.", width: 15 },
+      { header: "Fornitore", key: "Fornitore", width: 20 },
+      { header: "Altezza", key: "Altezza", width: 10 },
+      { header: "Lunghezza", key: "Lunghezza", width: 12 },
+      { header: "Profondita", key: "Profondita", width: 12 },
+      { header: "Quantita", key: "Quantita", width: 10 },
+      { header: "Prezzo", key: "Prezzo", width: 12 },
+      { header: "Prezzo Totale", key: "Prezzo Totale", width: 15 },
+    ];
+
+    // Add inventory data
     const inventoryDataSubset = sortedInventories.map((item: any) => {
       return {
         Nome: item.name,
@@ -81,47 +102,31 @@ export const GET = async () => {
       };
     });
 
-    const date = new Date();
-    const fileName = `Rapporto_inventario_al_${date.getFullYear()}-${
-      date.getMonth() + 1
-    }-${date.getDate()}`;
-    const fileExtension = ".xlsx";
+    inventoryWorksheet.addRows(inventoryDataSubset);
 
-    const workbook = XLSX.utils.book_new();
-    const inventoryWorksheet = XLSX.utils.json_to_sheet(inventoryDataSubset);
-    XLSX.utils.book_append_sheet(workbook, inventoryWorksheet, "Inventario");
-    //Add the sum of the category values to the worksheet
-    const categoryValueWorksheet = XLSX.utils.json_to_sheet(categoryValues);
-    XLSX.utils.book_append_sheet(
-      workbook,
-      categoryValueWorksheet,
-      "Totale per Categoria",
-    );
+    // Create category values worksheet
+    const categoryValueWorksheet = workbook.addWorksheet("Totale per Categoria");
+    categoryValueWorksheet.columns = [
+      { header: "Categoria", key: "name", width: 25 },
+      { header: "Valore Totale", key: "value", width: 20 },
+    ];
+    categoryValueWorksheet.addRows(categoryValues);
 
     // Set headers to indicate a file download
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`,
+      `attachment; filename="${fileName}"`,
     );
 
-    // Convert workbook to binary to send in response
-    const buf = await XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
-    });
+    // Convert workbook to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
 
-    const blob = new Blob([buf], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
-    });
-    const stream = blob.stream();
-    console.log("stream", stream);
-    //@ts-ignore
-    return new Response(stream, {
+    return new Response(buffer, {
       status: 200,
       headers: headers,
     });

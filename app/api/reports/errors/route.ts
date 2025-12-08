@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export const dynamic = "force-dynamic";
 
@@ -67,13 +67,25 @@ export const POST = async (req: NextRequest) => {
     const date = new Date();
     const fileName = `Rapporto_errori_al_${date.getFullYear()}-${
       date.getMonth() + 1
-    }-${date.getDate()}`;
+    }-${date.getDate()}.xlsx`;
 
-    const fileExtension = ".xlsx";
+    const workbook = new ExcelJS.Workbook();
 
-    const workbook = XLSX.utils.book_new();
+    // Create errors worksheet
+    const taskWorksheet = workbook.addWorksheet("Errori");
+    taskWorksheet.columns = [
+      { header: "Data Creazione", key: "Data Creazione", width: 20 },
+      { header: "Numero", key: "Numero", width: 12 },
+      { header: "Utente", key: "Utente", width: 15 },
+      { header: "Categoria", key: "Categoria", width: 15 },
+      { header: "Fornitore", key: "Fornitore", width: 20 },
+      { header: "Tipo", key: "Tipo", width: 15 },
+      { header: "Descrizione", key: "Descrizione", width: 30 },
+      { header: "Prodotto", key: "Prodotto", width: 20 },
+      { header: "Immagini", key: "Immagini", width: 50 },
+    ];
 
-    //Add inventories to the worksheet
+    // Add error data
     const taskDataSubset = filterData.map((item: any) => {
       const created = new Date(item.created_at);
       // Concatenating all file URLs into a single string, separated by line breaks.
@@ -94,46 +106,32 @@ export const POST = async (req: NextRequest) => {
       };
     });
 
-    // Create a summary object
-    const summary = {
-      "Numero totale di errori": taskDataSubset.length,
-      // "Valore in produzione": taskDataSubset.reduce(
-      //   (acc: number, task: any) => acc + task["Prezzo di vendita"],
-      //   0
-      // ),
-    };
+    taskWorksheet.addRows(taskDataSubset);
 
-    // Create worksheets from the task data and the summary
-    const taskWorksheet = XLSX.utils.json_to_sheet(taskDataSubset);
-    const summaryWorksheet = XLSX.utils.json_to_sheet([summary]);
-
-    // Append the worksheets to the workbook
-    XLSX.utils.book_append_sheet(workbook, taskWorksheet, "Errori");
-    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Riepilogo");
+    // Create summary worksheet
+    const summaryWorksheet = workbook.addWorksheet("Riepilogo");
+    summaryWorksheet.columns = [
+      { header: "Numero totale di errori", key: "totale", width: 30 },
+    ];
+    summaryWorksheet.addRow({
+      totale: taskDataSubset.length,
+    });
 
     // Set headers to indicate a file download
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`,
+      `attachment; filename="${fileName}"`,
     );
 
-    // Convert workbook to binary to send in response
-    const buf = await XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
-    });
+    // Convert workbook to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
 
-    const blob = new Blob([buf], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
-    });
-    const stream = blob.stream();
-    //@ts-ignore
-    return new Response(stream, {
+    return new Response(buffer, {
       status: 200,
       headers: headers,
     });

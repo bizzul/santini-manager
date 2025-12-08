@@ -1,7 +1,7 @@
 import { DateManager } from "../../../../package/utils/dates/date-manager";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export const dynamic = "force-dynamic";
 
@@ -101,20 +101,17 @@ function prepareTimetrackingsData(
       : "No Ruolo";
     const totalTime = (tracking.hours + tracking.minutes / 60).toFixed(2);
 
-    //const totalTimeInMinutes = tracking.hours * 60 + tracking.minutes;
-    // const roundedTotalTime = Math.round(totalTime * 2) / 2;
-    // const totalTime = tracking.hours + tracking.minutes / 100;
-    return [
-      formatDate(tracking.created_at),
-      tracking.users?.given_name + " " + tracking.users?.family_name,
-      roleName,
-      tracking.hours,
-      tracking.minutes,
-      totalTime,
-      tracking.tasks?.unique_code
+    return {
+      Data: formatDate(tracking.created_at),
+      "Nome Cognome": tracking.users?.given_name + " " + tracking.users?.family_name,
+      Reparto: roleName,
+      Ore: tracking.hours,
+      Minuti: tracking.minutes,
+      Totale: Number(totalTime),
+      "Codice Progetto": tracking.tasks?.unique_code
         ? tracking.tasks.unique_code
         : "Nessun codice",
-    ];
+    };
   });
 
   return data;
@@ -209,171 +206,132 @@ export const POST = async (req: NextRequest) => {
         "0" +
         (to.getMonth() + 1)
       ).slice(-2)
-    }-${("0" + to.getDate()).slice(-2)}`;
+    }-${("0" + to.getDate()).slice(-2)}.xlsx`;
 
-    const fileExtension = ".xlsx";
+    const workbook = new ExcelJS.Workbook();
 
-    const workbook = XLSX.utils.book_new();
-
-    const sheetNames: string[] = []; // Used to keep track of sheet names
-
+    // Create summary sheet with all timetrackings
     const allTimetrackingsData = prepareTimetrackingsData(
       timeTrackingsData,
       from,
       to,
     );
 
-    const allTimetrackingsSheet = XLSX.utils.aoa_to_sheet([
-      [
-        "Data",
-        "Nome Cognome",
-        "Reparto",
-        "Ore",
-        "Minuti",
-        "Totale",
-        "Codice Progetto",
-      ],
-      ...allTimetrackingsData,
-    ]);
+    const allTimetrackingsSheet = workbook.addWorksheet("A_Riassunto");
+    allTimetrackingsSheet.columns = [
+      { header: "Data", key: "Data", width: 12 },
+      { header: "Nome Cognome", key: "Nome Cognome", width: 20 },
+      { header: "Reparto", key: "Reparto", width: 15 },
+      { header: "Ore", key: "Ore", width: 8 },
+      { header: "Minuti", key: "Minuti", width: 10 },
+      { header: "Totale", key: "Totale", width: 10 },
+      { header: "Codice Progetto", key: "Codice Progetto", width: 18 },
+    ];
+    allTimetrackingsSheet.addRows(allTimetrackingsData);
 
-    XLSX.utils.book_append_sheet(
-      workbook,
-      allTimetrackingsSheet,
-      "A_Riassunto",
-    );
-
-    sheetNames.push(`A_Riassunto`);
-
+    // Create individual user sheets
     newData.forEach((item: any) => {
-      // Add summary sheet for each
-      const summarySheet = XLSX.utils.aoa_to_sheet([
-        [
-          "Data creazione",
-          "Codice Progetto",
-          "Note",
-          "Ore",
-          "Minuti",
-          "Tempo totale",
-        ],
-        // ["Codice Progetto", "Note", "Inizio", "Fine", "Tempo totale"],
-        ...item.tasks.map((task: any) => [
-          { v: formatDate(task.date), t: "s" }, // 's' is for string
-          { v: task.projectCode ? task.projectCode : "Nessun Codice", t: "s" }, // assuming projectCode is a string
-          { v: task.description, t: "s" },
-          { v: Number(task.hours), t: "n" }, // 'n' is for number
-          { v: Number(task.minutes), t: "n" },
-          { v: Number(task.totalTime.toFixed(2)), t: "n" },
-          // task.start,
-          // task.end,
-          // timeToString(task.totalTime),
-          // task.totalHoursPerDay,
-        ]),
-        // ["Totale", timeToString(item.total)],
-        ["Totale", { v: item.total, t: "n" }],
-      ]);
+      // Summary sheet for each user
+      const summarySheet = workbook.addWorksheet(`${item.user} Sommario`);
+      summarySheet.columns = [
+        { header: "Data creazione", key: "Data creazione", width: 15 },
+        { header: "Codice Progetto", key: "Codice Progetto", width: 18 },
+        { header: "Note", key: "Note", width: 25 },
+        { header: "Ore", key: "Ore", width: 8 },
+        { header: "Minuti", key: "Minuti", width: 10 },
+        { header: "Tempo totale", key: "Tempo totale", width: 15 },
+      ];
 
-      const totalHoursSheetData = Array.from(item.dailyTotal.entries()).map(
-        ([date, hours]: any) => [
-          { v: formatDate(date), t: "s" },
-          { v: Number(hours.toFixed(2)), t: "n" },
-        ],
-      );
+      item.tasks.forEach((task: any) => {
+        summarySheet.addRow({
+          "Data creazione": formatDate(task.date),
+          "Codice Progetto": task.projectCode ? task.projectCode : "Nessun Codice",
+          Note: task.description,
+          Ore: Number(task.hours),
+          Minuti: Number(task.minutes),
+          "Tempo totale": Number(task.totalTime.toFixed(2)),
+        });
+      });
 
-      // Creating the totalHoursSheet with explicit types
-      const totalHoursSheet = XLSX.utils.aoa_to_sheet([
-        [
-          { v: "Data", t: "s" },
-          { v: "Totale ore giornaliero", t: "s" },
-        ],
-        ...totalHoursSheetData,
-      ]);
+      // Add total row
+      summarySheet.addRow({
+        "Data creazione": "Totale",
+        "Codice Progetto": "",
+        Note: "",
+        Ore: "",
+        Minuti: "",
+        "Tempo totale": item.total,
+      });
 
-      // Add the sheet names to an array for later sorting
-      sheetNames.push(`${item.user} Sommario`);
-      sheetNames.push(`${item.user} Giorn.`);
+      // Daily total sheet for each user
+      const totalHoursSheet = workbook.addWorksheet(`${item.user} Giorn.`);
+      totalHoursSheet.columns = [
+        { header: "Data", key: "Data", width: 15 },
+        { header: "Totale ore giornaliero", key: "Totale", width: 25 },
+      ];
 
-      XLSX.utils.book_append_sheet(
-        workbook,
-        summarySheet,
-        `${item.user} Sommario`,
-      );
-      XLSX.utils.book_append_sheet(
-        workbook,
-        totalHoursSheet,
-        `${item.user} Giorn.`,
-      );
+      Array.from(item.dailyTotal.entries()).forEach(([date, hours]: any) => {
+        totalHoursSheet.addRow({
+          Data: formatDate(date),
+          Totale: Number(hours.toFixed(2)),
+        });
+      });
     });
 
-    sheetNames.push(`Z. Sommario progetti`);
-
-    const projectSheetData: any = [];
+    // Create project summary sheet
+    const projectSheet = workbook.addWorksheet("Z. Sommario progetti");
+    projectSheet.columns = [
+      { header: "Progetto/Dipendente", key: "col1", width: 20 },
+      { header: "Ruolo", key: "col2", width: 15 },
+      { header: "Ore", key: "col3", width: 12 },
+    ];
 
     projectData.forEach((employeeRoles, projectName) => {
-      let projectTotalHours = 0; // Reset for each project
-      // Add project name as a header
+      let projectTotalHours = 0;
 
-      projectSheetData.push([{ v: projectName, t: "s" }]);
+      // Add project name as a header row
+      projectSheet.addRow({ col1: projectName, col2: "", col3: "" });
 
       // Add each unique employee-role entry
       employeeRoles.forEach((details: any) => {
-        projectTotalHours += details.totalHours; // Accumulate hours
+        projectTotalHours += details.totalHours;
 
-        projectSheetData.push([
-          { v: details.employeeName, t: "s" },
-          { v: details.role, t: "s" },
-          { v: `${details.totalHours}`, t: "n" },
-        ]);
+        projectSheet.addRow({
+          col1: details.employeeName,
+          col2: details.role,
+          col3: details.totalHours,
+        });
       });
 
       // Add total hours row for the project
-      projectSheetData.push([
-        { v: "Totale Ore", t: "s", style: { font: { bold: true } } },
-        { v: "", t: "s" },
-        { v: `${projectTotalHours}`, t: "n" },
-      ]);
+      projectSheet.addRow({
+        col1: "Totale Ore",
+        col2: "",
+        col3: projectTotalHours,
+      });
 
       // Add an empty row after each project for readability
-      projectSheetData.push(["", "", ""]);
+      projectSheet.addRow({ col1: "", col2: "", col3: "" });
     });
-
-    const projectSheet = XLSX.utils.aoa_to_sheet(projectSheetData);
-
-    XLSX.utils.book_append_sheet(
-      workbook,
-      projectSheet,
-      `Z. Sommario progetti`,
-    );
-
-    // Reorder the sheets based on sorted sheet names
-    workbook.SheetNames = sheetNames;
 
     // Set headers to indicate a file download
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`,
+      `attachment; filename="${fileName}"`,
     );
 
-    // Convert workbook to binary to send in response
-    const buf = await XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
+    // Convert workbook to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    return new Response(buffer, {
+      status: 200,
+      headers: headers,
     });
-    if (buf) {
-      const blob = new Blob([buf], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
-      });
-      const stream = blob.stream();
-      //@ts-ignore
-      return new Response(stream, {
-        status: 200,
-        headers: headers,
-      });
-    }
   } catch (err: any) {
     console.error("Error generating Excel file:", err);
     return NextResponse.json(err.message);

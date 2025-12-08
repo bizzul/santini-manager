@@ -1,6 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useState } from "react";
-import { useDrag } from "react-dnd";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Action,
   Client,
@@ -174,21 +175,27 @@ export default function Card({
     loadSuppliers();
   }, [id]);
 
-  const [{ isDragging }, drag] = useDrag(
-    () => ({
-      type: "card",
-      item: {
-        id,
-        columnIndex,
-        fromColumn: data.column?.identifier,
-      },
-      canDrag: !isLocked && !data.isPreview,
-      collect: (monitor) => ({
-        isDragging: monitor.isDragging(),
-      }),
-    }),
-    [id, data.column?.identifier, data.isPreview, isLocked]
-  );
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: id.toString(),
+    data: {
+      id,
+      columnIndex,
+      fromColumn: data.column?.identifier,
+    },
+    disabled: isLocked || data.isPreview,
+  });
+
+  const dragStyle = transform
+    ? {
+        transform: CSS.Translate.toString(transform),
+      }
+    : undefined;
 
   const onClick = useCallback(
     (e: any) => {
@@ -440,12 +447,13 @@ export default function Card({
             ? "bg-slate-500 dark:bg-slate-800"
             : "bg-red-800 dark:bg-red-800 animate-pulse"
         } ${isSmall ? " h-24" : ""}`}
-        //@ts-ignore
-        ref={data.isPreview ? null : drag}
+        ref={data.isPreview ? undefined : setNodeRef}
         style={{
+          ...dragStyle,
           opacity: isDragging ? 0.5 : 1,
           cursor: data.isPreview ? "not-allowed" : "move",
         }}
+        {...(data.isPreview ? {} : { ...listeners, ...attributes })}
         onContextMenu={(e) => e.preventDefault()}
         onClick={onClick}
       >

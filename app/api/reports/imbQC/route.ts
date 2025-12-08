@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { DateManager } from "../../../../package/utils/dates/date-manager";
 
 export const dynamic = "force-dynamic";
@@ -31,149 +31,136 @@ export const GET = async () => {
 
     if (imbError) throw imbError;
 
-    const buildExcelDataImb = (data: any) => {
-      // Sort the data by date in descending order
-      data.sort(
-        //@ts-ignore
-        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
-      );
-      // Create a set of unique item names
-      const uniqueItemNames: any = new Set(
-        data.flatMap((item: any) =>
-          item.packing_items.map((subItem: any) => subItem.name)
-        ),
-      );
-
-      // Create the header row with "Date", "Project Code", "User", and item names
-      const headerRow = [
-        "Data",
-        "Progetto",
-        "Utente",
-        "Terminato?",
-        ...uniqueItemNames,
-      ];
-
-      // Create the Excel data array starting with the header row
-      const excelData = [
-        headerRow,
-        ...data.map((item: any) => {
-          // Extract the date, project code, and user information
-          const row = [
-            DateManager.formatEUDate(item.created_at),
-            item.tasks?.unique_code,
-            item.users?.family_name,
-            item.passed === "DONE" ? "SI" : "NO",
-          ];
-
-          // For each item, mark it with "X" if checked, or leave it blank if not checked
-          // For each item, add the number value
-          uniqueItemNames.forEach((itemName: any) => {
-            const number = item.packing_items.find(
-              (subItem: any) => subItem.name === itemName,
-            )?.number;
-            row.push(number || ""); // Use the number value or leave it blank if undefined
-          });
-
-          return row;
-        }),
-      ];
-
-      return excelData;
-    };
-
-    const buildExcelDataQc = (data: any) => {
-      // Sort the data by date in descending order
-      data.sort(
-        //@ts-ignore
-        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
-      );
-      // Create a set of unique item names
-      const uniqueItemNames: any = new Set(
-        data.flatMap((item: any) =>
-          item.qc_items.map((subItem: any) => subItem.name)
-        ),
-      );
-
-      // Create the header row with "Date", "Project Code", "User", and item names
-      const headerRow = [
-        "Data",
-        "Progetto",
-        "Utente",
-        "Terminato?",
-        ...uniqueItemNames,
-      ];
-
-      // Create the Excel data array starting with the header row
-      const excelData = [
-        headerRow,
-        ...data.map((item: any) => {
-          // Extract the date, project code, and user information
-          const row = [
-            DateManager.formatEUDate(item.created_at),
-            item.tasks?.unique_code,
-            item.users?.family_name,
-            item.passed === "DONE" ? "SI" : "NO",
-          ];
-
-          // For each item, mark it with "X" if checked, or leave it blank if not checked
-          uniqueItemNames.forEach((itemName: any) => {
-            const checked = item.qc_items.find(
-              (subItem: any) => subItem.name === itemName,
-            )?.checked;
-
-            row.push(checked ? "X" : "");
-          });
-
-          return row;
-        }),
-      ];
-
-      return excelData;
-    };
-
-    const qcExcelData = buildExcelDataQc(qc);
-
-    const imbExcelData = buildExcelDataImb(imballaggio);
-
     const date = new Date();
     const fileName =
       `Rapporto_imballaggio_qc_interno_al_${date.getFullYear()}-${
         date.getMonth() + 1
-      }-${date.getDate()}`;
-    const fileExtension = ".xlsx";
+      }-${date.getDate()}.xlsx`;
 
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
 
-    const qcWorksheet = XLSX.utils.aoa_to_sheet(qcExcelData);
-    XLSX.utils.book_append_sheet(workbook, qcWorksheet, "Quality Control");
+    // Build QC Excel data
+    const buildQcWorksheet = (data: any) => {
+      // Sort the data by date in descending order
+      data.sort(
+        //@ts-ignore
+        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
+      );
 
-    const imbWorksheet = XLSX.utils.aoa_to_sheet(imbExcelData);
-    XLSX.utils.book_append_sheet(workbook, imbWorksheet, "Imballaggio");
+      // Create a set of unique item names
+      const uniqueItemNames: string[] = Array.from(
+        new Set(
+          data.flatMap((item: any) =>
+            item.qc_items.map((subItem: any) => subItem.name)
+          )
+        )
+      );
+
+      const worksheet = workbook.addWorksheet("Quality Control");
+
+      // Define columns dynamically
+      const columns = [
+        { header: "Data", key: "Data", width: 15 },
+        { header: "Progetto", key: "Progetto", width: 15 },
+        { header: "Utente", key: "Utente", width: 15 },
+        { header: "Terminato?", key: "Terminato", width: 12 },
+        ...uniqueItemNames.map((name) => ({ header: name, key: name, width: 12 })),
+      ];
+      worksheet.columns = columns;
+
+      // Add data rows
+      data.forEach((item: any) => {
+        const rowData: any = {
+          Data: DateManager.formatEUDate(item.created_at),
+          Progetto: item.tasks?.unique_code,
+          Utente: item.users?.family_name,
+          Terminato: item.passed === "DONE" ? "SI" : "NO",
+        };
+
+        // For each item, mark it with "X" if checked, or leave it blank
+        uniqueItemNames.forEach((itemName: string) => {
+          const checked = item.qc_items.find(
+            (subItem: any) => subItem.name === itemName
+          )?.checked;
+          rowData[itemName] = checked ? "X" : "";
+        });
+
+        worksheet.addRow(rowData);
+      });
+
+      return worksheet;
+    };
+
+    // Build Imballaggio Excel data
+    const buildImbWorksheet = (data: any) => {
+      // Sort the data by date in descending order
+      data.sort(
+        //@ts-ignore
+        (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
+      );
+
+      // Create a set of unique item names
+      const uniqueItemNames: string[] = Array.from(
+        new Set(
+          data.flatMap((item: any) =>
+            item.packing_items.map((subItem: any) => subItem.name)
+          )
+        )
+      );
+
+      const worksheet = workbook.addWorksheet("Imballaggio");
+
+      // Define columns dynamically
+      const columns = [
+        { header: "Data", key: "Data", width: 15 },
+        { header: "Progetto", key: "Progetto", width: 15 },
+        { header: "Utente", key: "Utente", width: 15 },
+        { header: "Terminato?", key: "Terminato", width: 12 },
+        ...uniqueItemNames.map((name) => ({ header: name, key: name, width: 12 })),
+      ];
+      worksheet.columns = columns;
+
+      // Add data rows
+      data.forEach((item: any) => {
+        const rowData: any = {
+          Data: DateManager.formatEUDate(item.created_at),
+          Progetto: item.tasks?.unique_code,
+          Utente: item.users?.family_name,
+          Terminato: item.passed === "DONE" ? "SI" : "NO",
+        };
+
+        // For each item, add the number value
+        uniqueItemNames.forEach((itemName: string) => {
+          const number = item.packing_items.find(
+            (subItem: any) => subItem.name === itemName
+          )?.number;
+          rowData[itemName] = number || "";
+        });
+
+        worksheet.addRow(rowData);
+      });
+
+      return worksheet;
+    };
+
+    buildQcWorksheet(qc);
+    buildImbWorksheet(imballaggio);
 
     // Set headers to indicate a file download
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`,
+      `attachment; filename="${fileName}"`,
     );
 
-    // Convert workbook to binary to send in response
-    const buf = await XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
-    });
+    // Convert workbook to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
 
-    const blob = new Blob([buf], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
-    });
-    const stream = blob.stream();
-
-    //@ts-ignore
-    return new Response(stream, {
+    return new Response(buffer, {
       status: 200,
       headers: headers,
     });

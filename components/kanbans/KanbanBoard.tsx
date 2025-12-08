@@ -1,6 +1,15 @@
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useDrop } from "react-dnd";
+import {
+  useDroppable,
+  DndContext,
+  DragEndEvent,
+  useSensor,
+  useSensors,
+  MouseSensor,
+  TouchSensor,
+  pointerWithin,
+} from "@dnd-kit/core";
 import Card from "./Card";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -139,66 +148,14 @@ const Column = ({
     0
   );
 
-  const [showMoveConfirmation, setShowMoveConfirmation] = useState(false);
-  const [pendingMove, setPendingMove] = useState<{
-    id: number;
-    toColumn: any;
-  } | null>(null);
-
-  const [{ canDrop, isOver }, drop] = useDrop(
-    () => ({
-      // The type (or types) to accept - strings or symbols
-      accept: "card",
-      // Props to collect
-      drop: async (item: any) => {
-        if (isMovingTask || isPreviewMode) {
-          return;
-        }
-
-        // Check if moving to or from IMBALLAGGIO
-        if (
-          column.identifier.includes("IMBALL") ||
-          item.fromColumn.includes("IMBALL")
-        ) {
-          setShowMoveConfirmation(true);
-          setPendingMove({
-            id: item.id,
-            toColumn: { id: column.id, identifier: column.identifier },
-          });
-          return;
-        }
-
-        // If not involving IMBALLAGGIO, proceed normally
-        setIsMovingTask(true);
-        await moveCard(item.id, column.id, column.identifier);
-        setIsMovingTask(false);
-      },
-      collect: (monitor) => ({
-        isOver: monitor.isOver(),
-        canDrop: !isPreviewMode && monitor.canDrop(),
-      }),
-    }),
-    [column, isMovingTask, isPreviewMode]
-  );
-
-  const handleMoveConfirm = async () => {
-    if (pendingMove) {
-      setIsMovingTask(true);
-      await moveCard(
-        pendingMove.id,
-        pendingMove.toColumn.id,
-        pendingMove.toColumn.identifier
-      );
-      setIsMovingTask(false);
-      setShowMoveConfirmation(false);
-      setPendingMove(null);
-    }
-  };
-
-  const handleMoveCancel = () => {
-    setShowMoveConfirmation(false);
-    setPendingMove(null);
-  };
+  const { isOver, setNodeRef } = useDroppable({
+    id: `column-${column.id}`,
+    data: {
+      columnId: column.id,
+      columnIdentifier: column.identifier,
+    },
+    disabled: isPreviewMode,
+  });
 
   useEffect(() => {
     // Simulate a small delay to show loading state
@@ -273,10 +230,11 @@ const Column = ({
         </div>
         <div
           className={`h-full min-h-160 p-1   ${
-            isOver && canDrop ? "bg-green-500 border border-zinc-400" : ""
+            isOver && !isPreviewMode
+              ? "bg-green-500 border border-zinc-400"
+              : ""
           }`}
-          //@ts-ignore
-          ref={drop}
+          ref={setNodeRef}
         >
           {isLoadingCards
             ? // Loading skeletons for cards
@@ -319,30 +277,6 @@ const Column = ({
                 ))}
           {/* {canDrop ? "Rilascia qui" : ""} */}
         </div>
-        <AlertDialog
-          open={showMoveConfirmation}
-          onOpenChange={setShowMoveConfirmation}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Conferma Spostamento</AlertDialogTitle>
-              <AlertDialogDescription>
-                Sei sicuro di voler{" "}
-                {column.identifier.includes("IMBALL")
-                  ? "spostare questo elemento in imballaggio?"
-                  : "spostare questo elemento dall'imballaggio?"}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleMoveCancel}>
-                Annulla
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={handleMoveConfirm}>
-                Conferma
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
       </div>
     </>
   );
@@ -411,6 +345,15 @@ function KanbanBoard({
     card: any;
     from: any;
     to: any;
+  } | null>(null);
+
+  // State for IMBALLAGGIO confirmation
+  const [showImballaggioConfirm, setShowImballaggioConfirm] = useState(false);
+  const [pendingImballaggioMove, setPendingImballaggioMove] = useState<{
+    cardId: number;
+    columnId: number;
+    columnIdentifier: string;
+    isToImballaggio: boolean;
   } | null>(null);
 
   // Optimize moveCard function
@@ -634,6 +577,78 @@ function KanbanBoard({
     }
   };
 
+  // Configure sensors for mouse and touch
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10,
+    },
+  });
+
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 250,
+      tolerance: 5,
+    },
+  });
+
+  const sensors = useSensors(mouseSensor, touchSensor);
+
+  // Handle drag end event
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const cardId = parseInt(active.id as string);
+    const activeData = active.data.current;
+    const overData = over.data.current;
+
+    // Extract column info from droppable
+    const columnId = overData?.columnId;
+    const columnIdentifier = overData?.columnIdentifier;
+
+    if (!columnId || !columnIdentifier) return;
+
+    // Skip if card is already in this column
+    if (activeData?.fromColumn === columnIdentifier) return;
+
+    // Check if moving to or from IMBALLAGGIO - show confirmation
+    if (
+      columnIdentifier.includes("IMBALL") ||
+      activeData?.fromColumn?.includes("IMBALL")
+    ) {
+      setPendingImballaggioMove({
+        cardId,
+        columnId,
+        columnIdentifier,
+        isToImballaggio: columnIdentifier.includes("IMBALL"),
+      });
+      setShowImballaggioConfirm(true);
+      return;
+    }
+
+    // Otherwise proceed with move
+    await moveCard(cardId, columnId, columnIdentifier);
+  };
+
+  // Handle IMBALLAGGIO move confirmation
+  const handleImballaggioConfirm = async () => {
+    if (pendingImballaggioMove) {
+      await moveCard(
+        pendingImballaggioMove.cardId,
+        pendingImballaggioMove.columnId,
+        pendingImballaggioMove.columnIdentifier
+      );
+      setShowImballaggioConfirm(false);
+      setPendingImballaggioMove(null);
+    }
+  };
+
+  const handleImballaggioCancel = () => {
+    setShowImballaggioConfirm(false);
+    setPendingImballaggioMove(null);
+  };
+
   // Function to determine if text should be black or white based on background color
   const getContrastColor = (hexColor: string): string => {
     // Default to white if no color provided
@@ -656,7 +671,11 @@ function KanbanBoard({
   };
 
   return (
-    <>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragEnd={handleDragEnd}
+    >
       {kanban && (
         <div className="w-full pt-4 pb-2 px-8">
           <h1
@@ -794,7 +813,33 @@ function KanbanBoard({
           </div>
         </div>
       )}
-    </>
+
+      {/* IMBALLAGGIO Move Confirmation Dialog */}
+      <AlertDialog
+        open={showImballaggioConfirm}
+        onOpenChange={setShowImballaggioConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Spostamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler{" "}
+              {pendingImballaggioMove?.isToImballaggio
+                ? "spostare questo elemento in imballaggio?"
+                : "spostare questo elemento dall'imballaggio?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleImballaggioCancel}>
+              Annulla
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleImballaggioConfirm}>
+              Conferma
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </DndContext>
   );
 }
 

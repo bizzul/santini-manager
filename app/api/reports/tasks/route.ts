@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { calculateCurrentValue } from "../../../../package/utils/various/calculateCurrentValue";
 
 export const dynamic = "force-dynamic";
@@ -37,12 +37,31 @@ export const GET = async () => {
 
     const fileName = `Rapporto_inventario_al_${date.getFullYear()}-${
       date.getMonth() + 1
-    }-${date.getDate()}`;
-    const fileExtension = ".xlsx";
+    }-${date.getDate()}.xlsx`;
 
-    const workbook = XLSX.utils.book_new();
+    const workbook = new ExcelJS.Workbook();
 
-    //Add inventories to the worksheet
+    // Create task worksheet
+    const taskWorksheet = workbook.addWorksheet("Progetti aperti");
+
+    // Define columns
+    taskWorksheet.columns = [
+      { header: "Numero", key: "Numero", width: 12 },
+      { header: "Cliente", key: "Cliente", width: 25 },
+      { header: "Prodotto", key: "Prodotto", width: 20 },
+      { header: "Fase", key: "Fase", width: 15 },
+      { header: "Data Creazione", key: "Data Creazione", width: 18 },
+      { header: "Data consegna prevista", key: "Data consegna prevista", width: 22 },
+      { header: "Percentuale", key: "Percentuale", width: 12 },
+      { header: "Ferramenta", key: "Ferramenta", width: 12 },
+      { header: "Metalli", key: "Metalli", width: 10 },
+      { header: "Altro", key: "Altro", width: 15 },
+      { header: "Posizioni", key: "Posizioni", width: 20 },
+      { header: "Prezzo di vendita", key: "Prezzo di vendita", width: 18 },
+      { header: "Valore", key: "Valore", width: 12 },
+    ];
+
+    // Add task data
     const taskDataSubset = filteredTasks.map((item: any) => {
       const created = new Date(item.created_at);
       const delivery = item.delivery_date && new Date(item.delivery_date);
@@ -61,7 +80,6 @@ export const GET = async () => {
           ? delivery.toLocaleString()
           : "NON ASSEGNATA",
         Percentuale: item.percent_status,
-        // Materiale: item.material ? "Si" : "No",
         Ferramenta: item.ferramenta ? "Si" : "No",
         Metalli: item.metalli ? "Si" : "No",
         Altro: item.other,
@@ -74,51 +92,40 @@ export const GET = async () => {
       };
     });
 
-    // Create a summary object
-    const summary = {
-      "Numero totale di progetti aperti": taskDataSubset.length,
-      "Valore in produzione": taskDataSubset.reduce(
+    taskWorksheet.addRows(taskDataSubset);
+
+    // Create summary worksheet
+    const summaryWorksheet = workbook.addWorksheet("Riepilogo");
+    summaryWorksheet.columns = [
+      { header: "Numero totale di progetti aperti", key: "totale", width: 35 },
+      { header: "Valore in produzione", key: "valore", width: 25 },
+    ];
+    summaryWorksheet.addRow({
+      totale: taskDataSubset.length,
+      valore: taskDataSubset.reduce(
         (acc: number, task: any) => acc + task["Prezzo di vendita"],
         0,
       ),
-    };
-
-    // Create worksheets from the task data and the summary
-    const taskWorksheet = XLSX.utils.json_to_sheet(taskDataSubset);
-    const summaryWorksheet = XLSX.utils.json_to_sheet([summary]);
-
-    // Append the worksheets to the workbook
-    XLSX.utils.book_append_sheet(workbook, taskWorksheet, "Progetti aperti");
-    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, "Riepilogo");
+    });
 
     // Set headers to indicate a file download
     const headers = new Headers();
     headers.append(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     headers.append(
       "Content-Disposition",
-      `attachment; filename="${fileName}${fileExtension}"`,
+      `attachment; filename="${fileName}"`,
     );
 
-    // Convert workbook to binary to send in response
-    const buf = await XLSX.write(workbook, {
-      type: "buffer",
-      bookType: "xlsx",
-    });
-    if (buf) {
-      const blob = new Blob([buf], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheet.sheet",
-      });
-      const stream = blob.stream();
+    // Convert workbook to buffer
+    const buffer = await workbook.xlsx.writeBuffer();
 
-      //@ts-ignore
-      return new Response(stream, {
-        status: 200,
-        headers: headers,
-      });
-    }
+    return new Response(buffer, {
+      status: 200,
+      headers: headers,
+    });
   } catch (err: any) {
     console.log("errore", err);
     return NextResponse.json(err.message);
