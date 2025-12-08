@@ -21,19 +21,25 @@ async function fetchUserContext(): Promise<UserContext | null> {
  * Prevents duplicate API calls across components
  */
 export function useUserContext() {
-  const { data: userContext, isLoading: loading, error } = useQuery({
+  const {
+    data: userContext,
+    isLoading: loading,
+    error,
+  } = useQuery({
     queryKey: ["user-context"],
     queryFn: fetchUserContext,
     staleTime: 5 * 60 * 1000, // Consider fresh for 5 minutes
     gcTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
     refetchOnWindowFocus: false, // Don't refetch on tab focus
-    retry: 1, // Only retry once for auth
+    retry: false, // Don't retry auth calls to avoid 429 errors
+    refetchOnMount: false, // Don't refetch when component mounts if data exists
+    refetchOnReconnect: false, // Don't refetch on reconnect to avoid spam
   });
 
-  return { 
-    userContext: userContext ?? null, 
-    loading, 
-    error: error?.message ?? null 
+  return {
+    userContext: userContext ?? null,
+    loading,
+    error: error?.message ?? null,
   };
 }
 

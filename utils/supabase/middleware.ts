@@ -6,6 +6,36 @@ import { COOKIE_OPTIONS } from "./cookie";
 const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
 
 export async function updateSession(request: NextRequest) {
+  // OPTIMIZATION: Check if route is public BEFORE making any auth calls
+  // This prevents unnecessary token refresh requests that cause 429 errors
+  const publicRoutes = [
+    "/",
+    "/home",
+    "/login",
+    "/setup-organization",
+    "/unauthorized",
+    "/favicon.ico",
+    "/api/auth/callback",
+    "/api/auth/refresh",
+    "/auth/forgot-password",
+    "/auth/reset-password",
+  ];
+  
+  const pathname = request.nextUrl.pathname;
+  const isPublic =
+    publicRoutes.some((route) => pathname === route) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/confirm") ||
+    pathname.match(/\.[a-zA-Z0-9]+$/); // static files (images, fonts, etc.)
+
+  // Skip auth check entirely for public routes - no Supabase call needed
+  if (isPublic) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -39,33 +69,8 @@ export async function updateSession(request: NextRequest) {
     error,
   } = await supabase.auth.getUser();
 
-  // Allow unauthenticated access to public routes
-  const publicRoutes = [
-    "/",
-    "/home",
-    "/login",
-    "/setup-organization",
-    "/unauthorized",
-    "/favicon.ico",
-    "/api/auth/callback",
-    "/api/auth/refresh",
-    "/auth/forgot-password",
-    "/auth/reset-password",
-  ];
-  const isPublic =
-    publicRoutes.some((route) => request.nextUrl.pathname === route) ||
-    request.nextUrl.pathname.startsWith("/_next") ||
-    request.nextUrl.pathname.startsWith("/static") ||
-    request.nextUrl.pathname.startsWith("/api/auth") ||
-    request.nextUrl.pathname.match(/\.[a-zA-Z0-9]+$/); // static files
-
-  if (
-    !user &&
-    !isPublic &&
-    !request.nextUrl.pathname.startsWith("/auth") &&
-    !request.nextUrl.pathname.startsWith("/confirm")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
+  if (!user) {
+    // no user, redirect to login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const response = NextResponse.redirect(url);
@@ -77,12 +82,12 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  if (error || !user) {
+  if (error) {
     try {
       const cookieStore = await cookies();
       const hasCookie = cookieStore.has(COOKIE_NAME);
 
-      // no user or corrupted session(?). Check if there's a session cookie. If yes, make sure to delete it.
+      // corrupted session - delete the cookie
       if (hasCookie) {
         const cookiesToDelete = [
           `${COOKIE_NAME}`,

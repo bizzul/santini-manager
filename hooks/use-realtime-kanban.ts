@@ -69,7 +69,7 @@ export function useRealtimeKanban(
                     table: "Task",
                     filter: `site_id=eq.${siteId}`,
                 },
-                (payload) =>
+                (payload: any) =>
                     handleChange({
                         eventType: "INSERT",
                         new: payload.new,
@@ -85,7 +85,7 @@ export function useRealtimeKanban(
                     table: "Task",
                     filter: `site_id=eq.${siteId}`,
                 },
-                (payload) =>
+                (payload: any) =>
                     handleChange({
                         eventType: "UPDATE",
                         new: payload.new,
@@ -101,7 +101,7 @@ export function useRealtimeKanban(
                     table: "Task",
                     filter: `site_id=eq.${siteId}`,
                 },
-                (payload) =>
+                (payload: any) =>
                     handleChange({
                         eventType: "DELETE",
                         new: payload.new as Record<string, any>,
@@ -109,7 +109,7 @@ export function useRealtimeKanban(
                         table: "Task",
                     }),
             )
-            .subscribe((status) => {
+            .subscribe((status: any) => {
                 if (status === "SUBSCRIBED") {
                     log.info(
                         `Subscribed to kanban updates for site: ${siteId}`,
@@ -182,7 +182,7 @@ export function useRealtimeKanbanFull(siteId: string | null) {
                     queryClient.invalidateQueries({ queryKey: ["kanbans"] });
                 },
             )
-            .subscribe((status) => {
+            .subscribe((status: any) => {
                 if (status === "SUBSCRIBED") {
                     log.info(`Full kanban realtime active for site: ${siteId}`);
                 }
