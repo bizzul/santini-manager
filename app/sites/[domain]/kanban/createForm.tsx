@@ -14,13 +14,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { createItem } from "./actions/create-item.action";
@@ -117,26 +111,23 @@ const CreateProductForm = ({ handleClose, data, kanbanId, domain }: Props) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value?.toString()}
-                disabled={isSubmitting}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {(data.clients as any[]).map((client) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.businessName ||
-                        `${client.individualFirstName || "N/A"} ${client.individualLastName || "N/A"}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
+              <FormControl>
+                <SearchSelect
+                  value={field.value}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  placeholder="Cerca cliente..."
+                  disabled={isSubmitting}
+                  options={
+                    (data.clients as any[])?.map((client) => ({
+                      value: client.id,
+                      label:
+                        client.businessName ||
+                        `${client.individualFirstName || "N/A"} ${client.individualLastName || "N/A"}`,
+                    })) || []
+                  }
+                  emptyMessage="Nessun cliente trovato."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -148,25 +139,21 @@ const CreateProductForm = ({ handleClose, data, kanbanId, domain }: Props) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Prodotto</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value?.toString()}
-                disabled={isSubmitting}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {(data.products as any[]).map((product) => (
-                    <SelectItem key={product.id} value={product.id.toString()}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
+              <FormControl>
+                <SearchSelect
+                  value={field.value}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  placeholder="Cerca prodotto..."
+                  disabled={isSubmitting}
+                  options={
+                    (data.products as any[])?.map((product) => ({
+                      value: product.id,
+                      label: product.name,
+                    })) || []
+                  }
+                  emptyMessage="Nessun prodotto trovato."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

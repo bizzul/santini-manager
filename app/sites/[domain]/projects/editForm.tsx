@@ -21,13 +21,7 @@ import { editItem } from "./actions/edit-item.action";
 import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -188,28 +182,26 @@ const EditForm = ({ handleClose, data }: Props) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Cliente</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value?.toString()}
-                disabled={isSubmitting}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona un cliente" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {clients.map((client: Client) => (
-                    <SelectItem key={client.id} value={client.id.toString()}>
-                      {client.businessName ||
+              <FormControl>
+                <SearchSelect
+                  value={field.value}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  placeholder="Cerca cliente..."
+                  disabled={isSubmitting}
+                  options={
+                    clients.map((client: Client) => ({
+                      value: client.id,
+                      label:
+                        client.businessName ||
                         `${client.individualFirstName || ""} ${
                           client.individualLastName || ""
                         }`.trim() ||
-                        "N/A"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                        "N/A",
+                    }))
+                  }
+                  emptyMessage="Nessun cliente trovato."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -221,30 +213,27 @@ const EditForm = ({ handleClose, data }: Props) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Kanban</FormLabel>
-              <Select
-                onValueChange={(value) => {
-                  const kanbanId = value ? Number(value) : null;
-                  field.onChange(kanbanId);
-                  setSelectedKanbanId(kanbanId);
-                  // Reset column when kanban changes
-                  form.setValue("kanbanColumnId", undefined);
-                }}
-                defaultValue={field.value?.toString()}
-                disabled={isSubmitting}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona una kanban" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {kanbans.map((kanban) => (
-                    <SelectItem key={kanban.id} value={kanban.id.toString()}>
-                      {kanban.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchSelect
+                  value={field.value}
+                  onValueChange={(value) => {
+                    const kanbanId = value ? Number(value) : null;
+                    field.onChange(kanbanId);
+                    setSelectedKanbanId(kanbanId);
+                    // Reset column when kanban changes
+                    form.setValue("kanbanColumnId", undefined);
+                  }}
+                  placeholder="Cerca kanban..."
+                  disabled={isSubmitting}
+                  options={
+                    kanbans.map((kanban) => ({
+                      value: kanban.id,
+                      label: kanban.title,
+                    }))
+                  }
+                  emptyMessage="Nessun kanban trovato."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -258,26 +247,23 @@ const EditForm = ({ handleClose, data }: Props) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Colonna</FormLabel>
-                <Select
-                  onValueChange={(value) =>
-                    field.onChange(value ? Number(value) : null)
-                  }
-                  defaultValue={field.value?.toString()}
-                  disabled={isSubmitting || kanbanColumns.length === 0}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona una colonna" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {kanbanColumns.map((column) => (
-                      <SelectItem key={column.id} value={column.id.toString()}>
-                        {column.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <SearchSelect
+                    value={field.value}
+                    onValueChange={(value) =>
+                      field.onChange(value ? Number(value) : null)
+                    }
+                    placeholder="Cerca colonna..."
+                    disabled={isSubmitting || kanbanColumns.length === 0}
+                    options={
+                      kanbanColumns.map((column) => ({
+                        value: column.id,
+                        label: column.title,
+                      }))
+                    }
+                    emptyMessage="Nessuna colonna trovata."
+                  />
+                </FormControl>
                 {kanbanColumns.length === 0 && (
                   <FormDescription className="text-yellow-600">
                     Nessuna colonna disponibile. La task sarà assegnata alla
@@ -296,24 +282,21 @@ const EditForm = ({ handleClose, data }: Props) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Prodotto</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value?.toString()}
-                disabled={isSubmitting}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona un prodotto" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {products.map((p: SellProduct) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>
-                      {p.name} - {p.type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchSelect
+                  value={field.value}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  placeholder="Cerca prodotto..."
+                  disabled={isSubmitting}
+                  options={
+                    products.map((p: SellProduct) => ({
+                      value: p.id,
+                      label: `${p.name} - ${p.type}`,
+                    }))
+                  }
+                  emptyMessage="Nessun prodotto trovato."
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

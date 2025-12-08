@@ -3,6 +3,7 @@ import React, { useEffect, useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { usePathname } from "next/navigation";
 
 import {
   Form,
@@ -36,9 +37,14 @@ const EditProductForm = ({
   data: Supplier;
 }) => {
   const { toast } = useToast();
+  const pathname = usePathname();
   const [categories, setCategories] = useState<Product_category[]>();
   const [preview, setPreview] = useState<any | null>(null);
   const [file, setFile] = useState<any | null>(null);
+  
+  // Extract domain from pathname (e.g., /sites/santini/suppliers -> santini)
+  const domain = pathname.split("/")[2] || "";
+  
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -60,22 +66,26 @@ const EditProductForm = ({
 
   useEffect(() => {
     const getCategories = async () => {
+      if (!domain) return;
+      
       try {
-        const response = await fetch(`/api/inventory/categories/`);
+        const response = await fetch(`/api/inventory/categories/`, {
+          headers: {
+            "x-site-domain": domain,
+          },
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch categories");
         }
         const categories = await response.json();
         setCategories(categories);
-        // setValue("category", categories[0].name);
       } catch (error) {
         console.error(error);
-        // Handle the error state appropriately
       }
     };
 
     getCategories();
-  }, []);
+  }, [domain]);
 
   useEffect(() => {
     setValue("name", data.name || "");
@@ -159,16 +169,22 @@ const EditProductForm = ({
     <Form {...form}>
       <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
-          // control={form.control}
+          control={form.control}
           name="category"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria</FormLabel>
               <FormControl>
-                {categories?.length && (
+                {categories?.length ? (
                   <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
+                    onValueChange={(selectedId) => {
+                      // Find the category name from the ID and set it as the form value
+                      const selectedCat = categories.find((cat) => cat.id?.toString() === selectedId);
+                      if (selectedCat) {
+                        field.onChange(selectedCat.name);
+                      }
+                    }}
+                    value={categories.find((cat) => cat.name === field.value)?.id?.toString() || ""}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger>
@@ -176,15 +192,16 @@ const EditProductForm = ({
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat: Product_category) => (
-                        <SelectItem key={cat.id} value={cat.name || ""}>
+                        <SelectItem key={cat.id} value={cat.id?.toString() || ""}>
                           {cat.name || "Unnamed"}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Caricamento categorie...</div>
                 )}
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}

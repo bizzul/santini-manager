@@ -18,7 +18,7 @@ export async function editItem(formData: any, id: number) {
       const totalPrice = formData.unit_price * (formData.quantity || 0);
 
       const supabase = await createClient();
-      
+
       // Build the update object with all fields
       const updateData: Record<string, any> = {
         product_category_id: formData.productCategoryId,
@@ -43,28 +43,28 @@ export async function editItem(formData: any, id: number) {
       updateData.subcategory_code = formData.subcategory_code || null;
       updateData.subcategory2 = formData.subcategory2 || null;
       updateData.subcategory2_code = formData.subcategory2_code || null;
-      
+
       // Color
       updateData.color = formData.color || null;
       updateData.color_code = formData.color_code || null;
-      
+
       // Codes
       updateData.internal_code = formData.internal_code || null;
       updateData.warehouse_number = formData.warehouse_number || null;
       updateData.supplier_code = formData.supplier_code || null;
-      
+
       // Producer
       updateData.producer = formData.producer || null;
       updateData.producer_code = formData.producer_code || null;
-      
+
       // URLs
       updateData.url_tds = formData.url_tds || null;
       updateData.image_url = formData.image_url || null;
-      
+
       // Additional dimensions
       updateData.thickness = formData.thickness || null;
       updateData.diameter = formData.diameter || null;
-      
+
       // Sell price
       updateData.sell_price = formData.sell_price || null;
 
@@ -81,13 +81,13 @@ export async function editItem(formData: any, id: number) {
       }
 
       // Create a new Action record to track the user action
+      // Use productId column so fetchInventoryData can find it
       if (updatedProduct && userId) {
         const { error: actionError } = await supabase.from("Action").insert({
           type: "product_update",
-          data: {
-            inventoryId: updatedProduct.id,
-          },
+          productId: updatedProduct.id,
           user_id: userId,
+          data: {},
         });
 
         if (actionError) {

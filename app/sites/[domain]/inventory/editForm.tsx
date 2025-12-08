@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { usePathname } from "next/navigation";
 
 import {
   Form,
@@ -40,6 +41,11 @@ type Props = {
 
 const EditProductForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
+  const pathname = usePathname();
+
+  // Extract domain from pathname (e.g., /sites/santini/inventory -> santini)
+  const domain = pathname.split("/")[2] || "";
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -76,16 +82,22 @@ const EditProductForm = ({ handleClose, data }: Props) => {
     },
   });
   const { setValue } = form;
-  const { isSubmitting, errors } = form.formState;
+  const { isSubmitting } = form.formState;
   const { pending } = useFormStatus();
 
   const [categories, setCategories] = useState<Product_category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   useEffect(() => {
+    if (!domain) return;
+
     const getSuppliers = async () => {
       try {
-        const response = await fetch(`/api/inventory/suppliers/`);
+        const response = await fetch(`/api/inventory/suppliers/`, {
+          headers: {
+            "x-site-domain": domain,
+          },
+        });
         if (!response.ok) {
           console.error("Failed to fetch suppliers");
           return;
@@ -99,7 +111,11 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     const getCategories = async () => {
       try {
-        const response = await fetch(`/api/inventory/categories/`);
+        const response = await fetch(`/api/inventory/categories/`, {
+          headers: {
+            "x-site-domain": domain,
+          },
+        });
         if (!response.ok) {
           console.error("Failed to fetch categories");
           return;
@@ -121,7 +137,8 @@ const EditProductForm = ({ handleClose, data }: Props) => {
     setValue("thickness", data.thickness ?? null);
     setValue("diameter", data.diameter ?? null);
     setValue("quantity", data.quantity ?? 0);
-    setValue("unit_price", data.unit_price ?? 0);
+    const unitPrice = Number(data.unit_price);
+    setValue("unit_price", isNaN(unitPrice) ? 0 : unitPrice);
     setValue("sell_price", data.sell_price ?? null);
     setValue("unit", data.unit ?? "");
     setValue("supplierId", data.supplierId ?? data.supplier_id);
@@ -146,10 +163,12 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     getSuppliers();
     getCategories();
-  }, [data, setValue]);
+  }, [data, setValue, domain]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    const response = await editItem(d, data?.id);
+    // Use form.getValues() to ensure we get all registered field values
+    const formValues = form.getValues();
+    const response = await editItem(formValues, data?.id);
     if (response?.error) {
       toast({
         description: `Errore! ${response.error}`,
@@ -174,6 +193,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
           <div className="grid grid-cols-2 gap-4">
             <FormField
+              control={form.control}
               name="productCategoryId"
               render={({ field }) => (
                 <FormItem>
@@ -190,7 +210,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       <SelectContent>
                         {categories.map((cat: Product_category) => (
                           <SelectItem key={cat.id} value={cat.id.toString()}>
-                            {cat.name}
+                            {cat.name} - {cat.description}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -201,6 +221,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               )}
             />
             <FormField
+              control={form.control}
               name="supplierId"
               render={({ field }) => (
                 <FormItem>
@@ -464,7 +485,16 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Prezzo Acquisto</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e) => {
+                        const num = parseFloat(e.target.value);
+                        field.onChange(isNaN(num) ? 0 : num);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

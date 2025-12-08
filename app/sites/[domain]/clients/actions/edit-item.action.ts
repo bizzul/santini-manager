@@ -58,7 +58,7 @@ export async function editItem(props: Client, id: number, domain: string) {
       // Concatenate the initials using the + operator
 
       const { data: saveData, error: updateError } = await supabase
-        .from("client")
+        .from("Client")
         .update({
           individualTitle: result.data?.clientType === "INDIVIDUAL"
             ? result.data?.individualTitle
@@ -84,26 +84,37 @@ export async function editItem(props: Client, id: number, domain: string) {
         .select()
         .single();
 
+      if (updateError) {
+        console.error("Error updating client:", updateError);
+        return { message: "Errore nell'aggiornamento del cliente!", error: updateError.message };
+      }
+
       // Create a new Action record to track the user action
-      const { error: actionError } = await supabase
-        .from("actions")
-        .insert({
-          type: "client_update",
-          data: {
-            clientId: saveData?.id,
-          },
-          user_id: userId,
-          site_id: siteId,
-          organization_id: organizationId,
-        });
+      if (saveData && userId) {
+        const { error: actionError } = await supabase
+          .from("Action")
+          .insert({
+            type: "client_update",
+            data: {
+              clientId: saveData.id,
+            },
+            user_id: userId,
+            site_id: siteId,
+            organization_id: organizationId,
+            clientId: saveData.id,
+          });
 
-      console.log(actionError);
+        if (actionError) {
+          console.error("Error creating action record:", actionError);
+        }
+      }
 
-      return revalidatePath("/clients");
+      revalidatePath("/clients");
+      return { success: true, data: saveData };
     } catch (error: any) {
-      console.error("Error creating product:", error);
+      console.error("Error updating client:", error);
       // Make sure to return a plain object
-      return { message: "Creazione elemento fallita!", error: error.message };
+      return { message: "Aggiornamento elemento fallito!", error: error.message };
     }
   } else {
     return { message: "Validazione elemento fallita!" };

@@ -134,16 +134,22 @@ const CreateProductForm = ({
               <FormLabel>Categoria</FormLabel>
               <FormControl>
                 <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  onValueChange={(selectedId) => {
+                    // Find the category name from the ID and set it as the form value
+                    const selectedCat = data.find((cat: any) => cat.id.toString() === selectedId);
+                    if (selectedCat) {
+                      field.onChange(selectedCat.name);
+                    }
+                  }}
+                  value={data.find((cat: any) => cat.name === field.value)?.id?.toString() || ""}
                   disabled={isSubmitting}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Seleziona categoria" />
                   </SelectTrigger>
                   <SelectContent>
                     {data.map((cat: any) => (
-                      <SelectItem key={cat.id} value={cat.name}>
+                      <SelectItem key={cat.id} value={cat.id.toString()}>
                         {cat.name} - {cat.description}
                       </SelectItem>
                     ))}

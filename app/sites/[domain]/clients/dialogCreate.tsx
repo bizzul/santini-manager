@@ -14,13 +14,11 @@ function DialogCreate() {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
-      <div className="flex justify-end pt-12 overflow-hidden">
-        <DialogTrigger asChild>
-          <Button variant="outline" onClick={() => setOpen(true)}>
-            Aggiungi cliente
-          </Button>
-        </DialogTrigger>
-      </div>
+      <DialogTrigger asChild>
+        <Button variant="outline" onClick={() => setOpen(true)} className="shrink-0 whitespace-nowrap">
+          Aggiungi cliente
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[60%] max-h-[90%] overflow-scroll ">
         <DialogHeader>
           <DialogTitle>Crea nuovo cliente</DialogTitle>

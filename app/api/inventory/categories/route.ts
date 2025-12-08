@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { getSiteContext } from "@/lib/site-context";
+import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 
 const log = logger.scope("Categories");
@@ -8,7 +8,18 @@ const log = logger.scope("Categories");
 export async function GET(req: NextRequest) {
     try {
         const supabase = await createClient();
-        const { siteId } = await getSiteContext(req);
+
+        // Check for x-site-domain header first (used by client components)
+        const siteDomain = req.headers.get("x-site-domain");
+        let siteId: string | null = null;
+
+        if (siteDomain) {
+            const context = await getSiteContextFromDomain(siteDomain);
+            siteId = context.siteId;
+        } else {
+            const context = await getSiteContext(req);
+            siteId = context.siteId;
+        }
 
         // In multi-tenant, siteId is required
         if (!siteId) {

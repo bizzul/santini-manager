@@ -5,9 +5,7 @@ import { Client } from "@/types/supabase";
 
 const DataWrapper = ({ data }: { data: Client[] }) => {
   return (
-    <div className="mx-auto ">
-      <DataTable columns={columns} data={data} />
-    </div>
+    <DataTable columns={columns} data={data} />
   );
 };
 

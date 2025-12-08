@@ -5,6 +5,7 @@ import { requireServerSiteContext, fetchCollaborators } from "@/lib/server-data"
 import DataWrapper from "./dataWrapper";
 import { checkIsAdmin } from "./actions";
 import { AddCollaboratorDialog } from "./add-collaborator-dialog";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -32,39 +33,41 @@ export default async function Page({
     const collaborators = await fetchCollaborators(siteId);
 
     return (
-        <div className="container mx-auto px-4 py-6">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
+        <PageLayout>
+            <PageHeader>
+                <div className="space-y-1">
                     <h1 className="text-2xl font-bold">Collaboratori</h1>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                         {isAdmin 
                             ? "Gestisci i collaboratori collegati a questo sito" 
                             : "Visualizza i collaboratori collegati a questo sito"
                         }
                     </p>
                 </div>
-            </div>
-            {collaborators.length > 0 ? (
-                <DataWrapper 
-                    data={collaborators} 
-                    domain={domain} 
-                    siteId={siteId}
-                    isAdmin={isAdmin}
-                />
-            ) : (
-                <div className="w-full h-80 text-center flex flex-col justify-center items-center gap-4">
-                    <h2 className="font-bold text-xl">
-                        Nessun collaboratore trovato
-                    </h2>
-                    <p className="text-muted-foreground">
-                        Non ci sono collaboratori collegati a questo sito.
-                    </p>
-                    {isAdmin && (
-                        <AddCollaboratorDialog siteId={siteId} domain={domain} />
-                    )}
-                </div>
-            )}
-        </div>
+            </PageHeader>
+            <PageContent>
+                {collaborators.length > 0 ? (
+                    <DataWrapper 
+                        data={collaborators} 
+                        domain={domain} 
+                        siteId={siteId}
+                        isAdmin={isAdmin}
+                    />
+                ) : (
+                    <div className="w-full h-80 text-center flex flex-col justify-center items-center gap-4">
+                        <h2 className="font-bold text-xl">
+                            Nessun collaboratore trovato
+                        </h2>
+                        <p className="text-muted-foreground">
+                            Non ci sono collaboratori collegati a questo sito.
+                        </p>
+                        {isAdmin && (
+                            <AddCollaboratorDialog siteId={siteId} domain={domain} />
+                        )}
+                    </div>
+                )}
+            </PageContent>
+        </PageLayout>
     );
 }
 

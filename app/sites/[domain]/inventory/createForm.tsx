@@ -3,6 +3,7 @@ import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { usePathname } from "next/navigation";
 
 import {
   Form,
@@ -40,6 +41,11 @@ const CreateProductForm = ({
   data: any;
 }) => {
   const { toast } = useToast();
+  const pathname = usePathname();
+  
+  // Extract domain from pathname (e.g., /sites/santini/inventory -> santini)
+  const domain = pathname.split("/")[2] || "";
+  
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -76,15 +82,17 @@ const CreateProductForm = ({
     },
   });
 
-  const { isSubmitting, errors } = form.formState;
+  const { isSubmitting } = form.formState;
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
+      // Use form.getValues() to ensure all registered field values are captured
+      const formValues = form.getValues();
       //@ts-ignore
-      await createItem(d);
+      await createItem(formValues, domain);
       handleClose(false);
       toast({
-        description: `Elemento ${d.name} creato correttamente!`,
+        description: `Elemento ${formValues.name} creato correttamente!`,
       });
     } catch (e) {
       toast({
@@ -92,8 +100,6 @@ const CreateProductForm = ({
       });
     }
   };
-
-  console.log(errors);
 
   return (
     <Form {...form}>
@@ -104,6 +110,7 @@ const CreateProductForm = ({
           
           <div className="grid grid-cols-2 gap-4">
             <FormField
+              control={form.control}
               name="productCategoryId"
               render={({ field }) => (
                 <FormItem>
@@ -131,6 +138,7 @@ const CreateProductForm = ({
               )}
             />
             <FormField
+              control={form.control}
               name="supplierId"
               render={({ field }) => (
                 <FormItem>
@@ -370,7 +378,16 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Prezzo Acquisto</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e) => {
+                        const num = parseFloat(e.target.value);
+                        field.onChange(isNaN(num) ? 0 : num);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

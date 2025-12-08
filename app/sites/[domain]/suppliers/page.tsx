@@ -8,6 +8,7 @@ import {
 } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import DataWrapper from "./dataWrapper";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,21 +36,26 @@ export default async function Page({
     ]);
 
     return (
-        <div className="container">
-            <DialogCreate data={categories} domain={domain} />
-            {suppliers.length > 0 ? (
-                <DataWrapper data={suppliers} domain={domain} />
-            ) : (
-                <div className="w-full h-full text-center">
-                    <h1 className="font-bold text-2xl">
-                        Nessun fornitore registrato!
-                    </h1>
-                    <p>
-                        Premi (Aggiungi fornitore) per aggiungere il tuo primo
-                        fornitore!
-                    </p>
-                </div>
-            )}
-        </div>
+        <PageLayout>
+            <PageHeader>
+                <h1 className="text-2xl font-bold">Fornitori</h1>
+                <DialogCreate data={categories} domain={domain} />
+            </PageHeader>
+            <PageContent>
+                {suppliers.length > 0 ? (
+                    <DataWrapper data={suppliers} domain={domain} />
+                ) : (
+                    <div className="w-full text-center flex flex-col justify-center items-center h-80">
+                        <h1 className="font-bold text-2xl">
+                            Nessun fornitore registrato!
+                        </h1>
+                        <p>
+                            Premi (Aggiungi fornitore) per aggiungere il tuo primo
+                            fornitore!
+                        </p>
+                    </div>
+                )}
+            </PageContent>
+        </PageLayout>
     );
 }

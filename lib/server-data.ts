@@ -72,11 +72,13 @@ export async function requireServerSiteContext(
 // ============================================
 
 /**
- * Fetch clients for a site
+ * Fetch clients for a site with last modification info
  */
 export const fetchClients = cache(async (siteId: string) => {
     const supabase = await createClient();
-    const { data, error } = await supabase
+
+    // Fetch clients
+    const { data: clients, error } = await supabase
         .from("Client")
         .select("*")
         .eq("site_id", siteId)
@@ -86,15 +88,51 @@ export const fetchClients = cache(async (siteId: string) => {
         log.error("Error fetching clients:", error);
         return [];
     }
-    return data || [];
+
+    if (!clients || clients.length === 0) {
+        return [];
+    }
+
+    // Fetch all client-related actions with user info
+    const clientIds = clients.map((c) => c.id);
+    const { data: actions, error: actionsError } = await supabase
+        .from("Action")
+        .select(`
+            *,
+            User:user_id (id, given_name, family_name, picture, initials)
+        `)
+        .in("clientId", clientIds)
+        .order("createdAt", { ascending: false });
+
+    if (actionsError) {
+        log.warn("Error fetching client actions:", actionsError);
+        // Return clients without actions if error
+        return clients.map((c) => ({ ...c, lastAction: null }));
+    }
+
+    // Group actions by clientId and get the most recent one
+    const actionsByClient = new Map<number, any>();
+    (actions || []).forEach((action) => {
+        if (action.clientId && !actionsByClient.has(action.clientId)) {
+            actionsByClient.set(action.clientId, action);
+        }
+    });
+
+    // Merge clients with their last action
+    return clients.map((client) => ({
+        ...client,
+        lastAction: actionsByClient.get(client.id) || null,
+    }));
 });
 
 /**
- * Fetch suppliers for a site
+ * Fetch suppliers for a site with last modification info
  */
 export const fetchSuppliers = cache(async (siteId: string) => {
     const supabase = await createClient();
-    const { data, error } = await supabase
+
+    // Fetch suppliers
+    const { data: suppliers, error } = await supabase
         .from("Supplier")
         .select("*")
         .eq("site_id", siteId)
@@ -104,7 +142,40 @@ export const fetchSuppliers = cache(async (siteId: string) => {
         log.error("Error fetching suppliers:", error);
         return [];
     }
-    return data || [];
+
+    if (!suppliers || suppliers.length === 0) {
+        return [];
+    }
+
+    // Fetch all supplier-related actions with user info
+    const supplierIds = suppliers.map((s) => s.id);
+    const { data: actions, error: actionsError } = await supabase
+        .from("Action")
+        .select(`
+            *,
+            User:user_id (id, given_name, family_name, picture, initials)
+        `)
+        .in("supplierId", supplierIds)
+        .order("createdAt", { ascending: false });
+
+    if (actionsError) {
+        log.warn("Error fetching supplier actions:", actionsError);
+        return suppliers.map((s) => ({ ...s, lastAction: null }));
+    }
+
+    // Group actions by supplierId and get the most recent one
+    const actionsBySupplier = new Map<number, any>();
+    (actions || []).forEach((action) => {
+        if (action.supplierId && !actionsBySupplier.has(action.supplierId)) {
+            actionsBySupplier.set(action.supplierId, action);
+        }
+    });
+
+    // Merge suppliers with their last action
+    return suppliers.map((supplier) => ({
+        ...supplier,
+        lastAction: actionsBySupplier.get(supplier.id) || null,
+    }));
 });
 
 /**
@@ -496,7 +567,7 @@ export const fetchReportsData = cache(async (siteId: string) => {
 });
 
 /**
- * Fetch data for inventory page
+ * Fetch data for inventory page with last modification info
  */
 export const fetchInventoryData = cache(async (siteId: string) => {
     const supabase = await createClient();
@@ -516,8 +587,47 @@ export const fetchInventoryData = cache(async (siteId: string) => {
                 .order("name", { ascending: true }),
         ]);
 
+    const inventory = inventoryResult.data || [];
+
+    // Fetch product-related actions with user info
+    if (inventory.length > 0) {
+        const productIds = inventory.map((p) => p.id);
+        const { data: actions, error: actionsError } = await supabase
+            .from("Action")
+            .select(`
+                *,
+                User:user_id (id, given_name, family_name, picture, initials)
+            `)
+            .in("productId", productIds)
+            .order("createdAt", { ascending: false });
+
+        if (!actionsError && actions) {
+            // Group actions by productId and get the most recent one
+            const actionsByProduct = new Map<number, any>();
+            actions.forEach((action) => {
+                if (
+                    action.productId && !actionsByProduct.has(action.productId)
+                ) {
+                    actionsByProduct.set(action.productId, action);
+                }
+            });
+
+            // Merge products with their last action
+            const inventoryWithActions = inventory.map((product) => ({
+                ...product,
+                lastAction: actionsByProduct.get(product.id) || null,
+            }));
+
+            return {
+                inventory: inventoryWithActions,
+                categories: categoriesResult.data || [],
+                suppliers: suppliersResult.data || [],
+            };
+        }
+    }
+
     return {
-        inventory: inventoryResult.data || [],
+        inventory: inventory.map((p) => ({ ...p, lastAction: null })),
         categories: categoriesResult.data || [],
         suppliers: suppliersResult.data || [],
     };

@@ -16,13 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -30,7 +24,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
@@ -157,24 +150,21 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Kanban</FormLabel>
-                <Select
-                  onValueChange={(value) => field.onChange(Number(value))}
-                  value={field.value?.toString() || ""}
-                  disabled={isSubmitting}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {data.kanbans?.map((kanban: Kanban) => (
-                      <SelectItem key={kanban.id} value={kanban.id.toString()}>
-                        {kanban.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <SearchSelect
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(Number(value))}
+                    placeholder="Cerca kanban..."
+                    disabled={isSubmitting}
+                    options={
+                      data.kanbans?.map((kanban: Kanban) => ({
+                        value: kanban.id,
+                        label: kanban.title,
+                      })) || []
+                    }
+                    emptyMessage="Nessun kanban trovato."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -188,29 +178,25 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Cliente</FormLabel>
-                <Select
-                  onValueChange={(value) =>
-                    field.onChange(value ? Number(value) : "")
-                  }
-                  value={field.value?.toString() || ""}
-                  disabled={isSubmitting}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {data.clients?.map((client: Client) => (
-                      <SelectItem key={client.id} value={client.id.toString()}>
-                        {client.businessName ||
+                <FormControl>
+                  <SearchSelect
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(Number(value))}
+                    placeholder="Cerca cliente..."
+                    disabled={isSubmitting}
+                    options={
+                      data.clients?.map((client: Client) => ({
+                        value: client.id,
+                        label:
+                          client.businessName ||
                           `${client.individualFirstName || "N/A"} ${
                             client.individualLastName || "N/A"
-                          }`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                          }`,
+                      })) || []
+                    }
+                    emptyMessage="Nessun cliente trovato."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -226,26 +212,23 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Prodotto</FormLabel>
-                <Select
-                  onValueChange={(value) =>
-                    field.onChange(value ? Number(value) : "")
-                  }
-                  value={field.value?.toString() || ""}
-                  disabled={isSubmitting}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {(data.activeProducts || data.products || []).map((p: SellProduct) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.name} - {p.type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <SearchSelect
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(Number(value))}
+                    placeholder="Cerca prodotto..."
+                    disabled={isSubmitting}
+                    options={
+                      (data.activeProducts || data.products || []).map(
+                        (p: SellProduct) => ({
+                          value: p.id,
+                          label: `${p.name} - ${p.type}`,
+                        })
+                      )
+                    }
+                    emptyMessage="Nessun prodotto trovato."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}

@@ -4,13 +4,22 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/products/create";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteContextFromDomain } from "@/lib/site-context";
 
-export async function createItem(props: any) {
+export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props);
   const userContext = await getUserContext();
   let userId = null;
+  let siteId = null;
+  
   if (userContext) {
     userId = userContext.user.id;
+  }
+
+  // Get site_id from domain
+  if (domain) {
+    const context = await getSiteContextFromDomain(domain);
+    siteId = context.siteId;
   }
 
   if (result.success) {
@@ -33,6 +42,11 @@ export async function createItem(props: any) {
         type: props.type,
         unit: props.unit,
       };
+
+      // Add site_id if available
+      if (siteId) {
+        productData.site_id = siteId;
+      }
 
       // Add new inventory fields if provided
       if (props.category) productData.category = props.category;
@@ -69,14 +83,13 @@ export async function createItem(props: any) {
       }
 
       // Create a new Action record to track the user action
+      // Use productId column so fetchInventoryData can find it
       if (newProduct && userId) {
         const { error: actionError } = await supabase.from("Action").insert({
           type: "product_create",
-          data: {
-            inventoryId: newProduct.id,
-          },
-          user_id: userId,
           productId: newProduct.id,
+          user_id: userId,
+          data: {},
         });
 
         if (actionError) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
@@ -115,7 +116,7 @@ function mapRowToProduct(
     if (!product.name) {
         // Try to create a descriptive name from available fields
         const nameParts: string[] = [];
-        
+
         if (product.subcategory2) {
             nameParts.push(product.subcategory2);
         } else if (product.subcategory) {
@@ -123,11 +124,11 @@ function mapRowToProduct(
         } else if (product.category) {
             nameParts.push(product.category);
         }
-        
+
         if (product.color) {
             nameParts.push(product.color);
         }
-        
+
         if (nameParts.length > 0) {
             product.name = nameParts.join(" - ");
         } else if (product.internal_code) {
@@ -160,6 +161,25 @@ export async function POST(request: NextRequest) {
             return NextResponse.json(
                 { error: "Non autorizzato" },
                 { status: 401 },
+            );
+        }
+
+        // Get site_id from request
+        const siteDomain = request.headers.get("x-site-domain");
+        let siteId: string | null = null;
+
+        if (siteDomain) {
+            const context = await getSiteContextFromDomain(siteDomain);
+            siteId = context.siteId;
+        } else {
+            const context = await getSiteContext(request);
+            siteId = context.siteId;
+        }
+
+        if (!siteId) {
+            return NextResponse.json(
+                { error: "Site ID richiesto per l'importazione" },
+                { status: 400 },
             );
         }
 
@@ -253,6 +273,9 @@ export async function POST(request: NextRequest) {
                     existingCodes.add(product.internal_code);
                 }
 
+                // Add site_id to the product
+                product.site_id = siteId;
+
                 productsToInsert.push(product);
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
@@ -260,13 +283,17 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Insert products in batches
+        // Insert products in batches and collect inserted product IDs
+        const insertedProductIds: number[] = [];
+
         for (let i = 0; i < productsToInsert.length; i += BATCH_SIZE) {
             const batch = productsToInsert.slice(i, i + BATCH_SIZE);
 
-            const { error: insertError } = await supabase
-                .from("Product")
-                .insert(batch);
+            const { data: insertedProducts, error: insertError } =
+                await supabase
+                    .from("Product")
+                    .insert(batch)
+                    .select("id");
 
             if (insertError) {
                 console.error("Error inserting batch:", insertError);
@@ -277,20 +304,38 @@ export async function POST(request: NextRequest) {
                 );
             } else {
                 result.imported += batch.length;
+                // Collect inserted product IDs
+                if (insertedProducts) {
+                    insertedProductIds.push(
+                        ...insertedProducts.map((p) => p.id),
+                    );
+                }
             }
         }
 
-        // Create action records for imported products
-        if (result.imported > 0) {
-            await supabase.from("Action").insert({
+        // Create action records for each imported product
+        if (insertedProductIds.length > 0) {
+            const actionRecords = insertedProductIds.map((productId) => ({
                 type: "product_import",
-                data: {
-                    imported: result.imported,
-                    skipped: result.skipped,
-                    duplicates: result.duplicates.length,
-                },
+                productId: productId,
                 user_id: userContext.user.id,
-            });
+                data: {},
+            }));
+
+            // Insert actions in batches
+            for (let i = 0; i < actionRecords.length; i += BATCH_SIZE) {
+                const actionBatch = actionRecords.slice(i, i + BATCH_SIZE);
+                const { error: actionError } = await supabase
+                    .from("Action")
+                    .insert(actionBatch);
+
+                if (actionError) {
+                    console.error(
+                        "Error creating action records:",
+                        actionError,
+                    );
+                }
+            }
         }
 
         result.success = result.errors.length === 0 || result.imported > 0;

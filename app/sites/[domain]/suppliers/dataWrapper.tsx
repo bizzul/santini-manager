@@ -3,11 +3,7 @@ import { DataTable } from "./table";
 import { columns } from "./columns";
 
 const DataWrapper = ({ data, domain }: { data: any[]; domain: string }) => {
-  return (
-    <div className="container mx-auto ">
-      <DataTable columns={columns} data={data} domain={domain} />
-    </div>
-  );
+  return <DataTable columns={columns} data={data} domain={domain} />;
 };
 
 export default DataWrapper;

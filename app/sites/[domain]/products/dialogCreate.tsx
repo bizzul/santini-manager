@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -21,11 +20,9 @@ function DialogCreate({ domain }: Props) {
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
       <DialogTrigger asChild>
-        <div className="container flex justify-end pt-12 overflow-hidden pointer-events-none ">
-          <Button className="pointer-events-auto" onClick={() => setOpen(true)}>
-            Aggiungi prodotto
-          </Button>
-        </div>
+        <Button onClick={() => setOpen(true)} className="shrink-0 whitespace-nowrap">
+          Aggiungi prodotto
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

@@ -13,9 +13,7 @@ const SellProductWrapper = ({
   domain: string;
 }) => {
   return (
-    <div className="container mx-auto ">
-      <DataTable columns={createColumns(domain)} data={data} domain={domain} />
-    </div>
+    <DataTable columns={createColumns(domain)} data={data} domain={domain} />
   );
 };
 

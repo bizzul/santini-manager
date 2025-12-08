@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSiteData } from "@/lib/fetchers";
 import { Metadata } from "next";
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { cookies } from "next/headers";
 import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
@@ -180,10 +180,14 @@ export default async function SiteLayout({
           )}
 
           <AppSidebar />
-          <main className="w-full h-full">
-            <SidebarTrigger />
-            {children}
-          </main>
+          <SidebarInset className="flex flex-col h-screen overflow-hidden">
+            <header className="flex h-12 shrink-0 items-center border-b px-4">
+              <SidebarTrigger className="-ml-1" />
+            </header>
+            <div className="flex-1 overflow-auto">
+              {children}
+            </div>
+          </SidebarInset>
 
           {/* Global Kanban Modal */}
           <GlobalKanbanModal />

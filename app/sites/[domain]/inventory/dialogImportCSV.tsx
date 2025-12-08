@@ -20,7 +20,7 @@ import {
   Loader2,
   Download,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface ImportResult {
   success: boolean;
@@ -109,6 +109,10 @@ function DialogImportCSV() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Extract domain from pathname (e.g., /sites/santini/inventory -> santini)
+  const domain = pathname.split("/")[2] || "";
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,6 +169,9 @@ function DialogImportCSV() {
       const response = await fetch("/api/products/import-csv", {
         method: "POST",
         body: formData,
+        headers: {
+          "x-site-domain": domain,
+        },
       });
 
       const data = await response.json();
