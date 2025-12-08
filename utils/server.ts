@@ -1,13 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { COOKIE_OPTIONS } from "./cookie";
+import { COOKIE_OPTIONS } from "./supabase/cookie";
 
+// Re-export from the main supabase server client for consistency
+// This ensures all server-side code uses the same Supabase configuration
 export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
-    process.env.STORAGE_NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.STORAGE_SUPABASE_ANON_KEY!,
+    process.env.STORAGE_SUPABASE_URL!,
+    process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: COOKIE_OPTIONS,
       cookies: {

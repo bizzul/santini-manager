@@ -1,12 +1,3 @@
-import { createBrowserClient } from "@supabase/ssr";
-import { COOKIE_OPTIONS } from "./cookie";
-
-export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookieOptions: COOKIE_OPTIONS,
-    },
-  );
-}
+// Re-export from the main supabase client for consistency
+// This ensures all client-side code uses the same singleton Supabase client
+export { createClient } from "./supabase/client";
