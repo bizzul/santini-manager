@@ -2,12 +2,13 @@ import React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getUsers, getOrganizations } from "../../../actions";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/server";
 import { EditUserForm } from "./EditUserForm";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
+import { ArrowLeft, UserCog } from "lucide-react";
+import Image from "next/image";
 
 export default async function UserEditPage({
   params,
@@ -80,15 +81,41 @@ export default async function UserEditPage({
   const userOrgIds = userOrgs?.map((uo: any) => uo.organization_id) || [];
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-lg mx-auto">
-      <Link href={`/administration/users/${id}`}>
-        <Button variant="outline">Back to User</Button>
-      </Link>
-      <Card>
-        <CardHeader>
-          <CardTitle>Edit User</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
+      {/* Header */}
+      <div className="w-full max-w-lg mb-8">
+        <div className="flex flex-col items-center justify-center mb-8 space-y-6">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Full Data Manager Logo"
+            width={60}
+            height={60}
+            className="drop-shadow-2xl"
+          />
+          <Link href={`/administration/users/${id}`}>
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/20 transition-all duration-300"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to User
+            </Button>
+          </Link>
+          <h1 className="text-4xl font-bold text-center text-white">
+            Edit User
+          </h1>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="w-full max-w-lg">
+        <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 rounded-xl bg-white/10">
+              <UserCog className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Edit User</h2>
+          </div>
           <EditUserForm
             user={userToEdit}
             organizations={organizations}
@@ -96,8 +123,8 @@ export default async function UserEditPage({
             userId={id}
             currentUserRole={userContext?.role}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

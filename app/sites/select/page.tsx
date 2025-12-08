@@ -108,12 +108,24 @@ export default async function SelectSitePage({
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-xl bg-white/10 group-hover:bg-white/20 transition-all">
-                        <Building2
-                          className="w-6 h-6 text-white"
-                          strokeWidth={2}
-                        />
-                      </div>
+                      {site.image ? (
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/10 group-hover:bg-white/20 transition-all shrink-0">
+                          <Image
+                            src={site.image}
+                            alt={site.name}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-white/10 group-hover:bg-white/20 transition-all">
+                          <Building2
+                            className="w-6 h-6 text-white"
+                            strokeWidth={2}
+                          />
+                        </div>
+                      )}
                       <div>
                         <h3 className="text-xl font-bold text-white group-hover:text-white transition-all">
                           {site.name}

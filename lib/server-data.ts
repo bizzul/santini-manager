@@ -550,3 +550,185 @@ export const fetchProjectsData = cache(async (siteId: string) => {
 
     return { clients, activeProducts: products, kanbans, tasks };
 });
+
+/**
+ * Fetch collaborators for a site
+ * Returns:
+ * - Users directly assigned to this site (from user_sites)
+ * - The admin(s) of the organization that owns this site (from user_organizations with role=admin)
+ * Excludes global superadmins
+ */
+export const fetchCollaborators = cache(async (siteId: string) => {
+    const supabase = await createClient();
+
+    // Step 1: Get the site's organization_id
+    const { data: site, error: siteError } = await supabase
+        .from("sites")
+        .select("organization_id")
+        .eq("id", siteId)
+        .single();
+
+    if (siteError) {
+        log.error("Error fetching site:", siteError.message);
+        return [];
+    }
+
+    // Step 2: Get user IDs from user_sites for this specific site (direct site users)
+    const { data: userSites, error: userSitesError } = await supabase
+        .from("user_sites")
+        .select("user_id, created_at")
+        .eq("site_id", siteId);
+
+    if (userSitesError) {
+        log.error("Error fetching user_sites:", userSitesError.message);
+    }
+
+    // Step 3: Get organization admin(s) from user_organizations
+    // These are users with role="admin" in the User table who are linked to this organization
+    let orgAdminUserIds: { user_id: string; created_at: string }[] = [];
+    if (site?.organization_id) {
+        const { data: orgUsersData, error: orgUsersError } = await supabase
+            .from("user_organizations")
+            .select("user_id, created_at")
+            .eq("organization_id", site.organization_id);
+
+        if (orgUsersError) {
+            log.error(
+                "Error fetching user_organizations:",
+                orgUsersError.message,
+            );
+        } else {
+            orgAdminUserIds = orgUsersData || [];
+        }
+    }
+
+    // Combine user IDs from both sources (deduplicated)
+    const siteUserIds = userSites?.map((us) => us.user_id) || [];
+    const orgUserIds = orgAdminUserIds.map((ou) => ou.user_id);
+    const allUserIds = Array.from(new Set([...siteUserIds, ...orgUserIds]));
+
+    if (!allUserIds.length) {
+        log.warn("No users found for site:", siteId);
+        return [];
+    }
+
+    // Create a map for joined_at dates (prefer site-level date)
+    const userJoinDates = new Map<string, string>();
+    orgAdminUserIds.forEach((ou) =>
+        userJoinDates.set(ou.user_id, ou.created_at)
+    );
+    userSites?.forEach((us) => userJoinDates.set(us.user_id, us.created_at)); // Site dates override org dates
+
+    // Track which users are org admins vs site users
+    const orgAdminSet = new Set(orgUserIds);
+    const siteUserSet = new Set(siteUserIds);
+
+    log.info(
+        "Found user_ids - site users:",
+        siteUserIds.length,
+        "org admins:",
+        orgUserIds.length,
+    );
+
+    // Step 4: Get user details from User table
+    const { data: users, error: usersError } = await supabase
+        .from("User")
+        .select("*")
+        .in("authId", allUserIds);
+
+    log.info("Query with authId - users found:", users?.length || 0);
+
+    if (usersError) {
+        log.error("Error fetching users with authId:", usersError.message);
+    }
+
+    if (!users?.length) {
+        // Try with auth_id field as fallback
+        log.info("Trying fallback with auth_id field...");
+        const { data: usersAlt, error: usersAltError } = await supabase
+            .from("User")
+            .select("*")
+            .in("auth_id", allUserIds);
+
+        log.info("Query with auth_id - users found:", usersAlt?.length || 0);
+
+        if (usersAltError) {
+            log.error(
+                "Error fetching users with auth_id:",
+                usersAltError.message,
+            );
+        }
+
+        if (!usersAlt?.length) {
+            log.warn("No users found in User table for the given user_ids");
+            return [];
+        }
+
+        // Process with auth_id field
+        const collaborators = usersAlt
+            .filter((user) => {
+                // Exclude superadmins and disabled users
+                if (user.role === "superadmin" || !user.enabled) return false;
+
+                const userId = user.auth_id || "";
+                // Include if: user is a site user OR user is an org admin
+                return siteUserSet.has(userId) ||
+                    (orgAdminSet.has(userId) && user.role === "admin");
+            })
+            .map((user) => {
+                const userId = user.auth_id || "";
+                const isOrgAdmin = orgAdminSet.has(userId) &&
+                    user.role === "admin";
+                return {
+                    ...user,
+                    site_role: isOrgAdmin ? "org_admin" : user.role,
+                    is_org_admin: isOrgAdmin,
+                    joined_site_at: userJoinDates.get(userId) || null,
+                };
+            })
+            .sort((a, b) => {
+                // Sort org admins first, then by family name
+                if (a.is_org_admin && !b.is_org_admin) return -1;
+                if (!a.is_org_admin && b.is_org_admin) return 1;
+                const nameA = a.family_name || "";
+                const nameB = b.family_name || "";
+                return nameA.localeCompare(nameB);
+            });
+
+        log.info("Collaborators after filter (auth_id):", collaborators.length);
+        return collaborators;
+    }
+
+    // Process with authId field
+    const collaborators = users
+        .filter((user) => {
+            // Exclude superadmins and disabled users
+            if (user.role === "superadmin" || !user.enabled) return false;
+
+            const userId = user.authId || "";
+            // Include if: user is a site user OR user is an org admin
+            return siteUserSet.has(userId) ||
+                (orgAdminSet.has(userId) && user.role === "admin");
+        })
+        .map((user) => {
+            const userId = user.authId || "";
+            const isOrgAdmin = orgAdminSet.has(userId) && user.role === "admin";
+            return {
+                ...user,
+                site_role: isOrgAdmin ? "org_admin" : user.role,
+                is_org_admin: isOrgAdmin,
+                joined_site_at: userJoinDates.get(userId) || null,
+            };
+        })
+        .sort((a, b) => {
+            // Sort org admins first, then by family name
+            if (a.is_org_admin && !b.is_org_admin) return -1;
+            if (!a.is_org_admin && b.is_org_admin) return 1;
+            const nameA = a.family_name || "";
+            const nameB = b.family_name || "";
+            return nameA.localeCompare(nameB);
+        });
+
+    log.info("Collaborators after filter (authId):", collaborators.length);
+    return collaborators;
+});

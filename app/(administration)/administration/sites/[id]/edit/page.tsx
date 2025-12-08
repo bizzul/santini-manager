@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import EditSiteForm from "./EditSiteForm";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
+import { ArrowLeft, Globe } from "lucide-react";
+import Image from "next/image";
 
 export default async function EditSitePage({
   params,
@@ -13,13 +15,13 @@ export default async function EditSitePage({
 }) {
   const { id } = await params;
   const userContext = await getUserContext();
-  
+
   if (!userContext) {
     redirect("/login");
   }
 
   const { role } = userContext;
-  
+
   // Only allow superadmin access
   if (role !== "superadmin") {
     redirect("/administration/sites");
@@ -30,38 +32,60 @@ export default async function EditSitePage({
   const organizations = await getOrganizations();
   const users = (await getUsers()).filter((u: any) => u.role !== "admin");
 
-  if (!site) return <div>Site not found.</div>;
+  if (!site)
+    return (
+      <div className="relative z-10 flex items-center justify-center min-h-screen">
+        <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-12 text-center">
+          <p className="text-white text-lg">Site not found.</p>
+        </div>
+      </div>
+    );
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="mb-4 flex items-center gap-2">
-        <Link href={`/administration/sites/${site.id}`}>
-          <Button variant="ghost" size="icon" aria-label="Back to Site Details">
-            <svg
-              width="24"
-              height="24"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+    <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
+      {/* Header */}
+      <div className="w-full max-w-4xl mb-8">
+        <div className="flex flex-col items-center justify-center mb-8 space-y-6">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Full Data Manager Logo"
+            width={60}
+            height={60}
+            className="drop-shadow-2xl"
+          />
+          <Link href={`/administration/sites/${site.id}`}>
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/20 transition-all duration-300"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </Button>
-        </Link>
-        <h1 className="text-2xl font-bold">Edit Site {site.name}</h1>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Site Details
+            </Button>
+          </Link>
+          <h1 className="text-4xl font-bold text-center text-white">
+            Edit Site {site.name}
+          </h1>
+        </div>
       </div>
-      <EditSiteForm
-        site={site}
-        siteUsers={siteUsers}
-        organizations={organizations}
-        users={users}
-        userRole={userContext?.role}
-      />
+
+      {/* Content */}
+      <div className="w-full max-w-4xl">
+        <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 rounded-xl bg-white/10">
+              <Globe className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold text-white">Edit Site Details</h2>
+          </div>
+          <EditSiteForm
+            site={site}
+            siteUsers={siteUsers}
+            organizations={organizations}
+            users={users}
+            userRole={userContext?.role}
+          />
+        </div>
+      </div>
     </div>
   );
 }

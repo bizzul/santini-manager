@@ -1091,7 +1091,10 @@ export async function getOrganizationUsersWithRoles(organizationId: string) {
     }));
 }
 
-// Create a new user in an organization
+// Create a new user and assign to sites
+// - Regular users (role=user) are added to user_sites
+// - Admin users (role=admin) are added to user_organizations (org admin)
+// - Superadmin users are not added to any junction table (they see everything)
 export async function createUser(
     prevState: any,
     formData: FormData,
@@ -1118,31 +1121,34 @@ export async function createUser(
         }
 
         const email = formData.get("email") as string;
-        const orgIds = formData.getAll("organization") as string[];
         const role = formData.get("role") as string;
         const name = formData.get("name") as string;
         const last_name = formData.get("last_name") as string;
 
-        if (!email || !orgIds.length || !role) {
+        // Get sites for regular users, organizations for admins
+        const siteIds = formData.getAll("site") as string[];
+        const orgId = formData.get("organization") as string;
+
+        // Validation based on role
+        if (role === "user" && !siteIds.length) {
             return {
                 success: false,
-                message: "Please fill in all fields",
+                message: "Seleziona almeno un sito per l'utente",
             };
         }
 
-        // Check if user can create users in the target organizations
-        if (!userContext.canAccessAllOrganizations) {
-            const userOrgIds = userContext.organizationIds || [];
-            const canCreateInAll = orgIds.every((orgId) =>
-                userOrgIds.includes(orgId)
-            );
-            if (!canCreateInAll) {
-                return {
-                    success: false,
-                    message:
-                        "Unauthorized: You can only create users in organizations you belong to",
-                };
-            }
+        if (role === "admin" && !orgId) {
+            return {
+                success: false,
+                message: "Seleziona un'organizzazione per l'admin",
+            };
+        }
+
+        if (!email || !role) {
+            return {
+                success: false,
+                message: "Compila tutti i campi obbligatori",
+            };
         }
 
         // Check if user can create users with the specified role
@@ -1154,20 +1160,64 @@ export async function createUser(
             };
         }
 
+        // For regular users, verify the creator has access to the sites
+        if (role === "user" && !userContext.canAccessAllOrganizations) {
+            // Get organization IDs for the selected sites
+            const { data: sitesData } = await supabase
+                .from("sites")
+                .select("organization_id")
+                .in("id", siteIds);
+
+            const siteOrgIds = sitesData?.map((s) =>
+                s.organization_id
+            ).filter(Boolean) || [];
+            const userOrgIds = userContext.organizationIds || [];
+            const canCreateInAll = siteOrgIds.every((siteOrgId) =>
+                userOrgIds.includes(siteOrgId)
+            );
+            if (!canCreateInAll) {
+                return {
+                    success: false,
+                    message:
+                        "Unauthorized: You can only create users in sites belonging to your organization",
+                };
+            }
+        }
+
+        // For admins, verify the creator has access to the organization
+        if (role === "admin" && !userContext.canAccessAllOrganizations) {
+            const userOrgIds = userContext.organizationIds || [];
+            if (!userOrgIds.includes(orgId)) {
+                return {
+                    success: false,
+                    message:
+                        "Unauthorized: You can only create admins in your organization",
+                };
+            }
+        }
+
         const supabaseService = await createServiceClient();
 
-        // Get organization names for the email template
-        const { data: orgData, error: orgError } = await supabase
-            .from("organizations")
-            .select("name")
-            .in("id", orgIds);
-
-        const organizationNames = orgData?.map((org) =>
-            org.name
-        ).filter(Boolean) || [];
-        const organizationNameText = organizationNames.length === 1
-            ? organizationNames[0]
-            : organizationNames.join(", ");
+        // Get site/organization names for the email template
+        let contextText = "";
+        if (role === "user" && siteIds.length > 0) {
+            const { data: sitesData } = await supabase
+                .from("sites")
+                .select("name")
+                .in("id", siteIds);
+            const siteNames = sitesData?.map((s) => s.name).filter(Boolean) ||
+                [];
+            contextText = siteNames.length === 1
+                ? siteNames[0]
+                : siteNames.join(", ");
+        } else if (role === "admin" && orgId) {
+            const { data: orgData } = await supabase
+                .from("organizations")
+                .select("name")
+                .eq("id", orgId)
+                .single();
+            contextText = orgData?.name || "";
+        }
 
         // Use invitation flow instead of creating user directly
         // This will send an invitation email and let the user complete their profile
@@ -1188,15 +1238,20 @@ export async function createUser(
                     encodeURIComponent(email)
                 }&name=${encodeURIComponent(name)}&last_name=${
                     encodeURIComponent(last_name)
-                }&role=${encodeURIComponent(role)}&organizations=${
-                    encodeURIComponent(orgIds.join(","))
+                }&role=${encodeURIComponent(role)}${
+                    role === "user"
+                        ? `&sites=${encodeURIComponent(siteIds.join(","))}`
+                        : ""
+                }${
+                    role === "admin"
+                        ? `&organization=${encodeURIComponent(orgId)}`
+                        : ""
                 }`,
                 data: {
                     name: name,
                     last_name: last_name,
                     role: role,
-                    organizations: organizationNames,
-                    organization_text: organizationNameText,
+                    context_text: contextText,
                 },
             });
 
@@ -1231,29 +1286,48 @@ export async function createUser(
             };
         }
 
-        // Insert into user_organizations table for each organization
-        const userOrgInserts = orgIds.map((orgId) => ({
-            organization_id: orgId,
-            user_id: userId,
-        }));
+        // Insert into the appropriate junction table based on role
+        if (role === "user") {
+            // Regular users go into user_sites
+            const userSiteInserts = siteIds.map((siteId) => ({
+                site_id: siteId,
+                user_id: userId,
+                role: "user",
+            }));
 
-        const { error: userOrgError } = await supabase.from(
-            "user_organizations",
-        )
-            .insert(userOrgInserts);
+            const { error: userSiteError } = await supabase.from("user_sites")
+                .insert(userSiteInserts);
 
-        if (userOrgError) {
-            return {
-                success: false,
-                message: userOrgError.message,
-            };
+            if (userSiteError) {
+                return {
+                    success: false,
+                    message: userSiteError.message,
+                };
+            }
+        } else if (role === "admin") {
+            // Admin users go into user_organizations
+            const { error: userOrgError } = await supabase.from(
+                "user_organizations",
+            )
+                .insert({
+                    organization_id: orgId,
+                    user_id: userId,
+                });
+
+            if (userOrgError) {
+                return {
+                    success: false,
+                    message: userOrgError.message,
+                };
+            }
         }
+        // Note: superadmin users don't need to be in any junction table
 
         revalidatePath("/administration/users");
         return {
             success: true,
             message:
-                "User invited successfully! They will receive an email to set their password.",
+                "Utente invitato con successo! Riceverà un'email per impostare la password.",
         };
     } catch (error: any) {
         console.error("Error creating user:", error);

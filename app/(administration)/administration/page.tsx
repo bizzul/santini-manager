@@ -1,12 +1,5 @@
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -19,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
+import Image from "next/image";
 
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
@@ -100,27 +94,21 @@ export default async function AdminDashboardPage() {
             {
               title: "Organizations",
               description: "Manage all organizations",
-              icon: <Building className="h-4 w-4" />,
+              icon: <Building className="h-5 w-5" />,
               href: "/administration/organizations",
-              color:
-                "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
             },
             {
               title: "Sites",
               description:
                 "Manage all sites and connect them to organizations and users",
-              icon: <Globe className="h-4 w-4" />,
+              icon: <Globe className="h-5 w-5" />,
               href: "/administration/sites",
-              color:
-                "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
             },
             {
               title: "Users",
               description: "Manage all users",
-              icon: <Users className="h-4 w-4" />,
+              icon: <Users className="h-5 w-5" />,
               href: "/administration/users",
-              color:
-                "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
             },
           ],
         };
@@ -133,30 +121,24 @@ export default async function AdminDashboardPage() {
             {
               title: "Users",
               description: "Manage organization users",
-              icon: <Users className="h-4 w-4" />,
+              icon: <Users className="h-5 w-5" />,
               href: "/administration/users",
-              color:
-                "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
             },
             {
               title: "Sites",
               description: "Manage organization sites",
-              icon: <Globe className="h-4 w-4" />,
+              icon: <Globe className="h-5 w-5" />,
               href: "/administration/sites",
-              color:
-                "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
             },
             {
               title: "Edit Organization",
               description: userOrganization
                 ? `Manage ${userOrganization.name} (${userOrganization.code})`
                 : "Manage your organization details",
-              icon: <Building className="h-4 w-4" />,
+              icon: <Building className="h-5 w-5" />,
               href: userOrganization
                 ? `/administration/organizations/${userOrganization.id}/edit`
                 : "/administration/organizations",
-              color:
-                "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
             },
           ],
         };
@@ -173,285 +155,350 @@ export default async function AdminDashboardPage() {
   const content = getDashboardContent();
 
   return (
-    <div className="flex-1 space-y-2 p-4 md:p-8 pt-3">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl dark:text-white font-bold tracking-tight">
-          {content.title}
-        </h2>
-      </div>
-      <p className="text-muted-foreground">{content.description}</p>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {content.cards.map((card, index) => (
-          <Card
-            key={index}
-            className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-48"
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {card.title}
-              </CardTitle>
-              <div className={`p-2 rounded-full ${card.color}`}>
-                {card.icon}
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col flex-1 justify-between">
-              <p className="text-xs text-muted-foreground mb-4 flex-1">
-                {card.description}
-              </p>
-              <Link href={card.href} className="mt-auto">
-                <Button variant="outline" size="sm" className="w-full">
-                  View {card.title}
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Organization Information for Admin Users */}
-      {role === "admin" && userOrganization && (
-        <div className="mt-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Organization Information
-              </CardTitle>
-              <CardDescription>Details about your organization</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Organization Name
-                  </label>
-                  <p className="text-lg font-semibold">
-                    {userOrganization.name}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    Organization Code
-                  </label>
-                  <p className="text-lg font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                    {userOrganization.code}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t">
-                <Link
-                  href={`/administration/organizations/${userOrganization.id}/edit`}
-                >
-                  <Button variant="outline" size="sm">
-                    <Settings className="h-4 w-4 mr-2" />
-                    Edit Organization
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+    <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
+      {/* Logo and Header */}
+      <div className="w-full max-w-6xl mb-8">
+        <div className="flex flex-col items-center justify-center mb-8 space-y-6">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Full Data Manager Logo"
+            width={80}
+            height={80}
+            className="drop-shadow-2xl"
+          />
+          <h1 className="text-4xl md:text-5xl font-bold text-center text-white">
+            {content.title}
+          </h1>
+          <p className="text-white/70 text-center text-lg">
+            {content.description}
+          </p>
         </div>
-      )}
+      </div>
 
-      {/* Sites Overview */}
-      {role === "admin" && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">
-              {userOrganization
-                ? `${userOrganization.name} Sites`
-                : "Organization Sites"}
-            </h3>
-            <Link href="/administration/sites/create">
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Site
-              </Button>
+      {/* Navigation Cards */}
+      <div className="w-full max-w-6xl space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {content.cards.map((card, index) => (
+            <Link key={index} href={card.href}>
+              <div className="group backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6 hover:bg-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:border-white/60 h-full">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="p-3 rounded-xl bg-white/10 group-hover:bg-white/20 transition-all">
+                    <div className="text-white">{card.icon}</div>
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-white transition-all">
+                  {card.title}
+                </h3>
+                <p className="text-white/70 group-hover:text-white/90 text-sm transition-all">
+                  {card.description}
+                </p>
+              </div>
             </Link>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sites?.map((site) => (
-              <Card
-                key={site.id}
-                className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-72"
-              >
-                <CardHeader>
-                  <CardTitle className="text-lg">{site.name}</CardTitle>
-                  <CardDescription>{site.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col flex-1 justify-between">
-                  <div className="space-y-2 flex-1">
-                    <div className="text-sm">
-                      <span className="font-medium">Domain:</span>{" "}
-                      {site.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}
-                    </div>
-                    {site.custom_domain && (
-                      <div className="text-sm">
-                        <span className="font-medium">Custom Domain:</span>{" "}
-                        {site.custom_domain}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2 pt-2 mt-auto">
-                    <Link
-                      href={`/sites/${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/dashboard`}
-                    >
-                      <Button size="sm" variant="outline">
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Visit Site
-                      </Button>
-                    </Link>
-                    <Link href={`/administration/sites/${site.id}/edit`}>
-                      <Button size="sm" variant="outline">
-                        <Settings className="h-4 w-4 mr-1" />
-                        Settings
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {(!sites || sites.length === 0) && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <Globe className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No sites yet</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    Create your first site to get started
-                  </p>
-                  <Link href="/administration/sites/create">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Site
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          ))}
         </div>
-      )}
 
-      {/* Sites Overview for Superadmin */}
-      {role === "superadmin" && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">All System Sites</h3>
-            <div className="flex gap-2">
-              <Link href="/administration/sites">
-                <Button size="sm" variant="outline">
+        {/* Organization Information for Admin Users */}
+        {role === "admin" && userOrganization && (
+          <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-white/10">
+                <Building className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Organization Information
+                </h3>
+                <p className="text-white/70 text-sm">
+                  Details about your organization
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-sm font-medium text-white/60">
+                  Organization Name
+                </label>
+                <p className="text-lg font-semibold text-white">
+                  {userOrganization.name}
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-white/60">
+                  Organization Code
+                </label>
+                <p className="text-lg font-mono bg-white/10 px-3 py-1 rounded text-white inline-block">
+                  {userOrganization.code}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/20">
+              <Link
+                href={`/administration/organizations/${userOrganization.id}/edit`}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 transition-all duration-300"
+                >
                   <Settings className="h-4 w-4 mr-2" />
-                  Manage Sites
+                  Edit Organization
                 </Button>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Sites Overview */}
+        {role === "admin" && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white">
+                {userOrganization
+                  ? `${userOrganization.name} Sites`
+                  : "Organization Sites"}
+              </h3>
               <Link href="/administration/sites/create">
-                <Button size="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 transition-all duration-300"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Site
                 </Button>
               </Link>
             </div>
-          </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {sites?.map((site) => (
-              <Card
-                key={site.id}
-                className="hover:shadow-lg transition-shadow flex flex-col justify-between min-h-72"
-              >
-                <CardHeader>
-                  <CardTitle className="text-lg">{site.name}</CardTitle>
-                  <CardDescription>{site.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col flex-1 justify-between">
-                  <div className="space-y-2 flex-1">
-                    <div className="text-sm">
-                      <span className="font-medium">Domain:</span>{" "}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {sites?.map((site) => (
+                <div
+                  key={site.id}
+                  className="group backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6 hover:bg-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:border-white/60"
+                >
+                  {/* Site Image */}
+                  {site.image && (
+                    <div className="mb-4 -mx-2 -mt-2">
+                      <img
+                        src={site.image}
+                        alt={`${site.name} image`}
+                        className="w-full h-32 object-contain rounded-xl bg-white/5"
+                      />
+                    </div>
+                  )}
+                  <h4 className="text-lg font-bold text-white mb-2">
+                    {site.name}
+                  </h4>
+                  <p className="text-white/70 text-sm mb-4">
+                    {site.description}
+                  </p>
+                  <div className="space-y-2 mb-4">
+                    <div className="text-sm text-white/60">
+                      <span className="font-medium text-white/80">Domain:</span>{" "}
                       {site.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}
                     </div>
                     {site.custom_domain && (
-                      <div className="text-sm">
-                        <span className="font-medium">Custom Domain:</span>{" "}
+                      <div className="text-sm text-white/60">
+                        <span className="font-medium text-white/80">
+                          Custom Domain:
+                        </span>{" "}
                         {site.custom_domain}
                       </div>
                     )}
                   </div>
-                  <div className="flex space-x-2 pt-2 mt-auto">
+                  <div className="flex space-x-2">
                     <Link
                       href={`/sites/${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/dashboard`}
                     >
-                      <Button size="sm" variant="outline">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                      >
                         <ExternalLink className="h-4 w-4 mr-1" />
-                        Visit Site
+                        Visit
                       </Button>
                     </Link>
                     <Link href={`/administration/sites/${site.id}/edit`}>
-                      <Button size="sm" variant="outline">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                      >
+                        <Settings className="h-4 w-4 mr-1" />
+                        Settings
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {(!sites || sites.length === 0) && (
+              <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-12 text-center">
+                <Globe className="h-12 w-12 mx-auto text-white/40 mb-4" />
+                <h3 className="text-lg font-medium mb-2 text-white">
+                  No sites yet
+                </h3>
+                <p className="text-white/60 mb-4">
+                  Create your first site to get started
+                </p>
+                <Link href="/administration/sites/create">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Site
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sites Overview for Superadmin */}
+        {role === "superadmin" && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold text-white">
+                All System Sites
+              </h3>
+              <div className="flex gap-2">
+                <Link href="/administration/sites">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Manage Sites
+                  </Button>
+                </Link>
+                <Link href="/administration/sites/create">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Site
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {sites?.map((site) => (
+                <div
+                  key={site.id}
+                  className="group backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6 hover:bg-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:border-white/60"
+                >
+                  {/* Site Image */}
+                  {site.image && (
+                    <div className="mb-4 -mx-2 -mt-2">
+                      <img
+                        src={site.image}
+                        alt={`${site.name} image`}
+                        className="w-full h-32 object-contain rounded-xl bg-white/5"
+                      />
+                    </div>
+                  )}
+                  <h4 className="text-lg font-bold text-white mb-2">
+                    {site.name}
+                  </h4>
+                  <p className="text-white/70 text-sm mb-4">
+                    {site.description}
+                  </p>
+                  <div className="space-y-2 mb-4">
+                    <div className="text-sm text-white/60">
+                      <span className="font-medium text-white/80">Domain:</span>{" "}
+                      {site.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}
+                    </div>
+                    {site.custom_domain && (
+                      <div className="text-sm text-white/60">
+                        <span className="font-medium text-white/80">
+                          Custom Domain:
+                        </span>{" "}
+                        {site.custom_domain}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex space-x-2">
+                    <Link
+                      href={`/sites/${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/dashboard`}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-1" />
+                        Visit
+                      </Button>
+                    </Link>
+                    <Link href={`/administration/sites/${site.id}/edit`}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                      >
                         <Settings className="h-4 w-4 mr-1" />
                         Manage
                       </Button>
                     </Link>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {(!sites || sites.length === 0) && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <Globe className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium mb-2">
-                    No sites in system
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    No sites have been created yet
-                  </p>
-                  <Link href="/administration/sites">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Site
-                    </Button>
-                  </Link>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
+              ))}
+            </div>
 
-      {/* Welcome Message */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Welcome, {user.email}!</CardTitle>
-          <CardDescription>
+            {(!sites || sites.length === 0) && (
+              <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-12 text-center">
+                <Globe className="h-12 w-12 mx-auto text-white/40 mb-4" />
+                <h3 className="text-lg font-medium mb-2 text-white">
+                  No sites in system
+                </h3>
+                <p className="text-white/60 mb-4">
+                  No sites have been created yet
+                </p>
+                <Link href="/administration/sites">
+                  <Button
+                    variant="outline"
+                    className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Site
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Welcome Message */}
+        <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+          <h3 className="text-xl font-bold text-white mb-2">
+            Welcome, {user.email}!
+          </h3>
+          <p className="text-white/70 mb-4">
             You are logged in as a {role}. Use the navigation menu to access
             your available features.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
           <div className="flex items-center space-x-2">
             <span
-              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
                 role === "superadmin"
-                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                  : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  ? "bg-red-500/20 text-red-200 border border-red-400/50"
+                  : "bg-blue-500/20 text-blue-200 border border-blue-400/50"
               }`}
             >
               {role.charAt(0).toUpperCase() + role.slice(1)}
             </span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-white/60">
               Role permissions active
             </span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

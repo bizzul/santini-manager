@@ -7,12 +7,13 @@ import {
   getUserProfiles,
   getOrganizations,
 } from "../../actions";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { CompanyRoleManagement } from "@/components/administration/CompanyRoleManagement";
+import { ArrowLeft, User } from "lucide-react";
+import Image from "next/image";
 
 export default async function UserViewPage({
   params,
@@ -93,49 +94,79 @@ export default async function UserViewPage({
       : undefined;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
-      <Link href="/administration/users">
-        <Button variant="outline">Back to Users</Button>
-      </Link>
+    <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
+      {/* Header */}
+      <div className="w-full max-w-4xl mb-8">
+        <div className="flex flex-col items-center justify-center mb-8 space-y-6">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Full Data Manager Logo"
+            width={60}
+            height={60}
+            className="drop-shadow-2xl"
+          />
+          <Link href="/administration/users">
+            <Button
+              variant="ghost"
+              className="text-white hover:bg-white/20 transition-all duration-300"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Users
+            </Button>
+          </Link>
+          <h1 className="text-4xl font-bold text-center text-white">
+            User Details
+          </h1>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* User Details Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle>User Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
+      {/* Content */}
+      <div className="w-full max-w-4xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* User Details Card */}
+          <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-xl bg-white/10">
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">User Details</h2>
+            </div>
+            <div className="space-y-4">
               <div>
-                <span className="font-semibold">Email:</span> {userToView.email}
+                <span className="text-white/60 text-sm">Email</span>
+                <p className="text-white font-medium">{userToView.email}</p>
               </div>
               <div>
-                <span className="font-semibold">System Role:</span>{" "}
-                {userToView.role}
+                <span className="text-white/60 text-sm">System Role</span>
+                <p className="text-white font-medium">{userToView.role}</p>
               </div>
               <div>
-                <span className="font-semibold">Given Name:</span>{" "}
-                {profile?.given_name || "-"}
+                <span className="text-white/60 text-sm">Given Name</span>
+                <p className="text-white font-medium">
+                  {profile?.given_name || "-"}
+                </p>
               </div>
               <div>
-                <span className="font-semibold">Family Name:</span>{" "}
-                {profile?.family_name || "-"}
+                <span className="text-white/60 text-sm">Family Name</span>
+                <p className="text-white font-medium">
+                  {profile?.family_name || "-"}
+                </p>
               </div>
               <div>
-                <span className="font-semibold">Organizations:</span>{" "}
-                {organizationNames}
+                <span className="text-white/60 text-sm">Organizations</span>
+                <p className="text-white font-medium">{organizationNames}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Company Role Management */}
-        <div>
-          <CompanyRoleManagement
-            userId={id}
-            organizationId={primaryOrganizationId}
-            currentUserRole={userContext?.role}
-          />
+          {/* Company Role Management */}
+          <div>
+            <CompanyRoleManagement
+              userId={id}
+              organizationId={primaryOrganizationId}
+              currentUserRole={userContext?.role}
+            />
+          </div>
         </div>
       </div>
     </div>

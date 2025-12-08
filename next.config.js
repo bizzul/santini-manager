@@ -9,9 +9,12 @@ const nextConfig = {
 
   // Remove console.log in production
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production" ? {
-      exclude: ["error", "warn"],
-    } : false,
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? {
+            exclude: ["error", "warn"],
+          }
+        : false,
   },
 
   images: {
@@ -35,6 +38,10 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "avatar.vercel.sh",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
       },
     ],
   },

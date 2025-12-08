@@ -546,7 +546,7 @@ export function AppSidebar() {
               ...(isSuperAdmin
                 ? [
                     {
-                      label: `Crea Kanban ${category.name}`,
+                      label: "Crea Kanban",
                       icon: "faPlus" as const,
                       action: () => openCreateModal(category.id),
                       alert: false,

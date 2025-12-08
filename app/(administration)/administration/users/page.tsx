@@ -2,16 +2,16 @@ import React from "react";
 import Link from "next/link";
 import { getUsers, getUserProfiles } from "../actions";
 import { createClient } from "@/utils/supabase/server";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, Users } from "lucide-react";
 import { getUserContext } from "@/lib/auth-utils";
 import ImpersonateButton from "@/components/users/impersonateButton";
 import PasswordResetButton from "@/components/users/password-reset-button";
 import ToggleUserStatusButton from "@/components/users/toggle-user-status-button";
 import { DeleteUserButton } from "@/components/users/delete-user-button";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
@@ -70,32 +70,51 @@ export default async function UsersPage() {
   });
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="mb-2">
-        <Link
-          href="/administration"
-          className="inline-flex items-center text-sm text-muted-foreground hover:text-primary transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Dashboard
-        </Link>
-      </div>
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">
-          {role === "superadmin"
-            ? "Manage All Users"
-            : "Manage Organization Users"}
-        </h1>
-        <div className="flex gap-2">
+    <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
+      {/* Header */}
+      <div className="w-full max-w-7xl mb-8">
+        <div className="flex flex-col items-center justify-center mb-8 space-y-6">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Full Data Manager Logo"
+            width={60}
+            height={60}
+            className="drop-shadow-2xl"
+          />
+          <div className="flex items-center gap-4">
+            <Link href="/administration">
+              <Button
+                variant="ghost"
+                className="text-white hover:bg-white/20 transition-all duration-300"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-center text-white">
+            {role === "superadmin"
+              ? "Manage All Users"
+              : "Manage Organization Users"}
+          </h1>
+        </div>
+
+        <div className="flex justify-center gap-3 mb-8">
           <Link href="/administration/create-user">
-            <Button variant="default">
+            <Button
+              variant="outline"
+              className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 transition-all duration-300 font-semibold"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create User
             </Button>
           </Link>
           {isSuperadmin && (
             <Link href="/administration/create-user?role=superadmin">
-              <Button variant="outline">
+              <Button
+                variant="outline"
+                className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 transition-all duration-300 font-semibold"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Superadmin
               </Button>
@@ -103,52 +122,68 @@ export default async function UsersPage() {
           )}
         </div>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {role === "superadmin" ? "All Users" : "Organization Users"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+
+      {/* Users Table */}
+      <div className="w-full max-w-7xl">
+        <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl overflow-hidden">
+          <div className="p-6 border-b border-white/20">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-white/10">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">
+                {role === "superadmin" ? "All Users" : "Organization Users"}
+              </h2>
+            </div>
+          </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className=" dark:bg-gray-800">
+            <table className="min-w-full">
+              <thead className="bg-white/5">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Given Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Family Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Organizations
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className=" dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-white/10">
                 {mergedUsers.length > 0 ? (
                   mergedUsers.map((u: any) => (
-                    <tr key={u.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">{u.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr
+                      key={u.id}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-white">
+                        {u.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-white/80">
                         {u.given_name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap text-white/80">
                         {u.family_name}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{u.role}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white border border-white/30">
+                          {u.role}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           {u.userOrganizations?.map(
@@ -157,7 +192,7 @@ export default async function UsersPage() {
                                 key={index}
                                 className="flex items-center gap-2"
                               >
-                                <span className="text-sm font-medium">
+                                <span className="text-sm text-white/80">
                                   {userOrg.organization?.name || "Unknown Org"}
                                 </span>
                               </div>
@@ -170,58 +205,70 @@ export default async function UsersPage() {
                           variant={u.enabled ? "default" : "secondary"}
                           className={
                             u.enabled
-                              ? "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-700"
-                              : "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
+                              ? "bg-green-500/20 text-green-200 border border-green-400/50"
+                              : "bg-gray-500/20 text-gray-200 border border-gray-400/50"
                           }
                         >
                           {u.enabled ? "Active" : "Inactive"}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap flex gap-2">
-                        <Link href={`/administration/users/${u.id}`}>
-                          <Button size="sm" variant="outline">
-                            View
-                          </Button>
-                        </Link>
-                        <Link href={`/administration/users/${u.id}/edit`}>
-                          <Button size="sm" variant="secondary">
-                            Edit
-                          </Button>
-                        </Link>
-                        <PasswordResetButton
-                          userEmail={u.email}
-                          userName={
-                            `${u.given_name} ${u.family_name}`.trim() || u.email
-                          }
-                        />
-                        <ToggleUserStatusButton
-                          userId={u.id}
-                          isActive={u.enabled}
-                          userEmail={u.email}
-                        />
-                        <DeleteUserButton
-                          userId={u.id}
-                          userEmail={u.email}
-                          userName={
-                            `${u.given_name} ${u.family_name}`.trim() || u.email
-                          }
-                          disabled={u.id === currentUserId}
-                        />
-                        {isSuperadmin &&
-                          !u.userOrganizations?.some(
-                            (userOrg: any) => userOrg.role === "superadmin"
-                          ) &&
-                          u.id !== currentUserId && (
-                            <ImpersonateButton userId={u.id} />
-                          )}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex gap-2 flex-wrap">
+                          <Link href={`/administration/users/${u.id}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border border-white/40 text-white hover:bg-white/20 text-xs"
+                            >
+                              View
+                            </Button>
+                          </Link>
+                          <Link href={`/administration/users/${u.id}/edit`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border border-white/40 text-white hover:bg-white/20 text-xs"
+                            >
+                              Edit
+                            </Button>
+                          </Link>
+                          <PasswordResetButton
+                            userEmail={u.email}
+                            userName={
+                              `${u.given_name} ${u.family_name}`.trim() ||
+                              u.email
+                            }
+                          />
+                          <ToggleUserStatusButton
+                            userId={u.id}
+                            isActive={u.enabled}
+                            userEmail={u.email}
+                          />
+                          <DeleteUserButton
+                            userId={u.id}
+                            userEmail={u.email}
+                            userName={
+                              `${u.given_name} ${u.family_name}`.trim() ||
+                              u.email
+                            }
+                            disabled={u.id === currentUserId}
+                          />
+                          {isSuperadmin &&
+                            !u.userOrganizations?.some(
+                              (userOrg: any) => userOrg.role === "superadmin"
+                            ) &&
+                            u.id !== currentUserId && (
+                              <ImpersonateButton userId={u.id} />
+                            )}
+                        </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td
-                      colSpan={9}
-                      className="px-6 py-4 text-center text-gray-500"
+                      colSpan={7}
+                      className="px-6 py-12 text-center text-white/60"
                     >
                       No users found.
                     </td>
@@ -230,8 +277,8 @@ export default async function UsersPage() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
