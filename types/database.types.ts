@@ -1573,6 +1573,7 @@ export type Database = {
           auth_id: string | null;
           authId: string | null;
           color: string | null;
+          company_role: string | null;
           deactivated_at: string | null;
           email: string;
           enabled: boolean;
@@ -1587,6 +1588,7 @@ export type Database = {
           auth_id?: string | null;
           authId?: string | null;
           color?: string | null;
+          company_role?: string | null;
           deactivated_at?: string | null;
           email: string;
           enabled?: boolean;
@@ -1601,6 +1603,7 @@ export type Database = {
           auth_id?: string | null;
           authId?: string | null;
           color?: string | null;
+          company_role?: string | null;
           deactivated_at?: string | null;
           email?: string;
           enabled?: boolean;

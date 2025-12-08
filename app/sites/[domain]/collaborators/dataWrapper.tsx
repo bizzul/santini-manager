@@ -2,18 +2,29 @@
 
 import React from "react";
 import { DataTable } from "./table";
-import { columns, Collaborator } from "./columns";
+import { Collaborator } from "./columns";
+
+interface DataWrapperProps {
+    data: Collaborator[];
+    domain: string;
+    siteId: string;
+    isAdmin: boolean;
+}
 
 const DataWrapper = ({
     data,
     domain,
-}: {
-    data: Collaborator[];
-    domain: string;
-}) => {
+    siteId,
+    isAdmin,
+}: DataWrapperProps) => {
     return (
         <div className="w-full">
-            <DataTable columns={columns} data={data} domain={domain} />
+            <DataTable 
+                data={data} 
+                domain={domain} 
+                siteId={siteId}
+                isAdmin={isAdmin}
+            />
         </div>
     );
 };

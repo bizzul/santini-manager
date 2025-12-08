@@ -20,7 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import {
@@ -30,18 +30,28 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Collaborator } from "./columns";
+import { getColumnsWithActions } from "./columns-with-actions";
+import { AddCollaboratorDialog } from "./add-collaborator-dialog";
 
-interface DataTableProps<TData, TValue> {
-    columns: ColumnDef<TData, TValue>[];
-    data: TData[];
+interface DataTableProps {
+    data: Collaborator[];
     domain: string;
+    siteId: string;
+    isAdmin: boolean;
 }
 
-export function DataTable<TData, TValue>({
-    columns,
+export function DataTable({
     data,
     domain,
-}: DataTableProps<TData, TValue>) {
+    siteId,
+    isAdmin,
+}: DataTableProps) {
+    // Generate columns with actions based on admin status
+    const columns = useMemo(
+        () => getColumnsWithActions(siteId, domain, isAdmin),
+        [siteId, domain, isAdmin]
+    );
     // Sorting State
     const [sorting, setSorting] = useState<SortingState>([]);
     // Filter state
@@ -68,33 +78,38 @@ export function DataTable<TData, TValue>({
 
     return (
         <>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-4">
-                <DebouncedInput
-                    value={globalFilter ?? ""}
-                    onChange={(value) => setGlobalFilter(String(value))}
-                    className="max-w-sm"
-                    placeholder="Cerca collaboratore..."
-                />
-                <Select
-                    value={
-                        (table.getColumn("role")?.getFilterValue() as string) ??
-                        "all"
-                    }
-                    onValueChange={(value) =>
-                        table
-                            .getColumn("role")
-                            ?.setFilterValue(value === "all" ? "" : value)
-                    }
-                >
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filtra per ruolo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Tutti i ruoli</SelectItem>
-                        <SelectItem value="admin">Amministratore</SelectItem>
-                        <SelectItem value="user">Utente</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <DebouncedInput
+                        value={globalFilter ?? ""}
+                        onChange={(value) => setGlobalFilter(String(value))}
+                        className="max-w-sm"
+                        placeholder="Cerca collaboratore..."
+                    />
+                    <Select
+                        value={
+                            (table.getColumn("role")?.getFilterValue() as string) ??
+                            "all"
+                        }
+                        onValueChange={(value) =>
+                            table
+                                .getColumn("role")
+                                ?.setFilterValue(value === "all" ? "" : value)
+                        }
+                    >
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filtra per ruolo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tutti i ruoli</SelectItem>
+                            <SelectItem value="admin">Amministratore</SelectItem>
+                            <SelectItem value="user">Utente</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                {isAdmin && (
+                    <AddCollaboratorDialog siteId={siteId} domain={domain} />
+                )}
             </div>
             <div className="rounded-md border">
                 <Table>

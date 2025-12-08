@@ -10,6 +10,7 @@ import { it } from "date-fns/locale";
 // Collaborator type
 export type Collaborator = {
     id: number;
+    authId: string | null;
     email: string;
     given_name: string | null;
     family_name: string | null;
@@ -17,6 +18,7 @@ export type Collaborator = {
     picture: string | null;
     color: string | null;
     role: string | null;
+    company_role: string | null;
     site_role: string | null;
     is_org_admin?: boolean;
     enabled: boolean;
@@ -132,6 +134,17 @@ export const columns: ColumnDef<Collaborator>[] = [
                     {getRoleLabel(site_role, is_org_admin)}
                 </Badge>
             );
+        },
+    },
+    {
+        accessorKey: "company_role",
+        header: ({ column }) => (
+            <DataTableColumnHeader column={column} title="Ruolo Aziendale" />
+        ),
+        cell: ({ row }) => {
+            const { company_role } = row.original;
+            if (!company_role) return <span className="text-muted-foreground">-</span>;
+            return <span className="text-sm">{company_role}</span>;
         },
     },
     {
