@@ -1,7 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getUsers, getOrganizations, getUserOrganizations } from "../../../actions";
+import { getUsers, getOrganizations, getUserOrganizations, getSites, getUserSites } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/server";
 import { EditUserForm } from "./EditUserForm";
@@ -30,10 +30,12 @@ export default async function UserEditPage({
     redirect("/");
   }
 
-  const [users, organizations, userOrgs] = await Promise.all([
+  const [users, organizations, userOrgs, sites, userSites] = await Promise.all([
     getUsers(),
     getOrganizations(),
     getUserOrganizations(id),
+    getSites(),
+    getUserSites(id),
   ]);
   const userToEdit = users.find((u: any) => u.id === id);
 
@@ -82,6 +84,9 @@ export default async function UserEditPage({
 
   const userOrgIds = userOrgsData?.map((uo: any) => uo.organization_id) || [];
 
+  // Get user's site IDs
+  const userSiteIds = userSites?.map((us: any) => us.site_id) || [];
+
   // Get the primary organization ID for role management
   const primaryOrganizationId =
     userOrgs && userOrgs.length > 0
@@ -129,7 +134,9 @@ export default async function UserEditPage({
             <EditUserForm
               user={userToEdit}
               organizations={organizations}
+              sites={sites || []}
               userOrgIds={userOrgIds}
+              userSiteIds={userSiteIds}
               userId={id}
               currentUserRole={userContext?.role}
             />

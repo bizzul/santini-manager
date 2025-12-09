@@ -9,4 +9,5 @@ export const validation = z.object({
   family_name: z.string().optional(),
   role: z.string().optional(),
   organization: z.array(z.string()).optional(),
+  sites: z.array(z.string()).optional(),
 });

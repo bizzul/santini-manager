@@ -756,8 +756,8 @@ export async function updateUser(userId: string, updates: any) {
         );
     }
 
-    // Extract organization IDs from updates if present
-    const { organization, ...userUpdates } = updates;
+    // Extract organization IDs and sites from updates if present
+    const { organization, sites, ...userUpdates } = updates;
 
     // Update user info in User table
     if (Object.keys(userUpdates).length > 0) {
@@ -788,6 +788,31 @@ export async function updateUser(userId: string, updates: any) {
             const { error: insertError } = await supabase
                 .from("user_organizations")
                 .insert(userOrgInserts);
+
+            if (insertError) throw new Error(insertError.message);
+        }
+    }
+
+    // Update sites if provided
+    if (sites && Array.isArray(sites)) {
+        // Delete existing user-site relationships
+        const { error: deleteError } = await supabase
+            .from("user_sites")
+            .delete()
+            .eq("user_id", userId);
+
+        if (deleteError) throw new Error(deleteError.message);
+
+        // Insert new user-site relationships
+        if (sites.length > 0) {
+            const userSiteInserts = sites.map((siteId: string) => ({
+                site_id: siteId,
+                user_id: userId,
+            }));
+
+            const { error: insertError } = await supabase
+                .from("user_sites")
+                .insert(userSiteInserts);
 
             if (insertError) throw new Error(insertError.message);
         }

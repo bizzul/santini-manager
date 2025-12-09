@@ -20,7 +20,9 @@ import { Loader2 } from "lucide-react";
 interface EditUserFormProps {
   user: any;
   organizations: any[];
+  sites: any[];
   userOrgIds: string[];
+  userSiteIds: string[];
   userId: string;
   currentUserRole?: string;
 }
@@ -28,7 +30,9 @@ interface EditUserFormProps {
 export function EditUserForm({
   user,
   organizations,
+  sites,
   userOrgIds,
+  userSiteIds,
   userId,
   currentUserRole,
 }: EditUserFormProps) {
@@ -36,6 +40,7 @@ export function EditUserForm({
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState(user.role || "user");
   const [selectedOrgs, setSelectedOrgs] = useState<string[]>(userOrgIds);
+  const [selectedSites, setSelectedSites] = useState<string[]>(userSiteIds);
 
   // Filter available roles based on current user's role
   const availableRoles =
@@ -53,6 +58,7 @@ export function EditUserForm({
         ...formDataObj,
         role: selectedRole,
         organization: selectedOrgs,
+        sites: selectedSites,
       };
 
       const parsed = validation.safeParse(data);
@@ -95,6 +101,19 @@ export function EditUserForm({
         : [...prev, orgId]
     );
   };
+
+  const toggleSite = (siteId: string) => {
+    setSelectedSites((prev) =>
+      prev.includes(siteId)
+        ? prev.filter((id) => id !== siteId)
+        : [...prev, siteId]
+    );
+  };
+
+  // Filter sites based on selected organizations
+  const filteredSites = sites.filter((site: any) =>
+    selectedOrgs.length === 0 || selectedOrgs.includes(site.organization_id)
+  );
 
   return (
     <form action={handleSubmit} className="space-y-5">
@@ -178,6 +197,46 @@ export function EditUserForm({
         {selectedOrgs.length > 0 && (
           <p className="text-sm text-white/50">
             {selectedOrgs.length} organizzazion{selectedOrgs.length !== 1 ? "i" : "e"} selezionat{selectedOrgs.length !== 1 ? "e" : "a"}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-white/80">Siti</Label>
+        {filteredSites.length === 0 ? (
+          <p className="text-sm text-white/50 p-3 bg-white/5 rounded-xl border border-white/10">
+            {selectedOrgs.length === 0
+              ? "Seleziona prima un'organizzazione per vedere i siti disponibili"
+              : "Nessun sito disponibile per le organizzazioni selezionate"}
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+            {filteredSites.map((site: any) => (
+              <div
+                key={site.id}
+                onClick={() => toggleSite(site.id)}
+                className={`p-3 rounded-xl cursor-pointer transition-all ${
+                  selectedSites.includes(site.id)
+                    ? "bg-emerald-500/20 border-2 border-emerald-400/50"
+                    : "bg-white/5 border border-white/10 hover:bg-white/10"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-white font-medium">{site.name}</span>
+                  {site.organization?.name && (
+                    <span className="text-white/50 text-xs">{site.organization.name}</span>
+                  )}
+                </div>
+                {site.domain && (
+                  <span className="text-white/40 text-sm">{site.domain}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {selectedSites.length > 0 && (
+          <p className="text-sm text-white/50">
+            {selectedSites.length} sit{selectedSites.length !== 1 ? "i" : "o"} selezionat{selectedSites.length !== 1 ? "i" : "o"}
           </p>
         )}
       </div>
