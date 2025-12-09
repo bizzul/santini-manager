@@ -125,7 +125,7 @@ const CreateProductForm = ({
                         <SelectValue placeholder="Seleziona..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {data.category.map((cat: Product_category) => (
+                        {data.categories?.map((cat: Product_category) => (
                           <SelectItem key={cat.id} value={cat.id.toString()}>
                             {cat.name}
                           </SelectItem>
@@ -153,7 +153,7 @@ const CreateProductForm = ({
                         <SelectValue placeholder="Seleziona..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {data.supplier.map((sup: Supplier) => (
+                        {data.suppliers?.map((sup: Supplier) => (
                           <SelectItem key={sup.id} value={sup.id.toString()}>
                             {sup.name}
                           </SelectItem>

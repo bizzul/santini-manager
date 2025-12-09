@@ -3,9 +3,19 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { validation } from "@/validation/users/editInfo";
 import { toast } from "@/components/ui/use-toast";
 import { updateUser } from "../../../actions";
+import { Loader2 } from "lucide-react";
 
 interface EditUserFormProps {
   user: any;
@@ -24,6 +34,8 @@ export function EditUserForm({
 }: EditUserFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState(user.role || "user");
+  const [selectedOrgs, setSelectedOrgs] = useState<string[]>(userOrgIds);
 
   // Filter available roles based on current user's role
   const availableRoles =
@@ -37,23 +49,18 @@ export function EditUserForm({
     try {
       const formDataObj = Object.fromEntries(formData.entries());
 
-      // Handle multiple organization selection
-      const organizationInputs = formData.getAll("organization");
-      const organizationIds = organizationInputs
-        .filter((org) => org !== "")
-        .map((org) => String(org));
-
       const data = {
         ...formDataObj,
-        organization: organizationIds,
+        role: selectedRole,
+        organization: selectedOrgs,
       };
 
       const parsed = validation.safeParse(data);
       if (!parsed.success) {
         console.log("Validation errors:", parsed.error);
         toast({
-          title: "Validation Error",
-          description: `Please check your input: ${parsed.error.errors
+          title: "Errore di Validazione",
+          description: `Controlla i dati inseriti: ${parsed.error.errors
             .map((e) => e.message)
             .join(", ")}`,
           variant: "destructive",
@@ -65,15 +72,15 @@ export function EditUserForm({
       await updateUser(userId, parsed.data);
 
       toast({
-        title: "Success",
-        description: "User updated successfully!",
+        title: "Successo",
+        description: "Utente aggiornato con successo!",
       });
 
       router.push(`/administration/users/${userId}`);
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update user",
+        title: "Errore",
+        description: error.message || "Impossibile aggiornare l'utente",
         variant: "destructive",
       });
     } finally {
@@ -81,76 +88,113 @@ export function EditUserForm({
     }
   }
 
+  const toggleOrganization = (orgId: string) => {
+    setSelectedOrgs((prev) =>
+      prev.includes(orgId)
+        ? prev.filter((id) => id !== orgId)
+        : [...prev, orgId]
+    );
+  };
+
   return (
-    <form action={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block font-semibold mb-1">Email</label>
-        <input
+    <form action={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="email" className="text-white/80">
+          Email
+        </Label>
+        <Input
           name="email"
           type="email"
           defaultValue={user.email}
-          className="w-full border rounded-sm px-3 py-2"
+          className="bg-white/10 border-white/30 text-white placeholder:text-white/40 focus:border-white/60"
         />
       </div>
-      <div>
-        <label className="block font-semibold mb-1">Given Name</label>
-        <input
-          name="given_name"
-          type="text"
-          defaultValue={user.given_name}
-          className="w-full border rounded-sm px-3 py-2"
-        />
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="given_name" className="text-white/80">
+            Nome
+          </Label>
+          <Input
+            name="given_name"
+            type="text"
+            defaultValue={user.given_name}
+            className="bg-white/10 border-white/30 text-white placeholder:text-white/40 focus:border-white/60"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="family_name" className="text-white/80">
+            Cognome
+          </Label>
+          <Input
+            name="family_name"
+            type="text"
+            defaultValue={user.family_name}
+            className="bg-white/10 border-white/30 text-white placeholder:text-white/40 focus:border-white/60"
+          />
+        </div>
       </div>
-      <div>
-        <label className="block font-semibold mb-1">Family Name</label>
-        <input
-          name="family_name"
-          type="text"
-          defaultValue={user.family_name}
-          className="w-full border rounded-sm px-3 py-2"
-        />
+
+      <div className="space-y-2">
+        <Label htmlFor="role" className="text-white/80">
+          Ruolo Sistema
+        </Label>
+        <Select value={selectedRole} onValueChange={setSelectedRole}>
+          <SelectTrigger className="bg-white/10 border-white/30 text-white">
+            <SelectValue placeholder="Seleziona ruolo..." />
+          </SelectTrigger>
+          <SelectContent>
+            {availableRoles.map((role) => (
+              <SelectItem key={role} value={role}>
+                {role.charAt(0).toUpperCase() + role.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-      <div>
-        <label className="block font-semibold mb-1">Role</label>
-        <select
-          name="role"
-          defaultValue={availableRoles.includes(user.role) ? user.role : "user"}
-          className="w-full border rounded-sm px-3 py-2"
-        >
-          {availableRoles.map((role) => (
-            <option key={role} value={role}>
-              {role.charAt(0).toUpperCase() + role.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block font-semibold mb-1">Organizations</label>
-        <select
-          name="organization"
-          multiple
-          size={4}
-          className="w-full border rounded-sm px-3 py-2"
-          defaultValue={userOrgIds}
-        >
+
+      <div className="space-y-2">
+        <Label className="text-white/80">Organizzazioni</Label>
+        <div className="space-y-2 max-h-[200px] overflow-y-auto">
           {organizations.map((org: any) => (
-            <option key={org.id} value={org.id}>
-              {org.name} ({org.code || "No code"})
-            </option>
+            <div
+              key={org.id}
+              onClick={() => toggleOrganization(org.id)}
+              className={`p-3 rounded-xl cursor-pointer transition-all ${
+                selectedOrgs.includes(org.id)
+                  ? "bg-white/20 border-2 border-white/50"
+                  : "bg-white/5 border border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-white font-medium">{org.name}</span>
+                {org.code && (
+                  <span className="text-white/50 text-sm">{org.code}</span>
+                )}
+              </div>
+            </div>
           ))}
-        </select>
-        <p className="mt-1 text-sm text-gray-500">
-          Hold Ctrl (or Cmd on Mac) to select multiple organizations
-        </p>
-        {userOrgIds.length > 0 && (
-          <p className="mt-1 text-sm text-blue-600">
-            Currently connected to: {userOrgIds.length} organization
-            {userOrgIds.length !== 1 ? "s" : ""}
+        </div>
+        {selectedOrgs.length > 0 && (
+          <p className="text-sm text-white/50">
+            {selectedOrgs.length} organizzazion{selectedOrgs.length !== 1 ? "i" : "e"} selezionat{selectedOrgs.length !== 1 ? "e" : "a"}
           </p>
         )}
       </div>
-      <Button type="submit" variant="default" disabled={loading}>
-        {loading ? "Saving..." : "Save"}
+
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-white/20 text-white border border-white/30 hover:bg-white/30"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Salvataggio...
+          </>
+        ) : (
+          "Salva Modifiche"
+        )}
       </Button>
     </form>
   );

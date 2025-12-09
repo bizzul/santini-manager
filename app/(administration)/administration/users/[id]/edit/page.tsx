@@ -1,13 +1,14 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getUsers, getOrganizations } from "../../../actions";
+import { getUsers, getOrganizations, getUserOrganizations } from "../../../actions";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/server";
 import { EditUserForm } from "./EditUserForm";
+import { CompanyRoleManagement } from "@/components/administration/CompanyRoleManagement";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
-import { ArrowLeft, UserCog } from "lucide-react";
+import { ArrowLeft, UserCog, Briefcase } from "lucide-react";
 import Image from "next/image";
 
 export default async function UserEditPage({
@@ -29,17 +30,19 @@ export default async function UserEditPage({
     redirect("/");
   }
 
-  const [users, organizations] = await Promise.all([
+  const [users, organizations, userOrgs] = await Promise.all([
     getUsers(),
     getOrganizations(),
+    getUserOrganizations(id),
   ]);
   const userToEdit = users.find((u: any) => u.id === id);
 
   if (!userToEdit) return notFound();
 
   // Check if user has access to edit this user
+  const supabase = await createClient();
+  
   if (role === "admin") {
-    const supabase = await createClient();
     const { data: currentUserOrgs } = await supabase
       .from("user_organizations")
       .select("organization_id")
@@ -72,18 +75,23 @@ export default async function UserEditPage({
   }
 
   // Get user's current organizations
-  const supabase = await createClient();
-  const { data: userOrgs } = await supabase
+  const { data: userOrgsData } = await supabase
     .from("user_organizations")
     .select("organization_id")
     .eq("user_id", id);
 
-  const userOrgIds = userOrgs?.map((uo: any) => uo.organization_id) || [];
+  const userOrgIds = userOrgsData?.map((uo: any) => uo.organization_id) || [];
+
+  // Get the primary organization ID for role management
+  const primaryOrganizationId =
+    userOrgs && userOrgs.length > 0
+      ? userOrgs[0].organization_id
+      : undefined;
 
   return (
     <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
       {/* Header */}
-      <div className="w-full max-w-lg mb-8">
+      <div className="w-full max-w-4xl mb-8">
         <div className="flex flex-col items-center justify-center mb-8 space-y-6">
           <Image
             src="/logo-bianco.svg"
@@ -98,31 +106,43 @@ export default async function UserEditPage({
               className="text-white hover:bg-white/20 transition-all duration-300"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to User
+              Torna ai Dettagli
             </Button>
           </Link>
           <h1 className="text-4xl font-bold text-center text-white">
-            Edit User
+            Modifica Utente
           </h1>
         </div>
       </div>
 
       {/* Content */}
-      <div className="w-full max-w-lg">
-        <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 rounded-xl bg-white/10">
-              <UserCog className="h-5 w-5 text-white" />
+      <div className="w-full max-w-4xl">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Edit Form Card */}
+          <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 rounded-xl bg-white/10">
+                <UserCog className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Dati Utente</h2>
             </div>
-            <h2 className="text-xl font-bold text-white">Edit User</h2>
+            <EditUserForm
+              user={userToEdit}
+              organizations={organizations}
+              userOrgIds={userOrgIds}
+              userId={id}
+              currentUserRole={userContext?.role}
+            />
           </div>
-          <EditUserForm
-            user={userToEdit}
-            organizations={organizations}
-            userOrgIds={userOrgIds}
-            userId={id}
-            currentUserRole={userContext?.role}
-          />
+
+          {/* Company Role Management */}
+          <div>
+            <CompanyRoleManagement
+              userId={id}
+              organizationId={primaryOrganizationId}
+              currentUserRole={userContext?.role}
+            />
+          </div>
         </div>
       </div>
     </div>

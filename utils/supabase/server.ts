@@ -2,13 +2,21 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { COOKIE_OPTIONS } from "./cookie";
 
+// Use consistent environment variables with fallback
+// This ensures client and server always use the same Supabase instance
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.STORAGE_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_SERVICE_KEY = process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY!;
+
 export async function createClient() {
   try {
     const cookieStore = await cookies();
 
     return createServerClient(
-      process.env.STORAGE_SUPABASE_URL!,
-      process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
       {
         cookieOptions: COOKIE_OPTIONS,
         cookies: {
@@ -32,8 +40,8 @@ export async function createClient() {
   } catch (error) {
     // If cookies() fails (e.g., during static generation), create a client without cookies
     return createServerClient(
-      process.env.STORAGE_SUPABASE_URL!,
-      process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
       {
         cookieOptions: COOKIE_OPTIONS,
         cookies: {
@@ -51,8 +59,8 @@ export async function createClient() {
 
 export function createServiceClient() {
   return createServerClient(
-    process.env.STORAGE_SUPABASE_URL!,
-    process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY!,
+    SUPABASE_URL,
+    SUPABASE_SERVICE_KEY,
     {
       cookieOptions: COOKIE_OPTIONS,
       cookies: {

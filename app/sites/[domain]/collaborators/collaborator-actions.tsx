@@ -29,9 +29,11 @@ import {
   Loader2,
   Power,
   PowerOff,
+  Briefcase,
 } from "lucide-react";
 import { Collaborator } from "./columns";
 import { EditCollaboratorDialog } from "./edit-collaborator-dialog";
+import { RoleManagementDialog } from "./role-management-dialog";
 import {
   removeCollaboratorFromSite,
   sendPasswordResetEmail,
@@ -52,6 +54,7 @@ export function CollaboratorActions({
   isAdmin,
 }: CollaboratorActionsProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isRolesOpen, setIsRolesOpen] = useState(false);
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [isToggleStatusOpen, setIsToggleStatusOpen] = useState(false);
@@ -177,6 +180,10 @@ export function CollaboratorActions({
             <Pencil className="h-4 w-4 mr-2" />
             Modifica
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsRolesOpen(true)}>
+            <Briefcase className="h-4 w-4 mr-2" />
+            Gestione Ruoli
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsPasswordResetOpen(true)}>
             <Key className="h-4 w-4 mr-2" />
             Reset Password
@@ -216,6 +223,15 @@ export function CollaboratorActions({
         domain={domain}
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
+      />
+
+      {/* Role Management Dialog */}
+      <RoleManagementDialog
+        collaborator={collaborator}
+        siteId={siteId}
+        domain={domain}
+        isOpen={isRolesOpen}
+        onClose={() => setIsRolesOpen(false)}
       />
 
       {/* Remove Confirmation Dialog */}

@@ -11,17 +11,14 @@ export const GET = async (
         const userContext = await getUserContext();
 
         if (!userContext) {
-            return NextResponse.json({ error: "Unauthorized" }, {
+            return NextResponse.json({ error: "Non autorizzato" }, {
                 status: 401,
             });
         }
 
-        // Only allow admin and superadmin access
-        if (userContext.role !== "admin" && userContext.role !== "superadmin") {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-
         const { userId } = await params;
+        const { searchParams } = new URL(req.url);
+        const siteId = searchParams.get("site_id");
 
         // First, get the User.id from authId
         const { data: userData, error: userError } = await supabase
@@ -31,22 +28,46 @@ export const GET = async (
             .single();
 
         if (userError || !userData) {
-            return NextResponse.json({ error: "User not found" }, {
+            return NextResponse.json({ error: "Utente non trovato" }, {
                 status: 404,
             });
         }
 
         const userDbId = userData.id;
 
-        // Get user's company roles
-        const { data: userRoles, error } = await supabase
+        // Get user's company roles with role details
+        const { data: userRoleLinks, error } = await supabase
             .from("_RolesToUser")
-            .select("*")
+            .select("A, B")
             .eq("B", userDbId);
 
         if (error) throw error;
 
-        return NextResponse.json({ userRoles });
+        // Get role details for the assigned roles
+        if (userRoleLinks && userRoleLinks.length > 0) {
+            const roleIds = userRoleLinks.map((link: any) => link.A);
+            
+            let rolesQuery = supabase
+                .from("Roles")
+                .select("*")
+                .in("id", roleIds);
+            
+            // Filter by site if provided
+            if (siteId) {
+                rolesQuery = rolesQuery.or(`site_id.eq.${siteId},site_id.is.null`);
+            }
+
+            const { data: roles, error: rolesError } = await rolesQuery;
+            
+            if (rolesError) throw rolesError;
+
+            return NextResponse.json({ 
+                userRoles: userRoleLinks,
+                roles: roles || []
+            });
+        }
+
+        return NextResponse.json({ userRoles: [], roles: [] });
     } catch (err: any) {
         console.error("Error fetching user roles:", err);
         return NextResponse.json({ error: err.message }, { status: 500 });

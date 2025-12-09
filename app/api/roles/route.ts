@@ -8,24 +8,21 @@ export const GET = async (req: NextRequest) => {
     const userContext = await getUserContext();
 
     if (!userContext) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Only allow admin and superadmin access
-    if (userContext.role !== "admin" && userContext.role !== "superadmin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
     const { searchParams } = new URL(req.url);
+    const siteId = searchParams.get("site_id");
     const organizationId = searchParams.get("organization_id");
 
     let query = supabase.from("Roles").select("*");
 
-    // For now, we'll get all roles since the Roles table has site_id
-    // In the future, we might want to add organization_id to the Roles table
-    // or create a mapping between organizations and sites
+    // Filter by site_id if provided
+    if (siteId) {
+      query = query.or(`site_id.eq.${siteId},site_id.is.null`);
+    }
 
-    const { data: roles, error } = await query;
+    const { data: roles, error } = await query.order("name");
 
     if (error) throw error;
 
@@ -42,27 +39,26 @@ export const POST = async (req: NextRequest) => {
     const userContext = await getUserContext();
 
     if (!userContext) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
 
     // Only allow admin and superadmin access
     if (userContext.role !== "admin" && userContext.role !== "superadmin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Accesso negato" }, { status: 403 });
     }
 
-    const { name, organization_id } = await req.json();
+    const { name, site_id, organization_id } = await req.json();
 
     if (!name) {
-      return NextResponse.json({ error: "Role name is required" }, {
+      return NextResponse.json({ error: "Il nome del ruolo è obbligatorio" }, {
         status: 400,
       });
     }
 
-    // For now, we'll create roles without site_id since we're working at organization level
-    // In the future, we might want to add organization_id to the Roles table
+    // Create role with optional site_id
     const { data: role, error } = await supabase
       .from("Roles")
-      .insert({ name })
+      .insert({ name, site_id: site_id || null })
       .select()
       .single();
 

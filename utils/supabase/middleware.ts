@@ -5,6 +5,11 @@ import { COOKIE_OPTIONS } from "./cookie";
 
 const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
 
+// Use consistent environment variables with fallback
+// This ensures client and server always use the same Supabase instance
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.STORAGE_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
 export async function updateSession(request: NextRequest) {
   // OPTIMIZATION: Check if route is public BEFORE making any auth calls
   // This prevents unnecessary token refresh requests that cause 429 errors
@@ -41,8 +46,8 @@ export async function updateSession(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-    process.env.STORAGE_SUPABASE_URL!,
-    process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
     {
       cookieOptions: COOKIE_OPTIONS,
       cookies: {

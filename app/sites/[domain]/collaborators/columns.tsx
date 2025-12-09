@@ -7,6 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 
+// Role type
+export type AssignedRole = {
+    id: number;
+    name: string;
+    site_id: string | null;
+};
+
 // Collaborator type
 export type Collaborator = {
     id: number;
@@ -23,6 +30,7 @@ export type Collaborator = {
     is_org_admin?: boolean;
     enabled: boolean;
     joined_site_at: string | null;
+    assigned_roles?: AssignedRole[];
 };
 
 const getRoleBadgeVariant = (role: string | null, isOrgAdmin?: boolean) => {
@@ -137,14 +145,28 @@ export const columns: ColumnDef<Collaborator>[] = [
         },
     },
     {
-        accessorKey: "company_role",
+        accessorKey: "assigned_roles",
         header: ({ column }) => (
-            <DataTableColumnHeader column={column} title="Ruolo Aziendale" />
+            <DataTableColumnHeader column={column} title="Ruoli Aziendali" />
         ),
         cell: ({ row }) => {
-            const { company_role } = row.original;
-            if (!company_role) return <span className="text-muted-foreground">-</span>;
-            return <span className="text-sm">{company_role}</span>;
+            const { assigned_roles } = row.original;
+            if (!assigned_roles || assigned_roles.length === 0) {
+                return <span className="text-muted-foreground">-</span>;
+            }
+            return (
+                <div className="flex flex-wrap gap-1">
+                    {assigned_roles.map((role) => (
+                        <Badge
+                            key={role.id}
+                            variant="outline"
+                            className="text-xs"
+                        >
+                            {role.name}
+                        </Badge>
+                    ))}
+                </div>
+            );
         },
     },
     {

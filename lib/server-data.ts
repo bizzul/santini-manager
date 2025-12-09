@@ -775,7 +775,7 @@ export const fetchCollaborators = cache(async (siteId: string) => {
         }
 
         // Process with auth_id field
-        const collaborators = usersAlt
+        const filteredUsersAlt = usersAlt
             .filter((user) => {
                 // Exclude superadmins and disabled users
                 if (user.role === "superadmin" || !user.enabled) return false;
@@ -784,16 +784,62 @@ export const fetchCollaborators = cache(async (siteId: string) => {
                 // Include if: user is a site user OR user is an org admin
                 return siteUserSet.has(userId) ||
                     (orgAdminSet.has(userId) && user.role === "admin");
-            })
+            });
+
+        // Get User IDs (internal IDs) for role lookup
+        const userDbIdsAlt = filteredUsersAlt.map((user) => user.id);
+
+        // Fetch user roles from _RolesToUser junction table
+        const { data: userRoleLinksAlt, error: rolesLinkErrorAlt } = await supabase
+            .from("_RolesToUser")
+            .select("A, B")
+            .in("B", userDbIdsAlt);
+
+        if (rolesLinkErrorAlt) {
+            log.error("Error fetching user role links (alt):", rolesLinkErrorAlt.message);
+        }
+
+        // Get all role IDs and fetch role details
+        const roleIdsAlt = Array.from(new Set(userRoleLinksAlt?.map((link: any) => link.A) || []));
+        let rolesMapAlt = new Map<number, { id: number; name: string; site_id: string | null }>();
+        
+        if (roleIdsAlt.length > 0) {
+            const { data: rolesAlt, error: rolesErrorAlt } = await supabase
+                .from("Roles")
+                .select("id, name, site_id")
+                .in("id", roleIdsAlt)
+                .or(`site_id.eq.${siteId},site_id.is.null`);
+
+            if (rolesErrorAlt) {
+                log.error("Error fetching roles (alt):", rolesErrorAlt.message);
+            } else if (rolesAlt) {
+                rolesAlt.forEach((role: any) => rolesMapAlt.set(role.id, role));
+            }
+        }
+
+        // Create a map of user DB ID -> assigned roles
+        const userRolesMapAlt = new Map<number, Array<{ id: number; name: string; site_id: string | null }>>();
+        userRoleLinksAlt?.forEach((link: any) => {
+            const role = rolesMapAlt.get(link.A);
+            if (role) {
+                const existingRoles = userRolesMapAlt.get(link.B) || [];
+                existingRoles.push(role);
+                userRolesMapAlt.set(link.B, existingRoles);
+            }
+        });
+
+        const collaborators = filteredUsersAlt
             .map((user) => {
                 const userId = user.auth_id || "";
                 const isOrgAdmin = orgAdminSet.has(userId) &&
                     user.role === "admin";
+                const assignedRoles = userRolesMapAlt.get(user.id) || [];
                 return {
                     ...user,
                     site_role: isOrgAdmin ? "org_admin" : user.role,
                     is_org_admin: isOrgAdmin,
                     joined_site_at: userJoinDates.get(userId) || null,
+                    assigned_roles: assignedRoles,
                 };
             })
             .sort((a, b) => {
@@ -810,7 +856,7 @@ export const fetchCollaborators = cache(async (siteId: string) => {
     }
 
     // Process with authId field
-    const collaborators = users
+    const filteredUsers = users
         .filter((user) => {
             // Exclude superadmins and disabled users
             if (user.role === "superadmin" || !user.enabled) return false;
@@ -819,15 +865,61 @@ export const fetchCollaborators = cache(async (siteId: string) => {
             // Include if: user is a site user OR user is an org admin
             return siteUserSet.has(userId) ||
                 (orgAdminSet.has(userId) && user.role === "admin");
-        })
+        });
+
+    // Get User IDs (internal IDs) for role lookup
+    const userDbIds = filteredUsers.map((user) => user.id);
+
+    // Fetch user roles from _RolesToUser junction table
+    const { data: userRoleLinks, error: rolesLinkError } = await supabase
+        .from("_RolesToUser")
+        .select("A, B")
+        .in("B", userDbIds);
+
+    if (rolesLinkError) {
+        log.error("Error fetching user role links:", rolesLinkError.message);
+    }
+
+    // Get all role IDs and fetch role details
+    const roleIds = Array.from(new Set(userRoleLinks?.map((link: any) => link.A) || []));
+    let rolesMap = new Map<number, { id: number; name: string; site_id: string | null }>();
+    
+    if (roleIds.length > 0) {
+        const { data: roles, error: rolesError } = await supabase
+            .from("Roles")
+            .select("id, name, site_id")
+            .in("id", roleIds)
+            .or(`site_id.eq.${siteId},site_id.is.null`);
+
+        if (rolesError) {
+            log.error("Error fetching roles:", rolesError.message);
+        } else if (roles) {
+            roles.forEach((role: any) => rolesMap.set(role.id, role));
+        }
+    }
+
+    // Create a map of user DB ID -> assigned roles
+    const userRolesMap = new Map<number, Array<{ id: number; name: string; site_id: string | null }>>();
+    userRoleLinks?.forEach((link: any) => {
+        const role = rolesMap.get(link.A);
+        if (role) {
+            const existingRoles = userRolesMap.get(link.B) || [];
+            existingRoles.push(role);
+            userRolesMap.set(link.B, existingRoles);
+        }
+    });
+
+    const collaborators = filteredUsers
         .map((user) => {
             const userId = user.authId || "";
             const isOrgAdmin = orgAdminSet.has(userId) && user.role === "admin";
+            const assignedRoles = userRolesMap.get(user.id) || [];
             return {
                 ...user,
                 site_role: isOrgAdmin ? "org_admin" : user.role,
                 is_org_admin: isOrgAdmin,
                 joined_site_at: userJoinDates.get(userId) || null,
+                assigned_roles: assignedRoles,
             };
         })
         .sort((a, b) => {
