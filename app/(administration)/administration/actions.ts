@@ -723,22 +723,28 @@ export async function updateUser(userId: string, updates: any) {
         .select("organization_id")
         .eq("user_id", userId);
 
-    if (!userOrgs || userOrgs.length === 0) {
-        throw new Error("User not found in any organization");
-    }
+    const userOrgIds = userOrgs?.map((uo: any) => uo.organization_id) || [];
 
-    const userOrgIds = userOrgs.map((uo: any) => uo.organization_id);
-
-    // Check if user has access to any of this user's organizations
-    if (
-        !userContext?.canAccessAllOrganizations &&
-        !userContext?.organizationIds?.some((id: string) =>
-            userOrgIds.includes(id)
-        )
-    ) {
-        throw new Error(
-            "Unauthorized: You can only update users in organizations you belong to",
-        );
+    // If user has no organizations, only superadmins can update them
+    // (this allows assigning organizations to users who don't have one yet)
+    if (userOrgIds.length === 0) {
+        if (!userContext?.canAccessAllOrganizations) {
+            throw new Error(
+                "Unauthorized: Only superadmins can update users without organizations",
+            );
+        }
+    } else {
+        // Check if user has access to any of this user's organizations
+        if (
+            !userContext?.canAccessAllOrganizations &&
+            !userContext?.organizationIds?.some((id: string) =>
+                userOrgIds.includes(id)
+            )
+        ) {
+            throw new Error(
+                "Unauthorized: You can only update users in organizations you belong to",
+            );
+        }
     }
 
     // Check if user is trying to update to superadmin role without permission

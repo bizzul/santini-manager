@@ -1,5 +1,4 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_OPTIONS } from "./cookie";
 
@@ -74,6 +73,35 @@ export async function updateSession(request: NextRequest) {
     error,
   } = await supabase.auth.getUser();
 
+  // Handle auth errors first (corrupted/invalid session)
+  if (error) {
+    console.error("[Middleware] Auth error:", error.message);
+    
+    // Clear corrupted session cookies and redirect to login
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    const response = NextResponse.redirect(url);
+    
+    // Delete the corrupted session cookies
+    const cookiesToDelete = [
+      COOKIE_NAME,
+      `${COOKIE_NAME}-code-verifier`,
+    ];
+    
+    // Copy over any Supabase response cookies first
+    const supacookies = supabaseResponse.cookies.getAll();
+    supacookies.forEach((c) => response.cookies.set(c));
+    
+    // Then delete the corrupted ones
+    cookiesToDelete.forEach((name) => {
+      response.cookies.delete(name);
+      // Also try with domain variants
+      response.cookies.delete({ name, domain: COOKIE_OPTIONS.domain });
+    });
+    
+    return response;
+  }
+
   if (!user) {
     // no user, redirect to login page
     const url = request.nextUrl.clone();
@@ -85,30 +113,6 @@ export async function updateSession(request: NextRequest) {
     supacookies.forEach((c) => response.cookies.set(c));
 
     return response;
-  }
-
-  if (error) {
-    try {
-      const cookieStore = await cookies();
-      const hasCookie = cookieStore.has(COOKIE_NAME);
-
-      // corrupted session - delete the cookie
-      if (hasCookie) {
-        const cookiesToDelete = [
-          `${COOKIE_NAME}`,
-          `${COOKIE_NAME}-code-verifier`,
-        ];
-
-        const res = NextResponse.next({ request });
-        const supacookies = supabaseResponse.cookies.getAll();
-        supacookies.forEach((c) => res.cookies.set(c));
-        cookiesToDelete.forEach((c) => res.cookies.delete(c));
-        return res;
-      }
-    } catch {
-      // If cookies() fails, continue without cookie cleanup
-      // This can happen in certain edge cases, especially on Vercel
-    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
