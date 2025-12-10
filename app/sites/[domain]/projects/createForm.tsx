@@ -1,8 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { SubmitHandler, useForm } from "react-hook-form";
+import { SubmitHandler, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "next/navigation";
 
 import {
@@ -23,7 +23,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
@@ -50,6 +51,9 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingCode, setIsLoadingCode] = useState(false);
+  const [taskType, setTaskType] = useState<string>("LAVORO");
+  const [isOfferKanban, setIsOfferKanban] = useState(false);
   const params = useParams();
   const domain = params?.domain as string;
 
@@ -76,6 +80,56 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
       kanbanId: kanbanId ?? undefined,
     },
   });
+
+  // Watch kanbanId changes
+  const selectedKanbanId = useWatch({
+    control: form.control,
+    name: "kanbanId",
+  });
+
+  // Generate code based on kanban
+  const generateCode = useCallback(
+    async (targetKanbanId?: number) => {
+      const kanbanToUse = targetKanbanId || selectedKanbanId || kanbanId;
+      if (!kanbanToUse && !domain) return;
+
+      setIsLoadingCode(true);
+      try {
+        const params = new URLSearchParams();
+        if (kanbanToUse) params.set("kanbanId", String(kanbanToUse));
+        else if (domain) params.set("domain", domain);
+
+        const res = await fetch(
+          `/api/tasks/generate-code?${params.toString()}`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          form.setValue("unique_code", data.code);
+          setIsOfferKanban(data.isOfferKanban);
+          setTaskType(data.taskType);
+        }
+      } catch (error) {
+        console.error("Error generating code:", error);
+      } finally {
+        setIsLoadingCode(false);
+      }
+    },
+    [selectedKanbanId, kanbanId, domain, form]
+  );
+
+  // Generate code on mount if kanbanId is provided
+  useEffect(() => {
+    if (kanbanId) {
+      generateCode(kanbanId);
+    }
+  }, [kanbanId]);
+
+  // Generate code when kanban selection changes
+  useEffect(() => {
+    if (selectedKanbanId && !kanbanId) {
+      generateCode(selectedKanbanId);
+    }
+  }, [selectedKanbanId, kanbanId]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (
     formData
@@ -119,9 +173,41 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
           name="unique_code"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Codice Identificativo</FormLabel>
+              <div className="flex items-center gap-2">
+                <FormLabel>Codice Identificativo</FormLabel>
+                {isOfferKanban && (
+                  <Badge variant="secondary" className="text-xs">
+                    {taskType}
+                  </Badge>
+                )}
+              </div>
               <FormControl>
-                <Input {...field} disabled={isSubmitting} />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      {...field}
+                      className={isLoadingCode ? "pr-10" : ""}
+                      disabled={isSubmitting || isLoadingCode}
+                    />
+                    {isLoadingCode && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => generateCode()}
+                    disabled={isSubmitting || isLoadingCode}
+                    title="Rigenera codice"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${
+                        isLoadingCode ? "animate-spin" : ""
+                      }`}
+                    />
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -204,7 +290,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
         )}
 
         {/* Use activeProducts if available, otherwise fall back to products */}
-        {((data.activeProducts && data.activeProducts.length > 0) || 
+        {((data.activeProducts && data.activeProducts.length > 0) ||
           (data.products && data.products.length > 0)) && (
           <FormField
             name="productId"
@@ -218,14 +304,12 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                     onValueChange={(value) => field.onChange(Number(value))}
                     placeholder="Cerca prodotto..."
                     disabled={isSubmitting}
-                    options={
-                      (data.activeProducts || data.products || []).map(
-                        (p: SellProduct) => ({
-                          value: p.id,
-                          label: `${p.name} - ${p.type}`,
-                        })
-                      )
-                    }
+                    options={(data.activeProducts || data.products || []).map(
+                      (p: SellProduct) => ({
+                        value: p.id,
+                        label: `${p.name} - ${p.type}`,
+                      })
+                    )}
                     emptyMessage="Nessun prodotto trovato."
                   />
                 </FormControl>
@@ -363,7 +447,11 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       {...field}
                       type="number"
                       value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
                       disabled={isSubmitting}
                     />
                   </FormControl>

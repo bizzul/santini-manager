@@ -147,10 +147,16 @@ export async function POST(request: NextRequest) {
 
         // Validate required headers
         const requiredHeaders = ["COD_INT", "CATEGORIA", "SOTTOCATEGORIA"];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        const missingHeaders = requiredHeaders.filter((h) =>
+            !headers.includes(h)
+        );
         if (missingHeaders.length > 0) {
             return NextResponse.json(
-                { error: `Colonne mancanti nel CSV: ${missingHeaders.join(", ")}` },
+                {
+                    error: `Colonne mancanti nel CSV: ${
+                        missingHeaders.join(", ")
+                    }`,
+                },
                 { status: 400 },
             );
         }
@@ -172,6 +178,26 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Get existing categories for this site
+        const { data: existingCategories, error: catFetchError } =
+            await supabase
+                .from("sellproduct_categories")
+                .select("id, name")
+                .eq("site_id", siteId);
+
+        if (catFetchError) {
+            console.error("Error fetching categories:", catFetchError);
+            return NextResponse.json(
+                { error: "Errore nel recupero delle categorie" },
+                { status: 500 },
+            );
+        }
+
+        // Create a map of category name -> id
+        const categoryMap = new Map<string, number>(
+            existingCategories?.map((c) => [c.name.toLowerCase(), c.id]) || [],
+        );
+
         const existingCodes = new Set(
             existingProducts?.map((p) => p.internal_code) || [],
         );
@@ -184,6 +210,43 @@ export async function POST(request: NextRequest) {
             errors: [],
             duplicates: [],
         };
+
+        // Collect unique category names from CSV that don't exist
+        const categoriesToCreate = new Set<string>();
+
+        // First pass: identify missing categories
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const product = mapRowToSellProduct(headers, row);
+            if (product.name && !categoryMap.has(product.name.toLowerCase())) {
+                categoriesToCreate.add(product.name);
+            }
+        }
+
+        // Create missing categories
+        if (categoriesToCreate.size > 0) {
+            const newCategories = Array.from(categoriesToCreate).map((
+                name,
+            ) => ({
+                site_id: siteId,
+                name: name,
+            }));
+
+            const { data: createdCats, error: createCatError } = await supabase
+                .from("sellproduct_categories")
+                .insert(newCategories)
+                .select("id, name");
+
+            if (createCatError) {
+                console.error("Error creating categories:", createCatError);
+                // Non-fatal: continue with import, categories will be null
+            } else if (createdCats) {
+                // Add newly created categories to the map
+                createdCats.forEach((c) => {
+                    categoryMap.set(c.name.toLowerCase(), c.id);
+                });
+            }
+        }
 
         // Process rows in batches for better performance
         const BATCH_SIZE = 50;
@@ -225,6 +288,12 @@ export async function POST(request: NextRequest) {
                     );
                     result.skipped++;
                     continue;
+                }
+
+                // Set category_id based on category name
+                const categoryId = categoryMap.get(product.name.toLowerCase());
+                if (categoryId) {
+                    product.category_id = categoryId;
                 }
 
                 // Add to existing codes set to prevent duplicates within the same import
@@ -308,4 +377,3 @@ export async function POST(request: NextRequest) {
         );
     }
 }
-

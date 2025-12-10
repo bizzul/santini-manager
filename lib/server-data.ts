@@ -201,17 +201,52 @@ export const fetchCategories = cache(async (siteId: string) => {
  */
 export const fetchSellProducts = cache(async (siteId: string) => {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data: products, error } = await supabase
         .from("SellProduct")
-        .select("*")
+        .select("*, category:category_id(id, name, color)")
         .eq("site_id", siteId)
-        .eq("active", true);
+        .order("name", { ascending: true });
 
     if (error) {
         log.error("Error fetching sell products:", error);
         return [];
     }
-    return data || [];
+
+    if (!products || products.length === 0) {
+        return [];
+    }
+
+    // Fetch product-related actions with user info
+    const productIds = products.map((p) => p.id);
+    const { data: actions, error: actionsError } = await supabase
+        .from("Action")
+        .select(`
+            *,
+            User:user_id (id, given_name, family_name, picture, initials)
+        `)
+        .or(`data->sellProductId.in.(${
+            productIds.join(",")
+        }),data->>sellProductId.in.(${productIds.join(",")})`)
+        .order("createdAt", { ascending: false });
+
+    if (!actionsError && actions) {
+        // Group actions by sellProductId and get the most recent one
+        const actionsByProduct = new Map<number, any>();
+        actions.forEach((action) => {
+            const sellProductId = action.data?.sellProductId;
+            if (sellProductId && !actionsByProduct.has(sellProductId)) {
+                actionsByProduct.set(sellProductId, action);
+            }
+        });
+
+        // Merge products with their last action
+        return products.map((product) => ({
+            ...product,
+            lastAction: actionsByProduct.get(product.id) || null,
+        }));
+    }
+
+    return products.map((p) => ({ ...p, lastAction: null }));
 });
 
 /**
@@ -790,19 +825,28 @@ export const fetchCollaborators = cache(async (siteId: string) => {
         const userDbIdsAlt = filteredUsersAlt.map((user) => user.id);
 
         // Fetch user roles from _RolesToUser junction table
-        const { data: userRoleLinksAlt, error: rolesLinkErrorAlt } = await supabase
-            .from("_RolesToUser")
-            .select("A, B")
-            .in("B", userDbIdsAlt);
+        const { data: userRoleLinksAlt, error: rolesLinkErrorAlt } =
+            await supabase
+                .from("_RolesToUser")
+                .select("A, B")
+                .in("B", userDbIdsAlt);
 
         if (rolesLinkErrorAlt) {
-            log.error("Error fetching user role links (alt):", rolesLinkErrorAlt.message);
+            log.error(
+                "Error fetching user role links (alt):",
+                rolesLinkErrorAlt.message,
+            );
         }
 
         // Get all role IDs and fetch role details
-        const roleIdsAlt = Array.from(new Set(userRoleLinksAlt?.map((link: any) => link.A) || []));
-        let rolesMapAlt = new Map<number, { id: number; name: string; site_id: string | null }>();
-        
+        const roleIdsAlt = Array.from(
+            new Set(userRoleLinksAlt?.map((link: any) => link.A) || []),
+        );
+        let rolesMapAlt = new Map<
+            number,
+            { id: number; name: string; site_id: string | null }
+        >();
+
         if (roleIdsAlt.length > 0) {
             const { data: rolesAlt, error: rolesErrorAlt } = await supabase
                 .from("Roles")
@@ -818,7 +862,10 @@ export const fetchCollaborators = cache(async (siteId: string) => {
         }
 
         // Create a map of user DB ID -> assigned roles
-        const userRolesMapAlt = new Map<number, Array<{ id: number; name: string; site_id: string | null }>>();
+        const userRolesMapAlt = new Map<
+            number,
+            Array<{ id: number; name: string; site_id: string | null }>
+        >();
         userRoleLinksAlt?.forEach((link: any) => {
             const role = rolesMapAlt.get(link.A);
             if (role) {
@@ -881,9 +928,14 @@ export const fetchCollaborators = cache(async (siteId: string) => {
     }
 
     // Get all role IDs and fetch role details
-    const roleIds = Array.from(new Set(userRoleLinks?.map((link: any) => link.A) || []));
-    let rolesMap = new Map<number, { id: number; name: string; site_id: string | null }>();
-    
+    const roleIds = Array.from(
+        new Set(userRoleLinks?.map((link: any) => link.A) || []),
+    );
+    let rolesMap = new Map<
+        number,
+        { id: number; name: string; site_id: string | null }
+    >();
+
     if (roleIds.length > 0) {
         const { data: roles, error: rolesError } = await supabase
             .from("Roles")
@@ -899,7 +951,10 @@ export const fetchCollaborators = cache(async (siteId: string) => {
     }
 
     // Create a map of user DB ID -> assigned roles
-    const userRolesMap = new Map<number, Array<{ id: number; name: string; site_id: string | null }>>();
+    const userRolesMap = new Map<
+        number,
+        Array<{ id: number; name: string; site_id: string | null }>
+    >();
     userRoleLinks?.forEach((link: any) => {
         const role = rolesMap.get(link.A);
         if (role) {

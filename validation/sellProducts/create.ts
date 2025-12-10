@@ -1,12 +1,13 @@
 import { z } from "zod";
 
 export const validation = z.object({
-  name: z.string().min(1, {
+  category: z.string().min(1, {
     message: "Categoria richiesta",
   }),
-  type: z.string().min(1, {
-    message: "Sottocategoria richiesta",
+  name: z.string().min(1, {
+    message: "Nome prodotto richiesto",
   }),
+  type: z.string().optional(),
   description: z.string().optional(),
   price_list: z.boolean().default(false),
   image_url: z.string().url({ message: "URL immagine non valido" }).optional().or(z.literal("")),

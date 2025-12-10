@@ -8,17 +8,18 @@ import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
 export async function editSellProductAction(
-  formData: SellProduct,
+  formData: any,
   id: number,
   domain?: string,
+  siteIdParam?: string,
 ) {
   const result = validation.safeParse(formData);
   const userContext = await getUserContext();
   let userId = null;
-  let siteId = null;
+  let siteId = siteIdParam || null;
 
-  // Get site information
-  if (domain) {
+  // Get site information from domain if not provided
+  if (!siteId && domain) {
     try {
       const siteResult = await getSiteData(domain);
       if (siteResult?.data) {
@@ -37,14 +38,30 @@ export async function editSellProductAction(
     try {
       const supabase = await createClient();
 
+      // Trova category_id dal nome della categoria
+      let categoryId = null;
+      if (formData.category && siteId) {
+        const { data: categoryData } = await supabase
+          .from("sellproduct_categories")
+          .select("id")
+          .eq("site_id", siteId)
+          .eq("name", formData.category)
+          .single();
+
+        if (categoryData) {
+          categoryId = categoryData.id;
+        }
+      }
+
       const updateData: any = {
         name: formData.name,
-        type: formData.type,
+        type: formData.type || null,
         description: formData.description || null,
         price_list: formData.price_list ?? false,
         image_url: formData.image_url || null,
         doc_url: formData.doc_url || null,
         active: formData.active,
+        category_id: categoryId,
       };
 
       if (siteId) {

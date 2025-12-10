@@ -153,6 +153,8 @@ const Column = ({
     data: {
       columnId: column.id,
       columnIdentifier: column.identifier,
+      columnType: column.column_type || "normal",
+      columnTitle: column.title,
     },
     disabled: isPreviewMode,
   });
@@ -347,13 +349,20 @@ function KanbanBoard({
     to: any;
   } | null>(null);
 
-  // State for IMBALLAGGIO confirmation
-  const [showImballaggioConfirm, setShowImballaggioConfirm] = useState(false);
-  const [pendingImballaggioMove, setPendingImballaggioMove] = useState<{
+  // State for move confirmation (IMBALLAGGIO and special columns)
+  const [showMoveConfirm, setShowMoveConfirm] = useState(false);
+  const [pendingMove, setPendingMove] = useState<{
     cardId: number;
     columnId: number;
     columnIdentifier: string;
-    isToImballaggio: boolean;
+    columnType: string;
+    columnTitle: string;
+    confirmationType:
+      | "imballaggio"
+      | "won"
+      | "lost"
+      | "production"
+      | "invoicing";
   } | null>(null);
 
   // Optimize moveCard function
@@ -606,24 +615,48 @@ function KanbanBoard({
     // Extract column info from droppable
     const columnId = overData?.columnId;
     const columnIdentifier = overData?.columnIdentifier;
+    const columnType = overData?.columnType || "normal";
+    const columnTitle = overData?.columnTitle || columnIdentifier;
 
     if (!columnId || !columnIdentifier) return;
 
     // Skip if card is already in this column
     if (activeData?.fromColumn === columnIdentifier) return;
 
-    // Check if moving to or from IMBALLAGGIO - show confirmation
-    if (
+    // Check if moving to special columns - show confirmation
+    const specialColumnTypes = ["won", "lost", "production", "invoicing"];
+    const isSpecialColumn = specialColumnTypes.includes(columnType);
+    const isImballaggio =
       columnIdentifier.includes("IMBALL") ||
-      activeData?.fromColumn?.includes("IMBALL")
-    ) {
-      setPendingImballaggioMove({
+      activeData?.fromColumn?.includes("IMBALL");
+
+    if (isSpecialColumn) {
+      setPendingMove({
         cardId,
         columnId,
         columnIdentifier,
-        isToImballaggio: columnIdentifier.includes("IMBALL"),
+        columnType,
+        columnTitle,
+        confirmationType: columnType as
+          | "won"
+          | "lost"
+          | "production"
+          | "invoicing",
       });
-      setShowImballaggioConfirm(true);
+      setShowMoveConfirm(true);
+      return;
+    }
+
+    if (isImballaggio) {
+      setPendingMove({
+        cardId,
+        columnId,
+        columnIdentifier,
+        columnType,
+        columnTitle,
+        confirmationType: "imballaggio",
+      });
+      setShowMoveConfirm(true);
       return;
     }
 
@@ -631,22 +664,60 @@ function KanbanBoard({
     await moveCard(cardId, columnId, columnIdentifier);
   };
 
-  // Handle IMBALLAGGIO move confirmation
-  const handleImballaggioConfirm = async () => {
-    if (pendingImballaggioMove) {
+  // Handle move confirmation
+  const handleMoveConfirm = async () => {
+    if (pendingMove) {
       await moveCard(
-        pendingImballaggioMove.cardId,
-        pendingImballaggioMove.columnId,
-        pendingImballaggioMove.columnIdentifier
+        pendingMove.cardId,
+        pendingMove.columnId,
+        pendingMove.columnIdentifier
       );
-      setShowImballaggioConfirm(false);
-      setPendingImballaggioMove(null);
+      setShowMoveConfirm(false);
+      setPendingMove(null);
     }
   };
 
-  const handleImballaggioCancel = () => {
-    setShowImballaggioConfirm(false);
-    setPendingImballaggioMove(null);
+  const handleMoveCancel = () => {
+    setShowMoveConfirm(false);
+    setPendingMove(null);
+  };
+
+  // Get confirmation message based on type
+  const getConfirmationMessage = () => {
+    if (!pendingMove) return { title: "", description: "" };
+
+    switch (pendingMove.confirmationType) {
+      case "won":
+        return {
+          title: "🎉 Conferma Offerta Vinta",
+          description: `Stai per spostare questo progetto in "${pendingMove.columnTitle}". L'offerta verrà marcata come vinta e verrà creata una copia nella kanban avor.`,
+        };
+      case "lost":
+        return {
+          title: "❌ Conferma Offerta Persa",
+          description: `Stai per spostare questo progetto in "${pendingMove.columnTitle}". L'offerta verrà marcata come persa e sarà archiviata automaticamente.`,
+        };
+      case "production":
+        return {
+          title: "🔧 Conferma Invio a Produzione",
+          description: `Stai per spostare questo progetto in "${pendingMove.columnTitle}". Il progetto verrà trasferito nella kanban di produzione corrispondente al tipo di prodotto.`,
+        };
+      case "invoicing":
+        return {
+          title: "📄 Conferma Fatturazione",
+          description: `Stai per spostare questo progetto in "${pendingMove.columnTitle}". Il progetto verrà trasferito nella kanban fatture e verrà generato un nuovo codice fattura.`,
+        };
+      case "imballaggio":
+        return {
+          title: "📦 Conferma Spostamento Imballaggio",
+          description: `Stai per spostare questo elemento in "${pendingMove.columnTitle}".`,
+        };
+      default:
+        return {
+          title: "Conferma Spostamento",
+          description: `Stai per spostare questo progetto in "${pendingMove.columnTitle}".`,
+        };
+    }
   };
 
   // Function to determine if text should be black or white based on background color
@@ -688,17 +759,8 @@ function KanbanBoard({
             {kanban.title.toUpperCase()}
           </h1>
           <div className="flex justify-between items-center gap-4 max-w-[1000px]">
-            <h4
-              className={`text-foreground text-sm font-semibold cursor-pointer hover:underline transition-all duration-300 ${
-                isTimelineOpen ? "opacity-50" : "opacity-100"
-              }`}
-              onClick={() => setIsTimelineOpen(!isTimelineOpen)}
-            >
-              Time machine
-            </h4>
-
             <div
-              className={`top-36 left-76 fixed flex justify-start gap-2 ${
+              className={`flex justify-start gap-2 ${
                 isTimelineOpen ? "opacity-0" : "opacity-100"
               } transition-all duration-300`}
             >
@@ -719,22 +781,32 @@ function KanbanBoard({
               </button>
             </div>
 
-            <KanbanManagementModal
-              kanban={kanban}
-              onSave={handleSaveKanban}
-              mode="edit"
-              hasTasks={tasks.length > 0}
-              domain={domain}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs bg-background hover:bg-accent"
-                >
-                  Modifica Kanban
-                </Button>
-              }
-            />
+            <div className="flex items-center gap-4">
+              <KanbanManagementModal
+                kanban={kanban}
+                onSave={handleSaveKanban}
+                mode="edit"
+                hasTasks={tasks.length > 0}
+                domain={domain}
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs bg-background hover:bg-accent"
+                  >
+                    Modifica Kanban
+                  </Button>
+                }
+              />
+              <h4
+                className={`text-foreground text-sm font-semibold cursor-pointer hover:underline transition-all duration-300 ${
+                  isTimelineOpen ? "opacity-50" : "opacity-100"
+                }`}
+                onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+              >
+                Time machine
+              </h4>
+            </div>
           </div>
           {isTimelineOpen && (
             <div className="max-w-[1000px] mx-auto mt-2">
@@ -814,26 +886,22 @@ function KanbanBoard({
         </div>
       )}
 
-      {/* IMBALLAGGIO Move Confirmation Dialog */}
-      <AlertDialog
-        open={showImballaggioConfirm}
-        onOpenChange={setShowImballaggioConfirm}
-      >
+      {/* Move Confirmation Dialog */}
+      <AlertDialog open={showMoveConfirm} onOpenChange={setShowMoveConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Conferma Spostamento</AlertDialogTitle>
+            <AlertDialogTitle>
+              {getConfirmationMessage().title}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Sei sicuro di voler{" "}
-              {pendingImballaggioMove?.isToImballaggio
-                ? "spostare questo elemento in imballaggio?"
-                : "spostare questo elemento dall'imballaggio?"}
+              {getConfirmationMessage().description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleImballaggioCancel}>
+            <AlertDialogCancel onClick={handleMoveCancel}>
               Annulla
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleImballaggioConfirm}>
+            <AlertDialogAction onClick={handleMoveConfirm}>
               Conferma
             </AlertDialogAction>
           </AlertDialogFooter>

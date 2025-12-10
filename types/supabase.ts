@@ -13,8 +13,8 @@ export interface User {
 }
 
 // Task related types
-export type TaskType = 'OFFERTA' | 'LAVORO' | 'FATTURA';
-export type DisplayMode = 'normal' | 'small_green' | 'small_red';
+export type TaskType = "OFFERTA" | "LAVORO" | "FATTURA";
+export type DisplayMode = "normal" | "small_green" | "small_red";
 
 export interface Task {
     id: number;
@@ -139,17 +139,29 @@ export interface Product_category {
     updated_at?: string;
 }
 
+export interface SellProductCategory {
+    id: number;
+    site_id: string;
+    name: string;
+    description?: string;
+    color?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface SellProduct {
     id: number;
-    name?: string;           // Categoria
-    type?: string;           // Sottocategoria
-    description?: string;    // Descrizione
-    price_list?: boolean;    // Listino prezzi (checkbox)
-    image_url?: string;      // Immagine
-    doc_url?: string;        // DOC (link a cartella documenti)
-    internal_code?: string;  // Codice interno per import CSV
+    name?: string; // Nome del prodotto
+    type?: string; // Sottocategoria
+    description?: string; // Descrizione
+    price_list?: boolean; // Listino prezzi (checkbox)
+    image_url?: string; // Immagine
+    doc_url?: string; // DOC (link a cartella documenti)
+    internal_code?: string; // Codice interno per import CSV
     active?: boolean;
     site_id?: string;
+    category_id?: number; // Riferimento a sellproduct_categories
+    category?: SellProductCategory; // Relazione
     created_at?: string;
     updated_at?: string;
 }
@@ -197,12 +209,19 @@ export interface Kanban {
     isOfferKanban?: boolean; // Alternative property name
     target_work_kanban_id?: number;
     targetWorkKanbanId?: number; // Alternative property name
+    // Nuovi campi per routing produzione/fatturazione
+    is_work_kanban?: boolean;
+    isWorkKanban?: boolean; // Alternative property name
+    is_production_kanban?: boolean;
+    isProductionKanban?: boolean; // Alternative property name
+    target_invoice_kanban_id?: number;
+    targetInvoiceKanbanId?: number; // Alternative property name
     created_at?: string;
     updated_at?: string;
 }
 
 // Tipo colonna kanban
-export type ColumnType = 'normal' | 'won' | 'lost';
+export type ColumnType = "normal" | "won" | "lost" | "production" | "invoicing";
 
 export interface KanbanColumn {
     id: number;

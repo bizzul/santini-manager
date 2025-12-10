@@ -13,13 +13,17 @@ export async function saveKanban(kanban: {
   // Nuovi campi per sistema offerte
   is_offer_kanban?: boolean;
   target_work_kanban_id?: number | null;
+  // Nuovi campi per routing produzione/fatturazione
+  is_work_kanban?: boolean;
+  is_production_kanban?: boolean;
+  target_invoice_kanban_id?: number | null;
   columns: {
     id?: number;
     title: string;
     identifier: string;
     position: number;
     icon?: string;
-    column_type?: "normal" | "won" | "lost";
+    column_type?: "normal" | "won" | "lost" | "production" | "invoicing";
   }[];
   skipColumnUpdates?: boolean; // Flag per saltare l'aggiornamento delle colonne
 }, domain?: string) {
@@ -71,6 +75,10 @@ export async function saveKanban(kanban: {
         // Nuovi campi per sistema offerte
         is_offer_kanban: kanban.is_offer_kanban || false,
         target_work_kanban_id: kanban.target_work_kanban_id || null,
+        // Nuovi campi per routing produzione/fatturazione
+        is_work_kanban: kanban.is_work_kanban || false,
+        is_production_kanban: kanban.is_production_kanban || false,
+        target_invoice_kanban_id: kanban.target_invoice_kanban_id || null,
       };
 
       if (siteId) {
@@ -113,6 +121,10 @@ export async function saveKanban(kanban: {
         // Nuovi campi per sistema offerte
         is_offer_kanban: kanban.is_offer_kanban || false,
         target_work_kanban_id: kanban.target_work_kanban_id || null,
+        // Nuovi campi per routing produzione/fatturazione
+        is_work_kanban: kanban.is_work_kanban || false,
+        is_production_kanban: kanban.is_production_kanban || false,
+        target_invoice_kanban_id: kanban.target_invoice_kanban_id || null,
       };
 
       if (siteId) {

@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, GripVertical, FileCode, Archive } from "lucide-react";
+import { Loader2, GripVertical, FileCode, Archive, Route } from "lucide-react";
 
 interface CodeTemplatesModalProps {
   siteId: string;
@@ -184,6 +184,14 @@ export default function CodeTemplatesModal({
     enabled: true,
     days: 7,
   });
+  // Stato per routing produzione
+  const [productCategories, setProductCategories] = useState<string[]>([]);
+  const [productionKanbans, setProductionKanbans] = useState<
+    { id: number; title: string }[]
+  >([]);
+  const [productionRouting, setProductionRouting] = useState<
+    Record<string, number>
+  >({});
 
   useEffect(() => {
     if (open) {
@@ -208,6 +216,17 @@ export default function CodeTemplatesModal({
       if (archiveRes.ok) {
         const data = await archiveRes.json();
         setArchiveConfig(data);
+      }
+
+      // Carica dati routing produzione
+      const routingRes = await fetch(
+        `/api/settings/production-routing?siteId=${siteId}`
+      );
+      if (routingRes.ok) {
+        const data = await routingRes.json();
+        setProductCategories(data.categories || []);
+        setProductionKanbans(data.productionKanbans || []);
+        setProductionRouting(data.routing || {});
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -273,7 +292,13 @@ export default function CodeTemplatesModal({
         body: JSON.stringify({ siteId, config: archiveConfig }),
       });
 
-      if (templatesRes.ok && archiveRes.ok) {
+      const routingRes = await fetch(`/api/settings/production-routing`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteId, routing: productionRouting }),
+      });
+
+      if (templatesRes.ok && archiveRes.ok && routingRes.ok) {
         toast.success("Impostazioni salvate con successo");
         setOpen(false);
       } else {
@@ -320,20 +345,27 @@ export default function CodeTemplatesModal({
           </div>
         ) : (
           <Tabs defaultValue="templates" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-white/10">
+            <TabsList className="grid w-full grid-cols-3 bg-white/10">
               <TabsTrigger
                 value="templates"
-                className="data-[state=active]:bg-white/20 text-white"
+                className="data-[state=active]:bg-white/20 text-white text-xs"
               >
-                <FileCode className="h-4 w-4 mr-2" />
-                Template Codici
+                <FileCode className="h-4 w-4 mr-1" />
+                Codici
+              </TabsTrigger>
+              <TabsTrigger
+                value="routing"
+                className="data-[state=active]:bg-white/20 text-white text-xs"
+              >
+                <Route className="h-4 w-4 mr-1" />
+                Routing
               </TabsTrigger>
               <TabsTrigger
                 value="archive"
-                className="data-[state=active]:bg-white/20 text-white"
+                className="data-[state=active]:bg-white/20 text-white text-xs"
               >
-                <Archive className="h-4 w-4 mr-2" />
-                Auto-Archiviazione
+                <Archive className="h-4 w-4 mr-1" />
+                Archiviazione
               </TabsTrigger>
             </TabsList>
 
@@ -428,6 +460,108 @@ export default function CodeTemplatesModal({
                   </Card>
                 ))}
               </div>
+            </TabsContent>
+
+            <TabsContent value="routing" className="mt-4">
+              <Card className="bg-white/5 border-white/20">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center gap-2">
+                    <Route className="h-5 w-5" />
+                    Routing Produzione
+                  </CardTitle>
+                  <CardDescription className="text-white/60">
+                    Configura quale kanban di produzione usare per ogni
+                    categoria di prodotto. Quando una task passa in "Produzione"
+                    dalla kanban Avor, verrà indirizzata alla kanban corretta.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {productCategories.length === 0 ? (
+                    <div className="text-center py-8 text-white/50">
+                      <p>Nessuna categoria prodotto trovata.</p>
+                      <p className="text-sm mt-2">
+                        Aggiungi dei prodotti con categoria per configurare il
+                        routing.
+                      </p>
+                    </div>
+                  ) : productionKanbans.length === 0 ? (
+                    <div className="text-center py-8 text-white/50">
+                      <p>Nessuna kanban di produzione trovata.</p>
+                      <p className="text-sm mt-2">
+                        Crea una kanban e abilitala come "Kanban Produzione" per
+                        configurare il routing.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {productCategories.map((category) => (
+                        <div
+                          key={category}
+                          className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge className="bg-orange-500/20 text-orange-200 border-orange-400/50">
+                              {category}
+                            </Badge>
+                          </div>
+                          <Select
+                            value={
+                              productionRouting[category]?.toString() || ""
+                            }
+                            onValueChange={(value) => {
+                              if (value) {
+                                setProductionRouting((prev) => ({
+                                  ...prev,
+                                  [category]: parseInt(value),
+                                }));
+                              } else {
+                                setProductionRouting((prev) => {
+                                  const newRouting = { ...prev };
+                                  delete newRouting[category];
+                                  return newRouting;
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-[200px] bg-white/10 border-white/30 text-white">
+                              <SelectValue placeholder="Seleziona kanban..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {productionKanbans.map((k) => (
+                                <SelectItem key={k.id} value={k.id.toString()}>
+                                  {k.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Separator className="bg-white/10" />
+
+                  <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                    <h4 className="font-semibold text-white mb-3">
+                      Come funziona il routing
+                    </h4>
+                    <ul className="space-y-2 text-sm text-white/70">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400">1.</span>
+                        Task in kanban "Avor" va in colonna "Produzione"
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400">2.</span>
+                        Sistema legge la categoria del prodotto associato
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-400">3.</span>
+                        Task viene spostata nella kanban produzione configurata
+                      </li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="archive" className="mt-4">

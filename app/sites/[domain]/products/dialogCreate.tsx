@@ -13,14 +13,18 @@ import CreateProductForm from "./createProductForm";
 
 type Props = {
   domain: string;
+  siteId: string;
 };
 
-function DialogCreate({ domain }: Props) {
+function DialogCreate({ domain, siteId }: Props) {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
       <DialogTrigger asChild>
-        <Button onClick={() => setOpen(true)} className="shrink-0 whitespace-nowrap">
+        <Button
+          onClick={() => setOpen(true)}
+          className="shrink-0 whitespace-nowrap"
+        >
           Aggiungi prodotto
         </Button>
       </DialogTrigger>
@@ -29,7 +33,11 @@ function DialogCreate({ domain }: Props) {
           <DialogTitle>Crea prodotto</DialogTitle>
           <DialogDescription>Crea un prodotto nuovo</DialogDescription>
         </DialogHeader>
-        <CreateProductForm handleClose={() => setOpen(false)} domain={domain} />
+        <CreateProductForm
+          handleClose={() => setOpen(false)}
+          domain={domain}
+          siteId={siteId}
+        />
       </DialogContent>
     </Dialog>
   );

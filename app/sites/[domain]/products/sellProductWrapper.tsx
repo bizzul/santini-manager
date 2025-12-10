@@ -8,9 +8,11 @@ import { SellProduct } from "@/types/supabase";
 const SellProductWrapper = ({
   data,
   domain,
+  siteId,
 }: {
   data: SellProduct[];
   domain: string;
+  siteId: string;
 }) => {
   return (
     <DataTable columns={createColumns(domain)} data={data} domain={domain} />

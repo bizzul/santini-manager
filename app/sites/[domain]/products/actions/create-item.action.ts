@@ -6,14 +6,18 @@ import { validation } from "@/validation/sellProducts/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
-export async function createSellProduct(props: any, domain?: string) {
+export async function createSellProduct(
+  props: any,
+  domain?: string,
+  siteIdParam?: string,
+) {
   const result = validation.safeParse(props);
   const userContext = await getUserContext();
   let userId = null;
-  let siteId = null;
+  let siteId = siteIdParam || null;
 
-  // Get site information
-  if (domain) {
+  // Get site information from domain if not provided
+  if (!siteId && domain) {
     try {
       const siteResult = await getSiteData(domain);
       if (siteResult?.data) {
@@ -31,13 +35,29 @@ export async function createSellProduct(props: any, domain?: string) {
   if (result.success) {
     const supabase = await createClient();
 
+    // Trova category_id dal nome della categoria
+    let categoryId = null;
+    if (props.category && siteId) {
+      const { data: categoryData } = await supabase
+        .from("sellproduct_categories")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("name", props.category)
+        .single();
+
+      if (categoryData) {
+        categoryId = categoryData.id;
+      }
+    }
+
     const insertData: any = {
       name: props.name,
-      type: props.type,
+      type: props.type || null,
       description: props.description || null,
       price_list: props.price_list ?? false,
       image_url: props.image_url || null,
       doc_url: props.doc_url || null,
+      category_id: categoryId,
     };
 
     if (siteId) {
@@ -78,9 +98,13 @@ export async function createSellProduct(props: any, domain?: string) {
   }
 }
 
-export async function createSellProductAction(props: any, domain?: string) {
+export async function createSellProductAction(
+  props: any,
+  domain?: string,
+  siteId?: string,
+) {
   try {
-    const response = await createSellProduct(props, domain);
+    const response = await createSellProduct(props, domain, siteId);
     if (response!.success === true) {
       return revalidatePath("/products");
     }

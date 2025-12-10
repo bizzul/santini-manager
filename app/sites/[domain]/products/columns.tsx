@@ -6,12 +6,44 @@ import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Check, X, Image, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatDistanceToNow } from "date-fns";
+import { it } from "date-fns/locale";
 
-export const createColumns = (domain?: string): ColumnDef<SellProduct>[] => [
+// Extended SellProduct type with lastAction
+type SellProductWithAction = SellProduct & {
+  lastAction?: {
+    createdAt: string;
+    type: string;
+    User?: {
+      given_name: string | null;
+      family_name: string | null;
+      picture: string | null;
+      initials: string | null;
+    };
+  } | null;
+};
+
+export const createColumns = (
+  domain?: string
+): ColumnDef<SellProductWithAction>[] => [
+  {
+    id: "category",
+    accessorFn: (row) => row.category?.name || "-",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Categoria" />
+    ),
+    cell: ({ row }) => <span>{row.original.category?.name || "-"}</span>,
+  },
   {
     accessorKey: "name",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Categoria" />
+      <DataTableColumnHeader column={column} title="Nome" />
     ),
   },
   {
@@ -26,7 +58,10 @@ export const createColumns = (domain?: string): ColumnDef<SellProduct>[] => [
       <DataTableColumnHeader column={column} title="Descrizione" />
     ),
     cell: ({ row }) => (
-      <div className="max-w-[300px] truncate" title={row.original.description || ""}>
+      <div
+        className="max-w-[300px] truncate"
+        title={row.original.description || ""}
+      >
         {row.original.description || "-"}
       </div>
     ),
@@ -88,6 +123,93 @@ export const createColumns = (domain?: string): ColumnDef<SellProduct>[] => [
       );
     },
     size: 80,
+  },
+  {
+    accessorKey: "active",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Attivo" />
+    ),
+    cell: ({ row }) => (
+      <div className="flex items-center justify-start">
+        {row.original.active ? (
+          <Check className="h-4 w-4 text-green-500" />
+        ) : (
+          <X className="h-4 w-4 text-red-500" />
+        )}
+      </div>
+    ),
+    size: 80,
+  },
+  {
+    accessorKey: "lastAction.createdAt",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Ultima modifica" />
+    ),
+    cell: ({ row }) => {
+      const lastAction = row.original.lastAction;
+      if (!lastAction?.createdAt) return "-";
+
+      const date = new Date(lastAction.createdAt);
+      const timeAgo = formatDistanceToNow(date, {
+        addSuffix: true,
+        locale: it,
+      });
+      const fullDate = date.toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-sm text-muted-foreground cursor-help">
+                {timeAgo}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{fullDate}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    },
+  },
+  {
+    accessorKey: "lastAction.User",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Modificato da" />
+    ),
+    cell: ({ row }) => {
+      const lastAction = row.original.lastAction;
+      const user = lastAction?.User;
+
+      if (!user) return "-";
+
+      const displayName =
+        user.given_name && user.family_name
+          ? `${user.given_name} ${user.family_name}`
+          : user.given_name || "Utente";
+
+      // Generate initials from name
+      const initials =
+        user.initials ||
+        (user.given_name && user.family_name
+          ? `${user.given_name.charAt(0)}${user.family_name.charAt(0)}`
+          : user.given_name?.charAt(0) || "U");
+
+      return (
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <span className="text-xs font-medium text-primary">{initials}</span>
+          </div>
+          <span className="text-sm truncate">{displayName}</span>
+        </div>
+      );
+    },
   },
   {
     id: "actions",

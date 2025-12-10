@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import {
   Users,
   Building,
-  Shield,
   Globe,
   Settings,
   Plus,

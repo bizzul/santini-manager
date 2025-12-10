@@ -30,6 +30,7 @@ function DialogEdit({ data, setData, isOpen = false, setOpen, domain }: Props) {
             setOpen(false), setData(null);
           }}
           domain={domain}
+          siteId={data?.site_id}
         />
       </DialogContent>
     </Dialog>

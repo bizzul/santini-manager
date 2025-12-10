@@ -15,8 +15,8 @@ export const list = async (
     const supabase = createClient();
 
     let query = supabase
-      .from("sellProduct")
-      .select("*");
+      .from("SellProduct")
+      .select("*, category:category_id(id, name, color)");
 
     if (filters.q) {
       // Use OR logic for multiple field search
@@ -27,7 +27,7 @@ export const list = async (
 
     // Get total count first
     const { count: items_total } = await supabase
-      .from("sellProduct")
+      .from("SellProduct")
       .select("*", { count: "exact", head: true });
 
     // Apply pagination to main query

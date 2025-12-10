@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Find task with site_id filtering if available
-    // Also get the kanban data to check if it's an offer kanban
+    // Also get the kanban data to check if it's an offer/work/production kanban
     let taskQuery = supabase
       .from("Task")
       .select(`
@@ -58,7 +58,14 @@ export async function POST(req: NextRequest) {
           id,
           identifier,
           is_offer_kanban,
-          target_work_kanban_id
+          target_work_kanban_id,
+          is_work_kanban,
+          is_production_kanban,
+          target_invoice_kanban_id
+        ),
+        sell_product:sellProductId(
+          id,
+          name
         )
       `)
       .eq("id", id);
@@ -129,13 +136,16 @@ export async function POST(req: NextRequest) {
     });
 
     // =====================================================
-    // Logica Sistema Offerte
+    // Logica Sistema Offerte e Routing
     // =====================================================
     let duplicatedTask = null;
+    let movedTask = null;
     let newDisplayMode = task?.display_mode || "normal";
     let autoArchiveAt = null;
 
     const isOfferKanban = task?.kanban?.is_offer_kanban === true;
+    const isWorkKanban = task?.kanban?.is_work_kanban === true;
+    const isProductionKanban = task?.kanban?.is_production_kanban === true;
     const columnType = targetColumn.column_type || "normal";
 
     if (isOfferKanban) {
@@ -231,6 +241,129 @@ export async function POST(req: NextRequest) {
           if (archiveSettings.enabled) {
             autoArchiveAt = calculateAutoArchiveDate(archiveSettings.days);
           }
+        }
+      }
+    }
+
+    // =====================================================
+    // Logica Routing Produzione (Kanban Lavori -> Kanban Produzione)
+    // =====================================================
+    if (isWorkKanban && columnType === "production" && siteId) {
+      console.log("Processing work kanban -> production routing");
+
+      // Ottieni la categoria del prodotto
+      const productCategory = task?.sell_product?.name;
+      console.log("Product category:", productCategory);
+
+      if (productCategory) {
+        // Cerca il routing configurato nelle site_settings
+        const { data: routingSetting } = await supabase
+          .from("site_settings")
+          .select("setting_value")
+          .eq("site_id", siteId)
+          .eq("setting_key", "production_routing")
+          .single();
+
+        const routing = routingSetting?.setting_value || {};
+        const targetProductionKanbanId = routing[productCategory];
+
+        console.log("Routing config:", routing);
+        console.log("Target production kanban:", targetProductionKanbanId);
+
+        if (targetProductionKanbanId) {
+          try {
+            // Trova la prima colonna della kanban produzione
+            const { data: firstColumn } = await supabase
+              .from("KanbanColumn")
+              .select("id")
+              .eq("kanbanId", targetProductionKanbanId)
+              .order("position", { ascending: true })
+              .limit(1)
+              .single();
+
+            if (firstColumn) {
+              // Sposta la task nella kanban produzione
+              const { data: updatedTask, error: moveError } = await supabase
+                .from("Task")
+                .update({
+                  kanbanId: targetProductionKanbanId,
+                  kanbanColumnId: firstColumn.id,
+                  updated_at: now,
+                })
+                .eq("id", id)
+                .eq("site_id", siteId)
+                .select()
+                .single();
+
+              if (moveError) {
+                console.error("Error moving task to production:", moveError);
+              } else {
+                movedTask = updatedTask;
+                console.log(
+                  "Moved task to production kanban:",
+                  updatedTask?.id,
+                );
+              }
+            }
+          } catch (moveError) {
+            console.error("Error in production routing:", moveError);
+          }
+        }
+      }
+    }
+
+    // =====================================================
+    // Logica Routing Fatturazione (Kanban Produzione -> Kanban Fatture)
+    // =====================================================
+    if (isProductionKanban && columnType === "invoicing" && siteId) {
+      console.log("Processing production kanban -> invoicing routing");
+
+      const targetInvoiceKanbanId = task?.kanban?.target_invoice_kanban_id;
+      console.log("Target invoice kanban:", targetInvoiceKanbanId);
+
+      if (targetInvoiceKanbanId) {
+        try {
+          // Trova la prima colonna della kanban fatture
+          const { data: firstColumn } = await supabase
+            .from("KanbanColumn")
+            .select("id")
+            .eq("kanbanId", targetInvoiceKanbanId)
+            .order("position", { ascending: true })
+            .limit(1)
+            .single();
+
+          if (firstColumn) {
+            // Genera nuovo codice per la fattura
+            const newCode = await generateTaskCode(siteId, "FATTURA");
+
+            // Sposta la task nella kanban fatture con nuovo codice
+            const { data: updatedTask, error: moveError } = await supabase
+              .from("Task")
+              .update({
+                kanbanId: targetInvoiceKanbanId,
+                kanbanColumnId: firstColumn.id,
+                unique_code: newCode,
+                task_type: "FATTURA",
+                updated_at: now,
+              })
+              .eq("id", id)
+              .eq("site_id", siteId)
+              .select()
+              .single();
+
+            if (moveError) {
+              console.error("Error moving task to invoicing:", moveError);
+            } else {
+              movedTask = updatedTask;
+              console.log(
+                "Moved task to invoice kanban:",
+                updatedTask?.id,
+                newCode,
+              );
+            }
+          }
+        } catch (moveError) {
+          console.error("Error in invoicing routing:", moveError);
         }
       }
     }
@@ -355,6 +488,34 @@ export async function POST(req: NextRequest) {
         // Execute all promises for packing entries and their items
         packingControlResult = await Promise.all(packingItemPromises);
       }
+    }
+
+    // Se la task è stata spostata in un'altra kanban, ritorna subito
+    if (movedTask) {
+      // Create a new Action record to track the move
+      const actionData: any = {
+        type: "move_task_kanban",
+        data: {
+          taskId: id,
+          fromColumn: prevColumn,
+          toKanban: movedTask.kanbanId,
+          reason: columnType,
+        },
+        user_id: user.id,
+        taskId: id,
+      };
+      if (siteId) {
+        actionData.site_id = siteId;
+      }
+
+      await supabase.from("Action").insert(actionData);
+
+      return NextResponse.json({
+        data: movedTask,
+        movedToKanban: true,
+        duplicatedTask: duplicatedTask,
+        status: 200,
+      });
     }
 
     // Prepara i dati di aggiornamento

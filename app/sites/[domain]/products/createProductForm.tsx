@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -17,20 +17,45 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createSellProductAction } from "./actions/create-item.action";
 import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
+import { Plus, Loader2 } from "lucide-react";
+import { SellProductCategory } from "@/types/supabase";
 
 type Props = {
   handleClose: any;
   domain: string;
+  siteId: string;
 };
 
-const CreateProductForm = ({ handleClose, domain }: Props) => {
+const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
   const { toast } = useToast();
+  const [categories, setCategories] = useState<SellProductCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
+      category: "",
       name: "",
       type: "",
       description: "",
@@ -39,14 +64,80 @@ const CreateProductForm = ({ handleClose, domain }: Props) => {
       doc_url: "",
     },
   });
+
+  // Carica categorie
+  useEffect(() => {
+    const loadData = async () => {
+      setLoadingCategories(true);
+      try {
+        const catRes = await fetch(
+          `/api/sell-products/categories?siteId=${siteId}`
+        );
+        if (catRes.ok) {
+          const catData = await catRes.json();
+          setCategories(catData.categories || []);
+        }
+      } catch (error) {
+        console.error("Error loading data:", error);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    if (siteId) {
+      loadData();
+    }
+  }, [siteId]);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || !siteId) return;
+
+    setSavingCategory(true);
+    try {
+      const res = await fetch("/api/sell-products/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          siteId,
+          name: newCategoryName.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCategories((prev) =>
+          [...prev, data.category].sort((a, b) => a.name.localeCompare(b.name))
+        );
+        form.setValue("category", data.category.name);
+        setNewCategoryName("");
+        setShowAddCategory(false);
+        toast({ description: "Categoria creata con successo!" });
+      } else {
+        const error = await res.json();
+        toast({
+          variant: "destructive",
+          description: error.error || "Errore nella creazione della categoria",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: "Errore nella creazione della categoria",
+      });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
   const { isSubmitting } = form.formState;
+
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       //@ts-ignore
-      await createSellProductAction(d, domain);
+      await createSellProductAction(d, domain, siteId);
       handleClose(false);
       toast({
-        description: `Prodotto ${d.name} creato correttamente!`,
+        description: `Prodotto "${d.name}" creato correttamente!`,
       });
       form.reset();
     } catch (e) {
@@ -61,12 +152,105 @@ const CreateProductForm = ({ handleClose, domain }: Props) => {
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
           control={form.control}
-          name="name"
+          name="category"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria</FormLabel>
+              <div className="flex gap-2">
+                <FormControl>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={loadingCategories}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue
+                        placeholder={
+                          loadingCategories
+                            ? "Caricamento..."
+                            : "Seleziona categoria"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <Dialog
+                  open={showAddCategory}
+                  onOpenChange={setShowAddCategory}
+                >
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      disabled={loadingCategories}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[400px]">
+                    <DialogHeader>
+                      <DialogTitle>Nuova Categoria</DialogTitle>
+                      <DialogDescription>
+                        Aggiungi una nuova categoria prodotto
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Nome categoria..."
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddCategory();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowAddCategory(false)}
+                        >
+                          Annulla
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={handleAddCategory}
+                          disabled={!newCategoryName.trim() || savingCategory}
+                        >
+                          {savingCategory && (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          )}
+                          Aggiungi
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome Prodotto</FormLabel>
               <FormControl>
-                <Input placeholder="Es. Elettronica" {...field} />
+                <Input placeholder="Armadio" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -79,7 +263,7 @@ const CreateProductForm = ({ handleClose, domain }: Props) => {
             <FormItem>
               <FormLabel>Sottocategoria</FormLabel>
               <FormControl>
-                <Input placeholder="Es. Smartphone" {...field} />
+                <Input placeholder="(opzionale)" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -92,10 +276,10 @@ const CreateProductForm = ({ handleClose, domain }: Props) => {
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Descrizione del prodotto..." 
-                  className="resize-none" 
-                  {...field} 
+                <Textarea
+                  placeholder="Descrizione del prodotto..."
+                  className="resize-none"
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -131,7 +315,9 @@ const CreateProductForm = ({ handleClose, domain }: Props) => {
               <FormControl>
                 <Input placeholder="https://..." {...field} />
               </FormControl>
-              <FormDescription>Link all&apos;immagine del prodotto</FormDescription>
+              <FormDescription>
+                Link all&apos;immagine del prodotto
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -145,7 +331,9 @@ const CreateProductForm = ({ handleClose, domain }: Props) => {
               <FormControl>
                 <Input placeholder="https://..." {...field} />
               </FormControl>
-              <FormDescription>Link alla cartella documenti del prodotto</FormDescription>
+              <FormDescription>
+                Link alla cartella documenti del prodotto
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

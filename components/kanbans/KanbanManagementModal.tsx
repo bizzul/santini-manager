@@ -66,7 +66,7 @@ import {
   type KanbanCategory,
 } from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
 
-type ColumnType = "normal" | "won" | "lost";
+type ColumnType = "normal" | "won" | "lost" | "production" | "invoicing";
 
 type Column = {
   title: string;
@@ -176,6 +176,16 @@ export default function KanbanManagementModal({
     kanban?.target_work_kanban_id || null
   );
   const [availableKanbans, setAvailableKanbans] = useState<any[]>([]);
+  // Nuovi stati per routing produzione/fatturazione
+  const [isWorkKanban, setIsWorkKanban] = useState(
+    kanban?.is_work_kanban || false
+  );
+  const [isProductionKanban, setIsProductionKanban] = useState(
+    kanban?.is_production_kanban || false
+  );
+  const [targetInvoiceKanbanId, setTargetInvoiceKanbanId] = useState<
+    number | null
+  >(kanban?.target_invoice_kanban_id || null);
   const { toast } = useToast();
 
   // Load categories when domain is available
@@ -189,19 +199,17 @@ export default function KanbanManagementModal({
 
   // Load available kanbans for target selection
   useEffect(() => {
-    if (domain && isOfferKanban) {
+    if (domain && (isOfferKanban || isProductionKanban)) {
       fetch(`/api/kanban/list?domain=${domain}`)
         .then((res) => res.json())
         .then((data) => {
           // Filter out current kanban from options
-          const filtered = (data || []).filter(
-            (k: any) => k.id !== kanban?.id && !k.is_offer_kanban
-          );
+          const filtered = (data || []).filter((k: any) => k.id !== kanban?.id);
           setAvailableKanbans(filtered);
         })
         .catch((error) => console.error("Error loading kanbans:", error));
     }
-  }, [domain, isOfferKanban, kanban?.id]);
+  }, [domain, isOfferKanban, isProductionKanban, kanban?.id]);
 
   // Use external open state if provided, otherwise use internal state
   const isOpen = externalOpen !== undefined ? externalOpen : open;
@@ -224,6 +232,10 @@ export default function KanbanManagementModal({
       // Reset offer kanban fields
       setIsOfferKanban(kanban?.is_offer_kanban || false);
       setTargetWorkKanbanId(kanban?.target_work_kanban_id || null);
+      // Reset work/production kanban fields
+      setIsWorkKanban(kanban?.is_work_kanban || false);
+      setIsProductionKanban(kanban?.is_production_kanban || false);
+      setTargetInvoiceKanbanId(kanban?.target_invoice_kanban_id || null);
 
       if (kanban?.columns) {
         const sortedColumns = kanban.columns.sort(
@@ -284,6 +296,12 @@ export default function KanbanManagementModal({
         // Nuovi campi per sistema offerte
         is_offer_kanban: isOfferKanban,
         target_work_kanban_id: isOfferKanban ? targetWorkKanbanId : null,
+        // Nuovi campi per routing produzione/fatturazione
+        is_work_kanban: isWorkKanban,
+        is_production_kanban: isProductionKanban,
+        target_invoice_kanban_id: isProductionKanban
+          ? targetInvoiceKanbanId
+          : null,
         columns: columns.map((col, index) => ({
           ...col,
           position: index + 1,
@@ -477,48 +495,147 @@ export default function KanbanManagementModal({
             />
           )}
 
-          {/* Sezione Kanban Offerte */}
+          {/* Sezione Tipo Kanban */}
           <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isOfferKanban"
-                checked={isOfferKanban}
-                onChange={(e) => setIsOfferKanban(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300"
-              />
-              <Label htmlFor="isOfferKanban" className="cursor-pointer">
-                Kanban Offerte
-              </Label>
-            </div>
-            {isOfferKanban && (
-              <div className="space-y-2 pl-6">
-                <Label htmlFor="targetKanban" className="text-sm">
-                  Kanban destinazione lavori
-                </Label>
-                <Select
-                  value={targetWorkKanbanId?.toString() || ""}
-                  onValueChange={(value) =>
-                    setTargetWorkKanbanId(value ? parseInt(value) : null)
-                  }
+            <Label className="text-sm font-semibold">Tipo Kanban</Label>
+
+            {/* Kanban Offerte */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isOfferKanban"
+                  checked={isOfferKanban}
+                  onChange={(e) => {
+                    setIsOfferKanban(e.target.checked);
+                    if (e.target.checked) {
+                      setIsWorkKanban(false);
+                      setIsProductionKanban(false);
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label
+                  htmlFor="isOfferKanban"
+                  className="cursor-pointer text-sm"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona kanban lavori..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableKanbans.map((k) => (
-                      <SelectItem key={k.id} value={k.id.toString()}>
-                        {k.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Quando un'offerta va in "Vinta", verrà creata una copia in
-                  questa kanban.
-                </p>
+                  Kanban Offerte
+                </Label>
               </div>
-            )}
+              {isOfferKanban && (
+                <div className="space-y-2 pl-6">
+                  <Label htmlFor="targetKanban" className="text-xs">
+                    Kanban destinazione lavori
+                  </Label>
+                  <Select
+                    value={targetWorkKanbanId?.toString() || ""}
+                    onValueChange={(value) =>
+                      setTargetWorkKanbanId(value ? parseInt(value) : null)
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Seleziona kanban avor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableKanbans
+                        .filter((k) => !k.is_offer_kanban)
+                        .map((k) => (
+                          <SelectItem key={k.id} value={k.id.toString()}>
+                            {k.title}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            {/* Kanban Avor */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isWorkKanban"
+                  checked={isWorkKanban}
+                  onChange={(e) => {
+                    setIsWorkKanban(e.target.checked);
+                    if (e.target.checked) {
+                      setIsOfferKanban(false);
+                      setIsProductionKanban(false);
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label
+                  htmlFor="isWorkKanban"
+                  className="cursor-pointer text-sm"
+                >
+                  Kanban Avor
+                </Label>
+              </div>
+              {isWorkKanban && (
+                <p className="text-xs text-muted-foreground pl-6">
+                  La colonna "Produzione" indirizzerà le task verso le kanban di
+                  produzione in base alla categoria prodotto.
+                </p>
+              )}
+            </div>
+
+            {/* Kanban Produzione */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isProductionKanban"
+                  checked={isProductionKanban}
+                  onChange={(e) => {
+                    setIsProductionKanban(e.target.checked);
+                    if (e.target.checked) {
+                      setIsOfferKanban(false);
+                      setIsWorkKanban(false);
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label
+                  htmlFor="isProductionKanban"
+                  className="cursor-pointer text-sm"
+                >
+                  Kanban Produzione
+                </Label>
+              </div>
+              {isProductionKanban && (
+                <div className="space-y-2 pl-6">
+                  <Label htmlFor="targetInvoiceKanban" className="text-xs">
+                    Kanban destinazione fatture
+                  </Label>
+                  <Select
+                    value={targetInvoiceKanbanId?.toString() || ""}
+                    onValueChange={(value) =>
+                      setTargetInvoiceKanbanId(value ? parseInt(value) : null)
+                    }
+                  >
+                    <SelectTrigger className="h-8">
+                      <SelectValue placeholder="Seleziona kanban fatture..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableKanbans
+                        .filter(
+                          (k) =>
+                            !k.is_offer_kanban &&
+                            !k.is_work_kanban &&
+                            !k.is_production_kanban
+                        )
+                        .map((k) => (
+                          <SelectItem key={k.id} value={k.id.toString()}>
+                            {k.title}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -528,7 +645,9 @@ export default function KanbanManagementModal({
               <div className="flex-1">Titolo</div>
               <div className="flex-1">Identificatore</div>
               <div className="w-[100px]">Icona</div>
-              {isOfferKanban && <div className="w-[90px]">Tipo</div>}
+              {(isOfferKanban || isWorkKanban || isProductionKanban) && (
+                <div className="w-[100px]">Tipo</div>
+              )}
             </div>
             <div className="space-y-2">
               {columns.map((column, index) => (
@@ -631,7 +750,7 @@ export default function KanbanManagementModal({
                       ))}
                     </SelectContent>
                   </Select>
-                  {isOfferKanban && (
+                  {(isOfferKanban || isWorkKanban || isProductionKanban) && (
                     <Select
                       value={column.column_type || "normal"}
                       onValueChange={(value) =>
@@ -644,13 +763,25 @@ export default function KanbanManagementModal({
                         )
                       }
                     >
-                      <SelectTrigger className="w-[90px]">
+                      <SelectTrigger className="w-[100px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="normal">Normale</SelectItem>
-                        <SelectItem value="won">Vinta</SelectItem>
-                        <SelectItem value="lost">Persa</SelectItem>
+                        {isOfferKanban && (
+                          <>
+                            <SelectItem value="won">Vinta</SelectItem>
+                            <SelectItem value="lost">Persa</SelectItem>
+                          </>
+                        )}
+                        {isWorkKanban && (
+                          <SelectItem value="production">Produzione</SelectItem>
+                        )}
+                        {isProductionKanban && (
+                          <SelectItem value="invoicing">
+                            Fatturazione
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   )}
