@@ -40,6 +40,10 @@ export async function editSellProductAction(
       const updateData: any = {
         name: formData.name,
         type: formData.type,
+        description: formData.description || null,
+        price_list: formData.price_list ?? false,
+        image_url: formData.image_url || null,
+        doc_url: formData.doc_url || null,
         active: formData.active,
       };
 

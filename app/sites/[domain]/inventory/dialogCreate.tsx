@@ -12,11 +12,15 @@ import {
 } from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
 import DialogImportCSV from "./dialogImportCSV";
+import ButtonExportCSV from "./buttonExportCSV";
 
 function DialogCreate({ data }: { data: any }) {
   const [isOpen, setOpen] = useState(false);
   return (
     <div className="container flex justify-end gap-3 pt-12 overflow-hidden pointer-events-none">
+      <div className="pointer-events-auto">
+        <ButtonExportCSV />
+      </div>
       <div className="pointer-events-auto">
         <DialogImportCSV />
       </div>

@@ -129,10 +129,15 @@ export interface Product_category {
 
 export interface SellProduct {
     id: number;
-    name?: string;
-    type?: string;
-    description?: string;
+    name?: string;           // Categoria
+    type?: string;           // Sottocategoria
+    description?: string;    // Descrizione
+    price_list?: boolean;    // Listino prezzi (checkbox)
+    image_url?: string;      // Immagine
+    doc_url?: string;        // DOC (link a cartella documenti)
+    internal_code?: string;  // Codice interno per import CSV
     active?: boolean;
+    site_id?: string;
     created_at?: string;
     updated_at?: string;
 }

@@ -34,6 +34,10 @@ export async function createSellProduct(props: any, domain?: string) {
     const insertData: any = {
       name: props.name,
       type: props.type,
+      description: props.description || null,
+      price_list: props.price_list ?? false,
+      image_url: props.image_url || null,
+      doc_url: props.doc_url || null,
     };
 
     if (siteId) {

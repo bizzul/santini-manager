@@ -1092,8 +1092,13 @@ export type Database = {
         Row: {
           active: boolean;
           created_at: string;
+          description: string | null;
+          doc_url: string | null;
           id: number;
+          image_url: string | null;
+          internal_code: string | null;
           name: string;
+          price_list: boolean;
           site_id: string | null;
           type: string;
           updated_at: string;
@@ -1101,8 +1106,13 @@ export type Database = {
         Insert: {
           active?: boolean;
           created_at?: string;
+          description?: string | null;
+          doc_url?: string | null;
           id?: number;
+          image_url?: string | null;
+          internal_code?: string | null;
           name: string;
+          price_list?: boolean;
           site_id?: string | null;
           type: string;
           updated_at?: string;
@@ -1110,8 +1120,13 @@ export type Database = {
         Update: {
           active?: boolean;
           created_at?: string;
+          description?: string | null;
+          doc_url?: string | null;
           id?: number;
+          image_url?: string | null;
+          internal_code?: string | null;
           name?: string;
+          price_list?: boolean;
           site_id?: string | null;
           type?: string;
           updated_at?: string;

@@ -61,6 +61,7 @@ import {
   faIndustry,
   faListUl,
 } from "@fortawesome/free-solid-svg-icons";
+import { QuickActions } from "@/components/quick-actions";
 
 // Icon mapping for sidebar
 const iconMap = {
@@ -1054,16 +1055,19 @@ export function AppSidebar() {
             {/* Overview Section */}
             <SidebarGroup>
               <SidebarGroupLabel className="h-auto py-2">
-                {siteImage ? (
-                  <img
-                    src={siteImage}
-                    alt={displayTitle}
-                    className="max-h-10 w-auto object-contain"
-                    title={displayTitle}
-                  />
-                ) : (
-                  displayTitle
-                )}
+                <div className="flex items-center justify-between w-full gap-2">
+                  {siteImage ? (
+                    <img
+                      src={siteImage}
+                      alt={displayTitle}
+                      className="max-h-10 w-auto object-contain"
+                      title={displayTitle}
+                    />
+                  ) : (
+                    <span className="truncate">{displayTitle}</span>
+                  )}
+                  <QuickActions />
+                </div>
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>

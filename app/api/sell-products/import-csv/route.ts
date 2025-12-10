@@ -1,0 +1,311 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/utils/supabase/server";
+import { getUserContext } from "@/lib/auth-utils";
+import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
+
+// CSV field mapping from Italian headers to database columns
+const CSV_FIELD_MAPPING: Record<string, string> = {
+    COD_INT: "internal_code",
+    CATEGORIA: "name",
+    SOTTOCATEGORIA: "type",
+    DESCRIZIONE: "description",
+    LISTINO_PREZZI: "price_list",
+    URL_IMMAGINE: "image_url",
+    URL_DOC: "doc_url",
+};
+
+// Boolean fields that should be parsed as booleans
+const BOOLEAN_FIELDS = ["price_list"];
+
+// Valid boolean true values
+const BOOLEAN_TRUE_VALUES = ["SI", "SÌ", "YES", "1", "TRUE", "VERO"];
+
+interface ImportResult {
+    success: boolean;
+    totalRows: number;
+    imported: number;
+    skipped: number;
+    errors: string[];
+    duplicates: string[];
+}
+
+function parseCSVLine(line: string): string[] {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === "," && !inQuotes) {
+            result.push(current.trim());
+            current = "";
+        } else {
+            current += char;
+        }
+    }
+    result.push(current.trim());
+
+    return result;
+}
+
+function parseCSV(csvText: string): { headers: string[]; rows: string[][] } {
+    const lines = csvText.split("\n").filter((line) => line.trim() !== "");
+    if (lines.length === 0) {
+        return { headers: [], rows: [] };
+    }
+
+    const headers = parseCSVLine(lines[0]);
+    const rows = lines.slice(1).map((line) => parseCSVLine(line));
+
+    return { headers, rows };
+}
+
+function mapRowToSellProduct(
+    headers: string[],
+    row: string[],
+): Record<string, any> {
+    const product: Record<string, any> = {};
+
+    headers.forEach((header, index) => {
+        const dbField = CSV_FIELD_MAPPING[header];
+        if (dbField && row[index] !== undefined) {
+            let value: any = row[index].trim();
+
+            // Handle empty values
+            if (value === "") {
+                value = null;
+            } else if (BOOLEAN_FIELDS.includes(dbField)) {
+                // Parse boolean fields
+                value = BOOLEAN_TRUE_VALUES.includes(value.toUpperCase());
+            }
+
+            product[dbField] = value;
+        }
+    });
+
+    // Set default values
+    if (product.price_list == null) {
+        product.price_list = false;
+    }
+
+    return product;
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        // Check authentication
+        const userContext = await getUserContext();
+        if (!userContext || !userContext.user) {
+            return NextResponse.json(
+                { error: "Non autorizzato" },
+                { status: 401 },
+            );
+        }
+
+        // Get site_id from request
+        const siteDomain = request.headers.get("x-site-domain");
+        let siteId: string | null = null;
+
+        if (siteDomain) {
+            const context = await getSiteContextFromDomain(siteDomain);
+            siteId = context.siteId;
+        } else {
+            const context = await getSiteContext(request);
+            siteId = context.siteId;
+        }
+
+        if (!siteId) {
+            return NextResponse.json(
+                { error: "Site ID richiesto per l'importazione" },
+                { status: 400 },
+            );
+        }
+
+        const formData = await request.formData();
+        const file = formData.get("file") as File | null;
+        const skipDuplicates = formData.get("skipDuplicates") === "true";
+
+        if (!file) {
+            return NextResponse.json(
+                { error: "Nessun file fornito" },
+                { status: 400 },
+            );
+        }
+
+        // Read file content
+        const csvText = await file.text();
+        const { headers, rows } = parseCSV(csvText);
+
+        if (headers.length === 0 || rows.length === 0) {
+            return NextResponse.json(
+                { error: "Il file CSV è vuoto o non valido" },
+                { status: 400 },
+            );
+        }
+
+        // Validate required headers
+        const requiredHeaders = ["COD_INT", "CATEGORIA", "SOTTOCATEGORIA"];
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        if (missingHeaders.length > 0) {
+            return NextResponse.json(
+                { error: `Colonne mancanti nel CSV: ${missingHeaders.join(", ")}` },
+                { status: 400 },
+            );
+        }
+
+        const supabase = await createClient();
+
+        // Get existing internal_codes for duplicate checking (scoped by site)
+        const { data: existingProducts, error: fetchError } = await supabase
+            .from("SellProduct")
+            .select("internal_code")
+            .eq("site_id", siteId)
+            .not("internal_code", "is", null);
+
+        if (fetchError) {
+            console.error("Error fetching existing products:", fetchError);
+            return NextResponse.json(
+                { error: "Errore nel recupero dei prodotti esistenti" },
+                { status: 500 },
+            );
+        }
+
+        const existingCodes = new Set(
+            existingProducts?.map((p) => p.internal_code) || [],
+        );
+
+        const result: ImportResult = {
+            success: true,
+            totalRows: rows.length,
+            imported: 0,
+            skipped: 0,
+            errors: [],
+            duplicates: [],
+        };
+
+        // Process rows in batches for better performance
+        const BATCH_SIZE = 50;
+        const productsToInsert: Record<string, any>[] = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            try {
+                const product = mapRowToSellProduct(headers, row);
+
+                // Check for duplicate
+                if (
+                    product.internal_code &&
+                    existingCodes.has(product.internal_code)
+                ) {
+                    result.duplicates.push(product.internal_code);
+                    if (skipDuplicates) {
+                        result.skipped++;
+                        continue;
+                    } else {
+                        // If not skipping duplicates, still skip but note it
+                        result.skipped++;
+                        continue;
+                    }
+                }
+
+                // Validate required fields
+                if (!product.name) {
+                    result.errors.push(
+                        `Riga ${i + 2}: Categoria richiesta`,
+                    );
+                    result.skipped++;
+                    continue;
+                }
+
+                if (!product.type) {
+                    result.errors.push(
+                        `Riga ${i + 2}: Sottocategoria richiesta`,
+                    );
+                    result.skipped++;
+                    continue;
+                }
+
+                // Add to existing codes set to prevent duplicates within the same import
+                if (product.internal_code) {
+                    existingCodes.add(product.internal_code);
+                }
+
+                // Add site_id to the product
+                product.site_id = siteId;
+                product.active = true;
+
+                productsToInsert.push(product);
+            } catch (error: any) {
+                result.errors.push(`Riga ${i + 2}: ${error.message}`);
+                result.skipped++;
+            }
+        }
+
+        // Insert products in batches and collect inserted product IDs
+        const insertedProductIds: number[] = [];
+
+        for (let i = 0; i < productsToInsert.length; i += BATCH_SIZE) {
+            const batch = productsToInsert.slice(i, i + BATCH_SIZE);
+
+            const { data: insertedProducts, error: insertError } =
+                await supabase
+                    .from("SellProduct")
+                    .insert(batch)
+                    .select("id");
+
+            if (insertError) {
+                console.error("Error inserting batch:", insertError);
+                result.errors.push(
+                    `Errore inserimento batch ${
+                        Math.floor(i / BATCH_SIZE) + 1
+                    }: ${insertError.message}`,
+                );
+            } else {
+                result.imported += batch.length;
+                // Collect inserted product IDs
+                if (insertedProducts) {
+                    insertedProductIds.push(
+                        ...insertedProducts.map((p) => p.id),
+                    );
+                }
+            }
+        }
+
+        // Create action records for each imported product
+        if (insertedProductIds.length > 0) {
+            const actionRecords = insertedProductIds.map((productId) => ({
+                type: "sell_product_import",
+                data: { sellProductId: productId },
+                user_id: userContext.user.id,
+            }));
+
+            // Insert actions in batches
+            for (let i = 0; i < actionRecords.length; i += BATCH_SIZE) {
+                const actionBatch = actionRecords.slice(i, i + BATCH_SIZE);
+                const { error: actionError } = await supabase
+                    .from("Action")
+                    .insert(actionBatch);
+
+                if (actionError) {
+                    console.error(
+                        "Error creating action records:",
+                        actionError,
+                    );
+                }
+            }
+        }
+
+        result.success = result.errors.length === 0 || result.imported > 0;
+
+        return NextResponse.json(result);
+    } catch (error: any) {
+        console.error("CSV import error:", error);
+        return NextResponse.json(
+            { error: `Errore durante l'importazione: ${error.message}` },
+            { status: 500 },
+        );
+    }
+}
+

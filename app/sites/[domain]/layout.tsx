@@ -13,6 +13,7 @@ import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
 import { GlobalKanbanModal } from "@/components/kanbans/GlobalKanbanModal";
 import { createClient } from "@/utils/supabase/server";
+import { QuickActionsProvider } from "@/components/quick-actions";
 
 /**
  * Check if user has access to a specific site
@@ -179,25 +180,27 @@ export default async function SiteLayout({
 
     return (
       <KanbanModalProvider>
-        <SidebarProvider defaultOpen={defaultOpen}>
-          {isImpersonating && impersonatedUser && originalSuperadminId && (
-            <ImpersonationBanner
-              impersonatedUser={impersonatedUser}
-              originalSuperadminId={originalSuperadminId}
-            />
-          )}
+        <QuickActionsProvider>
+          <SidebarProvider defaultOpen={defaultOpen}>
+            {isImpersonating && impersonatedUser && originalSuperadminId && (
+              <ImpersonationBanner
+                impersonatedUser={impersonatedUser}
+                originalSuperadminId={originalSuperadminId}
+              />
+            )}
 
-          <AppSidebar />
-          <SidebarInset className="flex flex-col h-screen overflow-hidden">
-            <header className="flex h-12 shrink-0 items-center border-b px-4">
-              <SidebarTrigger className="-ml-1" />
-            </header>
-            <div className="flex-1 overflow-auto">{children}</div>
-          </SidebarInset>
+            <AppSidebar />
+            <SidebarInset className="flex flex-col h-screen overflow-hidden">
+              <header className="flex h-12 shrink-0 items-center border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+              </header>
+              <div className="flex-1 overflow-auto">{children}</div>
+            </SidebarInset>
 
-          {/* Global Kanban Modal */}
-          <GlobalKanbanModal />
-        </SidebarProvider>
+            {/* Global Kanban Modal */}
+            <GlobalKanbanModal />
+          </SidebarProvider>
+        </QuickActionsProvider>
       </KanbanModalProvider>
     );
   } catch (error) {

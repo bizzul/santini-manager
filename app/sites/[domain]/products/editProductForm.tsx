@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useOptimistic } from "react";
+import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -14,10 +14,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { SellProduct } from "@/types/supabase";
 import { editSellProductAction } from "./actions/edit-item.action";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,15 +36,23 @@ const EditProductForm = ({ handleClose, data, domain }: Props) => {
     defaultValues: {
       name: "",
       type: "",
+      description: "",
+      price_list: false,
+      image_url: "",
+      doc_url: "",
       active: true,
     },
   });
   const { setValue } = form;
-  const { isSubmitting } = form.formState;
   const { pending } = useFormStatus();
+  
   useEffect(() => {
     setValue("name", data.name || "");
     setValue("type", data.type || "");
+    setValue("description", data.description || "");
+    setValue("price_list", data.price_list ?? false);
+    setValue("image_url", data.image_url || "");
+    setValue("doc_url", data.doc_url || "");
     setValue("active", data.active ?? true);
   }, [data, setValue]);
 
@@ -57,7 +66,7 @@ const EditProductForm = ({ handleClose, data, domain }: Props) => {
     } else {
       handleClose(false);
       toast({
-        description: `Elemento ${d.name} aggiornato correttamente!`,
+        description: `Prodotto ${d.name} aggiornato correttamente!`,
       });
       form.reset();
     }
@@ -65,7 +74,7 @@ const EditProductForm = ({ handleClose, data, domain }: Props) => {
 
   return (
     <Form {...form}>
-      <form className="space-y-8" onSubmit={form.handleSubmit(onSubmit)}>
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
           control={form.control}
           name="name"
@@ -73,9 +82,8 @@ const EditProductForm = ({ handleClose, data, domain }: Props) => {
             <FormItem>
               <FormLabel>Categoria</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input placeholder="Es. Elettronica" {...field} />
               </FormControl>
-              <FormDescription>La categoria del prodotto</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -85,43 +93,105 @@ const EditProductForm = ({ handleClose, data, domain }: Props) => {
           name="type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo</FormLabel>
+              <FormLabel>Sottocategoria</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input placeholder="Es. Smartphone" {...field} />
               </FormControl>
-              <FormDescription>La descrizione del prodotto</FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         <FormField
           control={form.control}
-          name="active"
+          name="description"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem>
+              <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+                <Textarea 
+                  placeholder="Descrizione del prodotto..." 
+                  className="resize-none" 
+                  {...field} 
                 />
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Attivo</FormLabel>
-                <FormDescription>
-                  {`Questo prodotto è attualmente ${
-                    field.value ? "attivo" : "inattivo"
-                  }`}
-                </FormDescription>
-              </div>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={pending}>
-          {" "}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="price_list"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Listino Prezzi</FormLabel>
+                  <FormDescription>
+                    Includi nel listino
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="active"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Attivo</FormLabel>
+                  <FormDescription>
+                    Prodotto attivo
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={form.control}
+          name="image_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL Immagine</FormLabel>
+              <FormControl>
+                <Input placeholder="https://..." {...field} />
+              </FormControl>
+              <FormDescription>Link all&apos;immagine del prodotto</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="doc_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL Documenti</FormLabel>
+              <FormControl>
+                <Input placeholder="https://..." {...field} />
+              </FormControl>
+              <FormDescription>Link alla cartella documenti</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={pending} className="w-full">
           {pending && (
             <span className="spinner-border spinner-border-sm mr-1"></span>
-          )}{" "}
+          )}
           Salva
         </Button>
       </form>
