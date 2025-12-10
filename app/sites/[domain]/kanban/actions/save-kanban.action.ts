@@ -10,12 +10,16 @@ export async function saveKanban(kanban: {
   identifier: string;
   color?: string;
   category_id?: number | null;
+  // Nuovi campi per sistema offerte
+  is_offer_kanban?: boolean;
+  target_work_kanban_id?: number | null;
   columns: {
     id?: number;
     title: string;
     identifier: string;
     position: number;
     icon?: string;
+    column_type?: "normal" | "won" | "lost";
   }[];
   skipColumnUpdates?: boolean; // Flag per saltare l'aggiornamento delle colonne
 }, domain?: string) {
@@ -64,6 +68,9 @@ export async function saveKanban(kanban: {
         title: kanban.title,
         color: kanban.color,
         category_id: kanban.category_id,
+        // Nuovi campi per sistema offerte
+        is_offer_kanban: kanban.is_offer_kanban || false,
+        target_work_kanban_id: kanban.target_work_kanban_id || null,
       };
 
       if (siteId) {
@@ -74,12 +81,12 @@ export async function saveKanban(kanban: {
         .from("Kanban")
         .update(updateData)
         .eq("identifier", kanban.identifier);
-      
+
       // Filter by site_id to avoid updating kanbans in other sites with the same identifier
       if (siteId) {
         updateQuery = updateQuery.eq("site_id", siteId);
       }
-      
+
       const { data: updatedKanban, error: updateError } = await updateQuery
         .select()
         .single();
@@ -88,7 +95,11 @@ export async function saveKanban(kanban: {
         console.error("Error updating kanban:", updateError);
         console.error("Update data:", updateData);
         console.error("Kanban identifier:", kanban.identifier);
-        throw new Error(`Failed to update kanban: ${updateError.message || updateError.code || 'Unknown error'}`);
+        throw new Error(
+          `Failed to update kanban: ${
+            updateError.message || updateError.code || "Unknown error"
+          }`,
+        );
       }
 
       kanbanResult = updatedKanban;
@@ -99,6 +110,9 @@ export async function saveKanban(kanban: {
         identifier: kanban.identifier,
         color: kanban.color,
         category_id: kanban.category_id,
+        // Nuovi campi per sistema offerte
+        is_offer_kanban: kanban.is_offer_kanban || false,
+        target_work_kanban_id: kanban.target_work_kanban_id || null,
       };
 
       if (siteId) {
@@ -114,7 +128,11 @@ export async function saveKanban(kanban: {
       if (createError) {
         console.error("Error creating kanban:", createError);
         console.error("Insert data:", insertData);
-        throw new Error(`Failed to create kanban: ${createError.message || createError.code || 'Unknown error'}`);
+        throw new Error(
+          `Failed to create kanban: ${
+            createError.message || createError.code || "Unknown error"
+          }`,
+        );
       }
 
       kanbanResult = newKanban;
@@ -123,7 +141,7 @@ export async function saveKanban(kanban: {
     // Skip column updates if flag is set (when editing metadata only)
     if (kanban.skipColumnUpdates) {
       console.log("⏭️  Skipping column updates (metadata-only update)");
-      
+
       // Just return the kanban with existing columns
       const { data: existingColumns } = await supabase
         .from("KanbanColumn")
@@ -152,7 +170,11 @@ export async function saveKanban(kanban: {
     if (columnsError) {
       console.error("Error fetching existing columns:", columnsError);
       console.error("Kanban ID:", kanbanResult?.id);
-      throw new Error(`Failed to fetch existing columns: ${columnsError.message || columnsError.code || 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch existing columns: ${
+          columnsError.message || columnsError.code || "Unknown error"
+        }`,
+      );
     }
 
     // Delete columns that are no longer present
@@ -171,7 +193,7 @@ export async function saveKanban(kanban: {
       if (columnsWithTasks.data && columnsWithTasks.data.length > 0) {
         console.error("Cannot delete columns with associated tasks");
         throw new Error(
-          "Cannot delete columns that have tasks. Please move or delete the tasks first, or keep all existing columns when editing the kanban."
+          "Cannot delete columns that have tasks. Please move or delete the tasks first, or keep all existing columns when editing the kanban.",
         );
       }
 
@@ -182,7 +204,11 @@ export async function saveKanban(kanban: {
 
       if (deleteError) {
         console.error("Error deleting columns:", deleteError);
-        throw new Error(`Failed to delete columns: ${deleteError.message || deleteError.code}`);
+        throw new Error(
+          `Failed to delete columns: ${
+            deleteError.message || deleteError.code
+          }`,
+        );
       }
     }
 
@@ -196,6 +222,7 @@ export async function saveKanban(kanban: {
             title: column.title,
             position: column.position,
             icon: column.icon,
+            column_type: column.column_type || "normal",
           })
           .eq("id", column.id)
           .select()
@@ -216,6 +243,7 @@ export async function saveKanban(kanban: {
             identifier: column.identifier,
             position: column.position,
             icon: column.icon,
+            column_type: column.column_type || "normal",
             kanbanId: kanbanResult.id,
           })
           .select()
@@ -246,7 +274,9 @@ export async function saveKanban(kanban: {
   } catch (error) {
     console.error("Error saving kanban:", error);
     // Preserve the original error message for better debugging
-    const errorMessage = error instanceof Error ? error.message : "Failed to save kanban";
+    const errorMessage = error instanceof Error
+      ? error.message
+      : "Failed to save kanban";
     throw new Error(errorMessage);
   }
 }

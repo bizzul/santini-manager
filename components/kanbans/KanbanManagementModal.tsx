@@ -66,11 +66,14 @@ import {
   type KanbanCategory,
 } from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
 
+type ColumnType = "normal" | "won" | "lost";
+
 type Column = {
   title: string;
   identifier: string;
   position: number;
   icon: string;
+  column_type?: ColumnType;
 };
 
 type ModalMode = "create" | "edit";
@@ -165,6 +168,14 @@ export default function KanbanManagementModal({
   const [categories, setCategories] = useState<KanbanCategory[]>([]);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  // Nuovi stati per sistema offerte
+  const [isOfferKanban, setIsOfferKanban] = useState(
+    kanban?.is_offer_kanban || false
+  );
+  const [targetWorkKanbanId, setTargetWorkKanbanId] = useState<number | null>(
+    kanban?.target_work_kanban_id || null
+  );
+  const [availableKanbans, setAvailableKanbans] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Load categories when domain is available
@@ -175,6 +186,22 @@ export default function KanbanManagementModal({
         .catch((error) => console.error("Error loading categories:", error));
     }
   }, [domain]);
+
+  // Load available kanbans for target selection
+  useEffect(() => {
+    if (domain && isOfferKanban) {
+      fetch(`/api/kanban/list?domain=${domain}`)
+        .then((res) => res.json())
+        .then((data) => {
+          // Filter out current kanban from options
+          const filtered = (data || []).filter(
+            (k: any) => k.id !== kanban?.id && !k.is_offer_kanban
+          );
+          setAvailableKanbans(filtered);
+        })
+        .catch((error) => console.error("Error loading kanbans:", error));
+    }
+  }, [domain, isOfferKanban, kanban?.id]);
 
   // Use external open state if provided, otherwise use internal state
   const isOpen = externalOpen !== undefined ? externalOpen : open;
@@ -194,11 +221,20 @@ export default function KanbanManagementModal({
         setCategoryId(kanban?.category_id || null);
       }
 
+      // Reset offer kanban fields
+      setIsOfferKanban(kanban?.is_offer_kanban || false);
+      setTargetWorkKanbanId(kanban?.target_work_kanban_id || null);
+
       if (kanban?.columns) {
         const sortedColumns = kanban.columns.sort(
           (a: any, b: any) => (a.position || 0) - (b.position || 0)
         );
-        setColumns(sortedColumns);
+        setColumns(
+          sortedColumns.map((col: any) => ({
+            ...col,
+            column_type: col.column_type || "normal",
+          }))
+        );
       } else {
         setColumns([]);
       }
@@ -245,9 +281,13 @@ export default function KanbanManagementModal({
         identifier,
         color,
         category_id: categoryId,
+        // Nuovi campi per sistema offerte
+        is_offer_kanban: isOfferKanban,
+        target_work_kanban_id: isOfferKanban ? targetWorkKanbanId : null,
         columns: columns.map((col, index) => ({
           ...col,
           position: index + 1,
+          column_type: col.column_type || "normal",
         })),
         // When there are tasks, we can update column titles/icons but not add/remove columns
         skipColumnUpdates: false, // Always allow column updates now
@@ -436,6 +476,51 @@ export default function KanbanManagementModal({
               onChange={setCategoryId}
             />
           )}
+
+          {/* Sezione Kanban Offerte */}
+          <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isOfferKanban"
+                checked={isOfferKanban}
+                onChange={(e) => setIsOfferKanban(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="isOfferKanban" className="cursor-pointer">
+                Kanban Offerte
+              </Label>
+            </div>
+            {isOfferKanban && (
+              <div className="space-y-2 pl-6">
+                <Label htmlFor="targetKanban" className="text-sm">
+                  Kanban destinazione lavori
+                </Label>
+                <Select
+                  value={targetWorkKanbanId?.toString() || ""}
+                  onValueChange={(value) =>
+                    setTargetWorkKanbanId(value ? parseInt(value) : null)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona kanban lavori..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableKanbans.map((k) => (
+                      <SelectItem key={k.id} value={k.id.toString()}>
+                        {k.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Quando un'offerta va in "Vinta", verrà creata una copia in
+                  questa kanban.
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label>Colonne</Label>
             <div className="flex items-center gap-2 font-semibold text-xs text-muted-foreground px-1">
@@ -443,6 +528,7 @@ export default function KanbanManagementModal({
               <div className="flex-1">Titolo</div>
               <div className="flex-1">Identificatore</div>
               <div className="w-[100px]">Icona</div>
+              {isOfferKanban && <div className="w-[90px]">Tipo</div>}
             </div>
             <div className="space-y-2">
               {columns.map((column, index) => (
@@ -545,6 +631,29 @@ export default function KanbanManagementModal({
                       ))}
                     </SelectContent>
                   </Select>
+                  {isOfferKanban && (
+                    <Select
+                      value={column.column_type || "normal"}
+                      onValueChange={(value) =>
+                        setColumns((prev) =>
+                          prev.map((col, i) =>
+                            i === index
+                              ? { ...col, column_type: value as ColumnType }
+                              : col
+                          )
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-[90px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="normal">Normale</SelectItem>
+                        <SelectItem value="won">Vinta</SelectItem>
+                        <SelectItem value="lost">Persa</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               ))}
             </div>
@@ -559,6 +668,7 @@ export default function KanbanManagementModal({
                       identifier: "",
                       position: prev.length + 1,
                       icon: "faCheck",
+                      column_type: "normal",
                     },
                   ])
                 }

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../utils/supabase/server";
 import { getSiteData } from "../../../../../lib/fetchers";
+import {
+  calculateAutoArchiveDate,
+  generateTaskCode,
+  getAutoArchiveSettings,
+} from "@/lib/code-generator";
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,11 +48,18 @@ export async function POST(req: NextRequest) {
     });
 
     // Find task with site_id filtering if available
+    // Also get the kanban data to check if it's an offer kanban
     let taskQuery = supabase
       .from("Task")
       .select(`
         *,
-        kanban_columns:kanbanColumnId(*)
+        kanban_columns:kanbanColumnId(*),
+        kanban:kanbanId(
+          id,
+          identifier,
+          is_offer_kanban,
+          target_work_kanban_id
+        )
       `)
       .eq("id", id);
 
@@ -95,10 +107,10 @@ export async function POST(req: NextRequest) {
 
     const prevColumn = task?.kanban_columns?.identifier;
 
-    // Get the target column's position
+    // Get the target column's position and type
     const { data: targetColumn, error: columnError } = await supabase
       .from("KanbanColumn")
-      .select("*")
+      .select("*, column_type")
       .eq("id", column)
       .single();
 
@@ -113,7 +125,115 @@ export async function POST(req: NextRequest) {
     console.log("Found target column:", {
       columnId: targetColumn.id,
       columnName: targetColumn.identifier,
+      columnType: targetColumn.column_type,
     });
+
+    // =====================================================
+    // Logica Sistema Offerte
+    // =====================================================
+    let duplicatedTask = null;
+    let newDisplayMode = task?.display_mode || "normal";
+    let autoArchiveAt = null;
+
+    const isOfferKanban = task?.kanban?.is_offer_kanban === true;
+    const columnType = targetColumn.column_type || "normal";
+
+    if (isOfferKanban) {
+      console.log("Processing offer kanban logic:", {
+        columnType,
+        targetWorkKanbanId: task?.kanban?.target_work_kanban_id,
+      });
+
+      // Gestione colonna "won" (vinta)
+      if (columnType === "won") {
+        newDisplayMode = "small_green";
+
+        // Calcola data auto-archiviazione
+        if (siteId) {
+          const archiveSettings = await getAutoArchiveSettings(siteId);
+          if (archiveSettings.enabled) {
+            autoArchiveAt = calculateAutoArchiveDate(archiveSettings.days);
+          }
+        }
+
+        // Crea copia nella kanban lavori se configurata
+        const targetWorkKanbanId = task?.kanban?.target_work_kanban_id;
+        if (targetWorkKanbanId && siteId) {
+          try {
+            // Trova la prima colonna della kanban destinazione
+            const { data: firstColumn } = await supabase
+              .from("KanbanColumn")
+              .select("id")
+              .eq("kanbanId", targetWorkKanbanId)
+              .order("position", { ascending: true })
+              .limit(1)
+              .single();
+
+            if (firstColumn) {
+              // Genera nuovo codice per il lavoro
+              const newCode = await generateTaskCode(siteId, "LAVORO");
+
+              // Crea la copia del task
+              const { data: newTask, error: createError } = await supabase
+                .from("Task")
+                .insert({
+                  // Copia i dati rilevanti
+                  title: task.title,
+                  name: task.name,
+                  unique_code: newCode,
+                  clientId: task.clientId,
+                  sellProductId: task.sellProductId,
+                  sellPrice: task.sellPrice,
+                  deliveryDate: task.deliveryDate,
+                  positions: task.positions,
+                  other: task.other,
+                  site_id: siteId,
+                  // Nuovi campi
+                  kanbanId: targetWorkKanbanId,
+                  kanbanColumnId: firstColumn.id,
+                  parent_task_id: task.id,
+                  task_type: "LAVORO",
+                  display_mode: "normal",
+                  percentStatus: 0,
+                  archived: false,
+                  locked: false,
+                  material: false,
+                  metalli: false,
+                  ferramenta: false,
+                })
+                .select()
+                .single();
+
+              if (createError) {
+                console.error("Error creating work task:", createError);
+              } else {
+                duplicatedTask = newTask;
+                console.log(
+                  "Created work task:",
+                  newTask?.id,
+                  newTask?.unique_code,
+                );
+              }
+            }
+          } catch (dupError) {
+            console.error("Error in duplication process:", dupError);
+          }
+        }
+      }
+
+      // Gestione colonna "lost" (persa)
+      if (columnType === "lost") {
+        newDisplayMode = "small_red";
+
+        // Calcola data auto-archiviazione
+        if (siteId) {
+          const archiveSettings = await getAutoArchiveSettings(siteId);
+          if (archiveSettings.enabled) {
+            autoArchiveAt = calculateAutoArchiveDate(archiveSettings.days);
+          }
+        }
+      }
+    }
 
     // Get the total number of columns in the kanban to calculate progress percentage
     const countRes = await supabase
@@ -237,14 +357,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Prepara i dati di aggiornamento
+    const updateData: any = {
+      kanbanColumnId: column,
+      updated_at: now,
+      percentStatus: progress,
+    };
+
+    // Aggiungi campi sistema offerte se necessario
+    if (newDisplayMode !== "normal") {
+      updateData.display_mode = newDisplayMode;
+    }
+    if (autoArchiveAt) {
+      updateData.auto_archive_at = autoArchiveAt.toISOString();
+    }
+
     // Update task with site_id filtering if available
     let updateQuery = supabase
       .from("Task")
-      .update({
-        kanbanColumnId: column,
-        updated_at: now,
-        percentStatus: progress,
-      })
+      .update(updateData)
       .eq("id", id);
 
     if (siteId) {
@@ -293,6 +424,7 @@ export async function POST(req: NextRequest) {
         history: newAction,
         qc: qcControlResult,
         pc: packingControlResult,
+        duplicatedTask: duplicatedTask,
         status: 200,
       });
     }

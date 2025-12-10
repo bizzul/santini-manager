@@ -1,6 +1,12 @@
 "use client";
 
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from "lucide-react";
+import {
+  BadgeCheck,
+  Bell,
+  ChevronsUpDown,
+  LogOut,
+  ShieldCheck,
+} from "lucide-react";
 import { memo } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -123,6 +129,14 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
                 <Bell />
                 Notifiche
               </DropdownMenuItem>
+              {(user.role === "admin" || user.role === "superadmin") && (
+                <DropdownMenuItem asChild>
+                  <Link href="/administration" className="w-full">
+                    <ShieldCheck />
+                    Administration
+                  </Link>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

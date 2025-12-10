@@ -98,8 +98,15 @@ export default function Card({
   const [metalliCheck, setMetalliCheck] = useState(data.metalli);
   const [currentValue, setCurrentValue] = useState(0);
   const { toast } = useToast();
+  // Determina se la card deve essere small in base a display_mode
+  const displayMode = data.display_mode || data.displayMode || "normal";
+  const isSmallFromDisplayMode =
+    displayMode === "small_green" || displayMode === "small_red";
+
   const [isSmall, setIsSmall] = useState(() => {
-    // Load the initial value from localStorage
+    // Se display_mode forza small, usa quello
+    if (isSmallFromDisplayMode) return true;
+    // Altrimenti load from localStorage
     try {
       const saved = localStorage.getItem(`isSmall-${id}`);
       return saved ? JSON.parse(saved) : false;
@@ -121,6 +128,12 @@ export default function Card({
   }, [isSmall, id]);
 
   useEffect(() => {
+    // Se display_mode forza small, mantieni small
+    if (isSmallFromDisplayMode) {
+      setIsSmall(true);
+      return;
+    }
+
     if (isSmallInitial === true) {
       setIsSmall(true);
     } else if (
@@ -131,7 +144,7 @@ export default function Card({
     } else if (data.column?.identifier === "SPEDITO") {
       setIsSmall(true);
     }
-  }, [isSmallInitial]);
+  }, [isSmallInitial, isSmallFromDisplayMode]);
 
   useEffect(() => {
     // get the time in the variable (assuming it's in the format of "hh:mm:ss")
@@ -175,21 +188,16 @@ export default function Card({
     loadSuppliers();
   }, [id]);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging,
-  } = useDraggable({
-    id: id.toString(),
-    data: {
-      id,
-      columnIndex,
-      fromColumn: data.column?.identifier,
-    },
-    disabled: isLocked || data.isPreview,
-  });
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: id.toString(),
+      data: {
+        id,
+        columnIndex,
+        fromColumn: data.column?.identifier,
+      },
+      disabled: isLocked || data.isPreview,
+    });
 
   const dragStyle = transform
     ? {
@@ -433,20 +441,32 @@ export default function Card({
     }
   }
 
+  // Determina il colore di sfondo in base a display_mode
+  const getBackgroundClass = () => {
+    // Priorità: display_mode > timeState > default
+    if (displayMode === "small_green") {
+      return "bg-green-600 dark:bg-green-700";
+    }
+    if (displayMode === "small_red") {
+      return "bg-red-600 dark:bg-red-700";
+    }
+    // Logica esistente
+    if (isLocked) {
+      return timeState === "normal"
+        ? "bg-slate-500 dark:bg-slate-800"
+        : "bg-red-500 dark:bg-red-500";
+    }
+    return timeState === "normal"
+      ? "bg-slate-500 dark:bg-slate-800"
+      : "bg-red-800 dark:bg-red-800 animate-pulse";
+  };
+
   return (
     <ContextMenu>
       <div
-        className={`w-full mb-2  p-1 shadow-md select-none overscroll-contain  ${
+        className={`w-full mb-2 p-1 shadow-md select-none overscroll-contain ${
           data.isPreview ? "opacity-75 cursor-not-allowed" : ""
-        } ${
-          isLocked
-            ? timeState === "normal"
-              ? "bg-slate-500 dark:bg-slate-800"
-              : "bg-red-500 dark:bg-red-500"
-            : timeState === "normal"
-            ? "bg-slate-500 dark:bg-slate-800"
-            : "bg-red-800 dark:bg-red-800 animate-pulse"
-        } ${isSmall ? " h-24" : ""}`}
+        } ${getBackgroundClass()} ${isSmall ? " h-24" : ""}`}
         ref={data.isPreview ? undefined : setNodeRef}
         style={{
           ...dragStyle,
@@ -706,7 +726,20 @@ export default function Card({
                 <div className="flex flex-col justify-between h-full gap-2">
                   <div className="flex flex-col">
                     <div className="flex flex-row justify-between align-middle items-start">
-                      <div className="font-bold">{data.unique_code}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{data.unique_code}</span>
+                        {/* Indicatore stato offerta */}
+                        {displayMode === "small_green" && (
+                          <span className="text-xs bg-white/20 px-1 rounded">
+                            VINTA
+                          </span>
+                        )}
+                        {displayMode === "small_red" && (
+                          <span className="text-xs bg-white/20 px-1 rounded">
+                            PERSA
+                          </span>
+                        )}
+                      </div>
                       <div>
                         <p className="text-sm">
                           <FontAwesomeIcon icon={faClock} className="pr-1" />
@@ -730,16 +763,25 @@ export default function Card({
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-row gap-2 justify-end align-middle items-center">
-                    {" "}
-                    <p className="text-xs">{data.percentStatus}%</p>
-                    <div className="w-full bg-gray-200 rounded-full">
-                      <div
-                        style={{ width: `${data.percentStatus}%` }}
-                        className="h-2 bg-green-500 rounded-full"
-                      ></div>
+                  {/* Mostra prezzo per offerte, progress bar per lavori */}
+                  {displayMode !== "normal" ? (
+                    <div className="flex flex-row justify-between items-center text-sm">
+                      <span>Valore:</span>
+                      <span className="font-bold">
+                        {((data.sellPrice || 0) / 1000).toFixed(2)} K
+                      </span>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex flex-row gap-2 justify-end align-middle items-center">
+                      <p className="text-xs">{data.percentStatus}%</p>
+                      <div className="w-full bg-gray-200 rounded-full">
+                        <div
+                          style={{ width: `${data.percentStatus}%` }}
+                          className="h-2 bg-green-500 rounded-full"
+                        ></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

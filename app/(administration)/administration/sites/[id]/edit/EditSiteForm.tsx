@@ -15,8 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X, ImageIcon, Loader2 } from "lucide-react";
+import { X, ImageIcon, Loader2, Settings } from "lucide-react";
 import { toast } from "sonner";
+import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
 
 function SubmitButton({
   pending,
@@ -435,27 +436,52 @@ export default function EditSiteForm({
       </form>
 
       {userRole === "superadmin" && (
-        <div className="pt-6 border-t border-white/20">
-          <h3 className="text-lg font-medium text-white mb-4">
-            Module Management
-          </h3>
-          <p className="text-sm text-white/70 mb-4">
-            Control which modules are available for this site. Only superadmins
-            can modify these settings.
-          </p>
-          <ModuleManagementModal
-            siteId={site.id}
-            trigger={
-              <Button
-                variant="outline"
-                type="button"
-                className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
-              >
-                Manage Modules
-              </Button>
-            }
-          />
-        </div>
+        <>
+          <div className="pt-6 border-t border-white/20">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Module Management
+            </h3>
+            <p className="text-sm text-white/70 mb-4">
+              Control which modules are available for this site. Only
+              superadmins can modify these settings.
+            </p>
+            <ModuleManagementModal
+              siteId={site.id}
+              trigger={
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                >
+                  Manage Modules
+                </Button>
+              }
+            />
+          </div>
+
+          <div className="pt-6 border-t border-white/20">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Impostazioni Codici e Offerte
+            </h3>
+            <p className="text-sm text-white/70 mb-4">
+              Configura il formato dei codici (es: 25-OFF-001) e le impostazioni
+              di auto-archiviazione per le offerte vinte/perse.
+            </p>
+            <CodeTemplatesModal
+              siteId={site.id}
+              trigger={
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Gestisci Codici e Offerte
+                </Button>
+              }
+            />
+          </div>
+        </>
       )}
     </div>
   );

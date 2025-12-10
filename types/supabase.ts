@@ -13,6 +13,9 @@ export interface User {
 }
 
 // Task related types
+export type TaskType = 'OFFERTA' | 'LAVORO' | 'FATTURA';
+export type DisplayMode = 'normal' | 'small_green' | 'small_red';
+
 export interface Task {
     id: number;
     title?: string;
@@ -45,6 +48,15 @@ export interface Task {
     vernice?: boolean;
     altro?: boolean;
     stoccato?: boolean;
+    // Nuovi campi per sistema offerte
+    parent_task_id?: number;
+    parentTaskId?: number; // Alternative property name
+    task_type?: TaskType;
+    taskType?: TaskType; // Alternative property name
+    display_mode?: DisplayMode;
+    displayMode?: DisplayMode; // Alternative property name
+    auto_archive_at?: string;
+    autoArchiveAt?: string; // Alternative property name
 }
 
 // Client related types
@@ -175,10 +187,22 @@ export interface Kanban {
     id: number;
     name?: string;
     title?: string;
+    identifier?: string;
     description?: string;
+    color?: string;
+    category_id?: number;
+    site_id?: string;
+    // Nuovi campi per sistema offerte
+    is_offer_kanban?: boolean;
+    isOfferKanban?: boolean; // Alternative property name
+    target_work_kanban_id?: number;
+    targetWorkKanbanId?: number; // Alternative property name
     created_at?: string;
     updated_at?: string;
 }
+
+// Tipo colonna kanban
+export type ColumnType = 'normal' | 'won' | 'lost';
 
 export interface KanbanColumn {
     id: number;
@@ -186,7 +210,33 @@ export interface KanbanColumn {
     title?: string;
     identifier?: string;
     position?: number;
+    icon?: string;
     kanban_id?: number;
+    kanbanId?: number; // Alternative property name
+    // Nuovi campi per sistema offerte
+    column_type?: ColumnType;
+    columnType?: ColumnType; // Alternative property name
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Site Settings
+export interface SiteSetting {
+    id: number;
+    site_id: string;
+    setting_key: string;
+    setting_value: any; // JSONB
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Code Sequences
+export interface CodeSequence {
+    id: number;
+    site_id: string;
+    sequence_type: string;
+    year: number;
+    current_value: number;
     created_at?: string;
     updated_at?: string;
 }
