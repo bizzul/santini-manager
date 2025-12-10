@@ -93,16 +93,17 @@ export const fetchClients = cache(async (siteId: string) => {
         return [];
     }
 
-    // Fetch all client-related actions with user info
+    // Fetch all client-related actions with user info (limited for performance)
     const clientIds = clients.map((c) => c.id);
     const { data: actions, error: actionsError } = await supabase
         .from("Action")
         .select(`
-            *,
+            id, createdAt, clientId,
             User:user_id (id, given_name, family_name, picture, initials)
         `)
         .in("clientId", clientIds)
-        .order("createdAt", { ascending: false });
+        .order("createdAt", { ascending: false })
+        .limit(500);
 
     if (actionsError) {
         log.warn("Error fetching client actions:", actionsError);
@@ -147,16 +148,17 @@ export const fetchSuppliers = cache(async (siteId: string) => {
         return [];
     }
 
-    // Fetch all supplier-related actions with user info
+    // Fetch all supplier-related actions with user info (limited for performance)
     const supplierIds = suppliers.map((s) => s.id);
     const { data: actions, error: actionsError } = await supabase
         .from("Action")
         .select(`
-            *,
+            id, createdAt, supplierId,
             User:user_id (id, given_name, family_name, picture, initials)
         `)
         .in("supplierId", supplierIds)
-        .order("createdAt", { ascending: false });
+        .order("createdAt", { ascending: false })
+        .limit(500);
 
     if (actionsError) {
         log.warn("Error fetching supplier actions:", actionsError);
@@ -216,18 +218,19 @@ export const fetchSellProducts = cache(async (siteId: string) => {
         return [];
     }
 
-    // Fetch product-related actions with user info
+    // Fetch product-related actions with user info (limited for performance)
     const productIds = products.map((p) => p.id);
     const { data: actions, error: actionsError } = await supabase
         .from("Action")
         .select(`
-            *,
+            id, createdAt, data,
             User:user_id (id, given_name, family_name, picture, initials)
         `)
         .or(`data->sellProductId.in.(${
             productIds.join(",")
         }),data->>sellProductId.in.(${productIds.join(",")})`)
-        .order("createdAt", { ascending: false });
+        .order("createdAt", { ascending: false })
+        .limit(500);
 
     if (!actionsError && actions) {
         // Group actions by sellProductId and get the most recent one
@@ -624,17 +627,18 @@ export const fetchInventoryData = cache(async (siteId: string) => {
 
     const inventory = inventoryResult.data || [];
 
-    // Fetch product-related actions with user info
+    // Fetch product-related actions with user info (limited for performance)
     if (inventory.length > 0) {
         const productIds = inventory.map((p) => p.id);
         const { data: actions, error: actionsError } = await supabase
             .from("Action")
             .select(`
-                *,
+                id, createdAt, productId,
                 User:user_id (id, given_name, family_name, picture, initials)
             `)
             .in("productId", productIds)
-            .order("createdAt", { ascending: false });
+            .order("createdAt", { ascending: false })
+            .limit(500);
 
         if (!actionsError && actions) {
             // Group actions by productId and get the most recent one

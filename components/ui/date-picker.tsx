@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { it } from "date-fns/locale";
+import { it as dateFnsIt } from "date-fns/locale";
+import { it } from "react-day-picker/locale";
 import { Calendar as CalendarIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
@@ -37,7 +38,9 @@ export function DatePicker({
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "dd/MM/yyyy", { locale: it }) : placeholder}
+          {date
+            ? format(date, "dd/MM/yyyy", { locale: dateFnsIt })
+            : placeholder}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

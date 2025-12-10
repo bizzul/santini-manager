@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -7,7 +7,6 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -27,7 +26,11 @@ import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Product_category, Supplier, Task, User } from "@/types/supabase";
-import { CldUploadButton } from "next-cloudinary";
+import {
+  FileUpload,
+  UploadedFile,
+  UploadedFilesList,
+} from "@/components/ui/file-upload";
 
 const CreateProductForm = ({
   handleClose,
@@ -51,9 +54,18 @@ const CreateProductForm = ({
   });
 
   const { isSubmitting, errors } = form.formState;
-  const [uploaded, setUploadedFile] = useState<File[] | null | []>([]);
-  const [fileIds, setFileIds] = useState<any>([]);
-  const [resource, setResource] = useState(undefined);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [fileIds, setFileIds] = useState<number[]>([]);
+
+  const handleUploadComplete = (file: UploadedFile) => {
+    setUploadedFiles((prev) => [...prev, file]);
+    setFileIds((prev) => [...prev, file.id]);
+  };
+
+  const handleUploadError = (error: string) => {
+    toast({ description: `Errore upload: ${error}`, variant: "destructive" });
+  };
+
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       const dataObject = { data: d, fileIds: fileIds };
@@ -76,36 +88,6 @@ const CreateProductForm = ({
       });
     }
   };
-
-  const handleUpload = (result: any) => {
-    if (result) {
-      // console.log("risultato", result);
-      fetch("/api/files/create", {
-        method: "POST",
-        headers: new Headers({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(result.info),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.error) {
-            toast({
-              description: `Errore upload immagine ${data.message}`,
-            });
-          } else if (data.issues) {
-            toast({
-              description: `Invalid data found`,
-            });
-          } else {
-            setUploadedFile((current: any) => [...current, data.result]);
-            setFileIds((current: any) => [...current, data.result.id]);
-          }
-        });
-    }
-  };
-
-  console.log(errors);
 
   return (
     <Form {...form}>
@@ -340,41 +322,14 @@ const CreateProductForm = ({
 
         <div className="grid grid-cols-1 gap-6">
           <div className="col-span-3 sm:col-span-2">
-            <label
-              htmlFor="photo"
-              className="block text-sm font-medium text-gray-200"
-            >
-              Foto
-            </label>
-            <div className="mt-1 flex flex-row gap-4 rounded-md shadow-xs">
-              <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                <CldUploadButton
-                  className="z-50"
-                  uploadPreset="uploadpdf"
-                  onUpload={(result: any) => handleUpload(result)}
-                  options={{
-                    sources: ["local", "camera"],
-                    multiple: true,
-                  }}
-                >
-                  Carica foto
-                </CldUploadButton>
-              </div>
-
-              {uploaded && (
-                <div>
-                  <p>File caricati:</p>
-                  <ul>
-                    {uploaded.map((file: any) => (
-                      <li key={file.id}>{`${file.id} - ${file.name}`}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-            {/* {uploaded !== null && (
-              <span className="text-red-500 text-xs">Foto richiesta</span>
-            )} */}
+            <label className="block text-sm font-medium mb-2">Foto</label>
+            <FileUpload
+              onUploadComplete={handleUploadComplete}
+              onError={handleUploadError}
+              accept="image/*"
+              multiple
+            />
+            <UploadedFilesList files={uploadedFiles} />
           </div>
         </div>
 

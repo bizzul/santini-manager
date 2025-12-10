@@ -8,9 +8,6 @@ import ButtonExportCSV from "./buttonExportCSV";
 import SellProductWrapper from "./sellProductWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export default async function Page({
   params,
 }: {

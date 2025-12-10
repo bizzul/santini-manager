@@ -39,12 +39,13 @@ export async function GET(request: NextRequest) {
     // Estrai nomi categorie
     const categories = categoryData?.map((c) => c.name) || [];
 
-    // Ottieni le kanban di produzione disponibili
+    // Ottieni tutte le kanban marcate come "produzione" (possono essere multiple)
     const { data: productionKanbans, error: kanbansError } = await supabase
       .from("Kanban")
       .select("id, title, identifier")
       .eq("site_id", siteId)
-      .eq("is_production_kanban", true);
+      .eq("is_production_kanban", true)
+      .order("title", { ascending: true });
 
     if (kanbansError) {
       console.error("Error fetching production kanbans:", kanbansError);

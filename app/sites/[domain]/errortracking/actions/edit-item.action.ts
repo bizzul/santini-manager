@@ -36,18 +36,13 @@ export async function editItem(
         },
       });
 
-      files.forEach(async (file: any) => {
-        const fileUpdate = await supabase.from("file").update({
-          where: {
-            id: file.id,
-          },
-          data: {
-            name: file.original_filename,
-            url: file.secure_url,
-            cloudinaryId: file.asset_id,
-          },
-        });
-      });
+      // Link new uploaded files to this errortracking record
+      if (files?.length > 0) {
+        await supabase
+          .from("File")
+          .update({ errortrackingId: id })
+          .in("id", files);
+      }
 
       // Create a new Action record to track the user action
       const action = await supabase.from("action").insert({

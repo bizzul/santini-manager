@@ -13,7 +13,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/products/create";
 import TasksFilter from "./filterTaskWhite";
 import { Roles, Supplier } from "@/types/supabase";
-import { CldUploadButton } from "next-cloudinary";
+import {
+  FileUpload,
+  UploadedFile,
+  UploadedFilesList,
+} from "@/components/ui/file-upload";
 type Props = {
   open: boolean;
   setOpen: any;
@@ -67,11 +71,18 @@ export const EditModal: FC<Props> = ({
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploaded, setUploadedFile] = useState<File[] | null | []>(
-    resource?.files
-  );
-  const [fileIds, setFileIds] = useState<any>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [fileIds, setFileIds] = useState<number[]>([]);
   const [selectedTask, setSelectedTask] = useState<any>("");
+
+  const handleUploadComplete = (file: UploadedFile) => {
+    setUploadedFiles((prev) => [...prev, file]);
+    setFileIds((prev) => [...prev, file.id]);
+  };
+
+  const handleUploadError = (errorMsg: string) => {
+    setError(errorMsg);
+  };
 
   useEffect(() => {
     if (resource) {
@@ -115,32 +126,6 @@ export const EditModal: FC<Props> = ({
       });
   };
 
-  const handleUpload = (result: any) => {
-    if (result) {
-      // console.log("risultato", result);
-      setLoading(true);
-      fetch("/api/files/create", {
-        method: "post",
-        headers: new Headers({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(result.info),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          setLoading(false);
-          if (data.error) {
-            setError(data.message);
-          } else if (data.issues) {
-            setError("Invalid data found.");
-          } else {
-            setUploadedFile((current: any) => [...current, data.result]);
-            setFileIds((current: any) => [...current, data.result.id]);
-          }
-        });
-    }
-  };
-  // console.log(errors);
   if (resource === null || resource === undefined) {
     return <div>Nessuna risorsa selezionata</div>;
   } else
@@ -311,39 +296,16 @@ export const EditModal: FC<Props> = ({
                   </div>
 
                   <div>
-                    <label
-                      htmlFor="photo"
-                      className="block text-sm font-medium text-black"
-                    >
+                    <label className="block text-sm font-medium text-black mb-2">
                       Foto
                     </label>
-                    <div className="mt-1 flex flex-row gap-4 rounded-md shadow-xs">
-                      <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        <CldUploadButton
-                          uploadPreset="uploadpdf"
-                          onUpload={(result: any) => handleUpload(result)}
-                          options={{
-                            sources: ["local"],
-                          }}
-                        >
-                          Sostituisci foto
-                        </CldUploadButton>
-                      </div>
-
-                      {uploaded && (
-                        <div>
-                          <p>File caricati:</p>
-                          <ul>
-                            {uploaded.map((file: any) => (
-                              <li
-                                key={file.id}
-                              >{`${file.id} - ${file.name}`}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                    {errors.photo && <span>Campo necessario</span>}
+                    <FileUpload
+                      onUploadComplete={handleUploadComplete}
+                      onError={handleUploadError}
+                      accept="image/*"
+                      multiple
+                    />
+                    <UploadedFilesList files={uploadedFiles} />
                   </div>
                 </div>
               </div>

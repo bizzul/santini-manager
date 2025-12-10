@@ -5,9 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { validation } from "../../validation/errorTracking/create";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { CldUploadButton } from "next-cloudinary";
 import Image from "next/image";
 import { useToast } from "../ui/use-toast";
+import {
+  FileUpload,
+  UploadedFile,
+  UploadedFilesList,
+} from "@/components/ui/file-upload";
 import {
   Select,
   SelectContent,
@@ -85,12 +89,25 @@ function MobilePage({
 
   const { isSubmitting, errors } = form.formState;
 
-  const [uploaded, setUploadedFile] = useState<File[] | null | []>([]);
-  const [fileIds, setFileIds] = useState<any>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [fileIds, setFileIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const { toast } = useToast();
+
+  const handleUploadComplete = (file: UploadedFile) => {
+    setUploadedFiles((prev) => [...prev, file]);
+    setFileIds((prev) => [...prev, file.id]);
+  };
+
+  const handleUploadError = (errorMsg: string) => {
+    setError(errorMsg);
+    toast({
+      description: `Errore upload: ${errorMsg}`,
+      variant: "destructive",
+    });
+  };
 
   // console.log("error", errors);
   const onSubmit = (data: any) => {
@@ -121,32 +138,6 @@ function MobilePage({
           }, 1000);
         }
       });
-  };
-
-  const handleUpload = (result: any) => {
-    if (result) {
-      // console.log("risultato", result);
-      setLoading(true);
-      fetch("/api/files/create", {
-        method: "POST",
-        headers: new Headers({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(result.info),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          setLoading(false);
-          if (data.error) {
-            setError(data.message);
-          } else if (data.issues) {
-            setError("Invalid data found.");
-          } else {
-            setUploadedFile((current: any) => [...current, data.result]);
-            setFileIds((current: any) => [...current, data.result.id]);
-          }
-        });
-    }
   };
 
   const onNextStep = async () => {
@@ -392,43 +383,16 @@ function MobilePage({
 
                   <div className="grid grid-cols-1 gap-6">
                     <div className="col-span-3 sm:col-span-2">
-                      <label
-                        htmlFor="photo"
-                        className="block text-sm font-medium "
-                      >
+                      <label className="block text-sm font-medium mb-2">
                         Foto
                       </label>
-                      <div className="mt-1 flex flex-row gap-4 rounded-md shadow-xs">
-                        <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                          <CldUploadButton
-                            uploadPreset="uploadpdf"
-                            onUpload={(result: any) => handleUpload(result)}
-                            options={{
-                              sources: ["local", "camera"],
-                            }}
-                          >
-                            Carica foto
-                          </CldUploadButton>
-                        </div>
-
-                        {uploaded && (
-                          <div>
-                            <p>File caricati:</p>
-                            <ul>
-                              {uploaded.map((file: any) => (
-                                <li
-                                  key={file.id}
-                                >{`${file.id} - ${file.name}`}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                      {uploaded !== null && (
-                        <span className="text-red-500 text-xs">
-                          Foto richiesta
-                        </span>
-                      )}
+                      <FileUpload
+                        onUploadComplete={handleUploadComplete}
+                        onError={handleUploadError}
+                        accept="image/*"
+                        multiple
+                      />
+                      <UploadedFilesList files={uploadedFiles} />
                     </div>
                   </div>
                 </div>
@@ -514,17 +478,17 @@ function MobilePage({
 
                 <div className="sm:col-span-2">
                   <dt className="text-sm font-medium ">Foto</dt>
-                  <dd className="mt-1 text-sm ">
-                    {uploaded &&
-                      uploaded.map((photo: any) => (
-                        <Image
-                          key={photo.url}
-                          src={photo.url}
-                          alt={photo.name}
-                          width={150}
-                          height={150}
-                        />
-                      ))}
+                  <dd className="mt-1 text-sm flex flex-wrap gap-2">
+                    {uploadedFiles.map((photo) => (
+                      <Image
+                        key={photo.id}
+                        src={photo.url}
+                        alt={photo.name}
+                        width={150}
+                        height={150}
+                        className="rounded-md"
+                      />
+                    ))}
                   </dd>
                 </div>
               </dl>

@@ -1,9 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSiteContext } from "@/lib/server-data";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 60;
-
 export default async function SiteHomePage({
   params,
 }: {

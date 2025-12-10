@@ -6,9 +6,6 @@ import DialogCreate from "./dialogCreate";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 export default async function Page({
   params,
 }: {

@@ -39,15 +39,12 @@ export async function createItem(props: any) {
         };
       }
 
-      if (props.filedIds?.length > 0) {
-        props.fileIds.forEach(async (file: any) => {
-          await supabase.from("file").insert({
-            errortracking_id: createError.id,
-            name: file.original_filename,
-            url: file.secure_url,
-            cloudinary_id: file.asset_id,
-          });
-        });
+      // Link uploaded files to this errortracking record
+      if (props.fileIds?.length > 0) {
+        await supabase
+          .from("File")
+          .update({ errortrackingId: createError.id })
+          .in("id", props.fileIds);
       }
 
       // Create a new Action record to track the user action

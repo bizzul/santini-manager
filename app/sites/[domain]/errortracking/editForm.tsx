@@ -34,7 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CldUploadButton } from "next-cloudinary";
+import {
+  FileUpload,
+  UploadedFile,
+  UploadedFilesList,
+} from "@/components/ui/file-upload";
 import Image from "next/image";
 
 type Props = {
@@ -66,8 +70,17 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
-  const [uploaded, setUploadedFile] = useState<File[] | null | []>([]);
-  const [fileIds, setFileIds] = useState<any>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [fileIds, setFileIds] = useState<number[]>([]);
+
+  const handleUploadComplete = (file: UploadedFile) => {
+    setUploadedFiles((prev) => [...prev, file]);
+    setFileIds((prev) => [...prev, file.id]);
+  };
+
+  const handleUploadError = (error: string) => {
+    toast({ description: `Errore upload: ${error}`, variant: "destructive" });
+  };
 
   useEffect(() => {
     const getSuppliers = async () => {
@@ -167,34 +180,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
         description: `Elemento ${d.errorType} aggiornato correttamente!`,
       });
       form.reset();
-    }
-  };
-
-  const handleUpload = (result: any) => {
-    if (result) {
-      // console.log("risultato", result);
-      fetch("/api/files/create", {
-        method: "POST",
-        headers: new Headers({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(result.info),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.error) {
-            toast({
-              description: `Errore upload immagine ${data.message}`,
-            });
-          } else if (data.issues) {
-            toast({
-              description: `Invalid data found`,
-            });
-          } else {
-            setUploadedFile((current: any) => [...current, data.result]);
-            setFileIds((current: any) => [...current, data.result.id]);
-          }
-        });
     }
   };
 
@@ -429,52 +414,31 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
         <div className="grid grid-cols-1 gap-6">
           <div className="col-span-3 sm:col-span-2">
-            <label
-              htmlFor="photo"
-              className="block text-sm font-medium text-gray-200"
-            >
-              Foto
-            </label>
-            <div className="mt-1 flex flex-row gap-4 rounded-md shadow-xs">
-              <div className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                <CldUploadButton
-                  className="z-50"
-                  uploadPreset="uploadpdf"
-                  onUpload={(result: any) => handleUpload(result)}
-                  options={{
-                    sources: ["local", "camera"],
-                    multiple: true,
-                  }}
-                >
-                  Carica foto
-                </CldUploadButton>
-              </div>
-
-              {uploaded && (
-                <div>
-                  <p>File caricati:</p>
-                  <ul>
-                    {uploaded.map((file: any) => (
-                      <li key={file.id}>{`${file.id} - ${file.name}`}</li>
-                    ))}
-                  </ul>
+            <label className="block text-sm font-medium mb-2">Foto</label>
+            <FileUpload
+              onUploadComplete={handleUploadComplete}
+              onError={handleUploadError}
+              accept="image/*"
+              multiple
+            />
+            <UploadedFilesList files={uploadedFiles} />
+            {data.files && data.files.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2">Foto esistenti:</p>
+                <div className="flex flex-wrap gap-2">
+                  {data.files.map((file: any) => (
+                    <Image
+                      key={file.id}
+                      src={file.url}
+                      width={100}
+                      height={100}
+                      alt={file.name}
+                      className="rounded-md"
+                    />
+                  ))}
                 </div>
-              )}
-            </div>
-            {uploaded !== null && (
-              <span className="text-red-500 text-xs">Foto richiesta</span>
+              </div>
             )}
-            <p>Foto caricate:</p>
-            {/* @ts-ignore */}
-            {data.files.map((file: any) => (
-              <Image
-                key={file.cloudinaryId}
-                src={file.url}
-                width={100}
-                height={100}
-                alt={file.name}
-              />
-            ))}
           </div>
         </div>
 

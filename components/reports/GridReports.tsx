@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import {
   Card,
   CardContent,
@@ -7,23 +7,25 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   DateRangePicker,
-  DateRangePickerItem,
   DateRangePickerValue,
-} from "@tremor/react";
-import { itCH } from "date-fns/locale";
-import { useState } from "react";
+} from "@/components/ui/date-range-picker";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
-import { PackingControl, QualityControl, Supplier, Task } from "@/types/supabase";
+} from "@/components/ui/select";
+import {
+  PackingControl,
+  QualityControl,
+  Supplier,
+  Task,
+} from "@/types/supabase";
 function GridReports({
   suppliers,
   imb,
@@ -342,37 +344,28 @@ function GridReports({
       <Card>
         <CardHeader>
           <CardTitle>Ore</CardTitle>
-          <CardDescription>Situazione ore periodo selezioanto</CardDescription>
+          <CardDescription>Situazione ore periodo selezionato</CardDescription>
         </CardHeader>
         <CardContent>
           <DateRangePicker
             className="max-w-md mx-auto"
             value={value}
             onValueChange={setValue}
-            locale={itCH}
-            selectPlaceholder="Periodi"
-            
-            color="neutral"
-            // maxDate={new Date()}
-            weekStartsOn={1}
-          >
-            <DateRangePickerItem
-              key="ytd"
-              value="ytd"
-              from={new Date(lastYear, 0, 1)}
-              to={new Date(lastYear, 11, 31)}
-            >
-              Anno precedente
-            </DateRangePickerItem>
-            <DateRangePickerItem
-              key="half"
-              value="half"
-              from={new Date(currentYear, 0, 1)}
-              to={new Date(currentYear, 5, 31)}
-            >
-              Primo trimestre
-            </DateRangePickerItem>
-          </DateRangePicker>
+            presets={[
+              {
+                key: "ytd",
+                label: "Anno precedente",
+                from: new Date(lastYear, 0, 1),
+                to: new Date(lastYear, 11, 31),
+              },
+              {
+                key: "half",
+                label: "Primo semestre",
+                from: new Date(currentYear, 0, 1),
+                to: new Date(currentYear, 5, 31),
+              },
+            ]}
+          />
         </CardContent>
         <CardFooter>
           <Button
@@ -399,10 +392,7 @@ function GridReports({
               <SelectContent>
                 <SelectItem value="all">Tutti</SelectItem>
                 {suppliers.map((supplier) => (
-                  <SelectItem
-                    key={supplier.id}
-                    value={supplier.id.toString()}
-                  >
+                  <SelectItem key={supplier.id} value={supplier.id.toString()}>
                     {supplier.name}
                   </SelectItem>
                 ))}
@@ -413,29 +403,21 @@ function GridReports({
             className="max-w-md"
             value={valueError}
             onValueChange={setValueError}
-            locale={itCH}
-            selectPlaceholder="Periodi"
-            
-            color="neutral"
-            weekStartsOn={1}
-          >
-            <DateRangePickerItem
-              key="ytd"
-              value="ytd"
-              from={new Date(lastYear, 0, 1)}
-              to={new Date(lastYear, 11, 31)}
-            >
-              Anno precedente
-            </DateRangePickerItem>
-            <DateRangePickerItem
-              key="half"
-              value="half"
-              from={new Date(currentYear, 0, 1)}
-              to={new Date(currentYear, 5, 31)}
-            >
-              Primo trimestre
-            </DateRangePickerItem>
-          </DateRangePicker>
+            presets={[
+              {
+                key: "ytd",
+                label: "Anno precedente",
+                from: new Date(lastYear, 0, 1),
+                to: new Date(lastYear, 11, 31),
+              },
+              {
+                key: "half",
+                label: "Primo semestre",
+                from: new Date(currentYear, 0, 1),
+                to: new Date(currentYear, 5, 31),
+              },
+            ]}
+          />
         </CardContent>
         <CardFooter>
           <Button

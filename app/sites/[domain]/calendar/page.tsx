@@ -5,10 +5,6 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 
-// Force dynamic rendering to prevent static/dynamic conflicts
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 async function getData(): Promise<Task[]> {
   // Fetch data from your API here.
   const supabase = await createClient();

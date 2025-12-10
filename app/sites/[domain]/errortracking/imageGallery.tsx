@@ -57,7 +57,7 @@ function ImageGallery({ files }: { files: any }) {
           <Carousel className="relative max-h-[90%] max-w-[80%] ">
             <CarouselContent>
               {files.map((file: any, index: number) => (
-                <CarouselItem key={file.cloudinaryId}>
+                <CarouselItem key={file.id}>
                   <div className="p-1">
                     <Card>
                       <CardContent className="flex aspect-square items-center justify-center p-6">

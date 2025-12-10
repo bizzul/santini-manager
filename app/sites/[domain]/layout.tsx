@@ -55,10 +55,6 @@ async function checkSiteAccess(
   return !!userSite;
 }
 
-// Force dynamic rendering to prevent static/dynamic conflicts
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 async function ImpersonationBanner({
   impersonatedUser,
   originalSuperadminId,

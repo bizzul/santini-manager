@@ -9,10 +9,6 @@ import {
   fetchSingleKanban,
 } from "@/lib/server-data";
 
-// Force dynamic rendering
-export const dynamic = "force-dynamic";
-export const revalidate = 60;
-
 export default async function Page({
   searchParams,
   params,

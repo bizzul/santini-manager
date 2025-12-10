@@ -29,10 +29,6 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-      {
-        protocol: "https",
         hostname: "manager.matris.pro",
       },
       {
@@ -114,27 +110,28 @@ const nextConfig = {
       "@": path.resolve(__dirname),
     };
 
-    // Optimize webpack cache for better performance
+    // Enable filesystem cache for BOTH dev and production
+    // This dramatically speeds up rebuilds in development
+    config.cache = {
+      type: "filesystem",
+      buildDependencies: {
+        config: [__filename],
+      },
+      cacheDirectory: path.resolve(__dirname, ".next/cache/webpack"),
+      compression: dev ? false : "gzip", // Skip compression in dev for speed
+      maxMemoryGenerations: dev ? Infinity : 1,
+      store: "pack",
+      version: "2.0.0", // Increment to invalidate cache if needed
+    };
+
+    // Add performance hints only in production
     if (!dev) {
-      config.cache = {
-        type: "filesystem",
-        buildDependencies: {
-          config: [__filename],
-        },
-        cacheDirectory: path.resolve(__dirname, ".next/cache"),
-        compression: "gzip",
-        maxMemoryGenerations: 1,
-        store: "pack",
-        version: "1.0.0",
+      config.performance = {
+        hints: "warning",
+        maxEntrypointSize: 512000,
+        maxAssetSize: 512000,
       };
     }
-
-    // Add performance hints to identify large chunks
-    config.performance = {
-      hints: dev ? false : "warning",
-      maxEntrypointSize: 512000,
-      maxAssetSize: 512000,
-    };
 
     return config;
   },
@@ -143,11 +140,27 @@ const nextConfig = {
   experimental: {
     // Optimize package imports for better tree-shaking
     optimizePackageImports: [
+      // Icons
       "lucide-react",
       "@radix-ui/react-icons",
-      "date-fns",
       "@heroicons/react",
       "react-icons",
+      "@fortawesome/free-solid-svg-icons",
+      "@fortawesome/react-fontawesome",
+      // UI Libraries
+      "framer-motion",
+      // Radix UI components
+      "@radix-ui/react-accordion",
+      "@radix-ui/react-alert-dialog",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-select",
+      "@radix-ui/react-tabs",
+      "@radix-ui/react-tooltip",
+      // Utilities
+      "date-fns",
+      "date-fns-tz",
     ],
   },
 

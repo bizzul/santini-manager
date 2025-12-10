@@ -6,9 +6,6 @@ import DialogCreate from "./dialogCreate";
 import SellProductWrapper from "./sellProductWrapper";
 import { Client, SellProduct, Kanban } from "@/types/supabase";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 // Type for data returned by fetchProjectsData
 export type Data = {
   clients: Client[];

@@ -4,10 +4,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import MobilePage from "@/components/inventory/MobilePage";
 
-// Force dynamic rendering to prevent static/dynamic conflicts
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 type DataResult = Product | { error: { message: string } };
 
 async function getData(id: number): Promise<DataResult> {

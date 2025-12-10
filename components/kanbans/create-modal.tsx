@@ -12,11 +12,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/task/create";
 import FilterClients from "./FilterClients";
 import FilterProducts from "./FilterProducts";
-import { Client, File, Product, User } from "@/types/supabase";
+import { Client, Product, User } from "@/types/supabase";
 import Image from "next/image";
 import { countries } from "../clients/countries";
 import { Disclosure } from "@headlessui/react";
-import { CldUploadButton } from "next-cloudinary";
+import {
+  FileUpload,
+  UploadedFile,
+  UploadedFilesList,
+} from "@/components/ui/file-upload";
 
 type Props = {
   open: boolean;
@@ -53,15 +57,24 @@ export const CreateModal: FC<Props> = ({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
 
-  const [uploaded, setUploadedFile] = useState<File[]>([]);
-  const [fileIds, setFileIds] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [fileIds, setFileIds] = useState<number[]>([]);
+
+  const handleUploadComplete = (file: UploadedFile) => {
+    setUploadedFiles((prev) => [...prev, file]);
+    setFileIds((prev) => [...prev, file.id]);
+  };
+
+  const handleUploadError = (errorMsg: string) => {
+    setError(errorMsg);
+  };
 
   useEffect(() => {
     if (open === false) {
       setSelectedClient(null);
       setSelectedEmployee(null);
       setSelectedProduct(null);
-      setUploadedFile([]);
+      setUploadedFiles([]);
       setFileIds([]);
       setError(null);
       reset();
@@ -105,32 +118,6 @@ export const CreateModal: FC<Props> = ({
           setCreatedToast(true);
         }
       });
-  };
-
-  const handleUpload = (result: any) => {
-    if (result) {
-      // console.log("risultato", result);
-      setLoading(true);
-      fetch("/api/files/create", {
-        method: "post",
-        headers: new Headers({
-          "Content-Type": "application/json",
-        }),
-        body: JSON.stringify(result.info),
-      })
-        .then((response) => response.json())
-        .then((data) => {
-          setLoading(false);
-          if (data.error) {
-            setError(data.message);
-          } else if (data.issues) {
-            setError("Invalid data found.");
-          } else {
-            setUploadedFile((current: File[]) => [...current, data.result]);
-            setFileIds((current: string[]) => [...current, data.result.id]);
-          }
-        });
-    }
   };
 
   return (
@@ -388,23 +375,16 @@ export const CreateModal: FC<Props> = ({
                   <input type="number" {...register("sellPrice")} />
                 </div>
               </div>
-              <CldUploadButton
-                uploadPreset="uploadpdf"
-                onUpload={(result: any) => handleUpload(result)}
-                options={{
-                  sources: ["local"],
-                }}
-              />
-              {uploaded.length > 0 && (
-                <div>
-                  <p>File caricati:</p>
-                  <ul>
-                    {uploaded.map((file) => (
-                      <li key={file.id}>{`${file.id} - ${file.name}`}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <div className="flex flex-col gap-4 w-64">
+                <h1 className="text-slate-400 font-bold">Allegati</h1>
+                <FileUpload
+                  onUploadComplete={handleUploadComplete}
+                  onError={handleUploadError}
+                  accept="*/*"
+                  multiple
+                />
+                <UploadedFilesList files={uploadedFiles} />
+              </div>
             </div>
 
             <div className="px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
