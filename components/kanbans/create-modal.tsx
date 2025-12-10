@@ -21,6 +21,7 @@ import {
   UploadedFile,
   UploadedFilesList,
 } from "@/components/ui/file-upload";
+import { useToast } from "@/components/ui/use-toast";
 
 type Props = {
   open: boolean;
@@ -39,6 +40,7 @@ export const CreateModal: FC<Props> = ({
   products,
   setCreatedToast,
 }) => {
+  const { toast } = useToast();
   const {
     register,
     handleSubmit,
@@ -110,13 +112,38 @@ export const CreateModal: FC<Props> = ({
         setLoading(false);
         if (data.error) {
           setError(data.message);
+          toast({
+            variant: "destructive",
+            title: "Errore nella creazione",
+            description:
+              data.message || "Errore durante la creazione del progetto",
+          });
         } else if (data.issues) {
-          setError("Invalid data found.");
-          // console.log(data.issues);
+          const errorMessage = "Dati non validi. Controlla i campi inseriti.";
+          setError(errorMessage);
+          toast({
+            variant: "destructive",
+            title: "Errore di validazione",
+            description: errorMessage,
+          });
         } else {
           setOpen(false);
           setCreatedToast(true);
+          toast({
+            title: "Progetto creato",
+            description: "Il progetto è stato creato correttamente!",
+          });
         }
+      })
+      .catch((error) => {
+        setLoading(false);
+        const errorMessage = error.message || "Errore di connessione al server";
+        setError(errorMessage);
+        toast({
+          variant: "destructive",
+          title: "Errore",
+          description: errorMessage,
+        });
       });
   };
 
@@ -309,11 +336,11 @@ export const CreateModal: FC<Props> = ({
                             </div>
                           </div>
                         )}
-                        {selectedClient.mobile && (
+                        {selectedClient.mobilePhone && (
                           <div className="pb-4">
                             <h2 className="text-slate-400 text-sm">MOBILE</h2>
                             <div className="flex flex-row gap-3 pt-2">
-                              <p>{selectedClient.mobile}</p>
+                              <p>{selectedClient.mobilePhone}</p>
                             </div>
                           </div>
                         )}

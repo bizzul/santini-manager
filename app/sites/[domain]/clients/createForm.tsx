@@ -12,6 +12,7 @@ import { useParams } from "next/navigation";
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { logger } from "@/lib/logger";
 
 type FormData = z.infer<typeof validation>;
 
@@ -62,7 +63,7 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
     try {
       const result = (await createItem(data, domain)) as CreateItemResult;
 
-      console.log("result", result);
+      logger.debug("result", result);
 
       if (result && "success" in result && result.success) {
         handleClose();

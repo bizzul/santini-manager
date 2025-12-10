@@ -3,6 +3,7 @@
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getUserContext } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 /* ORGANIZATIONS */
 
@@ -131,6 +132,88 @@ export async function getOrganizationsWithUserCount() {
         const orgsWithCounts = data?.map((org: any) => ({
             ...org,
             userCount: org.user_organizations?.length || 0,
+        })) || [];
+
+        return orgsWithCounts;
+    }
+}
+
+// Get organizations with user count and site count
+export async function getOrganizationsWithSiteCount() {
+    const supabase = await createClient();
+    const userContext = await getUserContext();
+
+    if (userContext?.canAccessAllOrganizations) {
+        // Superadmin can see all organizations
+        const { data: orgs, error } = await supabase
+            .from("organizations")
+            .select("*")
+            .order("name", { ascending: true });
+
+        if (error) throw new Error(error.message);
+
+        // Get user counts per organization
+        const { data: userOrgs } = await supabase
+            .from("user_organizations")
+            .select("organization_id");
+
+        // Get site counts per organization
+        const { data: sites } = await supabase
+            .from("sites")
+            .select("organization_id");
+
+        // Count users and sites per organization
+        const orgsWithCounts = orgs?.map((org: any) => ({
+            ...org,
+            userCount: userOrgs?.filter(
+                (uo: any) => uo.organization_id === org.id,
+            ).length || 0,
+            siteCount: sites?.filter((s: any) => s.organization_id === org.id)
+                .length || 0,
+        })) || [];
+
+        return orgsWithCounts;
+    } else {
+        // Regular users see organizations they belong to
+        const { data: userOrgsForUser, error: userOrgsError } = await supabase
+            .from("user_organizations")
+            .select("organization_id")
+            .eq("user_id", userContext?.userId);
+
+        if (userOrgsError) throw new Error(userOrgsError.message);
+        if (!userOrgsForUser || userOrgsForUser.length === 0) {
+            return [];
+        }
+
+        const orgIds = userOrgsForUser.map((uo: any) => uo.organization_id);
+        const { data: orgs, error } = await supabase
+            .from("organizations")
+            .select("*")
+            .in("id", orgIds)
+            .order("name", { ascending: true });
+
+        if (error) throw new Error(error.message);
+
+        // Get user counts for these organizations
+        const { data: userOrgs } = await supabase
+            .from("user_organizations")
+            .select("organization_id")
+            .in("organization_id", orgIds);
+
+        // Get site counts for these organizations
+        const { data: sites } = await supabase
+            .from("sites")
+            .select("organization_id")
+            .in("organization_id", orgIds);
+
+        // Count users and sites per organization
+        const orgsWithCounts = orgs?.map((org: any) => ({
+            ...org,
+            userCount: userOrgs?.filter(
+                (uo: any) => uo.organization_id === org.id,
+            ).length || 0,
+            siteCount: sites?.filter((s: any) => s.organization_id === org.id)
+                .length || 0,
         })) || [];
 
         return orgsWithCounts;
@@ -350,7 +433,7 @@ export async function updateOrganization(orgId: string, updates: any) {
     return { success: true };
 }
 
-// Delete an organization
+// Delete an organization and all its related data (CASCADE)
 export async function deleteOrganization(orgId: string) {
     const supabase = await createClient();
     const userContext = await getUserContext();
@@ -362,13 +445,378 @@ export async function deleteOrganization(orgId: string) {
         );
     }
 
+    // Get organization name for logging
+    const { data: org } = await supabase
+        .from("organizations")
+        .select("name")
+        .eq("id", orgId)
+        .single();
+
+    if (!org) {
+        throw new Error("Organization not found");
+    }
+
+    // Get all sites for this organization
+    const { data: sites } = await supabase
+        .from("sites")
+        .select("id")
+        .eq("organization_id", orgId);
+
+    const siteIds = sites?.map((s) => s.id) || [];
+
+    // Delete all site-related data for each site
+    for (const siteId of siteIds) {
+        await deleteSiteData(siteId, supabase);
+    }
+
+    // Delete user_organizations relationships
+    const { error: userOrgError } = await supabase
+        .from("user_organizations")
+        .delete()
+        .eq("organization_id", orgId);
+
+    if (userOrgError) {
+        console.error("Error deleting user_organizations:", userOrgError);
+    }
+
+    // Delete all sites (this should cascade due to FK constraints but let's be explicit)
+    if (siteIds.length > 0) {
+        const { error: sitesError } = await supabase
+            .from("sites")
+            .delete()
+            .in("id", siteIds);
+
+        if (sitesError) {
+            throw new Error(`Failed to delete sites: ${sitesError.message}`);
+        }
+    }
+
+    // Finally, delete the organization
     const { error } = await supabase.from("organizations").delete().eq(
         "id",
         orgId,
     );
     if (error) throw new Error(error.message);
+
     revalidatePath("/administration/organizations");
-    return { success: true };
+    revalidatePath("/administration");
+    return {
+        success: true,
+        message:
+            `Organization "${org.name}" and all related data deleted successfully`,
+    };
+}
+
+// Helper function to delete all data related to a site
+// IMPORTANT: Order matters due to foreign key constraints!
+async function deleteSiteData(siteId: string, supabase: any) {
+    // Get all Kanban IDs for this site first
+    const { data: kanbans } = await supabase
+        .from("Kanban")
+        .select("id")
+        .eq("site_id", siteId);
+    const kanbanIds = kanbans?.map((k: any) => k.id) || [];
+
+    // Get all Task IDs for this site (needed for deleting related records)
+    const { data: tasks } = await supabase
+        .from("Task")
+        .select("id")
+        .eq("site_id", siteId);
+    const taskIds = tasks?.map((t: any) => t.id) || [];
+
+    // =====================================================
+    // STEP 1: Delete tables that reference Task
+    // =====================================================
+    if (taskIds.length > 0) {
+        // Delete Timetracking (references Task)
+        await supabase.from("Timetracking").delete().in("task_id", taskIds);
+
+        // Delete TaskHistory (references Task)
+        await supabase.from("TaskHistory").delete().in("taskId", taskIds);
+
+        // Delete TaskSupplier (references Task)
+        await supabase.from("TaskSupplier").delete().in("taskId", taskIds);
+
+        // Delete File (references Task)
+        await supabase.from("File").delete().in("taskId", taskIds);
+
+        // Delete Action (references Task)
+        await supabase.from("Action").delete().in("taskId", taskIds);
+
+        // Delete Errortracking (references Task)
+        await supabase.from("Errortracking").delete().in("task_id", taskIds);
+
+        // Get PackingControl IDs for these tasks
+        const { data: packingControls } = await supabase
+            .from("PackingControl")
+            .select("id")
+            .in("taskId", taskIds);
+        const packingControlIds = packingControls?.map((p: any) => p.id) || [];
+
+        // Delete PackingItem (references PackingControl)
+        if (packingControlIds.length > 0) {
+            await supabase
+                .from("PackingItem")
+                .delete()
+                .in("packingControlId", packingControlIds);
+        }
+
+        // Delete PackingControl (references Task)
+        await supabase.from("PackingControl").delete().in("taskId", taskIds);
+
+        // Get QualityControl IDs for these tasks
+        const { data: qualityControls } = await supabase
+            .from("QualityControl")
+            .select("id")
+            .in("taskId", taskIds);
+        const qualityControlIds = qualityControls?.map((q: any) => q.id) || [];
+
+        // Delete Qc_item (references QualityControl)
+        if (qualityControlIds.length > 0) {
+            await supabase
+                .from("Qc_item")
+                .delete()
+                .in("qualityControlId", qualityControlIds);
+        }
+
+        // Delete QualityControl (references Task)
+        await supabase.from("QualityControl").delete().in("taskId", taskIds);
+    }
+
+    // =====================================================
+    // STEP 2: Delete Task (references KanbanColumn, Kanban, Client, SellProduct)
+    // =====================================================
+    // Task has site_id, so we can delete directly
+    const { error: taskDeleteError } = await supabase
+        .from("Task")
+        .delete()
+        .eq("site_id", siteId);
+    if (taskDeleteError) {
+        logger.error("Error deleting Tasks by site_id:", taskDeleteError);
+        // Don't throw - we have fallback mechanisms later
+    }
+
+    // =====================================================
+    // STEP 3: Delete KanbanColumn (references Kanban)
+    // =====================================================
+    if (kanbanIds.length > 0) {
+        await supabase.from("KanbanColumn").delete().in("kanbanId", kanbanIds);
+    }
+
+    // =====================================================
+    // STEP 4: Delete Kanban
+    // =====================================================
+    if (kanbanIds.length > 0) {
+        // First clear self-referencing FKs
+        await supabase
+            .from("Kanban")
+            .update({
+                target_work_kanban_id: null,
+                target_invoice_kanban_id: null,
+            })
+            .in("id", kanbanIds);
+
+        await supabase.from("Kanban").delete().in("id", kanbanIds);
+    }
+
+    // =====================================================
+    // STEP 5: Delete kanban_categories
+    // =====================================================
+    await supabase.from("kanban_categories").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 6: Delete Products (first delete Action referencing products)
+    // =====================================================
+    const { data: products } = await supabase
+        .from("Product")
+        .select("id")
+        .eq("site_id", siteId);
+    const productIds = products?.map((p: any) => p.id) || [];
+
+    if (productIds.length > 0) {
+        await supabase.from("Action").delete().in("productId", productIds);
+    }
+    await supabase.from("Product").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 7: Delete product categories
+    // =====================================================
+    await supabase.from("ProductsCategory").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 8: Delete Suppliers (first delete references)
+    // =====================================================
+    const { data: suppliers } = await supabase
+        .from("Supplier")
+        .select("id")
+        .eq("site_id", siteId);
+    const supplierIds = suppliers?.map((s: any) => s.id) || [];
+
+    if (supplierIds.length > 0) {
+        // Delete TaskSupplier junction table
+        const { error: taskSupplierError } = await supabase
+            .from("TaskSupplier")
+            .delete()
+            .in("supplierId", supplierIds);
+        if (taskSupplierError) {
+            console.error("Error deleting TaskSupplier:", taskSupplierError);
+        }
+
+        // Delete Errortracking referencing suppliers
+        const { error: errortrackingError } = await supabase
+            .from("Errortracking")
+            .delete()
+            .in("supplier_id", supplierIds);
+        if (errortrackingError) {
+            logger.error("Error deleting Errortracking:", errortrackingError);
+        }
+
+        // Nullify Product.supplierId references
+        const { error: productSupplierError } = await supabase
+            .from("Product")
+            .update({ supplierId: null })
+            .in("supplierId", supplierIds);
+        if (productSupplierError) {
+            console.error(
+                "Error nullifying Product supplierId:",
+                productSupplierError,
+            );
+        }
+    }
+
+    const { error: supplierDeleteError } = await supabase
+        .from("Supplier")
+        .delete()
+        .eq("site_id", siteId);
+    if (supplierDeleteError) {
+        logger.error("Error deleting Supplier:", supplierDeleteError);
+        throw new Error(
+            `Failed to delete suppliers: ${supplierDeleteError.message}`,
+        );
+    }
+
+    // =====================================================
+    // STEP 9: Delete Clients (first ensure no Tasks reference them)
+    // =====================================================
+    const { data: clients } = await supabase
+        .from("Client")
+        .select("id")
+        .eq("site_id", siteId);
+    const clientIds = clients?.map((c: any) => c.id) || [];
+
+    if (clientIds.length > 0) {
+        // IMPORTANT: Delete any remaining Tasks that reference these clients
+        // (in case some Tasks don't have site_id set, or deletion in STEP 2 failed)
+        const { error: taskByClientError } = await supabase
+            .from("Task")
+            .delete()
+            .in("clientId", clientIds);
+        if (taskByClientError) {
+            logger.error(
+                "Error deleting Tasks by clientId:",
+                taskByClientError,
+            );
+            // Try setting clientId to null instead
+            const { error: nullifyError } = await supabase
+                .from("Task")
+                .update({ clientId: null })
+                .in("clientId", clientIds);
+            if (nullifyError) {
+                console.error("Error nullifying Task clientId:", nullifyError);
+            }
+        }
+
+        // Delete ClientAddress
+        const { error: clientAddressError } = await supabase
+            .from("ClientAddress")
+            .delete()
+            .in("clientId", clientIds);
+        if (clientAddressError) {
+            logger.error("Error deleting ClientAddress:", clientAddressError);
+        }
+
+        // Delete Action referencing clients
+        const { error: actionClientError } = await supabase
+            .from("Action")
+            .delete()
+            .in("clientId", clientIds);
+        if (actionClientError) {
+            logger.error("Error deleting Action (client):", actionClientError);
+        }
+    }
+
+    // Delete all clients for this site
+    const { error: clientDeleteError } = await supabase
+        .from("Client")
+        .delete()
+        .eq("site_id", siteId);
+    if (clientDeleteError) {
+        console.error("Error deleting Client:", clientDeleteError);
+        throw new Error(
+            `Failed to delete clients: ${clientDeleteError.message}`,
+        );
+    }
+
+    // =====================================================
+    // STEP 10: Delete site settings
+    // =====================================================
+    await supabase.from("site_settings").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 11: Delete code sequences
+    // =====================================================
+    await supabase.from("code_sequences").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 12: Delete SellProduct (Task already deleted by site_id in STEP 2)
+    // =====================================================
+    const { error: sellProductDeleteError } = await supabase
+        .from("SellProduct")
+        .delete()
+        .eq("site_id", siteId);
+    if (sellProductDeleteError) {
+        logger.error("Error deleting SellProduct:", sellProductDeleteError);
+    }
+
+    // =====================================================
+    // STEP 13: Delete sell product categories
+    // =====================================================
+    await supabase.from("sellproduct_categories").delete().eq(
+        "site_id",
+        siteId,
+    );
+
+    // =====================================================
+    // STEP 14: Delete Roles for this site
+    // =====================================================
+    const { data: roles } = await supabase
+        .from("Roles")
+        .select("id")
+        .eq("site_id", siteId);
+    const roleIds = roles?.map((r: any) => r.id) || [];
+
+    if (roleIds.length > 0) {
+        // Delete _RolesToUser junction
+        await supabase.from("_RolesToUser").delete().in("A", roleIds);
+        // Delete _RolesToTimetracking junction
+        await supabase.from("_RolesToTimetracking").delete().in("A", roleIds);
+    }
+    await supabase.from("Roles").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 15: Delete user_sites
+    // =====================================================
+    await supabase.from("user_sites").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 16: Delete site_modules
+    // =====================================================
+    await supabase.from("site_modules").delete().eq("site_id", siteId);
+
+    // =====================================================
+    // STEP 17: Delete supplier_categories
+    // =====================================================
+    await supabase.from("supplier_categories").delete().eq("site_id", siteId);
 }
 
 // Fetch a single organization by ID
@@ -454,7 +902,7 @@ export async function getOrganizationUsers(organizationId: string) {
         .eq("organization_id", organizationId);
 
     if (error) {
-        console.error("Error fetching organization users:", error);
+        logger.error("Error fetching organization users:", error);
         return [];
     }
 
@@ -470,7 +918,7 @@ export async function getOrganizationUsers(organizationId: string) {
         .in("authId", userIds);
 
     if (profilesError) {
-        console.error("Error fetching user profiles:", profilesError);
+        logger.error("Error fetching user profiles:", profilesError);
         return [];
     }
 
@@ -1361,7 +1809,7 @@ export async function createUser(
                 "Utente invitato con successo! Riceverà un'email per impostare la password.",
         };
     } catch (error: any) {
-        console.error("Error creating user:", error);
+        logger.error("Error creating user:", error);
         return {
             success: false,
             message: error.message || "Internal server error",
@@ -1457,7 +1905,7 @@ export async function updateSite(siteId: string, updates: any) {
     return { success: true };
 }
 
-// Delete a site
+// Delete a site and all its related data
 export async function deleteSite(siteId: string) {
     const supabase = await createClient();
     const userContext = await getUserContext();
@@ -1469,46 +1917,21 @@ export async function deleteSite(siteId: string) {
         );
     }
 
-    // Start a transaction to ensure data consistency
-    // Delete all related records first to maintain referential integrity
+    // Get site name for logging
+    const { data: site } = await supabase
+        .from("sites")
+        .select("name")
+        .eq("id", siteId)
+        .single();
 
-    // 1. Delete user-site associations
-    const { error: deleteUserSitesError } = await supabase
-        .from("user_sites")
-        .delete()
-        .eq("site_id", siteId);
-
-    if (deleteUserSitesError) {
-        throw new Error(
-            `Failed to delete user-site associations: ${deleteUserSitesError.message}`,
-        );
+    if (!site) {
+        throw new Error("Site not found");
     }
 
-    // 2. Delete site modules
-    const { error: deleteSiteModulesError } = await supabase
-        .from("site_modules")
-        .delete()
-        .eq("site_id", siteId);
+    // Delete all site-related data
+    await deleteSiteData(siteId, supabase);
 
-    if (deleteSiteModulesError) {
-        throw new Error(
-            `Failed to delete site modules: ${deleteSiteModulesError.message}`,
-        );
-    }
-
-    // 3. Delete clients associated with this site
-    const { error: deleteClientsError } = await supabase
-        .from("Client")
-        .delete()
-        .eq("site_id", siteId);
-
-    if (deleteClientsError) {
-        throw new Error(
-            `Failed to delete site clients: ${deleteClientsError.message}`,
-        );
-    }
-
-    // 4. Now delete the site itself
+    // Delete the site itself
     const { error: deleteSiteError } = await supabase
         .from("sites")
         .delete()
@@ -1519,7 +1942,12 @@ export async function deleteSite(siteId: string) {
     }
 
     revalidatePath("/administration/sites");
-    return { success: true };
+    revalidatePath("/administration");
+    return {
+        success: true,
+        message:
+            `Site "${site.name}" and all related data deleted successfully`,
+    };
 }
 
 // Fetch all user profiles from User table - superadmins see all, others see only their organization's users

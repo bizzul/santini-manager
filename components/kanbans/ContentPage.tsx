@@ -22,19 +22,17 @@ function ContentPage({
   domain: string;
 }) {
   return (
-    <div className="w-auto h-auto">
-      <div className="mx-auto mt-2 w-auto h-auto">
-        <KanbanBoard
-          name={kanName}
-          clients={clients}
-          products={products}
-          history={history}
-          initialTasks={initialTasks}
-          kanban={kanban}
-          snapshots={snapshots}
-          domain={domain}
-        />
-      </div>
+    <div className="flex flex-col h-full w-full overflow-hidden">
+      <KanbanBoard
+        name={kanName}
+        clients={clients}
+        products={products}
+        history={history}
+        initialTasks={initialTasks}
+        kanban={kanban}
+        snapshots={snapshots}
+        domain={domain}
+      />
     </div>
   );
 }

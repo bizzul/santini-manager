@@ -4,9 +4,11 @@ import { getUserContext } from "@/lib/auth-utils";
 import {
   requireServerSiteContext,
   fetchSuppliers,
-  fetchCategories,
+  fetchSupplierCategories,
 } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
+import DialogImportCSV from "./dialogImportCSV";
+import ButtonExportCSV from "./buttonExportCSV";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
@@ -29,14 +31,18 @@ export default async function Page({
   // Fetch data in parallel
   const [suppliers, categories] = await Promise.all([
     fetchSuppliers(siteId),
-    fetchCategories(siteId),
+    fetchSupplierCategories(siteId),
   ]);
 
   return (
     <PageLayout>
       <PageHeader>
         <h1 className="text-2xl font-bold">Fornitori</h1>
-        <DialogCreate data={categories} domain={domain} />
+        <div className="flex gap-2">
+          <ButtonExportCSV />
+          <DialogImportCSV />
+          <DialogCreate data={categories} domain={domain} />
+        </div>
       </PageHeader>
       <PageContent>
         {suppliers.length > 0 ? (

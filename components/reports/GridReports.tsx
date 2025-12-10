@@ -26,6 +26,7 @@ import {
   Supplier,
   Task,
 } from "@/types/supabase";
+import { logger } from "@/lib/logger";
 function GridReports({
   suppliers,
   imb,
@@ -86,11 +87,11 @@ function GridReports({
         setLoadingInventory(false);
       } else {
         setLoadingInventory(false);
-        console.error("Failed to download file");
+        logger.error("Failed to download file");
       }
     } catch (error) {
       setLoadingInventory(false);
-      console.error("Error exporting to Excel:", error);
+      logger.error("Error exporting to Excel:", error);
     }
   };
 
@@ -124,10 +125,10 @@ function GridReports({
         //@ts-ignore
         link.parentNode.removeChild(link);
       } else {
-        console.error("Failed to download file");
+        logger.error("Failed to download file");
       }
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
+      logger.error("Error exporting to Excel:", error);
     }
   };
 
@@ -178,10 +179,10 @@ function GridReports({
         //@ts-ignore
         link.parentNode.removeChild(link);
       } else {
-        console.error("Failed to download file");
+        logger.error("Failed to download file");
       }
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
+      logger.error("Error exporting to Excel:", error);
     }
   };
 
@@ -230,10 +231,10 @@ function GridReports({
         //@ts-ignore
         link.parentNode.removeChild(link);
       } else {
-        console.error("Failed to download file");
+        logger.error("Failed to download file");
       }
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
+      logger.error("Error exporting to Excel:", error);
     }
   };
 
@@ -270,10 +271,10 @@ function GridReports({
         //@ts-ignore
         link.parentNode.removeChild(link);
       } else {
-        console.error("Failed to download file");
+        logger.error("Failed to download file");
       }
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
+      logger.error("Error exporting to Excel:", error);
     }
   };
 
@@ -302,10 +303,10 @@ function GridReports({
         //@ts-ignore
         link.parentNode.removeChild(link);
       } else {
-        console.error("Failed to download file");
+        logger.error("Failed to download file");
       }
     } catch (error) {
-      console.error("Error exporting to Excel:", error);
+      logger.error("Error exporting to Excel:", error);
     }
   };
 

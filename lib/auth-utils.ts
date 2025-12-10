@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { cache } from "react";
+import { logger } from "@/lib/logger";
 
 export type UserRole = "superadmin" | "admin" | "user";
 
@@ -57,7 +58,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
                 originalSuperadminId = originalId;
                 isImpersonating = true;
             } catch (parseError) {
-                console.error(
+                logger.error(
                     "Error parsing impersonation cookie:",
                     parseError,
                 );
@@ -76,7 +77,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
                     await supabase
                         .auth.admin.getUserById(userIdToFetch);
                 if (impErr) {
-                    console.error("Error getting impersonated user:", impErr);
+                    logger.error("Error getting impersonated user:", impErr);
                 }
                 if (impersonatedUserData && impersonatedUserData.user) {
                     userToUse = impersonatedUserData.user;
@@ -87,7 +88,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
                     originalSuperadminId = undefined;
                 }
             } catch (impError) {
-                console.error("Error in impersonation flow:", impError);
+                logger.error("Error in impersonation flow:", impError);
                 userToUse = user;
                 isImpersonating = false;
                 originalSuperadminId = undefined;
@@ -161,7 +162,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
             impersonatedUser,
         };
     } catch (error) {
-        console.error("Error in getUserContext:", error);
+        logger.error("Error in getUserContext:", error);
         return null;
     }
 }

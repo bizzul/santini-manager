@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import Image from "next/image";
+import { OrganizationSitesGroup } from "./OrganizationSitesGroup";
 
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
@@ -69,10 +70,10 @@ export default async function AdminDashboardPage() {
       }
     }
   } else if (role === "superadmin") {
-    // For superadmin users, fetch all sites
+    // For superadmin users, fetch all sites with organization info
     const { data: allSites, error: sitesError } = await supabase
       .from("sites")
-      .select("*")
+      .select("*, organization:organizations(id, name, code)")
       .order("created_at", { ascending: false });
 
     if (!sitesError) {
@@ -80,6 +81,43 @@ export default async function AdminDashboardPage() {
     } else {
       console.error("Error fetching all sites:", sitesError);
     }
+  }
+
+  // Group sites by organization for superadmin
+  const sitesByOrganization: Record<
+    string,
+    {
+      organization: { id: string; name: string; code: string } | null;
+      sites: typeof sites;
+    }
+  > = {};
+
+  if (role === "superadmin") {
+    // First, fetch ALL organizations (including those without sites)
+    const { data: allOrganizations } = await supabase
+      .from("organizations")
+      .select("id, name, code")
+      .order("name", { ascending: true });
+
+    // Initialize all organizations in the map (even if they have no sites)
+    allOrganizations?.forEach((org: any) => {
+      sitesByOrganization[org.id] = {
+        organization: org,
+        sites: [],
+      };
+    });
+
+    // Then add sites to their respective organizations
+    sites.forEach((site: any) => {
+      const orgId = site.organization?.id || "no-organization";
+      if (!sitesByOrganization[orgId]) {
+        sitesByOrganization[orgId] = {
+          organization: site.organization || null,
+          sites: [],
+        };
+      }
+      sitesByOrganization[orgId].sites.push(site);
+    });
   }
 
   // Dashboard content based on role
@@ -386,67 +424,14 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {sites?.map((site) => (
-                <div
-                  key={site.id}
-                  className="group backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6 hover:bg-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:border-white/60"
-                >
-                  {/* Site Image */}
-                  {site.image && (
-                    <div className="mb-4 -mx-2 -mt-2">
-                      <img
-                        src={site.image}
-                        alt={`${site.name} image`}
-                        className="w-full h-32 object-contain rounded-xl bg-white/5"
-                      />
-                    </div>
-                  )}
-                  <h4 className="text-lg font-bold text-white mb-2">
-                    {site.name}
-                  </h4>
-                  <p className="text-white/70 text-sm mb-4">
-                    {site.description}
-                  </p>
-                  <div className="space-y-2 mb-4">
-                    <div className="text-sm text-white/60">
-                      <span className="font-medium text-white/80">Domain:</span>{" "}
-                      {site.subdomain}.{process.env.NEXT_PUBLIC_ROOT_DOMAIN}
-                    </div>
-                    {site.custom_domain && (
-                      <div className="text-sm text-white/60">
-                        <span className="font-medium text-white/80">
-                          Custom Domain:
-                        </span>{" "}
-                        {site.custom_domain}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex space-x-2">
-                    <Link
-                      href={`/sites/${site.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/dashboard`}
-                    >
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Visit
-                      </Button>
-                    </Link>
-                    <Link href={`/administration/sites/${site.id}/edit`}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
-                      >
-                        <Settings className="h-4 w-4 mr-1" />
-                        Manage
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+            {/* Sites grouped by organization */}
+            <div className="space-y-4">
+              {Object.entries(sitesByOrganization).map(([orgId, group]) => (
+                <OrganizationSitesGroup
+                  key={orgId}
+                  organization={group.organization}
+                  sites={group.sites}
+                />
               ))}
             </div>
 

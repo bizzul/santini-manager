@@ -3,12 +3,14 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function saveKanban(kanban: {
   id?: number;
   title: string;
   identifier: string;
   color?: string;
+  icon?: string;
   category_id?: number | null;
   // Nuovi campi per sistema offerte
   is_offer_kanban?: boolean;
@@ -71,6 +73,7 @@ export async function saveKanban(kanban: {
       const updateData: any = {
         title: kanban.title,
         color: kanban.color,
+        icon: kanban.icon,
         category_id: kanban.category_id,
         // Nuovi campi per sistema offerte
         is_offer_kanban: kanban.is_offer_kanban || false,
@@ -117,6 +120,7 @@ export async function saveKanban(kanban: {
         title: kanban.title,
         identifier: kanban.identifier,
         color: kanban.color,
+        icon: kanban.icon,
         category_id: kanban.category_id,
         // Nuovi campi per sistema offerte
         is_offer_kanban: kanban.is_offer_kanban || false,
@@ -152,7 +156,7 @@ export async function saveKanban(kanban: {
 
     // Skip column updates if flag is set (when editing metadata only)
     if (kanban.skipColumnUpdates) {
-      console.log("⏭️  Skipping column updates (metadata-only update)");
+      logger.debug("⏭️  Skipping column updates (metadata-only update)");
 
       // Just return the kanban with existing columns
       const { data: existingColumns } = await supabase

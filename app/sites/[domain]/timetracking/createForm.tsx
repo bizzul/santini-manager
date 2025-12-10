@@ -27,6 +27,7 @@ import { validation } from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
 import { Roles, Task, User } from "@/types/supabase";
 import { useParams } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 export interface Typology {
   name: string;
@@ -96,7 +97,7 @@ const CreateProductForm = ({
       const data = await response.json();
 
       if (data.error) {
-        console.error("Error fetching user roles:", data.error);
+        logger.error("Error fetching user roles:", data.error);
         setUserAssignedRoles([]);
         return;
       }
@@ -110,7 +111,7 @@ const CreateProductForm = ({
 
       setUserAssignedRoles(assignedRoles);
     } catch (error) {
-      console.error("Error fetching user roles:", error);
+      logger.error("Error fetching user roles:", error);
       setUserAssignedRoles([]);
     } finally {
       setLoadingUserRoles(false);
@@ -144,7 +145,7 @@ const CreateProductForm = ({
         form.reset();
       }
     } catch (e) {
-      console.error("Error creating timetracking:", e);
+      logger.error("Error creating timetracking:", e);
       toast({
         description: `Errore nel creare l'elemento! ${e}`,
       });
@@ -156,7 +157,7 @@ const CreateProductForm = ({
       <form
         className="space-y-4"
         onSubmit={form.handleSubmit(onSubmit, (errors) => {
-          console.log("Form validation failed:", errors);
+          logger.debug("Form validation failed:", errors);
         })}
       >
         <FormField

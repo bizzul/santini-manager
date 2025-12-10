@@ -1,5 +1,6 @@
 import { createClient } from "../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ user: mergedUser }, { status: 200 });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Unknown error",
     }, { status: 400 });

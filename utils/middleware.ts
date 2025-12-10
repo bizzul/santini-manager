@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_OPTIONS } from "./supabase/cookie";
+import { logger } from "@/lib/logger";
 
 const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
 
@@ -86,6 +87,6 @@ export async function updateSession(request: NextRequest) {
   //    return myNewResponse
   // If this is not done, you may be causing the browser and server to go out
   // of sync and terminate the user's session prematurely!
-  console.log("user", user);
+  logger.debug("user", user);
   return supabaseResponse;
 }

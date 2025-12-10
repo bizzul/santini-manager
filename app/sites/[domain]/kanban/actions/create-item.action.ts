@@ -5,7 +5,7 @@ import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
-import { generateUniqueCode } from "@/utils/unique-code";
+import { generateTaskCode } from "@/lib/code-generator";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -54,12 +54,24 @@ export async function createItem(props: any, domain?: string) {
         throw new Error("Kanban non valido: nessuna colonna trovata!");
       }
 
-      // Generate unique code to avoid duplicates (appends .1, .2, etc. if needed)
-      const uniqueCode = await generateUniqueCode(
-        supabase,
-        result.data.unique_code,
-        siteId
-      );
+      // Get kanban info to determine task type
+      const { data: kanban } = await supabase
+        .from("Kanban")
+        .select("is_offer_kanban, site_id")
+        .eq("id", result.data.kanbanId)
+        .single();
+
+      // Use site_id from kanban if not already set
+      if (!siteId && kanban?.site_id) {
+        siteId = kanban.site_id;
+      }
+
+      // Generate unique code using atomic sequence (always incremental)
+      let uniqueCode = result.data.unique_code;
+      if (siteId) {
+        const taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
+        uniqueCode = await generateTaskCode(siteId, taskType);
+      }
 
       // Prepare insert data with site_id
       const insertData: any = {
@@ -89,7 +101,9 @@ export async function createItem(props: any, domain?: string) {
 
       if (taskCreateError) {
         console.error("Error creating task:", taskCreateError);
-        throw new Error("Failed to create task");
+        throw new Error(
+          `Errore nella creazione del task: ${taskCreateError.message}`,
+        );
       }
 
       const { data: defaultSuppliers, error: defaultSuppliersError } =
@@ -132,6 +146,9 @@ export async function createItem(props: any, domain?: string) {
     }
   } catch (error: any) {
     // Make sure to return a plain object
-    return { message: "Creazione elemento fallita!", error: error.message };
+    return {
+      error: true,
+      message: error.message || "Creazione elemento fallita!",
+    };
   }
 }

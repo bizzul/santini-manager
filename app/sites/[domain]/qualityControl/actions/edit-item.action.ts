@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/sellProducts/create";
+import { logger } from "@/lib/logger";
 export async function editSellProductAction(formData: any, id: number) {
   const result = validation.safeParse(formData);
   if (result.success) {
@@ -17,7 +18,7 @@ export async function editSellProductAction(formData: any, id: number) {
         .eq("id", id);
       return revalidatePath("/qualityControl");
     } catch (e) {
-      console.log(e);
+      logger.error(e);
       return { error: "Modifica elemento fallita!" };
     }
   }

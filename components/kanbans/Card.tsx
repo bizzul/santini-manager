@@ -16,6 +16,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
+import { logger } from "@/lib/logger";
 import { BellIcon } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
@@ -111,7 +112,7 @@ export default function Card({
       const saved = localStorage.getItem(`isSmall-${id}`);
       return saved ? JSON.parse(saved) : false;
     } catch (error) {
-      console.warn("Error parsing localStorage value for isSmall:", error);
+      logger.warn("Error parsing localStorage value for isSmall:", error);
       return false;
     }
   });
@@ -180,7 +181,7 @@ export default function Card({
 
         setTaskSuppliers(Array.isArray(taskSuppData) ? taskSuppData : []);
       } catch (error) {
-        console.error("Error loading suppliers:", error);
+        logger.error("Error loading suppliers:", error);
         setTaskSuppliers([]);
       }
     };

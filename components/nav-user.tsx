@@ -54,14 +54,14 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-gray-200 dark:data-[state=open]:bg-white/15 data-[state=open]:text-gray-900 dark:data-[state=open]:text-white"
             >
-              <Avatar className="h-8 w-8 rounded-lg">
+              <Avatar className="h-8 w-8 rounded-lg border border-gray-200 dark:border-white/20">
                 <AvatarImage
                   src={userProfile?.picture || undefined}
                   alt={displayName}
                 />
-                <AvatarFallback className="rounded-lg">
+                <AvatarFallback className="rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white">
                   {displayName
                     .split(" ")
                     .map((n: string) => n[0])
@@ -71,17 +71,19 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{displayName}</span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="truncate font-semibold text-gray-900 dark:text-white">
+                  {displayName}
+                </span>
+                <span className="truncate text-xs text-gray-500 dark:text-white/60">
                   {userData?.email}
                 </span>
                 {roleDisplay && (
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-gray-500 dark:text-white/60">
                     {roleDisplay}
                   </span>
                 )}
               </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDown className="ml-auto size-4 text-gray-500 dark:text-white/70" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

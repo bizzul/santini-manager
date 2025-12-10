@@ -12,6 +12,7 @@ import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/products/edit";
 import { Supplier } from "@/types/supabase";
+import { logger } from "@/lib/logger";
 type Props = {
   open: boolean;
   setOpen: any;
@@ -81,7 +82,7 @@ export const EditModal: FC<Props> = ({
     }
   }, [resource]);
 
-  console.log(resource);
+  logger.debug(resource);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

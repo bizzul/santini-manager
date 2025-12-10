@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export const GET = async () => {
     let groupedInventories: { [key: string]: any[] } = {};
 
     products.forEach((inventory: any) => {
-      console.log("inventory Item", inventory);
+      logger.debug("inventory Item", inventory);
       const categoryName =
         //@ts-ignore
         inventory.product_categories?.name || "Nessuna Categoria";

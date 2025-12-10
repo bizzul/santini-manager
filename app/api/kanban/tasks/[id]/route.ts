@@ -1,6 +1,7 @@
 import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -24,7 +25,7 @@ export async function GET(
           siteId = siteResult.data.id;
         }
       } catch (error) {
-        console.error("Error fetching site data:", error);
+        logger.error("Error fetching site data:", error);
       }
     }
 
@@ -57,7 +58,7 @@ export async function GET(
       return NextResponse.json({ message: "Task not found", status: 404 });
     }
   } catch (error) {
-    console.error("Error fetching task:", error);
+    logger.error("Error fetching task:", error);
     return NextResponse.json({ message: "Internal server error", status: 500 });
   }
 }
@@ -81,7 +82,7 @@ export async function PATCH(req: NextRequest) {
           siteId = siteResult.data.id;
         }
       } catch (error) {
-        console.error("Error fetching site data:", error);
+        logger.error("Error fetching site data:", error);
       }
     }
 
@@ -159,7 +160,7 @@ export async function DELETE(req: NextRequest) {
       status: 404,
     });
   } catch (error) {
-    console.error("Error deleting task:", error);
+    logger.error("Error deleting task:", error);
     return NextResponse.json({ message: "Internal server error", status: 500 });
   }
 }

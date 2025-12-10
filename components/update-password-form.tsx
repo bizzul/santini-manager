@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { logger } from "@/lib/logger";
 
 export function UpdatePasswordForm({
   className,
@@ -66,9 +67,9 @@ export function UpdatePasswordForm({
           });
 
           if (recoveryError) {
-            console.error("Recovery token verification failed:", recoveryError);
-            console.error("Error details:", recoveryError.message);
-            console.error("Error status:", recoveryError.status);
+            logger.error("Recovery token verification failed:", recoveryError);
+            logger.error("Error details:", recoveryError.message);
+            logger.error("Error status:", recoveryError.status);
             throw new Error(
               "Recovery link is invalid or has expired. Please request a new one."
             );
@@ -78,7 +79,7 @@ export function UpdatePasswordForm({
           const { error } = await supabase.auth.updateUser({ password });
 
           if (error) {
-            console.error("Password update failed:", error);
+            logger.error("Password update failed:", error);
             throw error;
           }
 
@@ -87,7 +88,7 @@ export function UpdatePasswordForm({
             router.push("/login");
           }, 2000);
         } catch (updateError) {
-          console.error("Password update error:", updateError);
+          logger.error("Password update error:", updateError);
           throw new Error(
             "Failed to update password. The recovery link may have expired."
           );

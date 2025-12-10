@@ -2,7 +2,7 @@ import { createClient } from "../../../../../utils/supabase/server";
 import { validation } from "../../../../../validation/task/create"; //? <--- The validation schema
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
-import { generateUniqueCode } from "../../../../../utils/unique-code";
+import { generateTaskCode } from "../../../../../lib/code-generator";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       // Get kanban and column IDs (filter by site_id if available)
       let kanbanQuery = supabase
         .from("Kanban")
-        .select("id")
+        .select("id, is_offer_kanban, site_id")
         .eq("identifier", "PRODUCTION");
 
       if (siteId) {
@@ -51,7 +51,17 @@ export async function POST(req: NextRequest) {
 
       const { data: kanban, error: kanbanError } = await kanbanQuery.single();
 
-      if (kanbanError) throw kanbanError;
+      if (kanbanError) {
+        return NextResponse.json({
+          error: true,
+          message: `Kanban non trovato: ${kanbanError.message}`,
+        }, { status: 404 });
+      }
+
+      // Use site_id from kanban if not already set
+      if (!siteId && kanban?.site_id) {
+        siteId = kanban.site_id;
+      }
 
       const { data: column, error: columnError } = await supabase
         .from("KanbanColumn")
@@ -60,7 +70,12 @@ export async function POST(req: NextRequest) {
         .eq("kanbanId", kanban.id)
         .single();
 
-      if (columnError) throw columnError;
+      if (columnError) {
+        return NextResponse.json({
+          error: true,
+          message: `Colonna kanban non trovata: ${columnError.message}`,
+        }, { status: 404 });
+      }
 
       // create an array of positions from the request body
       // if a position is not provided, it defaults to an empty string
@@ -70,12 +85,12 @@ export async function POST(req: NextRequest) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
-      // Generate unique code to avoid duplicates (appends .1, .2, etc. if needed)
-      const uniqueCode = await generateUniqueCode(
-        supabase,
-        result.data.unique_code,
-        siteId
-      );
+      // Generate unique code using atomic sequence (always incremental)
+      let uniqueCode = result.data.unique_code;
+      if (siteId) {
+        const taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
+        uniqueCode = await generateTaskCode(siteId, taskType);
+      }
 
       // Prepare insert data with site_id
       const insertData: any = {
@@ -103,7 +118,12 @@ export async function POST(req: NextRequest) {
         .select()
         .single();
 
-      if (taskError) throw taskError;
+      if (taskError) {
+        return NextResponse.json({
+          error: true,
+          message: `Errore nella creazione del task: ${taskError.message}`,
+        }, { status: 500 });
+      }
 
       // Success
       if (taskCreate) {
@@ -150,12 +170,21 @@ export async function POST(req: NextRequest) {
       }
     } else {
       //Input invalid
-      return NextResponse.json({ error: "Error", status: 400 });
+      const errorMessages = result.error.issues.map((issue) => issue.message)
+        .join(", ");
+      return NextResponse.json({
+        error: true,
+        message: `Dati non validi: ${errorMessages}`,
+        issues: result.error.issues,
+      }, { status: 400 });
     }
   } catch (error) {
     console.error("Error creating task:", error);
     return NextResponse.json({
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: true,
+      message: error instanceof Error
+        ? error.message
+        : "Errore sconosciuto durante la creazione del task",
     }, { status: 500 });
   }
 }

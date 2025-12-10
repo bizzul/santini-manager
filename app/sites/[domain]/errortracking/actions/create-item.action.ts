@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/errorTracking/create";
+import { logger } from "@/lib/logger";
 
 export async function createItem(props: any) {
   const result = validation.safeParse(props.data);
@@ -32,7 +33,7 @@ export async function createItem(props: any) {
         .single();
 
       if (createErrorResponse) {
-        console.error("Error creating errortracking:", createErrorResponse);
+        logger.error("Error creating errortracking:", createErrorResponse);
         return {
           message: "Creazione elemento fallita!",
           error: createErrorResponse.message,
@@ -58,7 +59,7 @@ export async function createItem(props: any) {
         });
 
         if (actionError) {
-          console.error("Error creating action record:", actionError);
+          logger.error("Error creating action record:", actionError);
         }
       }
 
@@ -67,7 +68,7 @@ export async function createItem(props: any) {
       return { error: true, message: "Validazione elemento fallita!" };
     }
   } catch (error: any) {
-    console.error("Error creating Error:", error);
+    logger.error("Error creating Error:", error);
     // Make sure to return a plain object
     return { message: "Creazione elemento fallita!", error: error.message };
   }

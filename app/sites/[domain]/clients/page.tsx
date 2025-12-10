@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext, fetchClients } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
+import DialogImportCSV from "./dialogImportCSV";
+import ButtonExportCSV from "./buttonExportCSV";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
@@ -29,7 +31,11 @@ export default async function Page({
     <PageLayout>
       <PageHeader>
         <h1 className="text-2xl font-bold">Clienti</h1>
-        <DialogCreate />
+        <div className="flex gap-2">
+          <ButtonExportCSV />
+          <DialogImportCSV />
+          <DialogCreate />
+        </div>
       </PageHeader>
       <PageContent>
         {clients.length > 0 ? (

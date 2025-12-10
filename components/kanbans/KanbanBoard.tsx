@@ -11,31 +11,8 @@ import {
   pointerWithin,
 } from "@dnd-kit/core";
 import Card from "./Card";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faCheck,
-  faPlay,
-  faHammer,
-  faBox,
-  faTruck,
-  faClock,
-  faTools,
-  faScrewdriverWrench,
-  faScrewdriver,
-  faRuler,
-  faRulerCombined,
-  faRulerVertical,
-  faRulerHorizontal,
-  faToolbox,
-  faCubes,
-  faCouch,
-  faChair,
-  faTree,
-  faLayerGroup,
-  faClipboardCheck,
-  faBoxesStacked,
-  faPlus,
-} from "@fortawesome/free-solid-svg-icons";
+import { Plus } from "lucide-react";
+import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 
@@ -68,30 +45,6 @@ import KanbanManagementModal from "./KanbanManagementModal";
 import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
-
-const iconMap = {
-  faCheck,
-  faPlay,
-  faHammer,
-  faBox,
-  faTruck,
-  faClock,
-  faTools,
-  faScrewdriverWrench,
-  faScrewdriver,
-  faRuler,
-  faRulerCombined,
-  faRulerVertical,
-  faRulerHorizontal,
-  faToolbox,
-  faCubes,
-  faCouch,
-  faChair,
-  faTree,
-  faLayerGroup,
-  faClipboardCheck,
-  faBoxesStacked,
-};
 
 const Column = ({
   column,
@@ -168,119 +121,115 @@ const Column = ({
   }, [cards]);
 
   return (
-    <>
-      <div key={column.id} className=" w-72 h-auto   border p-4">
-        <div className="flex flex-row justify-between">
-          <h2 className="mb-4 text-xl font-semibold ">
-            {column.title}{" "}
-            <FontAwesomeIcon
-              icon={iconMap[column.icon as keyof typeof iconMap] || faCheck}
-            />
-          </h2>
-          <div className="text-xs">
-            <p>
-              Progetti: <span className="font-bold">{totalTasks}</span>
-            </p>
-            <p>
-              Posizioni: <span className="font-bold">{totalPositions}</span>
-            </p>
-            <p>
-              V.Attuale:{" "}
-              <span className="font-bold">
-                {" "}
-                {(totalValue / 1000).toFixed(2)} K
-              </span>
-            </p>
-            <p>
-              V.Totale :{" "}
-              <span className="font-bold">
-                {" "}
-                {(totalColumn / 1000).toFixed(2)} K
-              </span>
-            </p>
-          </div>
-          {column.position === 1 && (
-            <>
-              <Dialog
-                open={modalCreate}
-                onOpenChange={() => setModalCreate(!modalCreate)}
+    <div
+      key={column.id}
+      className="w-72 shrink-0 flex flex-col border p-4 max-h-full"
+    >
+      <div className="flex flex-row justify-between shrink-0">
+        <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
+          {column.title}{" "}
+          {(() => {
+            const IconComponent = getKanbanIcon(column.icon);
+            return <IconComponent className="h-5 w-5" />;
+          })()}
+        </h2>
+        <div className="text-xs">
+          <p>
+            Progetti: <span className="font-bold">{totalTasks}</span>
+          </p>
+          <p>
+            Posizioni: <span className="font-bold">{totalPositions}</span>
+          </p>
+          <p>
+            V.Attuale:{" "}
+            <span className="font-bold">
+              {" "}
+              {(totalValue / 1000).toFixed(2)} K
+            </span>
+          </p>
+          <p>
+            V.Totale :{" "}
+            <span className="font-bold">
+              {" "}
+              {(totalColumn / 1000).toFixed(2)} K
+            </span>
+          </p>
+        </div>
+        {column.position === 1 && (
+          <Dialog
+            open={modalCreate}
+            onOpenChange={() => setModalCreate(!modalCreate)}
+          >
+            <DialogTrigger asChild>
+              <button
+                className="border p-2 rounded hover:bg-accent cursor-pointer"
+                onClick={(prev) => setModalCreate(!prev)}
               >
-                <DialogTrigger asChild>
-                  <FontAwesomeIcon
-                    icon={faPlus}
-                    className="border  p-2 "
-                    onClick={(prev) => setModalCreate(!prev)}
-                  />
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
-                  <DialogHeader>
-                    <DialogTitle>Crea progetto</DialogTitle>
-                    <DialogDescription>
-                      Crea un progetto nuovo
-                    </DialogDescription>
-                  </DialogHeader>
-                  <CreateProductForm
-                    data={data}
-                    handleClose={() => setModalCreate(false)}
-                    kanbanId={(kanban as any)?.id}
-                    domain={domain}
-                  />
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
-        </div>
-        <div
-          className={`h-full min-h-160 p-1   ${
-            isOver && !isPreviewMode
-              ? "bg-green-500 border border-zinc-400"
-              : ""
-          }`}
-          ref={setNodeRef}
-        >
-          {isLoadingCards
-            ? // Loading skeletons for cards
-              Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="mb-4">
-                  <Skeleton className="h-32 w-full rounded-lg" />
-                </div>
-              ))
-            : cards
-                .sort((a: any, b: any) => {
-                  if (column.identifier.includes("SPED")) {
-                    return a.unique_code.localeCompare(b.unique_code);
-                  } else {
-                    if (a.deliveryDate === null && b.deliveryDate === null) {
-                      return 0; // equal
-                    }
-                    if (a.deliveryDate === null) {
-                      return 1; // a goes to the end
-                    }
-                    if (b.deliveryDate === null) {
-                      return -1; // b goes to the end
-                    }
-                    return (
-                      new Date(a.deliveryDate).getTime() -
-                      new Date(b.deliveryDate).getTime()
-                    );
-                  }
-                })
-                .map((card: any) => (
-                  <Card
-                    key={card.id}
-                    id={card.id}
-                    title={card.title}
-                    data={card}
-                    columnIndex={column.position}
-                    history={history}
-                    isSmall={areAllTabsClosed}
-                    domain={domain}
-                  />
-                ))}
-          {/* {canDrop ? "Rilascia qui" : ""} */}
-        </div>
+                <Plus className="h-4 w-4" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
+              <DialogHeader>
+                <DialogTitle>Crea progetto</DialogTitle>
+                <DialogDescription>Crea un progetto nuovo</DialogDescription>
+              </DialogHeader>
+              <CreateProductForm
+                data={data}
+                handleClose={() => setModalCreate(false)}
+                kanbanId={(kanban as any)?.id}
+                domain={domain}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
-    </>
+      <div
+        className={`flex-1 overflow-y-auto p-1 ${
+          isOver && !isPreviewMode ? "bg-green-500 border border-zinc-400" : ""
+        }`}
+        ref={setNodeRef}
+      >
+        {isLoadingCards
+          ? // Loading skeletons for cards
+            Array.from({ length: 3 }).map((_, index) => (
+              <div key={index} className="mb-4">
+                <Skeleton className="h-32 w-full rounded-lg" />
+              </div>
+            ))
+          : cards
+              .sort((a: any, b: any) => {
+                if (column.identifier.includes("SPED")) {
+                  return a.unique_code.localeCompare(b.unique_code);
+                } else {
+                  if (a.deliveryDate === null && b.deliveryDate === null) {
+                    return 0; // equal
+                  }
+                  if (a.deliveryDate === null) {
+                    return 1; // a goes to the end
+                  }
+                  if (b.deliveryDate === null) {
+                    return -1; // b goes to the end
+                  }
+                  return (
+                    new Date(a.deliveryDate).getTime() -
+                    new Date(b.deliveryDate).getTime()
+                  );
+                }
+              })
+              .map((card: any) => (
+                <Card
+                  key={card.id}
+                  id={card.id}
+                  title={card.title}
+                  data={card}
+                  columnIndex={column.position}
+                  history={history}
+                  isSmall={areAllTabsClosed}
+                  domain={domain}
+                />
+              ))}
+      </div>
+    </div>
   );
 };
 
@@ -383,7 +332,7 @@ function KanbanBoard({
     try {
       // Optimistically update the UI
       if (!Array.isArray(tasks)) {
-        console.error("Tasks is not an array:", tasks);
+        logger.error("Tasks is not an array:", tasks);
         throw new Error("Tasks data is not available");
       }
 
@@ -429,7 +378,7 @@ function KanbanBoard({
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error("Move card error:", errorData);
+        logger.error("Move card error:", errorData);
         throw new Error(
           `Failed to move card: ${response.status} - ${JSON.stringify(
             errorData
@@ -529,7 +478,7 @@ function KanbanBoard({
         });
       }
     } catch (error) {
-      console.error("Error fetching snapshot:", error);
+      logger.error("Error fetching snapshot:", error);
       safeSetTasks([]); // Set empty array on error
       toast({
         variant: "destructive",
@@ -581,7 +530,7 @@ function KanbanBoard({
     if (Array.isArray(newTasks)) {
       setTasks(newTasks);
     } else {
-      console.warn("Attempted to set non-array tasks:", newTasks);
+      logger.warn("Attempted to set non-array tasks:", newTasks);
       setTasks([]);
     }
   };
@@ -747,85 +696,85 @@ function KanbanBoard({
       collisionDetection={pointerWithin}
       onDragEnd={handleDragEnd}
     >
-      {kanban && (
-        <div className="w-full pt-4 pb-2 px-8">
-          <h1
-            className="text-2xl font-bold mb-4 p-4 rounded-lg"
-            style={{
-              backgroundColor: kanban.color || "#1e293b",
-              color: getContrastColor(kanban.color || "#1e293b"),
-            }}
-          >
-            {kanban.title.toUpperCase()}
-          </h1>
-          <div className="flex justify-between items-center gap-4 max-w-[1000px]">
-            <div
-              className={`flex justify-start gap-2 ${
-                isTimelineOpen ? "opacity-0" : "opacity-100"
-              } transition-all duration-300`}
+      <div className="flex flex-col h-full overflow-hidden">
+        {kanban && (
+          <div className="shrink-0 w-full pt-4 pb-2 px-8">
+            <h1
+              className="text-2xl font-bold mb-4 p-4 rounded-lg"
+              style={{
+                backgroundColor: kanban.color || "#1e293b",
+                color: getContrastColor(kanban.color || "#1e293b"),
+              }}
             >
-              <button
-                className="cursor-pointer hover:underline transition-all duration-300 text-xs border p-2"
-                onClick={closeAllTabs}
+              {kanban.title.toUpperCase()}
+            </h1>
+            <div className="flex justify-between items-center gap-4 max-w-[1000px]">
+              <div
+                className={`flex justify-start gap-2 ${
+                  isTimelineOpen ? "opacity-0" : "opacity-100"
+                } transition-all duration-300`}
               >
-                {areAllTabsClosed
-                  ? "Apri tutte le tab"
-                  : " Chiudi tutte le tab"}
-              </button>
+                <button
+                  className="cursor-pointer hover:underline transition-all duration-300 text-xs border p-2"
+                  onClick={closeAllTabs}
+                >
+                  {areAllTabsClosed
+                    ? "Apri tutte le tab"
+                    : " Chiudi tutte le tab"}
+                </button>
 
-              <button
-                className="cursor-pointer hover:underline transition-all duration-300 text-xs border p-2 "
-                onClick={undoLastMove}
-              >
-                Annulla ultima azione
-              </button>
-            </div>
+                <button
+                  className="cursor-pointer hover:underline transition-all duration-300 text-xs border p-2 "
+                  onClick={undoLastMove}
+                >
+                  Annulla ultima azione
+                </button>
+              </div>
 
-            <div className="flex items-center gap-4">
-              <KanbanManagementModal
-                kanban={kanban}
-                onSave={handleSaveKanban}
-                mode="edit"
-                hasTasks={tasks.length > 0}
-                domain={domain}
-                trigger={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs bg-background hover:bg-accent"
-                  >
-                    Modifica Kanban
-                  </Button>
-                }
-              />
-              <h4
-                className={`text-foreground text-sm font-semibold cursor-pointer hover:underline transition-all duration-300 ${
-                  isTimelineOpen ? "opacity-50" : "opacity-100"
-                }`}
-                onClick={() => setIsTimelineOpen(!isTimelineOpen)}
-              >
-                Time machine
-              </h4>
+              <div className="flex items-center gap-4">
+                <KanbanManagementModal
+                  kanban={kanban}
+                  onSave={handleSaveKanban}
+                  mode="edit"
+                  hasTasks={tasks.length > 0}
+                  domain={domain}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs bg-background hover:bg-accent"
+                    >
+                      Modifica Kanban
+                    </Button>
+                  }
+                />
+                <h4
+                  className={`text-foreground text-sm font-semibold cursor-pointer hover:underline transition-all duration-300 ${
+                    isTimelineOpen ? "opacity-50" : "opacity-100"
+                  }`}
+                  onClick={() => setIsTimelineOpen(!isTimelineOpen)}
+                >
+                  Time machine
+                </h4>
+              </div>
             </div>
+            {isTimelineOpen && (
+              <div className="max-w-[1000px] mx-auto mt-2">
+                <TimelineClient
+                  snapshots={snapshots}
+                  onPreviewSnapshot={handlePreviewSnapshot}
+                />
+              </div>
+            )}
           </div>
-          {isTimelineOpen && (
-            <div className="max-w-[1000px] mx-auto mt-2">
-              <TimelineClient
-                snapshots={snapshots}
-                onPreviewSnapshot={handlePreviewSnapshot}
-              />
-            </div>
-          )}
-        </div>
-      )}
-      {kanban ? (
-        <>
+        )}
+        {kanban ? (
           <div
             className={`${
               loading ? "opacity-50" : ""
-            } transition-all duration-500 pt-4 px-8 min-h-screen`}
+            } transition-all duration-500 flex-1 overflow-auto px-8 pb-4`}
           >
-            <div className="grid grid-flow-col gap-4 pt-4">
+            <div className="flex gap-4 pt-4 min-w-max">
               {(kanban.columns || [])
                 .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
                 .map((column: KanbanColumn) => {
@@ -859,32 +808,33 @@ function KanbanBoard({
                 })}
             </div>
           </div>
-        </>
-      ) : (
-        <div className="w-full h-screen flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <h1 className="font-bold text-2xl mb-2">
-              Nessuna Board {name} impostata!
-            </h1>
-            <p className="mb-4">
-              Seleziona un kanban esistente dal menu laterale o creane uno nuovo
-            </p>
-            <KanbanManagementModal
-              kanban={null}
-              onSave={handleSaveKanban}
-              mode="create"
-              hasTasks={false}
-              domain={domain}
-              trigger={
-                <Button variant="default" size="lg">
-                  <FontAwesomeIcon icon={faPlus} className="mr-2" />
-                  Crea Nuovo Kanban
-                </Button>
-              }
-            />
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <h1 className="font-bold text-2xl mb-2">
+                Nessuna Board {name} impostata!
+              </h1>
+              <p className="mb-4">
+                Seleziona un kanban esistente dal menu laterale o creane uno
+                nuovo
+              </p>
+              <KanbanManagementModal
+                kanban={null}
+                onSave={handleSaveKanban}
+                mode="create"
+                hasTasks={false}
+                domain={domain}
+                trigger={
+                  <Button variant="default" size="lg">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crea Nuovo Kanban
+                  </Button>
+                }
+              />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Move Confirmation Dialog */}
       <AlertDialog open={showMoveConfirm} onOpenChange={setShowMoveConfirm}>

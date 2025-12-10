@@ -7,8 +7,13 @@ import { DataTableRowActions } from "./data-table-row-actions";
 
 export const columns: ColumnDef<Product_category>[] = [
   {
+    accessorKey: "code",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Codice" />
+    ),
+  },
+  {
     accessorKey: "name",
-    // header: "Tipo",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Nome" />
     ),

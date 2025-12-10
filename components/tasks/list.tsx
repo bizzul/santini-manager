@@ -12,6 +12,7 @@ import { Dialog, Menu, Transition } from "@headlessui/react";
 import { faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import Toast from "../../package/components/toast";
 import { Task } from "@/types/supabase";
+import { logger } from "@/lib/logger";
 
 type Props = {
   data: any;
@@ -54,7 +55,7 @@ export const List: FC<Props> = ({
   loading,
   q,
 }) => {
-  console.log("data lista progetti", data);
+  logger.debug("data lista progetti", data);
   return (
     <div className="w-full">
       {data && (

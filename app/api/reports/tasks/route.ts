@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
 import { calculateCurrentValue } from "../../../../package/utils/various/calculateCurrentValue";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -127,7 +128,7 @@ export const GET = async () => {
       headers: headers,
     });
   } catch (err: any) {
-    console.log("errore", err);
+    logger.error("errore", err);
     return NextResponse.json(err.message);
   }
 };

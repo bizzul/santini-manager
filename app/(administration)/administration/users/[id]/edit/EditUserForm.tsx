@@ -16,6 +16,7 @@ import { validation } from "@/validation/users/editInfo";
 import { toast } from "@/components/ui/use-toast";
 import { updateUser } from "../../../actions";
 import { Loader2 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface EditUserFormProps {
   user: any;
@@ -63,7 +64,7 @@ export function EditUserForm({
 
       const parsed = validation.safeParse(data);
       if (!parsed.success) {
-        console.log("Validation errors:", parsed.error);
+        logger.debug("Validation errors:", parsed.error);
         toast({
           title: "Errore di Validazione",
           description: `Controlla i dati inseriti: ${parsed.error.errors

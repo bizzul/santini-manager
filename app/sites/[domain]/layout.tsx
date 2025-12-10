@@ -14,6 +14,7 @@ import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
 import { GlobalKanbanModal } from "@/components/kanbans/GlobalKanbanModal";
 import { createClient } from "@/utils/supabase/server";
 import { QuickActionsProvider } from "@/components/quick-actions";
+import { logger } from "@/lib/logger";
 
 /**
  * Check if user has access to a specific site
@@ -126,7 +127,7 @@ export default async function SiteLayout({
     const response = await getSiteData(domain);
 
     if (!response?.data) {
-      console.log("Site data not found for domain:", domain);
+      logger.debug("Site data not found for domain:", domain);
       notFound();
     }
 
@@ -156,7 +157,7 @@ export default async function SiteLayout({
       userContext
     );
     if (!hasAccess) {
-      console.log(
+      logger.debug(
         "User does not have access to site:",
         data.name,
         "Site org:",
@@ -200,7 +201,7 @@ export default async function SiteLayout({
       </KanbanModalProvider>
     );
   } catch (error) {
-    console.error("Error in site layout:", error);
+    logger.error("Error in site layout:", error);
     // Redirect to login instead of throwing 500 error
     redirect("/login");
   }

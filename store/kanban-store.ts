@@ -17,6 +17,7 @@ export interface Kanban {
   title: string;
   identifier: string;
   color?: string;
+  icon?: string;
   category_id?: number | null;
   category?: KanbanCategory | null;
   columns: {
@@ -45,10 +46,11 @@ export const useKanbanStore = create<KanbanStore>()(
       selectedCategoryId: null,
       setKanbans: (kanbans) => set({ kanbans }),
       setCategories: (categories) => set({ categories }),
-      setSelectedCategoryId: (categoryId) => set({ selectedCategoryId: categoryId }),
+      setSelectedCategoryId: (categoryId) =>
+        set({ selectedCategoryId: categoryId }),
     }),
     {
       name: "kanban-storage",
-    }
-  )
+    },
+  ),
 );

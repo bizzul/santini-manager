@@ -1,9 +1,9 @@
 "use client";
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   Form,
@@ -17,17 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/supplier/edit";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Product_category, Supplier } from "@/types/supabase";
+import { Supplier, Supplier_category } from "@/types/supabase";
 import ImageUploader from "@/components/uploaders/ImageUploader";
 import Image from "next/image";
 import { editItem } from "./actions/edit-item.action";
+import { SupplierCategorySelector } from "@/components/suppliers/CategorySelector";
+import { logger } from "@/lib/logger";
+
+const log = logger.scope("Suppliers");
 
 const EditProductForm = ({
   handleClose,
@@ -38,13 +35,15 @@ const EditProductForm = ({
 }) => {
   const { toast } = useToast();
   const pathname = usePathname();
-  const [categories, setCategories] = useState<Product_category[]>();
+  const router = useRouter();
+  const [categories, setCategories] = useState<Supplier_category[]>([]);
   const [preview, setPreview] = useState<any | null>(null);
   const [file, setFile] = useState<any | null>(null);
-  
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+
   // Extract domain from pathname (e.g., /sites/santini/suppliers -> santini)
   const domain = pathname.split("/")[2] || "";
-  
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -52,7 +51,7 @@ const EditProductForm = ({
       description: "",
       address: "",
       cap: undefined,
-      category: "",
+      supplier_category_id: null,
       contact: "",
       email: "",
       location: "",
@@ -62,25 +61,26 @@ const EditProductForm = ({
     },
   });
 
-  const { setValue } = form;
-
   useEffect(() => {
     const getCategories = async () => {
       if (!domain) return;
-      
+
       try {
-        const response = await fetch(`/api/inventory/categories/`, {
+        setIsLoadingCategories(true);
+        const response = await fetch(`/api/suppliers/categories`, {
           headers: {
             "x-site-domain": domain,
           },
         });
         if (!response.ok) {
-          throw new Error("Failed to fetch categories");
+          throw new Error("Failed to fetch supplier categories");
         }
-        const categories = await response.json();
-        setCategories(categories);
+        const categoriesData = await response.json();
+        setCategories(categoriesData);
       } catch (error) {
-        console.error(error);
+        log.error("Error fetching categories:", error);
+      } finally {
+        setIsLoadingCategories(false);
       }
     };
 
@@ -88,53 +88,102 @@ const EditProductForm = ({
   }, [domain]);
 
   useEffect(() => {
-    setValue("name", data.name || "");
-    setValue("short_name", data.short_name || "");
-    setValue("address", data.address || "");
-    setValue("cap", data.cap || 0);
-    setValue("contact", data.contact || "");
-    setValue("description", data.description || "");
-    setValue("email", data.email || "");
-    setValue("location", data.location || "");
-    setValue("phone", data.phone || "");
-    setValue("website", data.website || "");
-    setValue("category", data.category || "");
-    console.log("categories", categories);
-
-    setPreview(data.supplier_image);
-  }, [data, setValue]);
+    if (data) {
+      log.debug("Resetting form with data:", data);
+      const resetValues = {
+        name: data.name || "",
+        short_name: data.short_name || "",
+        address: data.address || "",
+        cap: data.cap || undefined,
+        contact: data.contact || "",
+        description: data.description || "",
+        email: data.email || "",
+        location: data.location || "",
+        phone: data.phone || "",
+        website: data.website || "",
+        supplier_category_id: data.supplier_category_id || null,
+      };
+      log.debug("Reset values:", resetValues);
+      form.reset(resetValues);
+      setPreview(data.supplier_image);
+    }
+  }, [data, form]);
 
   const { isSubmitting, errors } = form.formState;
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
+      log.debug("Form data being submitted:", d);
+      log.debug("Supplier ID:", data.id);
+
       //@ts-ignore
       const supplier = await editItem(d, data.id);
-      console.log("supplier response server", supplier);
+
+      // Check if there's an error in the response
+      if (supplier?.message) {
+        log.error("Server error:", supplier);
+
+        // Build detailed error message
+        let errorDetails = supplier.message;
+        if (supplier.errors) {
+          log.error("Validation errors:", supplier.errors);
+          // Extract field errors
+          const fieldErrors = Object.entries(supplier.errors)
+            .filter(([key]) => key !== "_errors")
+            .map(([key, value]: [string, any]) => {
+              if (value?._errors?.length > 0) {
+                return `${key}: ${value._errors.join(", ")}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+
+          if (fieldErrors.length > 0) {
+            errorDetails += "\n" + fieldErrors.join("\n");
+          }
+        }
+
+        toast({
+          title: "❌ Errore di validazione",
+          description: errorDetails,
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (supplier && file) {
         //@ts-ignore
         const photoUpload = await uploadPictureHandler(supplier.id);
         if (photoUpload == "ok") {
-          handleClose(false);
           toast({
-            description: `Elemento ${d.name} creato correttamente!`,
+            title: "✅ Successo",
+            description: `Fornitore "${d.name}" aggiornato correttamente!`,
           });
           form.reset();
+          router.refresh();
+          handleClose(false);
         } else {
           toast({
-            description: `Errore nel caricare l'immagine! ${photoUpload}`,
+            title: "⚠️ Attenzione",
+            description: `Fornitore salvato ma errore nel caricare l'immagine: ${photoUpload}`,
+            variant: "destructive",
           });
+          router.refresh();
         }
       } else if (supplier && !file) {
-        handleClose(false);
         toast({
-          description: `Elemento ${d.name} creato correttamente!`,
+          title: "✅ Successo",
+          description: `Fornitore "${d.name}" aggiornato correttamente!`,
         });
         form.reset();
+        router.refresh();
+        handleClose(false);
       }
     } catch (e) {
       toast({
-        description: `Errore nel creare l'elemento! ${e}`,
+        title: "❌ Errore",
+        description: `Errore nell'aggiornare il fornitore: ${e}`,
+        variant: "destructive",
       });
     }
   };
@@ -160,7 +209,7 @@ const EditProductForm = ({
       setFile(null);
       return "ok";
     } catch (error: any) {
-      console.log(error.message);
+      log.error("Upload error:", error.message);
       return error.message;
     }
   };
@@ -170,36 +219,29 @@ const EditProductForm = ({
       <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
           control={form.control}
-          name="category"
+          name="supplier_category_id"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria</FormLabel>
               <FormControl>
-                {categories?.length ? (
-                  <Select
-                    onValueChange={(selectedId) => {
-                      // Find the category name from the ID and set it as the form value
-                      const selectedCat = categories.find((cat) => cat.id?.toString() === selectedId);
-                      if (selectedCat) {
-                        field.onChange(selectedCat.name);
-                      }
-                    }}
-                    value={categories.find((cat) => cat.name === field.value)?.id?.toString() || ""}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat: Product_category) => (
-                        <SelectItem key={cat.id} value={cat.id?.toString() || ""}>
-                          {cat.name || "Unnamed"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {isLoadingCategories ? (
+                  <div className="text-sm text-muted-foreground">
+                    Caricamento categorie...
+                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Caricamento categorie...</div>
+                  <SupplierCategorySelector
+                    categories={categories}
+                    value={field.value?.toString() || ""}
+                    onValueChange={(selectedId) => {
+                      field.onChange(selectedId ? Number(selectedId) : null);
+                    }}
+                    disabled={isSubmitting}
+                    domain={domain}
+                    onCategoryCreated={(newCategory) => {
+                      setCategories((prev) => [...prev, newCategory]);
+                      field.onChange(newCategory.id);
+                    }}
+                  />
                 )}
               </FormControl>
               <FormMessage />
@@ -207,29 +249,36 @@ const EditProductForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome</FormLabel>
+              <FormLabel>
+                Nome <span className="text-red-500">*</span>
+              </FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="short_name"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nome Corto</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -237,14 +286,17 @@ const EditProductForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="contact"
           render={({ field }) => (
             <FormItem>
               <FormLabel>P. di Contatto</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -252,14 +304,17 @@ const EditProductForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="description"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -268,14 +323,17 @@ const EditProductForm = ({
         />
         <div className="flex flex-row gap-2">
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="address"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Indirizzo</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -283,14 +341,17 @@ const EditProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="cap"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>CAP</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -298,14 +359,17 @@ const EditProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="location"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Località</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -315,14 +379,17 @@ const EditProductForm = ({
         </div>
         <div className="flex flex-row gap-2">
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="website"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Website</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -330,14 +397,18 @@ const EditProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" {...field} />
+                  <Input
+                    type="email"
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -345,14 +416,17 @@ const EditProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="phone"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Telefono</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />

@@ -6,9 +6,10 @@ import { createClient } from "@/utils/server";
 import { validation } from "@/validation/productsCategory/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function editItem(
-  formData: Pick<Product_category, "name" | "description">,
+  formData: Pick<Product_category, "name" | "code" | "description">,
   id: number,
   domain?: string,
 ) {
@@ -27,7 +28,7 @@ export async function editItem(
         siteId = siteResult.data.id;
       }
     } catch (error) {
-      console.error("Error fetching site data:", error);
+      logger.error("Error fetching site data:", error);
     }
   }
 
@@ -37,13 +38,14 @@ export async function editItem(
   }
 
   if (!data.success) {
-    console.log("Validation failed");
+    logger.debug("Validation failed");
     return { error: "Validazione elemento fallita!" };
   }
 
   try {
     const updateData: any = {
       name: data.data.name,
+      code: data.data.code || null,
       description: data.data.description,
     };
 
@@ -73,15 +75,15 @@ export async function editItem(
       });
 
     if (actionError) {
-      console.error("Error creating action:", actionError);
+      logger.error("Error creating action:", actionError);
       return { error: "Modifica elemento fallita!" };
     }
 
     revalidatePath("/categories");
-    console.log("Path revalidated, returning success");
+    logger.debug("Path revalidated, returning success");
     return { success: true };
   } catch (e) {
-    console.error("Error updating category:", e);
+    logger.error("Error updating category:", e);
     return { error: "Modifica elemento fallita!" };
   }
 }

@@ -1,6 +1,7 @@
 import { createClient } from "../../../../utils/supabase/server";
 import { promises as fs } from "fs";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 function sanitizeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9_\u0600-\u06FF.]/g, "_");
@@ -28,7 +29,7 @@ export async function POST(
 
     const data = await file.arrayBuffer();
     const filename = sanitizeFilename(file.name);
-    console.log("filename sanitized", filename);
+    logger.debug("filename sanitized", filename);
     const pathToWriteImage = `./public/${subfolder}/${subfolder}_${filename}`; // include name and .extention, you can get the name from data.files.image object
     const pathToRead = `/${subfolder}/${subfolder}_${filename}`; // include name and .extention, you can get the name from data.files.image object
     await fs.appendFile(`${pathToWriteImage}`, Buffer.from(data));

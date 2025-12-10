@@ -4,12 +4,15 @@ import React from "react";
 import KanbanManagementModal from "./KanbanManagementModal";
 import { useKanbanModal } from "./KanbanModalContext";
 import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
+import { logger } from "@/lib/logger";
 
 export function GlobalKanbanModal() {
-  const { isCreateModalOpen, preSelectedCategoryId, closeCreateModal } = useKanbanModal();
+  const { isCreateModalOpen, preSelectedCategoryId, closeCreateModal } =
+    useKanbanModal();
 
   // Extract domain from window.location.pathname
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const pathname =
+    typeof window !== "undefined" ? window.location.pathname : "";
   const domainMatch = pathname.match(/\/sites\/([^\/]+)/);
   const domain = domainMatch ? domainMatch[1] : null;
 
@@ -24,14 +27,16 @@ export function GlobalKanbanModal() {
       // Refresh the page to get the updated kanban data
       window.location.reload();
     } catch (error) {
-      console.error("Error saving kanban:", error);
+      logger.error("Error saving kanban:", error);
     }
   };
 
   // Create a kanban object with pre-selected category if provided
-  const preFilledKanban = preSelectedCategoryId ? {
-    category_id: preSelectedCategoryId
-  } : null;
+  const preFilledKanban = preSelectedCategoryId
+    ? {
+        category_id: preSelectedCategoryId,
+      }
+    : null;
 
   return (
     <KanbanManagementModal

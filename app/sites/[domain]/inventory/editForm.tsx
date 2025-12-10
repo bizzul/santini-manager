@@ -33,6 +33,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CategorySelector } from "@/components/inventory/CategorySelector";
 
 type Props = {
   handleClose: any;
@@ -197,24 +198,18 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               name="productCategoryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Categoria DB</FormLabel>
+                  <FormLabel>Categoria</FormLabel>
                   <FormControl>
-                    <Select
-                      onValueChange={field.onChange}
+                    <CategorySelector
+                      categories={categories}
                       value={field.value?.toString()}
+                      onValueChange={field.onChange}
                       disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat: Product_category) => (
-                          <SelectItem key={cat.id} value={cat.id.toString()}>
-                            {cat.name} - {cat.description}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      domain={domain}
+                      onCategoryCreated={(newCat) => {
+                        setCategories((prev) => [...prev, newCat]);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -534,44 +529,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               Gerarchia Categorie (opzionale)
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  disabled={isSubmitting}
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoria</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="es. LEGNO"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  disabled={isSubmitting}
-                  control={form.control}
-                  name="category_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Codice Categoria</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="es. LG"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   disabled={isSubmitting}

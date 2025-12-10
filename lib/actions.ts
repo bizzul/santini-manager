@@ -11,6 +11,7 @@ import { customAlphabet } from "nanoid";
 import { revalidateTag } from "next/cache";
 import { withSiteAuth } from "./auth";
 import { v4 as uuidv4 } from "uuid";
+import { logger } from "@/lib/logger";
 
 // Define types for our database tables
 interface Site {
@@ -269,10 +270,10 @@ export async function updateUserPassword(userId: string, newPassword: string) {
         );
 
       if (confirmError) {
-        console.warn("Warning: Could not confirm email:", confirmError.message);
+        logger.warn("Warning: Could not confirm email:", confirmError.message);
       }
     } catch (confirmError) {
-      console.warn("Warning: Could not confirm email:", confirmError);
+      logger.warn("Warning: Could not confirm email:", confirmError);
     }
 
     return {

@@ -23,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import ImageUploader from "../uploaders/ImageUploader";
 import Image from "next/image";
+import { logger } from "@/lib/logger";
 type Props = {
   open: boolean;
   setOpen: Dispatch<React.SetStateAction<boolean>>;
@@ -65,7 +66,7 @@ export const EditInfoModal: FC<Props> = ({
   const onSubmit = (data: any) => {
     setError(null);
     setLoading(true);
-    console.log("user data update", data);
+    logger.debug("user data update", data);
     fetch(`/api/users/${focusedUser.user_id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

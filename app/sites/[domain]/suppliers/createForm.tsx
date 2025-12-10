@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 import {
   Form,
@@ -17,15 +18,13 @@ import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/supplier/create";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import ImageUploader from "@/components/uploaders/ImageUploader";
 import Image from "next/image";
+import { SupplierCategorySelector } from "@/components/suppliers/CategorySelector";
+import { Supplier_category } from "@/types/supabase";
+import { logger } from "@/lib/logger";
+
+const log = logger.scope("Suppliers");
 
 const CreateProductForm = ({
   handleClose,
@@ -33,10 +32,12 @@ const CreateProductForm = ({
   domain,
 }: {
   handleClose: any;
-  data: any[];
+  data: Supplier_category[];
   domain: string;
 }) => {
+  const [categories, setCategories] = useState<Supplier_category[]>(data);
   const { toast } = useToast();
+  const router = useRouter();
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -44,7 +45,7 @@ const CreateProductForm = ({
       description: "",
       address: "",
       cap: undefined,
-      category: "",
+      supplier_category_id: null,
       contact: "",
       email: "",
       location: "",
@@ -61,32 +62,75 @@ const CreateProductForm = ({
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
+      log.debug("Form data being submitted:", d);
+
       const supplier = await createItem(d, domain);
-      console.log("supplier response server", supplier);
+
+      // Check if there's an error in the response
+      if (supplier?.message) {
+        log.error("Server error:", supplier);
+
+        // Build detailed error message
+        let errorDetails = supplier.message;
+        if (supplier.errors) {
+          log.error("Validation errors:", supplier.errors);
+          // Extract field errors
+          const fieldErrors = Object.entries(supplier.errors)
+            .filter(([key]) => key !== "_errors")
+            .map(([key, value]: [string, any]) => {
+              if (value?._errors?.length > 0) {
+                return `${key}: ${value._errors.join(", ")}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+
+          if (fieldErrors.length > 0) {
+            errorDetails += "\n" + fieldErrors.join("\n");
+          }
+        }
+
+        toast({
+          title: "❌ Errore di validazione",
+          description: errorDetails,
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (supplier && file) {
         //@ts-ignore
         const photoUpload = await uploadPictureHandler(supplier.id);
         if (photoUpload == "ok") {
-          handleClose(false);
           toast({
-            description: `Elemento ${d.name} creato correttamente!`,
+            title: "✅ Successo",
+            description: `Fornitore "${d.name}" creato correttamente!`,
           });
           form.reset();
+          router.refresh();
+          handleClose(false);
         } else {
           toast({
-            description: `Errore nel caricare l'immagine! ${photoUpload}`,
+            title: "⚠️ Attenzione",
+            description: `Fornitore creato ma errore nel caricare l'immagine: ${photoUpload}`,
+            variant: "destructive",
           });
+          router.refresh();
         }
       } else if (supplier && !file) {
-        handleClose(false);
         toast({
-          description: `Elemento ${d.name} creato correttamente!`,
+          title: "✅ Successo",
+          description: `Fornitore "${d.name}" creato correttamente!`,
         });
         form.reset();
+        router.refresh();
+        handleClose(false);
       }
     } catch (e) {
       toast({
-        description: `Errore nel creare l'elemento! ${e}`,
+        title: "❌ Errore",
+        description: `Errore nel creare il fornitore: ${e}`,
+        variant: "destructive",
       });
     }
   };
@@ -112,79 +156,70 @@ const CreateProductForm = ({
       setFile(null);
       return "ok";
     } catch (error: any) {
-      console.log(error.message);
+      log.error("Upload error:", error.message);
       return error.message;
     }
   };
 
   return (
     <Form {...form}>
-      <form
-        className="space-y-4 "
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSubmit(form.getValues());
-        }}
-      >
+      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
         <FormField
           control={form.control}
-          name="category"
+          name="supplier_category_id"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Categoria</FormLabel>
               <FormControl>
-                <Select
+                <SupplierCategorySelector
+                  categories={categories}
+                  value={field.value?.toString() || ""}
                   onValueChange={(selectedId) => {
-                    // Find the category name from the ID and set it as the form value
-                    const selectedCat = data.find((cat: any) => cat.id.toString() === selectedId);
-                    if (selectedCat) {
-                      field.onChange(selectedCat.name);
-                    }
+                    field.onChange(selectedId ? Number(selectedId) : null);
                   }}
-                  value={data.find((cat: any) => cat.name === field.value)?.id?.toString() || ""}
                   disabled={isSubmitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {data.map((cat: any) => (
-                      <SelectItem key={cat.id} value={cat.id.toString()}>
-                        {cat.name} - {cat.description}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  domain={domain}
+                  onCategoryCreated={(newCategory) => {
+                    setCategories((prev) => [...prev, newCategory]);
+                    field.onChange(newCategory.id);
+                  }}
+                />
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome</FormLabel>
+              <FormLabel>
+                Nome <span className="text-red-500">*</span>
+              </FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="short_name"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Nome Corto</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -192,14 +227,17 @@ const CreateProductForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="contact"
           render={({ field }) => (
             <FormItem>
               <FormLabel>P. di Contatto</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -207,14 +245,17 @@ const CreateProductForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="description"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  disabled={isSubmitting}
+                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -223,14 +264,17 @@ const CreateProductForm = ({
         />
         <div className="flex flex-row gap-2">
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="address"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Indirizzo</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -238,14 +282,17 @@ const CreateProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="cap"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>CAP</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -253,14 +300,17 @@ const CreateProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="location"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Località</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -270,14 +320,17 @@ const CreateProductForm = ({
         </div>
         <div className="flex flex-row gap-2">
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="website"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Website</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -285,14 +338,18 @@ const CreateProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input type="email" {...field} />
+                  <Input
+                    type="email"
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />
@@ -300,14 +357,17 @@ const CreateProductForm = ({
             )}
           />
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="phone"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Telefono</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
                 {/* <FormDescription>Numero articolo</FormDescription> */}
                 <FormMessage />

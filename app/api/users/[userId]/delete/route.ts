@@ -1,6 +1,7 @@
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserContext } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 export async function DELETE(
     req: NextRequest,
@@ -12,7 +13,7 @@ export async function DELETE(
         const supabase = await createClient();
         const supabaseService = await createServiceClient();
 
-        console.log("Service clients created successfully");
+        logger.debug("Service clients created successfully");
 
         // Get the current user from Supabase auth to verify permissions
         const { data: { user }, error: authError } = await supabase.auth
@@ -52,7 +53,7 @@ export async function DELETE(
             .single();
 
         if (userError || !userData) {
-            console.error("User lookup error:", userError);
+            logger.error("User lookup error:", userError);
             return NextResponse.json({
                 error: "User not found",
             }, { status: 404 });
@@ -68,7 +69,7 @@ export async function DELETE(
         }
 
         // Delete user from Supabase Auth
-        console.log("Attempting to delete user from Auth:", userId);
+        logger.debug("Attempting to delete user from Auth:", userId);
 
         const { error: deleteAuthError } = await supabaseService.auth.admin
             .deleteUser(
@@ -76,8 +77,8 @@ export async function DELETE(
             );
 
         if (deleteAuthError) {
-            console.error("Error deleting user from Auth:", deleteAuthError);
-            console.error("Error details:", {
+            logger.error("Error deleting user from Auth:", deleteAuthError);
+            logger.error("Error details:", {
                 message: deleteAuthError.message,
                 status: deleteAuthError.status,
                 name: deleteAuthError.name,
@@ -88,10 +89,10 @@ export async function DELETE(
             }, { status: 500 });
         }
 
-        console.log("User successfully deleted from Auth:", userId);
+        logger.debug("User successfully deleted from Auth:", userId);
 
         // Manually delete user profile and relationships since the trigger isn't working
-        console.log("Manually cleaning up user data...");
+        logger.debug("Manually cleaning up user data...");
 
         try {
             // First, get the User table ID for this auth user
@@ -109,7 +110,7 @@ export async function DELETE(
             }
 
             const userTableId = userRecord.id;
-            console.log("Found user table ID:", userTableId);
+            logger.debug("Found user table ID:", userTableId);
 
             // Delete from tables that reference User.id (in dependency order)
             const tablesToClean = [
@@ -158,15 +159,15 @@ export async function DELETE(
                     const { error: deleteError } = await deleteQuery;
 
                     if (deleteError) {
-                        console.warn(
+                        logger.warn(
                             `Error deleting from ${tableName}:`,
                             deleteError,
                         );
                     } else {
-                        console.log(`Successfully cleaned up ${tableName}`);
+                        logger.debug(`Successfully cleaned up ${tableName}`);
                     }
                 } catch (tableError) {
-                    console.warn(
+                    logger.warn(
                         `Error processing table ${tableName}:`,
                         tableError,
                     );
@@ -180,7 +181,7 @@ export async function DELETE(
                 .eq("authId", userId);
 
             if (profileDeleteError) {
-                console.error(
+                logger.error(
                     "Error deleting user profile:",
                     profileDeleteError,
                 );
@@ -189,16 +190,16 @@ export async function DELETE(
                         "User deleted from Auth but failed to clean up profile data",
                 }, { status: 500 });
             } else {
-                console.log("User profile deleted from User table");
+                logger.debug("User profile deleted from User table");
             }
         } catch (cleanupError) {
-            console.error("Error during cleanup:", cleanupError);
+            logger.error("Error during cleanup:", cleanupError);
             return NextResponse.json({
                 error: "User deleted from Auth but failed to clean up data",
             }, { status: 500 });
         }
 
-        console.log(
+        logger.info(
             `User deleted successfully: ${userData.email} (${userData.given_name} ${userData.family_name})`,
         );
 
@@ -207,7 +208,7 @@ export async function DELETE(
             message: "User deleted successfully",
         });
     } catch (error) {
-        console.error("Error deleting user:", error);
+        logger.error("Error deleting user:", error);
         return NextResponse.json({
             error: `Failed to delete user: ${
                 error instanceof Error ? error.message : "Unknown error"

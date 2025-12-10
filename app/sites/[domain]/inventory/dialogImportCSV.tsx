@@ -414,6 +414,8 @@ function DialogImportCSV() {
             o dal Codice Interno
             <br />• Il TOTALE viene calcolato automaticamente (CHF_ACQUISTO ×
             PZ)
+            <br />• Se CAT o COD_CAT non esistono come categoria, verrà creata
+            automaticamente
           </p>
 
           {/* Results */}

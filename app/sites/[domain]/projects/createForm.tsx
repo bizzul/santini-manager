@@ -117,12 +117,16 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
     [selectedKanbanId, kanbanId, domain, form]
   );
 
-  // Generate code on mount if kanbanId is provided
+  // Generate code on mount
   useEffect(() => {
     if (kanbanId) {
+      // If kanbanId prop is provided, generate code for that kanban
       generateCode(kanbanId);
+    } else if (domain && !selectedKanbanId) {
+      // If no kanbanId prop but domain is available, generate code using domain
+      generateCode();
     }
-  }, [kanbanId]);
+  }, [kanbanId, domain]);
 
   // Generate code when kanban selection changes
   useEffect(() => {
@@ -141,6 +145,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
       if (res?.error) {
         toast({
           variant: "destructive",
+          title: "Errore nella creazione",
           description:
             res.message || "Errore durante la creazione del progetto",
         });
@@ -148,6 +153,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
       }
 
       toast({
+        title: "Progetto creato",
         description: `Progetto ${formData.unique_code} creato correttamente!`,
       });
       form.reset();
@@ -158,6 +164,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
     } catch (error: any) {
       toast({
         variant: "destructive",
+        title: "Errore",
         description: `Errore nel creare il progetto: ${error.message}`,
       });
     } finally {

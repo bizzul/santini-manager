@@ -225,6 +225,29 @@ export async function POST(request: NextRequest) {
             existingProducts?.map((p) => p.internal_code) || [],
         );
 
+        // Get existing categories for this site
+        const { data: existingCategories, error: categoryFetchError } =
+            await supabase
+                .from("Product_category")
+                .select("id, name, code")
+                .eq("site_id", siteId);
+
+        if (categoryFetchError) {
+            console.error("Error fetching categories:", categoryFetchError);
+        }
+
+        // Create a map of categories by code and by name for quick lookup
+        const categoryByCode = new Map<string, number>();
+        const categoryByName = new Map<string, number>();
+        existingCategories?.forEach((cat) => {
+            if (cat.code) {
+                categoryByCode.set(cat.code.toLowerCase(), cat.id);
+            }
+            if (cat.name) {
+                categoryByName.set(cat.name.toLowerCase(), cat.id);
+            }
+        });
+
         const result: ImportResult = {
             success: true,
             totalRows: rows.length,
@@ -237,6 +260,72 @@ export async function POST(request: NextRequest) {
         // Process rows in batches for better performance
         const BATCH_SIZE = 50;
         const productsToInsert: Record<string, any>[] = [];
+
+        // Helper function to find or create category
+        const findOrCreateCategory = async (
+            categoryName: string | null,
+            categoryCode: string | null,
+        ): Promise<number | null> => {
+            if (!categoryName && !categoryCode) {
+                return null;
+            }
+
+            // First try to find by code
+            if (categoryCode) {
+                const existingId = categoryByCode.get(
+                    categoryCode.toLowerCase(),
+                );
+                if (existingId) {
+                    return existingId;
+                }
+            }
+
+            // Then try to find by name
+            if (categoryName) {
+                const existingId = categoryByName.get(
+                    categoryName.toLowerCase(),
+                );
+                if (existingId) {
+                    return existingId;
+                }
+            }
+
+            // Category doesn't exist, create it
+            const { data: newCategory, error: createError } = await supabase
+                .from("Product_category")
+                .insert({
+                    name: categoryName || categoryCode,
+                    code: categoryCode || null,
+                    description: "",
+                    site_id: siteId,
+                })
+                .select("id")
+                .single();
+
+            if (createError) {
+                console.error("Error creating category:", createError);
+                return null;
+            }
+
+            // Add to our maps for future lookups
+            if (newCategory) {
+                if (categoryCode) {
+                    categoryByCode.set(
+                        categoryCode.toLowerCase(),
+                        newCategory.id,
+                    );
+                }
+                if (categoryName) {
+                    categoryByName.set(
+                        categoryName.toLowerCase(),
+                        newCategory.id,
+                    );
+                }
+                return newCategory.id;
+            }
+
+            return null;
+        };
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
@@ -266,6 +355,17 @@ export async function POST(request: NextRequest) {
                     );
                     result.skipped++;
                     continue;
+                }
+
+                // Find or create the category based on CAT and COD_CAT
+                if (product.category || product.category_code) {
+                    const categoryId = await findOrCreateCategory(
+                        product.category,
+                        product.category_code,
+                    );
+                    if (categoryId) {
+                        product.product_category_id = categoryId;
+                    }
                 }
 
                 // Add to existing codes set to prevent duplicates within the same import

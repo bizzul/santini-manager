@@ -3,6 +3,12 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
+// Wrapper for deleteSite from parent actions (re-exports not allowed in "use server" files)
+export async function deleteSite(siteId: string) {
+    const { deleteSite: parentDeleteSite } = await import("../actions");
+    return parentDeleteSite(siteId);
+}
+
 export async function createSiteWithAssociations(
     prevState: any,
     formData: FormData,
@@ -155,15 +161,11 @@ export async function getSiteUsers(siteId: string) {
         return [];
     }
 
-    console.log("Site organization ID:", site.organization_id);
-
     // Get user_sites to find which users have access to this site
     const { data: siteUsersData, error: siteUsersError } = await supabase
         .from("user_sites")
         .select("user_id")
         .eq("site_id", siteId);
-
-    console.log("user_sites query result:", { siteUsersData, siteUsersError });
 
     if (siteUsersError) {
         console.error("Error fetching site users:", siteUsersError);
@@ -171,13 +173,11 @@ export async function getSiteUsers(siteId: string) {
     }
 
     if (!siteUsersData || siteUsersData.length === 0) {
-        console.log("No users found in user_sites for this site");
         return [];
     }
 
     // Get user IDs from user_sites
     const userIds = siteUsersData.map((row: any) => row.user_id);
-    console.log("User IDs from user_sites:", userIds);
 
     // Get user roles from user_organizations table (organization-level roles)
     const { data: userOrgData, error: userOrgError } = await supabase
@@ -210,8 +210,6 @@ export async function getSiteUsers(siteId: string) {
             .select("*")
             .in("authId", userIds);
 
-        console.log("User table query result:", { users, userError });
-
         if (!userError && users) {
             userData = users;
         }
@@ -223,13 +221,6 @@ export async function getSiteUsers(siteId: string) {
         const userRole = userRolesData.find((r: any) =>
             r.authId === row.user_id
         );
-
-        console.log(`Mapping user ${row.user_id}:`, {
-            user_site: row,
-            user,
-            userRole,
-            role: userRole?.role || "user",
-        });
 
         return {
             id: row.user_id,
@@ -315,8 +306,6 @@ export async function addUserToSiteHelper(
     role: string = "user",
 ) {
     const supabase = await createClient();
-
-    console.log(`Adding user ${userId} to site ${siteId} with role ${role}`);
 
     // Check if user is already in the site
     const { data: existing } = await supabase

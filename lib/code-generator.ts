@@ -6,6 +6,7 @@
  */
 
 import { createClient } from "@/utils/supabase/server";
+import { logger } from "@/lib/logger";
 
 // Tipi per i template
 export interface CodeTemplate {
@@ -122,7 +123,7 @@ export async function getNextSequenceValue(
   });
 
   if (error) {
-    console.error("Error getting next sequence value:", error);
+    logger.error("Error getting next sequence value:", error);
     throw new Error(`Failed to get next sequence value: ${error.message}`);
   }
 

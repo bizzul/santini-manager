@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
-import { generateUniqueCode } from "@/utils/unique-code";
+import { generateTaskCode } from "@/lib/code-generator";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -55,6 +55,18 @@ export async function createItem(props: any, domain?: string) {
         };
       }
 
+      // Get kanban info to determine task type
+      const { data: kanban } = await supabase
+        .from("Kanban")
+        .select("is_offer_kanban, site_id")
+        .eq("id", result.data.kanbanId)
+        .single();
+
+      // Use site_id from kanban if not already set
+      if (!siteId && kanban?.site_id) {
+        siteId = kanban.site_id;
+      }
+
       // if a position is not provided, it defaults to an empty string
       const positions = Array.from(
         { length: 8 },
@@ -62,12 +74,12 @@ export async function createItem(props: any, domain?: string) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
-      // Generate unique code to avoid duplicates (appends .1, .2, etc. if needed)
-      const uniqueCode = await generateUniqueCode(
-        supabase,
-        result.data.unique_code,
-        siteId
-      );
+      // Generate unique code using atomic sequence (always incremental)
+      let uniqueCode = result.data.unique_code;
+      if (siteId) {
+        const taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
+        uniqueCode = await generateTaskCode(siteId, taskType);
+      }
 
       const insertData: any = {
         title: "",
@@ -97,7 +109,11 @@ export async function createItem(props: any, domain?: string) {
 
       if (taskCreateError) {
         console.error("Error creating task:", taskCreateError);
-        return { error: true, message: "Errore nella creazione del task!" };
+        return {
+          error: true,
+          message:
+            `Errore nella creazione del task: ${taskCreateError.message}`,
+        };
       }
 
       // Create a new Action record to track the user action

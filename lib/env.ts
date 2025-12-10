@@ -95,6 +95,7 @@ export function getClientEnv(): ClientEnv {
             .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
             .join("\n");
 
+        // Note: Using console.warn here since logger might not be available during env initialization
         console.warn(`⚠️ Invalid client environment variables:\n${errors}`);
         // Don't throw for client env - use defaults
         return {

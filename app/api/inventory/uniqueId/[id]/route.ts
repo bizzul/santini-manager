@@ -1,6 +1,7 @@
 // pages/api/protected-route.js
 import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(
   req: NextRequest,
@@ -71,7 +72,7 @@ export async function PATCH(
       }
     }
   } catch (err) {
-    console.log("error", err);
+    logger.error("error", err);
     return NextResponse.json({ error: err, status: 500 });
   }
 }

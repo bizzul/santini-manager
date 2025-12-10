@@ -2,6 +2,7 @@ import React from "react";
 import { createClient } from "@/utils/server";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 async function getData(id: number): Promise<any | any> {
   // Fetch data from your API here.
@@ -12,7 +13,7 @@ async function getData(id: number): Promise<any | any> {
     .eq("id", id)
     .single();
   if (taskError) {
-    console.error("Error fetching task:", taskError);
+    logger.error("Error fetching task:", taskError);
     throw new Error("Failed to fetch task");
   }
   const { data: client, error: clientError } = await supabase
@@ -50,7 +51,7 @@ export default async function Page({
   const created = new Date(data.created_at);
   const deliveryDate = new Date(data.deliveryDate ?? "");
 
-  console.log(data);
+  logger.debug(data);
   return (
     <div className="bg-black min-h-screen text-white flex flex-col justify-center items-center w-full align-middle pt-4 text-sm md:text-lg">
       <div className="flex justify-center items-center w-full">

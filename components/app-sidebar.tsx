@@ -28,6 +28,7 @@ import { UserContext } from "@/lib/auth-utils";
 import { usePathname } from "next/navigation";
 import { NavUser } from "./nav-user";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { logger } from "@/lib/logger";
 import KanbanManagementModal from "./kanbans/KanbanManagementModal";
 import { useToast } from "./ui/use-toast";
 import { useKanbanStore } from "../store/kanban-store";
@@ -62,6 +63,7 @@ import {
   faListUl,
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
+import { getKanbanIcon } from "@/lib/kanban-icons";
 
 // Icon mapping for sidebar
 const iconMap = {
@@ -130,6 +132,8 @@ type MenuItem = {
   customComponent?: React.ReactNode;
   moduleName?: string;
   id?: string | number; // Add unique identifier for kanban items
+  lucideIcon?: string; // Lucide icon name for kanban categories
+  color?: string; // Color for category icons
 };
 
 // Optimized domain extraction function
@@ -242,22 +246,7 @@ const getMenuItems = (
       icon: "faWarehouse",
       alert: false,
       moduleName: "inventory",
-      items: [
-        {
-          label: "Inventario",
-          icon: "faBox",
-          href: `${basePath}/inventory`,
-          alert: false,
-          moduleName: "inventory",
-        },
-        {
-          label: "Categorie",
-          icon: "faListUl",
-          href: `${basePath}/categories`,
-          alert: false,
-          moduleName: "categories",
-        },
-      ],
+      href: `${basePath}/inventory`,
     },
     {
       label: "Prodotti",
@@ -272,6 +261,41 @@ const getMenuItems = (
       href: `${basePath}/projects`,
       alert: false,
       moduleName: "projects",
+    },
+    {
+      label: "Categorie",
+      icon: "faListUl",
+      alert: false,
+      items: [
+        {
+          label: "Inventario",
+          icon: "faListUl",
+          href: `${basePath}/categories`,
+          alert: false,
+          moduleName: "categories",
+        },
+        {
+          label: "Prodotti",
+          icon: "faListUl",
+          href: `${basePath}/product-categories`,
+          alert: false,
+          moduleName: "products",
+        },
+        {
+          label: "Fornitori",
+          icon: "faListUl",
+          href: `${basePath}/supplier-categories`,
+          alert: false,
+          moduleName: "suppliers",
+        },
+        {
+          label: "Produttori",
+          icon: "faListUl",
+          href: `${basePath}/manufacturer-categories`,
+          alert: false,
+          moduleName: "manufacturers",
+        },
+      ],
     },
     {
       label: "Errori",
@@ -437,7 +461,7 @@ export function AppSidebar() {
         description: "Lista kanban aggiornata con successo",
       });
     } catch (error) {
-      console.error("Error refreshing kanbans:", error);
+      logger.error("Error refreshing kanbans:", error);
       toast({
         title: "Errore nell'aggiornamento",
         description: "Impossibile aggiornare la lista kanban",
@@ -484,6 +508,7 @@ export function AppSidebar() {
               : kanbansLocal.map((kanban) => ({
                   label: kanban.title,
                   icon: "faTable" as const,
+                  lucideIcon: kanban.icon || "Folder",
                   href: `${basePath}/kanban?name=${kanban.identifier}`,
                   alert: false,
                   id: kanban.id || kanban.identifier,
@@ -515,6 +540,8 @@ export function AppSidebar() {
           return {
             label: category.name,
             icon: "faListUl" as const,
+            lucideIcon: category.icon || "Folder",
+            color: category.color || "#3B82F6",
             alert: false,
             items: [
               ...(isLoadingKanbansLocal
@@ -540,6 +567,7 @@ export function AppSidebar() {
                 : categoryKanbans.map((kanban) => ({
                     label: kanban.title,
                     icon: "faTable" as const,
+                    lucideIcon: kanban.icon || "Folder",
                     href: `${basePath}/kanban?name=${kanban.identifier}&category=${category.identifier}`,
                     alert: false,
                     id: kanban.id || kanban.identifier,
@@ -565,6 +593,8 @@ export function AppSidebar() {
           kanbanSubItems.push({
             label: "Senza Categoria",
             icon: "faListUl" as const,
+            lucideIcon: "Folder",
+            color: "#6B7280",
             alert: false,
             items: [
               ...(isLoadingKanbansLocal
@@ -581,6 +611,7 @@ export function AppSidebar() {
                 : uncategorizedKanbans.map((kanban) => ({
                     label: kanban.title,
                     icon: "faTable" as const,
+                    lucideIcon: kanban.icon || "Folder",
                     href: `${basePath}/kanban?name=${kanban.identifier}`,
                     alert: false,
                     id: kanban.id || kanban.identifier,
@@ -656,6 +687,10 @@ export function AppSidebar() {
     const contacts = menuItems.filter((item) => item.label === "Contatti");
     const warehouse = menuItems.filter((item) => item.label === "Magazzino");
     const products = menuItems.filter((item) => item.label === "Prodotti");
+    const projectsSection = menuItems.filter(
+      (item) => item.label === "Progetti"
+    );
+    const categories = menuItems.filter((item) => item.label === "Categorie");
     const others = menuItems.filter(
       (item) =>
         ![
@@ -666,6 +701,8 @@ export function AppSidebar() {
           "Contatti",
           "Magazzino",
           "Prodotti",
+          "Progetti",
+          "Categorie",
         ].includes(item.label)
     );
 
@@ -677,6 +714,8 @@ export function AppSidebar() {
       contacts,
       warehouse,
       products,
+      projectsSection,
+      categories,
       others,
     };
   }, [menuItems]);
@@ -694,15 +733,15 @@ export function AppSidebar() {
       {/* Logo skeleton */}
       <SidebarGroup>
         <SidebarGroupLabel className="h-auto py-2">
-          <Skeleton className="h-10 w-28" />
+          <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-white/10" />
         </SidebarGroupLabel>
         {/* Dashboard skeleton */}
         <SidebarGroupContent>
           <SidebarMenu>
             <SidebarMenuItem>
               <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
               </div>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -718,53 +757,53 @@ export function AppSidebar() {
             {/* Kanban header */}
             <SidebarMenuItem>
               <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-4 w-16 bg-gray-200 dark:bg-white/10" />
               </div>
             </SidebarMenuItem>
             {/* Category: Ufficio */}
             <div className="pl-4 mt-1 space-y-1">
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-14" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-14 bg-gray-200 dark:bg-white/10" />
               </div>
               <div className="pl-4 space-y-1">
                 <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded" />
-                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
+                  <Skeleton className="h-3 w-16 bg-gray-200 dark:bg-white/10" />
                 </div>
                 <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded" />
-                  <Skeleton className="h-3 w-14" />
+                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
+                  <Skeleton className="h-3 w-14 bg-gray-200 dark:bg-white/10" />
                 </div>
               </div>
             </div>
             {/* Category: Produzione */}
             <div className="pl-4 mt-1 space-y-1">
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-20 bg-gray-200 dark:bg-white/10" />
               </div>
               <div className="pl-4 space-y-1">
                 <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded" />
-                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
+                  <Skeleton className="h-3 w-24 bg-gray-200 dark:bg-white/10" />
                 </div>
                 <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded" />
-                  <Skeleton className="h-3 w-12" />
+                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
+                  <Skeleton className="h-3 w-12 bg-gray-200 dark:bg-white/10" />
                 </div>
                 <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded" />
-                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
+                  <Skeleton className="h-3 w-20 bg-gray-200 dark:bg-white/10" />
                 </div>
               </div>
             </div>
             {/* Category: Senza Categoria */}
             <div className="pl-4 mt-1 space-y-1">
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-28 bg-gray-200 dark:bg-white/10" />
               </div>
             </div>
           </SidebarMenu>
@@ -779,25 +818,25 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
               </div>
             </SidebarMenuItem>
             <div className="pl-4 mt-1 space-y-1">
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-28 bg-gray-200 dark:bg-white/10" />
               </div>
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-20 bg-gray-200 dark:bg-white/10" />
               </div>
             </div>
             {/* Ore item */}
             <SidebarMenuItem>
               <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-8" />
+                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-4 w-8 bg-gray-200 dark:bg-white/10" />
               </div>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -812,26 +851,26 @@ export function AppSidebar() {
           <SidebarMenu>
             <SidebarMenuItem>
               <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-4 w-16 bg-gray-200 dark:bg-white/10" />
               </div>
             </SidebarMenuItem>
             <div className="pl-4 mt-1 space-y-1">
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-14" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-14 bg-gray-200 dark:bg-white/10" />
               </div>
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-16" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-16 bg-gray-200 dark:bg-white/10" />
               </div>
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-20 bg-gray-200 dark:bg-white/10" />
               </div>
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded" />
-                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3.5 w-24 bg-gray-200 dark:bg-white/10" />
               </div>
             </div>
           </SidebarMenu>
@@ -845,17 +884,17 @@ export function AppSidebar() {
     <div className="flex flex-col gap-2">
       {/* Theme switcher skeleton */}
       <div className="flex justify-start px-2 py-2">
-        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-8 w-8 rounded-full bg-gray-200 dark:bg-white/10" />
       </div>
       {/* User section skeleton */}
       <div className="flex items-center gap-3 px-2 py-2 rounded-md">
-        <Skeleton className="h-9 w-9 rounded-md shrink-0" />
+        <Skeleton className="h-9 w-9 rounded-md shrink-0 bg-gray-200 dark:bg-white/10" />
         <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-24" />
-          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-4 w-32 bg-gray-200 dark:bg-white/10" />
+          <Skeleton className="h-3 w-24 bg-gray-200 dark:bg-white/10" />
+          <Skeleton className="h-3 w-16 bg-gray-200 dark:bg-white/10" />
         </div>
-        <Skeleton className="h-4 w-4 rounded shrink-0" />
+        <Skeleton className="h-4 w-4 rounded shrink-0 bg-gray-200 dark:bg-white/10" />
       </div>
     </div>
   );
@@ -888,6 +927,9 @@ export function AppSidebar() {
                 {item.items.map((subItem: MenuItem, index: number) => {
                   if (subItem.items) {
                     // Nested collapsible for third level
+                    const LucideIcon = subItem.lucideIcon
+                      ? getKanbanIcon(subItem.lucideIcon)
+                      : null;
                     return (
                       <Collapsible
                         key={
@@ -902,10 +944,21 @@ export function AppSidebar() {
                         <SidebarMenuSubItem>
                           <CollapsibleTrigger asChild>
                             <SidebarMenuSubButton>
-                              <FontAwesomeIcon
-                                icon={iconMap[subItem.icon]}
-                                className="w-4 h-4"
-                              />
+                              {LucideIcon ? (
+                                <div
+                                  className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+                                  style={{
+                                    backgroundColor: subItem.color || "#3B82F6",
+                                  }}
+                                >
+                                  <LucideIcon className="w-3 h-3 text-white" />
+                                </div>
+                              ) : (
+                                <FontAwesomeIcon
+                                  icon={iconMap[subItem.icon]}
+                                  className="w-4 h-4"
+                                />
+                              )}
                               <span>{subItem.label}</span>
                             </SidebarMenuSubButton>
                           </CollapsibleTrigger>
@@ -938,20 +991,42 @@ export function AppSidebar() {
                                     >
                                       {nestedItem.action ? (
                                         <div className="flex items-center gap-2">
-                                          <FontAwesomeIcon
-                                            icon={iconMap[nestedItem.icon]}
-                                            className="w-4 h-4 shrink-0"
-                                          />
+                                          {nestedItem.lucideIcon ? (
+                                            (() => {
+                                              const LucideIcon = getKanbanIcon(
+                                                nestedItem.lucideIcon
+                                              );
+                                              return (
+                                                <LucideIcon className="w-4 h-4 shrink-0" />
+                                              );
+                                            })()
+                                          ) : (
+                                            <FontAwesomeIcon
+                                              icon={iconMap[nestedItem.icon]}
+                                              className="w-4 h-4 shrink-0"
+                                            />
+                                          )}
                                           <span className="whitespace-normal wrap-break-words">
                                             {nestedItem.label}
                                           </span>
                                         </div>
                                       ) : (
                                         <Link href={nestedItem.href!}>
-                                          <FontAwesomeIcon
-                                            icon={iconMap[nestedItem.icon]}
-                                            className="w-4 h-4"
-                                          />
+                                          {nestedItem.lucideIcon ? (
+                                            (() => {
+                                              const LucideIcon = getKanbanIcon(
+                                                nestedItem.lucideIcon
+                                              );
+                                              return (
+                                                <LucideIcon className="w-4 h-4" />
+                                              );
+                                            })()
+                                          ) : (
+                                            <FontAwesomeIcon
+                                              icon={iconMap[nestedItem.icon]}
+                                              className="w-4 h-4"
+                                            />
+                                          )}
                                           <span>{nestedItem.label}</span>
                                         </Link>
                                       )}
@@ -991,20 +1066,40 @@ export function AppSidebar() {
                         >
                           {subItem.action ? (
                             <div className="flex items-center gap-2 cursor-pointer">
-                              <FontAwesomeIcon
-                                icon={iconMap[subItem.icon]}
-                                className="w-4 h-4 shrink-0"
-                              />
+                              {subItem.lucideIcon ? (
+                                (() => {
+                                  const LucideIcon = getKanbanIcon(
+                                    subItem.lucideIcon
+                                  );
+                                  return (
+                                    <LucideIcon className="w-4 h-4 shrink-0" />
+                                  );
+                                })()
+                              ) : (
+                                <FontAwesomeIcon
+                                  icon={iconMap[subItem.icon]}
+                                  className="w-4 h-4 shrink-0"
+                                />
+                              )}
                               <span className="whitespace-normal wrap-break-words">
                                 {subItem.label}
                               </span>
                             </div>
                           ) : (
                             <Link href={subItem.href!}>
-                              <FontAwesomeIcon
-                                icon={iconMap[subItem.icon]}
-                                className="w-4 h-4"
-                              />
+                              {subItem.lucideIcon ? (
+                                (() => {
+                                  const LucideIcon = getKanbanIcon(
+                                    subItem.lucideIcon
+                                  );
+                                  return <LucideIcon className="w-4 h-4" />;
+                                })()
+                              ) : (
+                                <FontAwesomeIcon
+                                  icon={iconMap[subItem.icon]}
+                                  className="w-4 h-4"
+                                />
+                              )}
                               <span>{subItem.label}</span>
                             </Link>
                           )}
@@ -1129,6 +1224,34 @@ export function AppSidebar() {
                     <SidebarMenu>
                       {groupedMenuItems.warehouse.map(renderMenuItem)}
                       {groupedMenuItems.products.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
+            {/* Projects */}
+            {groupedMenuItems.projectsSection.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.projectsSection.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
+            {/* Categories */}
+            {groupedMenuItems.categories.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.categories.map(renderMenuItem)}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>

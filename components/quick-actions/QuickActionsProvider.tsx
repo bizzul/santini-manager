@@ -17,6 +17,7 @@ import CreateClientForm from "@/app/sites/[domain]/clients/createForm";
 import CreateProductFormComponent from "@/app/sites/[domain]/products/createProductForm";
 import CreateProjectForm from "@/app/sites/[domain]/projects/createForm";
 import CreateTimetrackingForm from "@/app/sites/[domain]/timetracking/createForm";
+import { logger } from "@/lib/logger";
 
 interface QuickActionsContextType {
   openDialog: (type: QuickActionType) => void;
@@ -111,7 +112,7 @@ export function QuickActionsProvider({
         kanbans: data.kanbans || [],
       });
     } catch (error) {
-      console.error("Error fetching project data:", error);
+      logger.error("Error fetching project data:", error);
       setProjectData({ clients: [], activeProducts: [], kanbans: [] });
     } finally {
       setIsLoading(false);
@@ -165,7 +166,7 @@ export function QuickActionsProvider({
         siteId: data.siteId,
       });
     } catch (error) {
-      console.error("Error fetching product data:", error);
+      logger.error("Error fetching product data:", error);
       setProductData(null);
     } finally {
       setIsLoading(false);

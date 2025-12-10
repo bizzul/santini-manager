@@ -132,10 +132,10 @@ export const fetchClients = cache(async (siteId: string) => {
 export const fetchSuppliers = cache(async (siteId: string) => {
     const supabase = await createClient();
 
-    // Fetch suppliers
+    // Fetch suppliers with category relation
     const { data: suppliers, error } = await supabase
         .from("Supplier")
-        .select("*")
+        .select("*, supplier_category:supplier_category_id(id, name, code)")
         .eq("site_id", siteId)
         .order("name", { ascending: true });
 
@@ -193,6 +193,87 @@ export const fetchCategories = cache(async (siteId: string) => {
 
     if (error) {
         log.error("Error fetching categories:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch supplier categories for a site
+ */
+export const fetchSupplierCategories = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("Supplier_category")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching supplier categories:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch manufacturers for a site with last modification info
+ */
+export const fetchManufacturers = cache(async (siteId: string) => {
+    const supabase = await createClient();
+
+    // Fetch manufacturers with category relation
+    const { data: manufacturers, error } = await supabase
+        .from("Manufacturer")
+        .select(
+            "*, manufacturer_category:manufacturer_category_id(id, name, code)",
+        )
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching manufacturers:", error);
+        return [];
+    }
+
+    if (!manufacturers || manufacturers.length === 0) {
+        return [];
+    }
+
+    return manufacturers;
+});
+
+/**
+ * Fetch manufacturer categories for a site
+ */
+export const fetchManufacturerCategories = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("Manufacturer_category")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching manufacturer categories:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch sell product categories for a site
+ */
+export const fetchSellProductCategories = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("sellproduct_categories")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching sell product categories:", error);
         return [];
     }
     return data || [];

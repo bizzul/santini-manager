@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/products/edit";
 import { getUserContext } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 export async function editItem(formData: any, id: number) {
   const result = validation.safeParse(formData);
@@ -97,7 +98,7 @@ export async function editItem(formData: any, id: number) {
 
       return revalidatePath("/inventory");
     } catch (e) {
-      console.log(e);
+      logger.error(e);
       return { error: "Modifica elemento fallita!" };
     }
   } else {

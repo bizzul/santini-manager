@@ -1,11 +1,12 @@
 import React from "react";
 import Link from "next/link";
-import { getOrganizationsWithUserCount } from "../actions";
+import { getOrganizationsWithSiteCount } from "../actions";
 import { Button } from "@/components/ui/button";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
-import { Plus, ArrowLeft, Building, Users } from "lucide-react";
+import { Plus, ArrowLeft, Building } from "lucide-react";
 import Image from "next/image";
+import { OrganizationRow } from "./OrganizationRow";
 
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function OrganizationsPage() {
     redirect("/");
   }
 
-  const organizations = await getOrganizationsWithUserCount();
+  const organizations = await getOrganizationsWithSiteCount();
 
   return (
     <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
@@ -90,60 +91,23 @@ export default async function OrganizationsPage() {
             {organizations?.length > 0 ? (
               <div className="space-y-4">
                 {organizations.map((org: any) => (
-                  <div
+                  <OrganizationRow
                     key={org.id}
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors"
-                  >
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-white text-lg">
-                          {org.name}
-                        </span>
-                        {org.code && (
-                          <span className="text-white/60 bg-white/10 px-2 py-1 rounded text-sm">
-                            {org.code}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-white/60 mt-2">
-                        <Users className="h-4 w-4" />
-                        <span>
-                          {org.userCount} user{org.userCount !== 1 ? "s" : ""}{" "}
-                          connected
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href={`/administration/organizations/${org.id}`}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border border-white/40 text-white hover:bg-white/20"
-                        >
-                          View
-                        </Button>
-                      </Link>
-                      {role === "superadmin" && (
-                        <Link
-                          href={`/administration/organizations/${org.id}/edit`}
-                        >
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border border-white/40 text-white hover:bg-white/20"
-                          >
-                            Edit
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+                    organization={{
+                      id: org.id,
+                      name: org.name,
+                      code: org.code,
+                      userCount: org.userCount || 0,
+                      siteCount: org.siteCount || 0,
+                    }}
+                    isSuperadmin={role === "superadmin"}
+                  />
                 ))}
               </div>
             ) : (
               <div className="text-center py-12">
                 <Building className="h-12 w-12 mx-auto text-white/40 mb-4" />
-                <p className="text-white/70">No organizations found.</p>
+                <p className="text-white/70">Nessuna organizzazione trovata.</p>
               </div>
             )}
           </div>

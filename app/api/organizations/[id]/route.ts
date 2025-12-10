@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { canAccessOrganization } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 export async function GET(
     request: NextRequest,
@@ -32,7 +33,7 @@ export async function GET(
             .eq("id", organizationId)
             .single();
 
-        console.log("organization", organization);
+        logger.debug("organization", organization);
 
         if (orgError || !organization) {
             return NextResponse.json(
@@ -43,7 +44,7 @@ export async function GET(
 
         return NextResponse.json(organization);
     } catch (error) {
-        console.error("Error fetching organization:", error);
+        logger.error("Error fetching organization:", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 },

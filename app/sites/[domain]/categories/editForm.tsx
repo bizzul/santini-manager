@@ -18,6 +18,7 @@ import { validation } from "@/validation/productsCategory/create";
 import { useToast } from "@/hooks/use-toast";
 import { Product_category } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
+import { logger } from "@/lib/logger";
 
 type Props = {
   handleClose: any;
@@ -30,6 +31,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
     resolver: zodResolver(validation),
     defaultValues: {
       name: data.name,
+      code: data.code || "",
       description: data.description,
     },
   });
@@ -50,7 +52,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
           description: `Elemento ${d.name} aggiornato correttamente!`,
         });
       } else {
-        console.log("Unexpected response:", response);
+        logger.debug("Unexpected response:", response);
       }
     } catch (e) {
       console.error("Error in form submission:", e);
@@ -63,19 +65,42 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   return (
     <Form {...form}>
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome</FormLabel>
-              <FormControl>
-                <Input {...field} disabled={isSubmitting} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    placeholder="es. Legno"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Codice</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    placeholder="es. LG"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="description"
@@ -83,7 +108,11 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input {...field} disabled={isSubmitting} />
+                <Input
+                  {...field}
+                  disabled={isSubmitting}
+                  placeholder="es. Pannelli, tavole, etc."
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

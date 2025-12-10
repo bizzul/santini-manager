@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { createServiceClient } from "@/utils/supabase/server";
+import { logger } from "@/lib/logger";
 
 export async function getSiteData(domain: string) {
   try {
@@ -30,7 +31,7 @@ export async function getSiteData(domain: string) {
           const result = await query.single();
           return result;
         } catch (error) {
-          console.error("Error in getSiteData query:", error);
+          logger.error("Error in getSiteData query:", error);
           return null;
         }
       },
@@ -41,7 +42,7 @@ export async function getSiteData(domain: string) {
       },
     )();
   } catch (error) {
-    console.error("Error in getSiteData:", error);
+    logger.error("Error in getSiteData:", error);
     return null;
   }
 }

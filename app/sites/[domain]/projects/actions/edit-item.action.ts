@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function editItem(formData: any, id: number, domain?: string) {
   const result = validation.safeParse(formData);
@@ -22,7 +23,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         organizationId = siteResult.data.organization_id;
       }
     } catch (error) {
-      console.error("Error fetching site data:", error);
+      logger.error("Error fetching site data:", error);
     }
   }
 
@@ -50,7 +51,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
             .single();
 
           if (columnError || !columnData) {
-            console.error("Error fetching specified column:", columnError);
+            logger.error("Error fetching specified column:", columnError);
             return { error: true, message: "La colonna selezionata non è valida per questa kanban!" };
           }
 
@@ -66,7 +67,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
             .single();
 
           if (firstColumnError) {
-            console.error("Error fetching first column:", firstColumnError);
+            logger.error("Error fetching first column:", firstColumnError);
             return { error: true, message: "Errore nel recupero della colonna!" };
           }
 
@@ -100,7 +101,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         //@ts-ignore
         (_, i) => result.data[`position${i + 1}`] || "",
       );
-      console.log("positions", positions);
+      logger.debug("positions", positions);
 
       const { data: taskCreate, error: taskUpdateError } = await supabase
         .from("Task")
@@ -133,7 +134,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         .single();
 
       if (taskUpdateError) {
-        console.error("Error updating task:", taskUpdateError);
+        logger.error("Error updating task:", taskUpdateError);
         return { error: true, message: "Errore nell'aggiornamento del task!" };
       }
 
@@ -168,7 +169,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
       return { error: true, message: "Validazione elemento fallita!" };
     }
   } catch (error: any) {
-    console.error("Error updating task:", error);
+    logger.error("Error updating task:", error);
     // Make sure to return a plain object
     return { message: "Aggiornamento elemento fallito!", error: error.message };
   }

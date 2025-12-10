@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/users/editRole";
+import { logger } from "@/lib/logger";
 
 // Define types based on Supabase schema
 interface Roles {
@@ -101,7 +102,7 @@ export const EditRoleModal: FC<Props> = ({
           setError("Invalid Data Found");
           return null; // return null when there's an error
         } else {
-          console.log("data", data);
+          logger.debug("data", data);
           setUserRoles(data.roles);
           return data; // return roles when there's no error
         }
@@ -112,7 +113,7 @@ export const EditRoleModal: FC<Props> = ({
   useEffect(() => {
     if (focusedUser?.user_id) {
       fetchRoles(focusedUser.user_id).then((roles) => {
-        console.log(roles);
+        logger.debug(roles);
         //@ts-ignore
         if (roles.length && focusedUser !== null) {
           //@ts-ignore

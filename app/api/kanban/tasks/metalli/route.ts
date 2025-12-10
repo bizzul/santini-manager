@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../utils/supabase/server";
 import { getSiteData } from "../../../../../lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,15 +52,15 @@ export async function POST(req: NextRequest) {
       let updateData: any = { metalli: metalliStatus };
 
       if (metalliStatus === true && task.metalli === false) {
-        console.log("adding metalli");
+        logger.debug("adding metalli");
         // Adding 10% only if it hasn't been added before
         updateData.percentStatus = (task.percentStatus || 0) + 10;
       } else if (metalliStatus === false && task.metalli === true) {
-        console.log("removing metalli");
+        logger.debug("removing metalli");
         // Removing 10% only if it was added before
         updateData.percentStatus = (task.percentStatus || 0) - 10;
       } else {
-        console.log("no change in metalli");
+        logger.debug("no change in metalli");
         // No change in percentStatus
       }
 

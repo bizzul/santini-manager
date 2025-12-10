@@ -2,6 +2,7 @@
 
 import { validation } from "@/validation/sellProducts/create";
 import { createClient } from "@/utils/server";
+import { logger } from "@/lib/logger";
 
 export async function editSellProductAction(formData: any, id: number) {
   const result = validation.safeParse(formData);
@@ -19,7 +20,7 @@ export async function editSellProductAction(formData: any, id: number) {
         .select();
       return { success: true, data: data };
     } catch (e) {
-      console.log(e);
+      logger.error(e);
       return { error: "Modifica elemento fallita!" };
     }
   }

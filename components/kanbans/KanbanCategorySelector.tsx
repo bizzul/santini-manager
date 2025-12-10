@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { logger } from "@/lib/logger";
 import {
   getKanbanCategories,
   type KanbanCategory,
@@ -41,7 +42,7 @@ export function KanbanCategorySelector({
       const data = await getKanbanCategories(domain);
       setCategories(data);
     } catch (error) {
-      console.error("Error loading categories:", error);
+      logger.error("Error loading categories:", error);
     } finally {
       setIsLoading(false);
     }
@@ -80,4 +81,3 @@ export function KanbanCategorySelector({
     </div>
   );
 }
-

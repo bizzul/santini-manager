@@ -19,10 +19,10 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        // Query directly with site filter
+        // Query directly with site filter, including category relation
         const { data: suppliers, error } = await supabase
             .from("Supplier")
-            .select("*")
+            .select("*, supplier_category:supplier_category_id(id, name, code)")
             .eq("site_id", siteId)
             .order("name", { ascending: true });
 

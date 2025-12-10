@@ -1,9 +1,10 @@
 "use client";
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { updateSiteWithUsers } from "../../actions";
+import { updateSiteWithUsers, deleteSite } from "../../actions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import ModuleManagementModal from "@/components/module-management/ModuleManagementModal";
+import KanbanCategoryManagerModal from "@/components/site-settings/KanbanCategoryManagerModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,9 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X, ImageIcon, Loader2, Settings } from "lucide-react";
+import { X, ImageIcon, Loader2, Settings, Trash2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
+import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
+import { logger } from "@/lib/logger";
 
 function SubmitButton({
   pending,
@@ -153,7 +156,7 @@ export default function EditSiteForm({
       const formData = new FormData();
       formData.append("image", imageFile);
 
-      console.log("Uploading image to:", `/api/site-images/${site.id}`);
+      logger.debug("Uploading image to:", `/api/site-images/${site.id}`);
 
       const response = await fetch(`/api/site-images/${site.id}`, {
         method: "POST",
@@ -171,7 +174,7 @@ export default function EditSiteForm({
       setImageFile(null); // Clear the file after successful upload
       return true;
     } catch (error: any) {
-      console.error("Upload error:", error);
+      logger.error("Upload error:", error);
       toast.error(error.message || "Errore nel caricamento dell'immagine");
       return false;
     } finally {
@@ -479,6 +482,78 @@ export default function EditSiteForm({
                   Gestisci Codici e Offerte
                 </Button>
               }
+            />
+          </div>
+
+          <div className="pt-6 border-t border-white/20">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Gestione Categorie Kanban
+            </h3>
+            <p className="text-sm text-white/70 mb-4">
+              Organizza le tue kanban boards in categorie. Le categorie verranno
+              mostrate nella sidebar con l&apos;icona selezionata.
+            </p>
+            <KanbanCategoryManagerModal
+              siteId={site.id}
+              subdomain={site.subdomain}
+              trigger={
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                >
+                  <Layers className="h-4 w-4 mr-2" />
+                  Gestisci Categorie Kanban
+                </Button>
+              }
+            />
+          </div>
+
+          {/* Danger Zone - Delete Site */}
+          <div className="pt-6 border-t border-red-500/30">
+            <h3 className="text-lg font-medium text-red-400 mb-4">
+              Zona Pericolosa
+            </h3>
+            <p className="text-sm text-white/70 mb-4">
+              Elimina questo sito e tutti i dati associati. Questa azione è
+              irreversibile e rimuoverà permanentemente tutti i progetti,
+              l&apos;inventario, i clienti, i fornitori e le configurazioni.
+            </p>
+            <DangerousDeleteDialog
+              trigger={
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="border-2 border-red-500/50 text-red-400 hover:bg-red-500/20 hover:border-red-400 transition-all duration-300"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina Sito
+                </Button>
+              }
+              title="Elimina Sito"
+              description={`Stai per eliminare il sito "${site.name}" e tutti i dati collegati.`}
+              confirmationText={site.name}
+              warningItems={[
+                "Tutti i progetti e le attività kanban",
+                "Tutto l'inventario e i prodotti",
+                "Tutti i clienti e i fornitori",
+                "Tutte le offerte",
+                "Tutti i tracciamenti temporali",
+                "Tutte le configurazioni e impostazioni del sito",
+              ]}
+              onConfirm={async () => {
+                const result = await deleteSite(site.id);
+                if (result.success) {
+                  toast.success(
+                    result.message || "Sito eliminato con successo"
+                  );
+                  router.push("/administration");
+                } else {
+                  throw new Error(
+                    result.message || "Errore durante l'eliminazione"
+                  );
+                }
+              }}
             />
           </div>
         </>

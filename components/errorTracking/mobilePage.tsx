@@ -7,6 +7,7 @@ import { validation } from "../../validation/errorTracking/create";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Image from "next/image";
 import { useToast } from "../ui/use-toast";
+import { logger } from "@/lib/logger";
 import {
   FileUpload,
   UploadedFile,
@@ -151,7 +152,7 @@ function MobilePage({
     }
   };
 
-  console.log(errors);
+  logger.debug(errors);
 
   return (
     <div>

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -17,7 +18,7 @@ export default async function ResetPasswordPage({
   const { token_hash, token, type } = await searchParams;
 
   // Debug: log what we received
-  console.log("Reset password params:", { token_hash, token, type });
+  logger.debug("Reset password params:", { token_hash, token, type });
 
   // Supabase sends either token_hash or token, handle both cases
   const actualToken = token_hash || token;

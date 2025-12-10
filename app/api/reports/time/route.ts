@@ -2,6 +2,7 @@ import { DateManager } from "../../../../package/utils/dates/date-manager";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
+import { logger } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,7 @@ export const POST = async (req: NextRequest) => {
   const from = new Date(dateRange.data.from);
   const to = new Date(dateRange.data.to);
 
-  console.log("range", from, to);
+  logger.debug("range", from, to);
 
   try {
     const supabase = await createClient();

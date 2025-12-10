@@ -74,7 +74,7 @@ export interface Client {
     countryCode?: string;
     zipCode?: number;
     phone?: string;
-    mobile?: string;
+    mobilePhone?: string;
     email?: string;
     created_at?: string;
     updated_at?: string;
@@ -134,6 +134,7 @@ export interface Product {
 export interface Product_category {
     id: number;
     name?: string;
+    code?: string;
     description?: string;
     created_at?: string;
     updated_at?: string;
@@ -166,6 +167,17 @@ export interface SellProduct {
     updated_at?: string;
 }
 
+// Supplier category type
+export interface Supplier_category {
+    id: number;
+    name: string;
+    code?: string;
+    description: string;
+    site_id?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
 // Supplier related types
 export interface Supplier {
     id: number;
@@ -174,6 +186,8 @@ export interface Supplier {
     address?: string;
     location?: string;
     category?: string;
+    supplier_category_id?: number;
+    supplier_category?: Supplier_category;
     phone?: string;
     email?: string;
     website?: string;
@@ -181,6 +195,38 @@ export interface Supplier {
     cap?: number;
     description?: string;
     supplier_image?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Manufacturer category type
+export interface Manufacturer_category {
+    id: number;
+    name: string;
+    code?: string;
+    description: string;
+    site_id?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Manufacturer related types
+export interface Manufacturer {
+    id: number;
+    name: string;
+    short_name?: string;
+    address?: string;
+    location?: string;
+    manufacturer_category_id?: number;
+    manufacturer_category?: Manufacturer_category;
+    phone?: string;
+    email?: string;
+    website?: string;
+    contact?: string;
+    cap?: number;
+    description?: string;
+    manufacturer_image?: string;
+    site_id?: string;
     created_at?: string;
     updated_at?: string;
 }
@@ -202,6 +248,7 @@ export interface Kanban {
     identifier?: string;
     description?: string;
     color?: string;
+    icon?: string;
     category_id?: number;
     site_id?: string;
     // Nuovi campi per sistema offerte

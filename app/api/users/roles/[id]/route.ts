@@ -2,6 +2,7 @@
 import { createClient } from "../../../../../utils/supabase/server";
 import { NextApiRequest, NextApiResponse } from "next";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   req: NextRequest,
@@ -91,7 +92,7 @@ export async function PATCH(
       status: 200,
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     return NextResponse.json({
       error: error instanceof Error ? error.message : "Unknown error",
       status: 500,

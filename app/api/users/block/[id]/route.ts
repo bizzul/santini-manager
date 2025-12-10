@@ -1,5 +1,6 @@
 import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export async function PATCH(
   req: NextRequest,
@@ -8,7 +9,7 @@ export async function PATCH(
   try {
     const supabase = await createClient();
     const { id: userId } = await params;
-    console.log("userId", userId);
+    logger.debug("userId", userId);
 
     // Get the current user from Supabase auth to verify permissions
     const { data: { user }, error: authError } = await supabase.auth.getUser();

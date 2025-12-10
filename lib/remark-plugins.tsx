@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { visit } from "unist-util-visit";
 import { ReactNode } from "react";
+import { logger } from "@/lib/logger";
 
 export function replaceLinks({
   href,
@@ -58,7 +59,7 @@ export function replaceTweets() {
             },
           ];
         } catch (e) {
-          console.log("ERROR", e);
+          logger.error("ERROR", e);
           return reject(e);
         }
       }

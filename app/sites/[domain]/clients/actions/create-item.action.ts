@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props);
@@ -33,7 +34,7 @@ export async function createItem(props: any, domain?: string) {
         const siteData = siteResult.data;
         siteId = siteData.id;
         organizationId = siteData.organization_id;
-        console.log("Site and organization found:", {
+        logger.debug("Site and organization found:", {
           siteId,
           organizationId,
         });

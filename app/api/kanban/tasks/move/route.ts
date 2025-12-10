@@ -6,6 +6,7 @@ import {
   generateTaskCode,
   getAutoArchiveSettings,
 } from "@/lib/code-generator";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log("Move card request:", {
+    logger.debug("Move card request:", {
       id,
       column,
       columnName,
@@ -74,14 +75,14 @@ export async function POST(req: NextRequest) {
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
-    console.log("Task query with site_id:", siteId);
+    logger.debug("Task query with site_id:", siteId);
 
     const { data: task, error: findError } = await taskQuery.single();
 
     if (findError || !task) {
-      console.error("Task not found:", id);
-      console.error("Find error:", findError);
-      console.error("Site ID used for filtering:", siteId);
+      logger.error("Task not found:", id);
+      logger.error("Find error:", findError);
+      logger.error("Site ID used for filtering:", siteId);
 
       // Let's also try to find the task without site_id filtering to see if it exists
       const { data: taskWithoutSiteFilter, error: findErrorWithoutSite } =
@@ -95,19 +96,19 @@ export async function POST(req: NextRequest) {
           .single();
 
       if (taskWithoutSiteFilter) {
-        console.log(
+        logger.debug(
           "Task exists but has site_id:",
           taskWithoutSiteFilter.site_id,
         );
-        console.log("Expected site_id:", siteId);
+        logger.debug("Expected site_id:", siteId);
       } else {
-        console.log("Task does not exist at all");
+        logger.debug("Task does not exist at all");
       }
 
       return NextResponse.json({ error: "Task not found", status: 404 });
     }
 
-    console.log("Found task:", {
+    logger.debug("Found task:", {
       taskId: task.id,
       currentColumn: task.kanban_columns?.identifier,
     });
@@ -122,14 +123,14 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (columnError || !targetColumn) {
-      console.error("Target column not found:", column);
+      logger.error("Target column not found:", column);
       return NextResponse.json({
         error: "Target column not found",
         status: 404,
       });
     }
 
-    console.log("Found target column:", {
+    logger.debug("Found target column:", {
       columnId: targetColumn.id,
       columnName: targetColumn.identifier,
       columnType: targetColumn.column_type,
@@ -149,7 +150,7 @@ export async function POST(req: NextRequest) {
     const columnType = targetColumn.column_type || "normal";
 
     if (isOfferKanban) {
-      console.log("Processing offer kanban logic:", {
+      logger.debug("Processing offer kanban logic:", {
         columnType,
         targetWorkKanbanId: task?.kanban?.target_work_kanban_id,
       });
@@ -215,10 +216,10 @@ export async function POST(req: NextRequest) {
                 .single();
 
               if (createError) {
-                console.error("Error creating work task:", createError);
+                logger.error("Error creating work task:", createError);
               } else {
                 duplicatedTask = newTask;
-                console.log(
+                logger.debug(
                   "Created work task:",
                   newTask?.id,
                   newTask?.unique_code,
@@ -226,7 +227,7 @@ export async function POST(req: NextRequest) {
               }
             }
           } catch (dupError) {
-            console.error("Error in duplication process:", dupError);
+            logger.error("Error in duplication process:", dupError);
           }
         }
       }
@@ -249,11 +250,11 @@ export async function POST(req: NextRequest) {
     // Logica Routing Produzione (Kanban Lavori -> Kanban Produzione)
     // =====================================================
     if (isWorkKanban && columnType === "production" && siteId) {
-      console.log("Processing work kanban -> production routing");
+      logger.debug("Processing work kanban -> production routing");
 
       // Ottieni la categoria del prodotto
       const productCategory = task?.sell_product?.name;
-      console.log("Product category:", productCategory);
+      logger.debug("Product category:", productCategory);
 
       if (productCategory) {
         // Cerca il routing configurato nelle site_settings
@@ -267,8 +268,8 @@ export async function POST(req: NextRequest) {
         const routing = routingSetting?.setting_value || {};
         const targetProductionKanbanId = routing[productCategory];
 
-        console.log("Routing config:", routing);
-        console.log("Target production kanban:", targetProductionKanbanId);
+        logger.debug("Routing config:", routing);
+        logger.debug("Target production kanban:", targetProductionKanbanId);
 
         if (targetProductionKanbanId) {
           try {
@@ -296,17 +297,17 @@ export async function POST(req: NextRequest) {
                 .single();
 
               if (moveError) {
-                console.error("Error moving task to production:", moveError);
+                logger.error("Error moving task to production:", moveError);
               } else {
                 movedTask = updatedTask;
-                console.log(
+                logger.debug(
                   "Moved task to production kanban:",
                   updatedTask?.id,
                 );
               }
             }
           } catch (moveError) {
-            console.error("Error in production routing:", moveError);
+            logger.error("Error in production routing:", moveError);
           }
         }
       }
@@ -316,10 +317,10 @@ export async function POST(req: NextRequest) {
     // Logica Routing Fatturazione (Kanban Produzione -> Kanban Fatture)
     // =====================================================
     if (isProductionKanban && columnType === "invoicing" && siteId) {
-      console.log("Processing production kanban -> invoicing routing");
+      logger.debug("Processing production kanban -> invoicing routing");
 
       const targetInvoiceKanbanId = task?.kanban?.target_invoice_kanban_id;
-      console.log("Target invoice kanban:", targetInvoiceKanbanId);
+      logger.debug("Target invoice kanban:", targetInvoiceKanbanId);
 
       if (targetInvoiceKanbanId) {
         try {
@@ -352,10 +353,10 @@ export async function POST(req: NextRequest) {
               .single();
 
             if (moveError) {
-              console.error("Error moving task to invoicing:", moveError);
+              logger.error("Error moving task to invoicing:", moveError);
             } else {
               movedTask = updatedTask;
-              console.log(
+              logger.debug(
                 "Moved task to invoice kanban:",
                 updatedTask?.id,
                 newCode,
@@ -363,7 +364,7 @@ export async function POST(req: NextRequest) {
             }
           }
         } catch (moveError) {
-          console.error("Error in invoicing routing:", moveError);
+          logger.error("Error in invoicing routing:", moveError);
         }
       }
     }
@@ -590,7 +591,7 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (err) {
-    console.error("Error in move card API:", err);
+    logger.error("Error in move card API:", err);
     return NextResponse.json({
       error: err instanceof Error ? err.message : "Unknown error",
       status: 400,

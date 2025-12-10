@@ -1,32 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPlus,
-  faTrash,
-  faPlay,
-  faHammer,
-  faBox,
-  faTruck,
-  faCheck,
-  faClock,
-  faTools,
-  faScrewdriverWrench,
-  faScrewdriver,
-  faRuler,
-  faRulerCombined,
-  faRulerVertical,
-  faRulerHorizontal,
-  faToolbox,
-  faCubes,
-  faCouch,
-  faChair,
-  faTree,
-  faLayerGroup,
-  faClipboardCheck,
-  faBoxesStacked,
-} from "@fortawesome/free-solid-svg-icons";
+import { Plus, Trash2 } from "lucide-react";
+import { getKanbanIcon } from "@/lib/kanban-icons";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +23,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { DialogFooter } from "../ui/dialog";
+import { logger } from "@/lib/logger";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +42,7 @@ import {
   getKanbanCategories,
   type KanbanCategory,
 } from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
+import { IconSelector } from "./IconSelector";
 
 type ColumnType = "normal" | "won" | "lost" | "production" | "invoicing";
 
@@ -89,46 +67,6 @@ interface KanbanManagementModalProps {
   domain?: string;
   preSelectedCategoryId?: number | null;
 }
-
-const iconOptions = [
-  { value: "faPlay", icon: faPlay, label: "Play" },
-  { value: "faHammer", icon: faHammer, label: "Hammer" },
-  { value: "faBox", icon: faBox, label: "Box" },
-  { value: "faTruck", icon: faTruck, label: "Truck" },
-  { value: "faCheck", icon: faCheck, label: "Check" },
-  { value: "faClock", icon: faClock, label: "Clock" },
-  { value: "faTools", icon: faTools, label: "Tools" },
-  {
-    value: "faScrewdriverWrench",
-    icon: faScrewdriverWrench,
-    label: "Attrezzi",
-  },
-  { value: "faScrewdriver", icon: faScrewdriver, label: "Cacciavite" },
-  { value: "faRuler", icon: faRuler, label: "Righello" },
-  {
-    value: "faRulerCombined",
-    icon: faRulerCombined,
-    label: "Righello Combinato",
-  },
-  {
-    value: "faRulerVertical",
-    icon: faRulerVertical,
-    label: "Righello Verticale",
-  },
-  {
-    value: "faRulerHorizontal",
-    icon: faRulerHorizontal,
-    label: "Righello Orizzontale",
-  },
-  { value: "faToolbox", icon: faToolbox, label: "Cassetta Attrezzi" },
-  { value: "faCubes", icon: faCubes, label: "Cubi" },
-  { value: "faCouch", icon: faCouch, label: "Divano" },
-  { value: "faChair", icon: faChair, label: "Sedia" },
-  { value: "faTree", icon: faTree, label: "Albero" },
-  { value: "faLayerGroup", icon: faLayerGroup, label: "Strati" },
-  { value: "faClipboardCheck", icon: faClipboardCheck, label: "Controllo" },
-  { value: "faBoxesStacked", icon: faBoxesStacked, label: "Scatole" },
-];
 
 // Helper function to generate identifier from title
 const generateIdentifier = (title: string): string => {
@@ -162,6 +100,7 @@ export default function KanbanManagementModal({
     return cols;
   });
   const [color, setColor] = useState(kanban?.color || "#1e293b");
+  const [icon, setIcon] = useState(kanban?.icon || "Folder");
   const [categoryId, setCategoryId] = useState<number | null>(
     kanban?.category_id || null
   );
@@ -221,6 +160,7 @@ export default function KanbanManagementModal({
       setTitle(kanban?.title || "");
       setIdentifier(kanban?.identifier || "");
       setColor(kanban?.color || "#1e293b");
+      setIcon(kanban?.icon || "Folder");
 
       // Use preSelectedCategoryId if provided and in create mode, otherwise use kanban's category
       if (mode === "create" && preSelectedCategoryId !== undefined) {
@@ -292,6 +232,7 @@ export default function KanbanManagementModal({
         title,
         identifier,
         color,
+        icon,
         category_id: categoryId,
         // Nuovi campi per sistema offerte
         is_offer_kanban: isOfferKanban,
@@ -319,7 +260,7 @@ export default function KanbanManagementModal({
       setIsOpen(false);
       setOpen(false);
     } catch (error) {
-      console.error("Error saving kanban:", error);
+      logger.error("Error saving kanban:", error);
       toast({
         variant: "destructive",
         title: "Errore",
@@ -374,7 +315,7 @@ export default function KanbanManagementModal({
         });
       }
     } catch (error) {
-      console.error("Error deleting kanban:", error);
+      logger.error("Error deleting kanban:", error);
       toast({
         variant: "destructive",
         title: "Errore",
@@ -486,6 +427,14 @@ export default function KanbanManagementModal({
                 style={{ backgroundColor: color }}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="icon">Icona</Label>
+            <IconSelector
+              value={icon}
+              onChange={setIcon}
+              placeholder="Seleziona icona..."
+            />
           </div>
           {domain && (
             <KanbanCategorySelector
@@ -662,7 +611,7 @@ export default function KanbanManagementModal({
                       }
                       disabled={columns.length <= 1}
                     >
-                      <FontAwesomeIcon icon={faTrash} />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                   {(mode === "create" || (mode === "edit" && !hasTasks)) && (
@@ -732,24 +681,11 @@ export default function KanbanManagementModal({
                     disabled={mode === "edit"} // Identifier cannot be changed after creation
                     placeholder="identificatore"
                   />
-                  <Select
+                  <IconSelector
                     value={column.icon}
-                    onValueChange={(value) => updateColumnIcon(index, value)}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-48 overflow-y-auto">
-                      {iconOptions.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          <span className="flex items-center gap-2">
-                            <FontAwesomeIcon icon={opt.icon} />
-                            {opt.label}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => updateColumnIcon(index, value)}
+                    className="w-[140px]"
+                  />
                   {(isOfferKanban || isWorkKanban || isProductionKanban) && (
                     <Select
                       value={column.column_type || "normal"}
@@ -798,7 +734,7 @@ export default function KanbanManagementModal({
                       title: "",
                       identifier: "",
                       position: prev.length + 1,
-                      icon: "faCheck",
+                      icon: "Check",
                       column_type: "normal",
                     },
                   ])
@@ -806,7 +742,7 @@ export default function KanbanManagementModal({
                 variant="outline"
                 size="sm"
               >
-                <FontAwesomeIcon icon={faPlus} className="mr-2" />
+                <Plus className="h-4 w-4 mr-2" />
                 Aggiungi Colonna
               </Button>
             )}
@@ -819,7 +755,7 @@ export default function KanbanManagementModal({
                   type="button"
                   onClick={handleDeleteClick}
                 >
-                  <FontAwesomeIcon icon={faTrash} className="mr-2" />
+                  <Trash2 className="h-4 w-4 mr-2" />
                   Elimina Kanban
                 </Button>
               )}

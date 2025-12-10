@@ -32,6 +32,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { CategorySelector } from "@/components/inventory/CategorySelector";
 
 const CreateProductForm = ({
   handleClose,
@@ -42,10 +43,10 @@ const CreateProductForm = ({
 }) => {
   const { toast } = useToast();
   const pathname = usePathname();
-  
+
   // Extract domain from pathname (e.g., /sites/santini/inventory -> santini)
   const domain = pathname.split("/")[2] || "";
-  
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -106,32 +107,25 @@ const CreateProductForm = ({
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         {/* Basic Info Section */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Informazioni Base</h3>
-          
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Informazioni Base
+          </h3>
+
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="productCategoryId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Categoria DB</FormLabel>
+                  <FormLabel>Categoria</FormLabel>
                   <FormControl>
-                    <Select
+                    <CategorySelector
+                      categories={data.categories || []}
+                      value={field.value?.toString()}
                       onValueChange={field.onChange}
-                      defaultValue={field.value?.toString()}
                       disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {data.categories?.map((cat: Product_category) => (
-                          <SelectItem key={cat.id} value={cat.id.toString()}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      domain={domain}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -251,7 +245,9 @@ const CreateProductForm = ({
 
         {/* Dimensions Section */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Dimensioni</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Dimensioni
+          </h3>
           <div className="grid grid-cols-3 gap-2">
             <FormField
               disabled={isSubmitting}
@@ -305,11 +301,15 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Spessore</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      {...field} 
-                      value={field.value ?? ""} 
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -324,11 +324,15 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Diametro</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      {...field} 
-                      value={field.value ?? ""} 
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -340,7 +344,9 @@ const CreateProductForm = ({
 
         {/* Quantity & Price Section */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Quantità e Prezzi</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Quantità e Prezzi
+          </h3>
           <div className="grid grid-cols-4 gap-2">
             <FormField
               disabled={isSubmitting}
@@ -401,12 +407,16 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Prezzo Vendita</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
+                    <Input
+                      type="number"
                       step="0.01"
-                      {...field} 
-                      value={field.value ?? ""} 
-                      onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -423,36 +433,6 @@ const CreateProductForm = ({
               Gerarchia Categorie (opzionale)
             </AccordionTrigger>
             <AccordionContent className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  disabled={isSubmitting}
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoria</FormLabel>
-                      <FormControl>
-                        <Input placeholder="es. LEGNO" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  disabled={isSubmitting}
-                  control={form.control}
-                  name="category_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Codice Categoria</FormLabel>
-                      <FormControl>
-                        <Input placeholder="es. LG" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   disabled={isSubmitting}
@@ -492,7 +472,10 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. Pannello melaminico" {...field} />
+                        <Input
+                          placeholder="es. Pannello melaminico"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

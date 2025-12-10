@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../../utils/supabase/server";
 import { getSiteData } from "../../../../../lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,15 +52,15 @@ export async function POST(req: NextRequest) {
       let updateData: any = { ferramenta: ferramentaStatus };
 
       if (ferramentaStatus === true && task.ferramenta === false) {
-        console.log("adding ferramenta");
+        logger.debug("adding ferramenta");
         // Adding 15% only if it hasn't been added before
         updateData.percentStatus = (task.percentStatus || 0) + 15;
       } else if (ferramentaStatus === false && task.ferramenta === true) {
-        console.log("removing ferramenta");
+        logger.debug("removing ferramenta");
         // Removing 15% only if it was added before
         updateData.percentStatus = (task.percentStatus || 0) - 15;
       } else {
-        console.log("no change in ferramenta");
+        logger.debug("no change in ferramenta");
         // No change in percentStatus
       }
 

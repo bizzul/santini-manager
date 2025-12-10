@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/productsCategory/create";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
 
 const CreateForm = ({
   handleClose,
@@ -31,6 +32,7 @@ const CreateForm = ({
     resolver: zodResolver(validation),
     defaultValues: {
       name: "",
+      code: "",
       description: "",
     },
   });
@@ -39,7 +41,7 @@ const CreateForm = ({
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
-      console.log("data", d);
+      logger.debug("data", d);
       await createItem(d, domain);
       handleClose(false);
       toast({
@@ -53,25 +55,47 @@ const CreateForm = ({
     }
   };
 
-  console.log("error", errors);
+  logger.debug("error", errors);
 
   return (
     <Form {...form}>
       <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome</FormLabel>
-              <FormControl>
-                <Input {...field} disabled={isSubmitting} />
-              </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nome</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    placeholder="es. Legno"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="code"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Codice</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    disabled={isSubmitting}
+                    placeholder="es. LG"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="description"
@@ -79,19 +103,21 @@ const CreateForm = ({
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input {...field} disabled={isSubmitting} />
+                <Input
+                  {...field}
+                  disabled={isSubmitting}
+                  placeholder="es. Pannelli, tavole, etc."
+                />
               </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
 
         <Button type="submit" disabled={isSubmitting}>
-          {" "}
           {isSubmitting && (
             <span className="spinner-border spinner-border-sm mr-1"></span>
-          )}{" "}
+          )}
           Salva
         </Button>
       </form>

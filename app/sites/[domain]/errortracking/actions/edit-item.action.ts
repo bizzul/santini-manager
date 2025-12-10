@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/errorTracking/create";
+import { logger } from "@/lib/logger";
 
 export async function editItem(
   formData: any,
@@ -57,7 +58,7 @@ export async function editItem(
 
       return revalidatePath("/errortracking");
     } catch (e) {
-      console.log(e);
+      logger.error(e);
       return { error: "Modifica elemento fallita!" };
     }
   }

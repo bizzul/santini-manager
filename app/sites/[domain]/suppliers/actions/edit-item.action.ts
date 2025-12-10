@@ -5,9 +5,20 @@ import { createClient } from "@/utils/server";
 import { validation } from "@/validation/supplier/edit";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
+
+const log = logger.scope("Suppliers");
 
 export async function editItem(formData: any, id: number, domain?: string) {
+  log.debug("editItem called with formData:", formData);
+  log.debug("editItem called with id:", id);
+
   const result = validation.safeParse(formData);
+  log.debug("Validation result success:", result.success);
+  if (!result.success) {
+    log.warn("Validation errors:", result.error.format());
+  }
+
   const session = await getUserContext();
   let userId = null;
   let siteId = null;
@@ -20,7 +31,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         siteId = siteResult.data.id;
       }
     } catch (error) {
-      console.error("Error fetching site data:", error);
+      log.error("Error fetching site data:", error);
     }
   }
 
@@ -37,7 +48,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         name: result.data.name,
         address: result.data.address,
         cap: result.data.cap,
-        category: result.data.category,
+        supplier_category_id: result.data.supplier_category_id || null,
         contact: result.data.contact,
         email: result.data.email,
         location: result.data.location,
@@ -58,7 +69,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         .single();
 
       if (resultUpdateError) {
-        console.error("Error updating supplier:", resultUpdateError);
+        log.error("Error updating supplier:", resultUpdateError);
         return { message: "Errore nell'aggiornamento del fornitore!" };
       }
 
@@ -76,18 +87,24 @@ export async function editItem(formData: any, id: number, domain?: string) {
           });
 
         if (actionError) {
-          console.error("Error creating action record:", actionError);
+          log.error("Error creating action record:", actionError);
         }
       }
 
       // return revalidatePath("/suppliers");
       return resultUpdate;
     } catch (error: any) {
-      console.error("Error updating supplier:", error);
-      // Make sure to return a plain object
-      return { message: "Creazione elemento fallita!", error: error.message };
+      log.error("Error updating supplier:", error);
+      return {
+        message: "Aggiornamento elemento fallito!",
+        error: error.message,
+      };
     }
   } else {
-    return { message: "Validazione elemento fallita!" };
+    log.warn("Validation failed:", result.error.format());
+    return {
+      message: "Validazione elemento fallita!",
+      errors: result.error.format(),
+    };
   }
 }

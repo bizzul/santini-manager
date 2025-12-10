@@ -12,6 +12,7 @@ import { Task } from "@/types/supabase";
 import QRCode from "qrcode.react";
 import QCode from "qrcode";
 import NextImage from "next/image";
+import { logger } from "@/lib/logger";
 import { DateManager } from "../../package/utils/dates/date-manager";
 type Props = {
   open: boolean;
@@ -81,7 +82,7 @@ export const EditModal: FC<Props> = ({
     const canvas = document.createElement("canvas");
     QCode.toCanvas(canvas, data, { width: 400 }, (error) => {
       if (error) {
-        console.error(error);
+        logger.error(error);
         return;
       }
 

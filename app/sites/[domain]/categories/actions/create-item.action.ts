@@ -8,7 +8,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
 export async function createItem(
-  props: Pick<Product_category, "name" | "description">,
+  props: Pick<Product_category, "name" | "code" | "description">,
   domain?: string,
 ) {
   const result = validation.safeParse(props);
@@ -41,6 +41,7 @@ export async function createItem(
   try {
     const insertData: any = {
       name: props.name,
+      code: props.code || null,
       description: props.description,
     };
 

@@ -8,6 +8,7 @@ import { createClient } from "../../../../utils/supabase/server";
 import { basePdfIta, schemaPdfIta } from "./basepdf_ita";
 import { basePdfDe, schemaPdfDe } from "./basepdf_de";
 import { DateManager } from "../../../../package/utils/dates/date-manager";
+import { logger } from "@/lib/logger";
 var path = require("path");
 
 export const dynamic = "force-dynamic";
@@ -319,7 +320,7 @@ export const POST = async (req: NextRequest) => {
       },
     });
   } catch (error: any) {
-    console.log("errroreee", error);
+    logger.error("errroreee", error);
     return NextResponse.json({
       error: "PDF Generation Failed",
       message: error.message,

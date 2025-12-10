@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { logger } from "@/lib/logger";
 
 // Define types based on Supabase schema
 interface Roles {
@@ -297,7 +298,7 @@ const CreatePage = ({
     }
 
     if (rowsToSend.length === 0) {
-      console.error(
+      logger.error(
         "Cannot send request: no rows have a non-empty 'task' field"
       );
       toast({
@@ -333,7 +334,7 @@ const CreatePage = ({
       })
       .then((data) => {
         if (data.error) {
-          console.error("Error in saving data", data.error);
+          logger.error("Error in saving data", data.error);
           alert("Errore nel salvataggio! Riprova.." + data.error);
           setIsSaved(false);
           return;
@@ -354,7 +355,7 @@ const CreatePage = ({
         }, 5000);
       })
       .catch((error) => {
-        console.error(
+        logger.error(
           "There was an error sending the data to the server:",
           error
         );
@@ -383,7 +384,7 @@ const CreatePage = ({
 
   const handleSelectChange = (e: string) => {
     // Assuming e is the task ID as a string
-    console.log(e);
+    logger.debug(e);
     const selectedTaskId = e;
     const selectedTask = data.tasks.find(
       (task) => task.id === Number(selectedTaskId)

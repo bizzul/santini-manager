@@ -28,6 +28,7 @@ import {
   PopoverTrigger,
 } from "../../components/ui/popover";
 import { cn } from "../../lib/utils";
+import { logger } from "@/lib/logger";
 
 type Props = {
   open: boolean;
@@ -108,7 +109,7 @@ export const EditModal: FC<Props> = ({
     }
   };
 
-  console.log("selected Roles", selectedRoles);
+  logger.debug("selected Roles", selectedRoles);
 
   /**
    * Api save call

@@ -13,13 +13,19 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 
-// Extended Supplier type with lastAction
+// Extended Supplier type with lastAction and supplier_category
 type SupplierWithAction = {
   id: number;
   name: string;
   short_name?: string | null;
   description?: string | null;
   category?: string | null;
+  supplier_category_id?: number | null;
+  supplier_category?: {
+    id: number;
+    name: string;
+    code?: string | null;
+  } | null;
   address?: string | null;
   cap?: number | null;
   location?: string | null;
@@ -60,10 +66,20 @@ export const columns: ColumnDef<SupplierWithAction>[] = [
     ),
   },
   {
-    accessorKey: "category",
+    accessorKey: "supplier_category",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Categoria" />
     ),
+    cell: ({ row }) => {
+      const category = row.original.supplier_category;
+      if (!category) return "-";
+      return (
+        <span>
+          {category.code && `[${category.code}] `}
+          {category.name}
+        </span>
+      );
+    },
   },
   {
     accessorKey: "address",
@@ -151,7 +167,10 @@ export const columns: ColumnDef<SupplierWithAction>[] = [
       if (!lastAction?.createdAt) return "-";
 
       const date = new Date(lastAction.createdAt);
-      const timeAgo = formatDistanceToNow(date, { addSuffix: true, locale: it });
+      const timeAgo = formatDistanceToNow(date, {
+        addSuffix: true,
+        locale: it,
+      });
       const fullDate = date.toLocaleDateString("it-IT", {
         day: "2-digit",
         month: "2-digit",
@@ -184,16 +203,18 @@ export const columns: ColumnDef<SupplierWithAction>[] = [
     cell: ({ row }) => {
       const lastAction = row.original.lastAction;
       const user = lastAction?.User;
-      
+
       if (!user) return "-";
 
-      const displayName = user.given_name && user.family_name
-        ? `${user.given_name} ${user.family_name}`
-        : user.given_name || "Utente";
+      const displayName =
+        user.given_name && user.family_name
+          ? `${user.given_name} ${user.family_name}`
+          : user.given_name || "Utente";
 
       // Generate initials from name
-      const initials = user.initials || 
-        (user.given_name && user.family_name 
+      const initials =
+        user.initials ||
+        (user.given_name && user.family_name
           ? `${user.given_name.charAt(0)}${user.family_name.charAt(0)}`
           : user.given_name?.charAt(0) || "U");
 

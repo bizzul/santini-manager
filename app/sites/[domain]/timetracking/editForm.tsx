@@ -28,6 +28,7 @@ import { Roles, Task, User, Timetracking } from "@/types/supabase";
 import { Typology } from "./createForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 interface RoleEntry {
   role: {
@@ -123,7 +124,7 @@ const EditForm = ({
 
     // Roles will be set after userAssignedRoles are loaded
 
-    console.log("Edit form data structure:", {
+    logger.debug("Edit form data structure:", {
       id: data.id,
       employee_id: data.employee_id,
       roles: data.roles,
@@ -162,7 +163,7 @@ const EditForm = ({
       const apiResponse = await response.json();
 
       if (apiResponse.error) {
-        console.error("Error fetching user roles:", apiResponse.error);
+        logger.error("Error fetching user roles:", apiResponse.error);
         setUserAssignedRoles([]);
         return;
       }
@@ -179,7 +180,7 @@ const EditForm = ({
       // If this is the initial load, set the current role after roles are loaded
       if (preserveCurrentRole) {
         const currentRole = form.getValues("roles");
-        console.log("Setting role after loading assigned roles:", {
+        logger.debug("Setting role after loading assigned roles:", {
           currentRole,
           timetrackingRoles: data.roles,
           assignedRoles: assignedRoles.map((r: any) => ({
@@ -204,7 +205,7 @@ const EditForm = ({
           const roleExists = assignedRoles.some(
             (role: any) => role.id.toString() === roleId
           );
-          console.log("Role check:", {
+          logger.debug("Role check:", {
             roleId,
             roleExists,
             assignedRolesIds: assignedRoles.map((r: any) => r.id.toString()),
@@ -213,16 +214,16 @@ const EditForm = ({
 
           if (roleExists) {
             form.setValue("roles", roleId);
-            console.log("✅ Role set to:", roleId);
+            logger.debug("✅ Role set to:", roleId);
           } else {
-            console.log("❌ Role not found in assigned roles, leaving empty");
+            logger.debug("❌ Role not found in assigned roles, leaving empty");
           }
         } else {
-          console.log("✅ Current role already set:", currentRole);
+          logger.debug("✅ Current role already set:", currentRole);
         }
       }
     } catch (error) {
-      console.error("Error fetching user roles:", error);
+      logger.error("Error fetching user roles:", error);
       setUserAssignedRoles([]);
     } finally {
       setLoadingUserRoles(false);
@@ -267,7 +268,7 @@ const EditForm = ({
         });
       }
     } catch (e) {
-      console.error("Error updating timetracking:", e);
+      logger.error("Error updating timetracking:", e);
       toast({
         description: `Errore nel aggiornare l'elemento! ${e}`,
         variant: "destructive",

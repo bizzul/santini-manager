@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
 
 export async function deleteKanban(kanbanId: number, domain?: string) {
     try {
@@ -47,7 +48,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
             };
         }
 
-        console.log(`🗑️  Starting deletion process for kanban ${kanbanId}...`);
+        logger.info(`🗑️  Starting deletion process for kanban ${kanbanId}...`);
 
         // STEP 1: Disconnect tasks from kanban (set kanbanId to NULL)
         const { data: disconnectedFromKanban, error: disconnectKanbanError } = await supabase
@@ -65,7 +66,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
         }
 
         const tasksDisconnectedCount = disconnectedFromKanban?.length || 0;
-        console.log(`✓ Disconnected ${tasksDisconnectedCount} task(s) from kanban`);
+        logger.debug(`✓ Disconnected ${tasksDisconnectedCount} task(s) from kanban`);
 
         // STEP 2: Get all columns for this kanban
         const { data: columns, error: columnsError } = await supabase
@@ -86,7 +87,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
         // STEP 3: Disconnect tasks from columns (set kanbanColumnId to NULL)
         if (columns && columns.length > 0) {
             const columnIds = columns.map(col => col.id);
-            console.log(`Found ${columnIds.length} columns to process`);
+            logger.debug(`Found ${columnIds.length} columns to process`);
 
             const { data: disconnectedFromColumns, error: disconnectColumnsError } = await supabase
                 .from("Task")
@@ -103,7 +104,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
             }
 
             columnTasksDisconnectedCount = disconnectedFromColumns?.length || 0;
-            console.log(`✓ Disconnected ${columnTasksDisconnectedCount} task(s) from columns`);
+            logger.debug(`✓ Disconnected ${columnTasksDisconnectedCount} task(s) from columns`);
         }
 
         // STEP 4: Delete kanban columns (now safe since tasks are disconnected)
@@ -120,7 +121,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
             };
         }
 
-        console.log(`✓ Deleted ${columns?.length || 0} column(s)`);
+        logger.debug(`✓ Deleted ${columns?.length || 0} column(s)`);
 
         // STEP 5: Delete the kanban itself
         const { error: deleteError } = await supabase
@@ -136,7 +137,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
             };
         }
 
-        console.log(`✓ Kanban ${kanbanId} deleted successfully`);
+        logger.info(`✓ Kanban ${kanbanId} deleted successfully`);
 
         const totalTasksDisconnected = tasksDisconnectedCount + columnTasksDisconnectedCount;
 
