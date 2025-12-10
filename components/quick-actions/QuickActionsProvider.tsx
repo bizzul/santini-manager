@@ -45,6 +45,10 @@ interface TimetrackingFormData {
   roles: any[];
 }
 
+interface ProductFormData {
+  siteId: string;
+}
+
 const dialogConfig: Record<
   QuickActionType,
   { title: string; description: string }
@@ -84,6 +88,7 @@ export function QuickActionsProvider({
   const [projectData, setProjectData] = useState<ProjectFormData | null>(null);
   const [timetrackingData, setTimetrackingData] =
     useState<TimetrackingFormData | null>(null);
+  const [productData, setProductData] = useState<ProductFormData | null>(null);
 
   const fetchProjectData = useCallback(async () => {
     if (!domain) return;
@@ -141,6 +146,32 @@ export function QuickActionsProvider({
     }
   }, [domain]);
 
+  const fetchProductData = useCallback(async () => {
+    if (!domain) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/quick-actions/data?domain=${encodeURIComponent(
+          domain
+        )}&type=product`
+      );
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setProductData({
+        siteId: data.siteId,
+      });
+    } catch (error) {
+      console.error("Error fetching product data:", error);
+      setProductData(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [domain]);
+
   const openDialog = useCallback(
     async (type: QuickActionType) => {
       setActiveDialog(type);
@@ -150,9 +181,18 @@ export function QuickActionsProvider({
         fetchProjectData();
       } else if (type === "timetracking" && !timetrackingData) {
         fetchTimetrackingData();
+      } else if (type === "product" && !productData) {
+        fetchProductData();
       }
     },
-    [projectData, timetrackingData, fetchProjectData, fetchTimetrackingData]
+    [
+      projectData,
+      timetrackingData,
+      productData,
+      fetchProjectData,
+      fetchTimetrackingData,
+      fetchProductData,
+    ]
   );
 
   const closeDialog = useCallback(() => {
@@ -179,10 +219,14 @@ export function QuickActionsProvider({
         return <CreateClientForm handleClose={closeDialog} />;
 
       case "product":
+        if (isLoading || !productData) {
+          return <LoadingSkeleton />;
+        }
         return (
           <CreateProductFormComponent
             handleClose={closeDialog}
             domain={domain}
+            siteId={productData.siteId}
           />
         );
 

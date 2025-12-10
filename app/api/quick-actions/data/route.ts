@@ -32,9 +32,10 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        if (!type || !["project", "timetracking"].includes(type)) {
+        if (!type || !["project", "timetracking", "product"].includes(type)) {
             return NextResponse.json({
-                error: "Valid type is required (project | timetracking)",
+                error:
+                    "Valid type is required (project | timetracking | product)",
             }, { status: 400 });
         }
 
@@ -130,6 +131,13 @@ export async function GET(req: NextRequest) {
                 tasks: tasks || [],
                 users,
                 roles: allRoles,
+            });
+        }
+
+        if (type === "product") {
+            // For product form, we just need the siteId
+            return NextResponse.json({
+                siteId,
             });
         }
 
