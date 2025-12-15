@@ -394,12 +394,16 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
+  // Initialize Kanban as collapsed by default - data will be fetched on expand
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
-    {}
+    { Kanban: true }
   );
   const { toast } = useToast();
   const { isOnline } = useOnlineStatus();
   const queryClient = useQueryClient();
+
+  // Track if Kanban section has been opened at least once (for lazy loading)
+  const [kanbanOpened, setKanbanOpened] = useState(false);
 
   // Optimized domain extraction
   const domain = useMemo(() => extractDomainFromPath(pathname), [pathname]);
@@ -419,7 +423,7 @@ export function AppSidebar() {
     gcTime: 60 * 60 * 1000, // 1 hour
   });
 
-  // OPTIMIZED: Use React Query for kanbans caching
+  // OPTIMIZED: Lazy load kanbans - only fetch when section is expanded
   const {
     data: kanbansLocal = [],
     isLoading: isLoadingKanbansLocal,
@@ -427,20 +431,38 @@ export function AppSidebar() {
   } = useQuery({
     queryKey: ["kanbans-list", domain],
     queryFn: () => fetchKanbans(domain!),
-    enabled: !!domain && isOnline,
+    // Only fetch when domain exists, online, AND Kanban section has been opened
+    enabled: !!domain && isOnline && kanbanOpened,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
   });
 
-  // OPTIMIZED: Use React Query for kanban categories caching
+  // OPTIMIZED: Lazy load kanban categories - only fetch when section is expanded
   const { data: kanbanCategories = [], isLoading: isLoadingCategories } =
     useQuery({
       queryKey: ["kanban-categories", domain],
       queryFn: () => fetchKanbanCategories(domain!),
-      enabled: !!domain && isOnline,
+      // Only fetch when domain exists, online, AND Kanban section has been opened
+      enabled: !!domain && isOnline && kanbanOpened,
       staleTime: 10 * 60 * 1000, // 10 minutes
       gcTime: 60 * 60 * 1000, // 1 hour
     });
+
+  // Prefetch kanban data on hover (before user clicks)
+  const prefetchKanbanData = useCallback(() => {
+    if (!domain || !isOnline || kanbanOpened) return;
+
+    queryClient.prefetchQuery({
+      queryKey: ["kanbans-list", domain],
+      queryFn: () => fetchKanbans(domain),
+      staleTime: 5 * 60 * 1000,
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["kanban-categories", domain],
+      queryFn: () => fetchKanbanCategories(domain),
+      staleTime: 10 * 60 * 1000,
+    });
+  }, [domain, isOnline, kanbanOpened, queryClient]);
 
   const refreshKanbansOptimized = useCallback(async () => {
     if (!isOnline || !domain) {
@@ -660,10 +682,17 @@ export function AppSidebar() {
   );
 
   const toggleMenu = useCallback((label: string) => {
-    setCollapsedMenus((prev) => ({
-      ...prev,
-      [label]: !prev[label],
-    }));
+    setCollapsedMenus((prev) => {
+      const wasCollapsed = prev[label];
+      // If opening Kanban section, mark it as opened for lazy loading
+      if (label === "Kanban" && wasCollapsed) {
+        setKanbanOpened(true);
+      }
+      return {
+        ...prev,
+        [label]: !wasCollapsed,
+      };
+    });
   }, []);
 
   // Optimized display values
@@ -720,9 +749,26 @@ export function AppSidebar() {
     };
   }, [menuItems]);
 
-  // Combined loading state for sidebar
+  // Progressive loading: separate loading states for different parts
+  // Header/footer load from hydration, so usually instant
+  const isLoadingHeader = useMemo(() => {
+    if (!domain) return false;
+    return loadingSiteData;
+  }, [domain, loadingSiteData]);
+
+  // Menu items depend on modules
+  const isLoadingMenuItems = useMemo(() => {
+    if (!domain) return false;
+    return loadingModules;
+  }, [domain, loadingModules]);
+
+  // Kanban section loading (only when expanded)
+  const isLoadingKanbanSection = useMemo(() => {
+    return kanbanOpened && (isLoadingKanbansLocal || isLoadingCategories);
+  }, [kanbanOpened, isLoadingKanbansLocal, isLoadingCategories]);
+
+  // Legacy: keep for backwards compatibility but now more granular
   const isLoadingSidebar = useMemo(() => {
-    // Only show skeleton when we're on a site page and data is still loading
     if (!domain) return false;
     return loadingModules || loadingSiteData;
   }, [domain, loadingModules, loadingSiteData]);
@@ -902,6 +948,9 @@ export function AppSidebar() {
   const renderMenuItem = (item: MenuItem) => {
     // If item has subitems, use Collapsible
     if (item.items) {
+      // Check if this is the Kanban menu for prefetch on hover
+      const isKanbanMenu = item.label === "Kanban";
+
       return (
         <Collapsible
           key={item.label}
@@ -914,6 +963,8 @@ export function AppSidebar() {
               <SidebarMenuButton
                 tooltip={item.label}
                 isActive={item.href ? isActive(item.href) : false}
+                // Prefetch kanban data on hover before user clicks
+                onMouseEnter={isKanbanMenu ? prefetchKanbanData : undefined}
               >
                 <FontAwesomeIcon
                   icon={iconMap[item.icon]}
@@ -1143,35 +1194,69 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
-        {isLoadingSidebar ? (
-          <SidebarSkeletonContent />
-        ) : (
+        {/* PROGRESSIVE LOADING: Show header immediately, skeleton only for loading parts */}
+
+        {/* Overview Section - shows immediately with hydrated data or skeleton */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="h-auto py-2">
+            {isLoadingHeader ? (
+              <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-white/10" />
+            ) : (
+              <div className="flex items-center justify-between w-full gap-2">
+                {siteImage ? (
+                  <img
+                    src={siteImage}
+                    alt={displayTitle}
+                    className="max-h-10 w-auto object-contain"
+                    title={displayTitle}
+                  />
+                ) : (
+                  <span className="truncate">{displayTitle}</span>
+                )}
+                <QuickActions />
+              </div>
+            )}
+          </SidebarGroupLabel>
+
+          {/* Dashboard - show skeleton only if modules loading */}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {isLoadingMenuItems ? (
+                <SidebarMenuItem>
+                  <div className="flex items-center gap-2 px-2 py-2">
+                    <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                    <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
+                  </div>
+                </SidebarMenuItem>
+              ) : (
+                groupedMenuItems.core.map(renderMenuItem)
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Show menu sections - with skeleton if loading */}
+        {isLoadingMenuItems ? (
           <>
-            {/* Overview Section */}
+            <SidebarSeparator />
             <SidebarGroup>
-              <SidebarGroupLabel className="h-auto py-2">
-                <div className="flex items-center justify-between w-full gap-2">
-                  {siteImage ? (
-                    <img
-                      src={siteImage}
-                      alt={displayTitle}
-                      className="max-h-10 w-auto object-contain"
-                      title={displayTitle}
-                    />
-                  ) : (
-                    <span className="truncate">{displayTitle}</span>
-                  )}
-                  <QuickActions />
-                </div>
-              </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {groupedMenuItems.core.map(renderMenuItem)}
+                  {[1, 2, 3].map((i) => (
+                    <SidebarMenuItem key={i}>
+                      <div className="flex items-center gap-2 px-2 py-2">
+                        <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                        <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-white/10" />
+                      </div>
+                    </SidebarMenuItem>
+                  ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
-
-            {/* Project Management */}
+          </>
+        ) : (
+          <>
+            {/* Project Management (Kanban) */}
             {groupedMenuItems.projects.length > 0 && (
               <>
                 <SidebarSeparator />
@@ -1275,14 +1360,22 @@ export function AppSidebar() {
         )}
       </SidebarContent>
       <SidebarFooter>
-        {isLoadingSidebar ? (
-          <SidebarSkeletonFooter />
-        ) : (
-          <div className="flex flex-col gap-2">
-            <ThemeSwitcher />
-            {userContext && <UserSection user={userContext} />}
-          </div>
-        )}
+        {/* Footer loads progressively - theme switcher always visible */}
+        <div className="flex flex-col gap-2">
+          <ThemeSwitcher />
+          {userContext ? (
+            <UserSection user={userContext} />
+          ) : (
+            /* Show skeleton only while user context is loading */
+            <div className="flex items-center gap-3 px-2 py-2 rounded-md">
+              <Skeleton className="h-9 w-9 rounded-md shrink-0 bg-gray-200 dark:bg-white/10" />
+              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                <Skeleton className="h-4 w-32 bg-gray-200 dark:bg-white/10" />
+                <Skeleton className="h-3 w-24 bg-gray-200 dark:bg-white/10" />
+              </div>
+            </div>
+          )}
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

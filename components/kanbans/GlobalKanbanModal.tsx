@@ -5,10 +5,14 @@ import KanbanManagementModal from "./KanbanManagementModal";
 import { useKanbanModal } from "./KanbanModalContext";
 import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { logger } from "@/lib/logger";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 export function GlobalKanbanModal() {
   const { isCreateModalOpen, preSelectedCategoryId, closeCreateModal } =
     useKanbanModal();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Extract domain from window.location.pathname
   const pathname =
@@ -24,10 +28,24 @@ export function GlobalKanbanModal() {
 
       await saveKanban(kanbanData, domain);
       closeCreateModal();
-      // Refresh the page to get the updated kanban data
-      window.location.reload();
+
+      // Invalidate cache so sidebar and other components update immediately
+      // This is better than window.location.reload() - faster and smoother UX
+      queryClient.invalidateQueries({ queryKey: ["kanbans-list"] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-categories"] });
+      queryClient.invalidateQueries({ queryKey: ["kanbans"] });
+
+      toast({
+        title: "Kanban creato",
+        description: "La kanban è stata creata con successo",
+      });
     } catch (error) {
       logger.error("Error saving kanban:", error);
+      toast({
+        title: "Errore",
+        description: "Impossibile creare la kanban",
+        variant: "destructive",
+      });
     }
   };
 

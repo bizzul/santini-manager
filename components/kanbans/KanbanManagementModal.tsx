@@ -43,6 +43,7 @@ import {
   type KanbanCategory,
 } from "@/app/sites/[domain]/kanban/actions/get-kanban-categories.action";
 import { IconSelector } from "./IconSelector";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ColumnType = "normal" | "won" | "lost" | "production" | "invoicing";
 
@@ -126,6 +127,7 @@ export default function KanbanManagementModal({
     number | null
   >(kanban?.target_invoice_kanban_id || null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Load categories when domain is available
   useEffect(() => {
@@ -305,8 +307,11 @@ export default function KanbanManagementModal({
         });
         setIsDeleteDialogOpen(false);
         setIsOpen(false);
-        // Refresh the page
-        window.location.reload();
+
+        // Invalidate cache so sidebar and other components update immediately
+        queryClient.invalidateQueries({ queryKey: ["kanbans-list"] });
+        queryClient.invalidateQueries({ queryKey: ["kanbans"] });
+        queryClient.invalidateQueries({ queryKey: ["kanban-categories"] });
       } else {
         toast({
           variant: "destructive",

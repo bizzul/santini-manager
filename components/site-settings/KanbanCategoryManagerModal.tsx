@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, Pencil, Trash2, Folder } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { IconSelectorWithColor } from "@/components/kanbans/IconSelector";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface KanbanCategoryManagerModalProps {
   siteId: string;
@@ -78,6 +79,7 @@ export default function KanbanCategoryManagerModal({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] =
     useState<KanbanCategory | null>(null);
+  const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -194,6 +196,8 @@ export default function KanbanCategoryManagerModal({
         );
         handleCloseForm();
         loadCategories();
+        // Invalidate React Query cache so sidebar updates immediately
+        queryClient.invalidateQueries({ queryKey: ["kanban-categories"] });
       } else {
         toast.error(result.error || "Impossibile salvare la categoria");
       }
@@ -225,6 +229,8 @@ export default function KanbanCategoryManagerModal({
       if (response.ok && result.success) {
         toast.success("Categoria eliminata con successo");
         loadCategories();
+        // Invalidate React Query cache so sidebar updates immediately
+        queryClient.invalidateQueries({ queryKey: ["kanban-categories"] });
       } else {
         toast.error(result.error || "Impossibile eliminare la categoria");
       }

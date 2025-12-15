@@ -1,26 +1,21 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import TopBar from "@/components/top-bar";
-import { createClient } from "@/utils/supabase/server";
 import { BarChart3, Target, Network, Zap, Lock, Rocket } from "lucide-react";
+import {
+  TopBarWrapper,
+  TopBarSkeleton,
+} from "@/components/home/top-bar-wrapper";
+import {
+  UserWelcome,
+  UserWelcomeSkeleton,
+} from "@/components/home/user-welcome";
 
-// Force dynamic rendering to prevent static generation errors with Supabase
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: user } = await supabase.auth.getUser();
-
-  const { data: userData, error: userError } = await supabase
-    .from("User")
-    .select("*")
-    .eq("authId", user.user?.id)
-    .single();
-
+export default function Home() {
   return (
     <>
-      <TopBar user={userData} />
+      <Suspense fallback={<TopBarSkeleton />}>
+        <TopBarWrapper />
+      </Suspense>
       <div className="relative min-h-screen overflow-hidden">
         {/* Video Background */}
         <video
@@ -55,44 +50,10 @@ export default async function Home() {
               </h1>
             </div>
 
-            {/* Welcome Message for Logged Users */}
-            {userData && (
-              <div className="text-center mb-4 space-y-3">
-                <p className="text-2xl text-white/90 dark:text-white/90">
-                  È bello rivederti
-                </p>
-                <p className="text-3xl font-bold text-white">
-                  {userData?.given_name} {userData?.family_name}
-                </p>
-              </div>
-            )}
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
-              {userData ? (
-                <Link href="/sites/select">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg px-8 py-6 font-semibold"
-                  >
-                    I miei spazi →
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg px-8 py-6 font-semibold"
-                    >
-                      Accedi →
-                    </Button>
-                  </Link>
-                </>
-              )}
-            </div>
+            {/* User Welcome Section - Dynamic with Suspense */}
+            <Suspense fallback={<UserWelcomeSkeleton />}>
+              <UserWelcome />
+            </Suspense>
 
             {/* Description */}
             <div className="text-center mb-10 space-y-4 max-w-3xl mx-auto">

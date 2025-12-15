@@ -15,6 +15,7 @@ import { GlobalKanbanModal } from "@/components/kanbans/GlobalKanbanModal";
 import { createClient } from "@/utils/supabase/server";
 import { QuickActionsProvider } from "@/components/quick-actions";
 import { logger } from "@/lib/logger";
+import { QueryHydration } from "@/components/QueryHydration";
 
 /**
  * Check if user has access to a specific site
@@ -179,6 +180,19 @@ export default async function SiteLayout({
       <KanbanModalProvider>
         <QuickActionsProvider>
           <SidebarProvider defaultOpen={defaultOpen}>
+            {/* Hydrate React Query cache with server-side data to avoid duplicate fetches */}
+            <QueryHydration
+              data={{
+                userContext,
+                siteData: {
+                  name: data.name || domain,
+                  image: data.image || null,
+                  organization: { name: data.organization?.name || "" },
+                },
+                domain,
+              }}
+            />
+
             {isImpersonating && impersonatedUser && originalSuperadminId && (
               <ImpersonationBanner
                 impersonatedUser={impersonatedUser}

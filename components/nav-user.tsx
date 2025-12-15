@@ -27,9 +27,11 @@ import {
 } from "@/components/ui/sidebar";
 import { UserContext } from "@/lib/auth-utils";
 import Link from "next/link";
+import { useLogout } from "@/hooks/use-logout";
 
 export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
   const { isMobile } = useSidebar();
+  const { logout } = useLogout();
 
   // Extract user information from the context
   const userData = user.user;
@@ -141,13 +143,9 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
               )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/logout" className="w-full">
-                <div className="flex items-center gap-2">
-                  <LogOut />
-                  Log out
-                </div>
-              </Link>
+            <DropdownMenuItem onClick={logout} className="cursor-pointer">
+              <LogOut />
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
