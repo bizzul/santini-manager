@@ -45,7 +45,11 @@ async function fetchUserContext(): Promise<UserContext | null> {
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error) {
-            console.error("Error getting user from auth:", error);
+            // AuthSessionMissingError is expected when user is not logged in
+            // Only log unexpected errors
+            if (error.name !== "AuthSessionMissingError") {
+                console.error("Error getting user from auth:", error);
+            }
             return null;
         }
 

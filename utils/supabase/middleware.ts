@@ -2,12 +2,12 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_OPTIONS } from "./cookie";
 
-const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
-
 // Use consistent environment variables with fallback
 // This ensures client and server always use the same Supabase instance
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.STORAGE_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.STORAGE_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function updateSession(request: NextRequest) {
   // OPTIMIZATION: Check if route is public BEFORE making any auth calls
@@ -24,10 +24,9 @@ export async function updateSession(request: NextRequest) {
     "/auth/forgot-password",
     "/auth/reset-password",
   ];
-  
+
   const pathname = request.nextUrl.pathname;
-  const isPublic =
-    publicRoutes.some((route) => pathname === route) ||
+  const isPublic = publicRoutes.some((route) => pathname === route) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
     pathname.startsWith("/api/auth") ||
@@ -54,11 +53,15 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach((c) => request.cookies.set(c));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          );
           supabaseResponse = NextResponse.next({
             request,
           });
-          cookiesToSet.forEach((c) => supabaseResponse.cookies.set(c));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
         },
       },
     },
@@ -73,44 +76,26 @@ export async function updateSession(request: NextRequest) {
     error,
   } = await supabase.auth.getUser();
 
-  // Handle auth errors first (corrupted/invalid session)
+  // Handle auth errors - but don't redirect, just log and continue
+  // This allows the page to handle unauthorized state
   if (error) {
-    console.error("[Middleware] Auth error:", error.message);
-    
-    // Clear corrupted session cookies and redirect to login
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    const response = NextResponse.redirect(url);
-    
-    // Delete the corrupted session cookies
-    const cookiesToDelete = [
-      COOKIE_NAME,
-      `${COOKIE_NAME}-code-verifier`,
-    ];
-    
-    // Copy over any Supabase response cookies first
-    const supacookies = supabaseResponse.cookies.getAll();
-    supacookies.forEach((c) => response.cookies.set(c));
-    
-    // Then delete the corrupted ones
-    cookiesToDelete.forEach((name) => {
-      response.cookies.delete(name);
-      // Also try with domain variants
-      response.cookies.delete({ name, domain: COOKIE_OPTIONS.domain });
-    });
-    
-    return response;
+    console.error("[Proxy] Auth error:", error.message);
+    // For AuthSessionMissingError, just continue without user
+    // The page will handle the redirect if needed
   }
 
-  if (!user) {
+  if (!user && !isPublic) {
     // no user, redirect to login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     const response = NextResponse.redirect(url);
 
     // Ensure Supabase cookies are set even on redirect
-    const supacookies = supabaseResponse.cookies.getAll();
-    supacookies.forEach((c) => response.cookies.set(c));
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      response.cookies.set(cookie.name, cookie.value, {
+        ...cookie,
+      });
+    });
 
     return response;
   }

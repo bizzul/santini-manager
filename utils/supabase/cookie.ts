@@ -1,10 +1,7 @@
-import type { CookieOptionsWithName } from "@supabase/ssr";
-import { DEFAULT_COOKIE_OPTIONS } from "@supabase/ssr";
-
-const COOKIE_NAME = process.env.COOKIE_NAME ?? "reactive-app:session";
+import type { CookieOptions } from "@supabase/ssr";
 
 // For Vercel deployment, we need to handle the domain properly
-const getCookieDomain = () => {
+const getCookieDomain = (): string | undefined => {
   if (process.env.NODE_ENV === "production") {
     // On Vercel, use the root domain from environment variable
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN;
@@ -14,16 +11,16 @@ const getCookieDomain = () => {
     // Fallback for Vercel preview deployments
     return undefined;
   }
-  // Local development - use localhost
-  return "localhost";
+  // Local development - don't set domain to allow cookies to work on localhost
+  return undefined;
 };
 
-export const COOKIE_OPTIONS: CookieOptionsWithName = {
-  ...DEFAULT_COOKIE_OPTIONS,
-  name: COOKIE_NAME,
+// Cookie options for Supabase SSR
+// Note: Don't override the cookie 'name' - let Supabase manage cookie names
+export const COOKIE_OPTIONS: CookieOptions = {
   domain: getCookieDomain(),
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
-  httpOnly: false, // Changed to false to allow client-side access
   path: "/",
+  // maxAge is managed by Supabase based on session expiry
 };

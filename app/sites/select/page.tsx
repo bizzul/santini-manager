@@ -1,4 +1,4 @@
-import { getUserContext, getUserSites } from "@/lib/auth-utils";
+import { requireAuth, getUserSites } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -12,11 +12,12 @@ export default async function SelectSitePage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // Require authentication - will redirect to /login if no session
+  const userContext = await requireAuth();
+  const userRole = userContext.role;
+
   // Fetch the sites the current user has access to
   const sites = await getUserSites();
-
-  const userContext = await getUserContext();
-  const userRole = userContext?.role;
 
   const params = await searchParams;
   const error = params.error;

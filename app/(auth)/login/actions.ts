@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { nukeCookies } from "@/utils/nukeCookie";
-import { getUserSites } from "@/lib/auth-utils";
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
@@ -20,20 +19,11 @@ export async function signIn(formData: FormData) {
     return { error: error.message || "Invalid credentials" };
   }
 
-  // Fetch user sites and redirect accordingly
-  const sites = await getUserSites();
-  if (sites && sites.length === 1) {
-    // Redirect directly to the only site
-    const site = sites[0];
-    const subdomain = site.subdomain || site.id;
-    return redirect(`/sites/${subdomain}`);
-  } else if (sites && sites.length > 1) {
-    // Redirect to site selection page
-    return redirect("/sites/select");
-  } else {
-    // No sites assigned, redirect to a fallback page
-    return redirect("/sites/select");
-  }
+  // After successful login, always redirect to sites/select
+  // The page will fetch the sites with the now-established session
+  // This avoids issues with trying to fetch data before cookies are committed
+  revalidatePath("/sites/select", "page");
+  return redirect("/sites/select");
 }
 
 export async function logout() {
