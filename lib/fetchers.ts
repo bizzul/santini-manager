@@ -19,6 +19,16 @@ export async function getSiteData(domain: string) {
       ? domainWithoutPort.replace(`.${rootDomain}`, "")
       : domainWithoutPort;
 
+    // Debug logging
+    console.log("[getSiteData] Input:", {
+      domain,
+      decodedDomain,
+      rootDomain,
+      domainWithoutPort,
+      isFullDomain,
+      subdomain,
+    });
+
     // Use service client to bypass RLS for public site access
     const supabase = createServiceClient();
 
@@ -29,8 +39,14 @@ export async function getSiteData(domain: string) {
       async () => {
         try {
           const result = await query.single();
+          console.log(
+            "[getSiteData] Query result:",
+            result.data ? "Found" : "Not found",
+            result.error?.message,
+          );
           return result;
         } catch (error) {
+          console.error("[getSiteData] Query error:", error);
           logger.error("Error in getSiteData query:", error);
           return null;
         }
@@ -42,6 +58,7 @@ export async function getSiteData(domain: string) {
       },
     )();
   } catch (error) {
+    console.error("[getSiteData] Error:", error);
     logger.error("Error in getSiteData:", error);
     return null;
   }
