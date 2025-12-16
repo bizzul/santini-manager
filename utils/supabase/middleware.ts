@@ -79,12 +79,16 @@ export async function updateSession(request: NextRequest) {
   // Handle auth errors - but don't redirect, just log and continue
   // This allows the page to handle unauthorized state
   if (error) {
-    console.error("[Proxy] Auth error:", error.message);
+    console.error("[Middleware] Auth error:", error.message, "for path:", pathname);
     // For AuthSessionMissingError, just continue without user
     // The page will handle the redirect if needed
   }
 
   if (!user && !isPublic) {
+    // Log for debugging
+    console.log("[Middleware] No user found, redirecting to login. Path:", pathname);
+    console.log("[Middleware] Cookies present:", request.cookies.getAll().map(c => c.name).join(", "));
+    
     // no user, redirect to login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -98,6 +102,11 @@ export async function updateSession(request: NextRequest) {
     });
 
     return response;
+  }
+  
+  // Log successful auth for debugging site access issues
+  if (pathname.includes("/sites/")) {
+    console.log("[Middleware] User authenticated for site path:", pathname, "userId:", user?.id);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

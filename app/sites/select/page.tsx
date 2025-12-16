@@ -54,6 +54,14 @@ export default async function SelectSitePage({
                 </p>
               </div>
             )}
+            {error === "site_error" && (
+              <div className="backdrop-blur-xl bg-orange-500/20 border-2 border-orange-500/50 rounded-2xl p-4 max-w-md">
+                <p className="text-white text-center text-sm">
+                  ⚠️ Si è verificato un errore nel caricamento dello spazio.
+                  Controlla la console per i dettagli o riprova.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
