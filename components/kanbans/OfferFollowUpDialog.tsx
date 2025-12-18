@@ -239,7 +239,6 @@ export default function OfferFollowUpDialog({
                   mode="single"
                   selected={contactDate}
                   onSelect={(date) => date && setContactDate(date)}
-                  locale={it}
                   initialFocus
                 />
               </PopoverContent>
