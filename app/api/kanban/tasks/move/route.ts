@@ -155,6 +155,15 @@ export async function POST(req: NextRequest) {
         targetWorkKanbanId: task?.kanban?.target_work_kanban_id,
       });
 
+      // Check if moving to "Inviata" column - set sent_date
+      const isInviataColumn = 
+        targetColumn.identifier?.toUpperCase().includes("INVIAT") ||
+        targetColumn.title?.toUpperCase().includes("INVIAT");
+      
+      if (isInviataColumn && !task.sent_date) {
+        logger.debug("Setting sent_date for offer moved to Inviata column");
+      }
+
       // Gestione colonna "won" (vinta)
       if (columnType === "won") {
         newDisplayMode = "small_green";
@@ -532,6 +541,18 @@ export async function POST(req: NextRequest) {
     }
     if (autoArchiveAt) {
       updateData.auto_archive_at = autoArchiveAt.toISOString();
+    }
+
+    // Set sent_date when moving to "Inviata" column in offer kanban
+    if (isOfferKanban) {
+      const isInviataColumn = 
+        targetColumn.identifier?.toUpperCase().includes("INVIAT") ||
+        targetColumn.title?.toUpperCase().includes("INVIAT");
+      
+      if (isInviataColumn && !task.sent_date) {
+        updateData.sent_date = now.toISOString();
+        logger.debug("Set sent_date:", updateData.sent_date);
+      }
     }
 
     // Update task with site_id filtering if available

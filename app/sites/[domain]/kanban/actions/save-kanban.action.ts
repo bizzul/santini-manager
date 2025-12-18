@@ -26,6 +26,7 @@ export async function saveKanban(kanban: {
     position: number;
     icon?: string;
     column_type?: "normal" | "won" | "lost" | "production" | "invoicing";
+    is_creation_column?: boolean;
   }[];
   skipColumnUpdates?: boolean; // Flag per saltare l'aggiornamento delle colonne
 }, domain?: string) {
@@ -239,6 +240,7 @@ export async function saveKanban(kanban: {
             position: column.position,
             icon: column.icon,
             column_type: column.column_type || "normal",
+            is_creation_column: column.is_creation_column || false,
           })
           .eq("id", column.id)
           .select()
@@ -260,6 +262,7 @@ export async function saveKanban(kanban: {
             position: column.position,
             icon: column.icon,
             column_type: column.column_type || "normal",
+            is_creation_column: column.is_creation_column || false,
             kanbanId: kanbanResult.id,
           })
           .select()

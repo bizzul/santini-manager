@@ -53,6 +53,7 @@ type Column = {
   position: number;
   icon: string;
   column_type?: ColumnType;
+  is_creation_column?: boolean;
 };
 
 type ModalMode = "create" | "edit";
@@ -726,6 +727,26 @@ export default function KanbanManagementModal({
                       </SelectContent>
                     </Select>
                   )}
+                  {/* Creation column selector - only one column can be selected */}
+                  <button
+                    type="button"
+                    title={column.is_creation_column ? "Colonna di creazione" : "Imposta come colonna di creazione"}
+                    onClick={() =>
+                      setColumns((prev) =>
+                        prev.map((col, i) => ({
+                          ...col,
+                          is_creation_column: i === index,
+                        }))
+                      )
+                    }
+                    className={`p-2 rounded border transition-colors ${
+                      column.is_creation_column
+                        ? "bg-green-600 text-white border-green-700"
+                        : "bg-transparent hover:bg-accent border-input"
+                    }`}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -741,6 +762,7 @@ export default function KanbanManagementModal({
                       position: prev.length + 1,
                       icon: "Check",
                       column_type: "normal",
+                      is_creation_column: false,
                     },
                   ])
                 }

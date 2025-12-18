@@ -57,6 +57,9 @@ export interface Task {
     displayMode?: DisplayMode; // Alternative property name
     auto_archive_at?: string;
     autoArchiveAt?: string; // Alternative property name
+    // Campo per tracking invio offerta
+    sent_date?: string;
+    sentDate?: string; // Alternative property name
 }
 
 // Client related types
@@ -282,6 +285,9 @@ export interface KanbanColumn {
     // Nuovi campi per sistema offerte
     column_type?: ColumnType;
     columnType?: ColumnType; // Alternative property name
+    // Flag per colonna di creazione
+    is_creation_column?: boolean;
+    isCreationColumn?: boolean; // Alternative property name
     created_at?: string;
     updated_at?: string;
 }

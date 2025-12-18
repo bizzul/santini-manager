@@ -11,6 +11,8 @@ import {
   pointerWithin,
 } from "@dnd-kit/core";
 import Card from "./Card";
+import OfferMiniCard from "./OfferMiniCard";
+import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import { Plus } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
@@ -28,6 +30,7 @@ import CreateProductForm from "@/app/sites/[domain]/projects/createForm";
 import { useToast } from "../ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useRealtimeKanban } from "@/hooks/use-realtime-kanban";
+import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
 import {
   AlertDialog,
@@ -56,7 +59,10 @@ const Column = ({
   isPreviewMode,
   kanban,
   domain,
+  isOfferKanban,
+  onMiniCardClick,
 }: any) => {
+  const router = useRouter();
   const [isMovingTask, setIsMovingTask] = useState(false);
   const [modalCreate, setModalCreate] = useState(false);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
@@ -79,6 +85,7 @@ const Column = ({
 
   // Calculate total number of tasks and total value
   const totalTasks = Object.keys(groupTasksByBaseNumber(cards)).length;
+  const totalOffers = cards.length; // For offer kanban, count all cards
 
   const totalValue = cards
     .reduce(
@@ -89,7 +96,7 @@ const Column = ({
     .toFixed(2);
 
   const totalColumn = cards
-    .reduce((total: number, card: any) => total + card.sellPrice, 0)
+    .reduce((total: number, card: any) => total + (card.sellPrice || 0), 0)
     .toFixed(2);
 
   const totalPositions = cards.reduce(
@@ -120,6 +127,70 @@ const Column = ({
     return () => clearTimeout(timer);
   }, [cards]);
 
+  // Check if this is the "Inviata" column in an offer kanban
+  const isInviataColumn =
+    isOfferKanban &&
+    (column.identifier?.toUpperCase().includes("INVIAT") ||
+      column.title?.toUpperCase().includes("INVIAT"));
+
+  // Check if this column should show the create button
+  // Uses is_creation_column flag, falls back to position === 1 for backwards compatibility
+  const hasCreationColumnFlag =
+    column.is_creation_column || column.isCreationColumn;
+  const isCreationColumn =
+    hasCreationColumnFlag ||
+    // Fallback: if no column has the flag explicitly set, use first column
+    (!kanban?.columns?.some(
+      (c: any) => c.is_creation_column || c.isCreationColumn
+    ) &&
+      column.position === 1);
+
+  // Sort function based on column type
+  const sortCards = (cardsToSort: any[]) => {
+    return [...cardsToSort].sort((a: any, b: any) => {
+      // For "Inviata" column in offer kanban: sort by sent_date (oldest first)
+      if (isInviataColumn) {
+        const sentA = a.sent_date || a.sentDate;
+        const sentB = b.sent_date || b.sentDate;
+
+        if (!sentA && !sentB) return 0;
+        if (!sentA) return 1; // Cards without sent_date go to the end
+        if (!sentB) return -1;
+
+        // Oldest first (ascending order)
+        return new Date(sentA).getTime() - new Date(sentB).getTime();
+      }
+
+      // Default sorting logic
+      if (column.identifier.includes("SPED")) {
+        return a.unique_code.localeCompare(b.unique_code);
+      } else {
+        if (a.deliveryDate === null && b.deliveryDate === null) {
+          return 0;
+        }
+        if (a.deliveryDate === null) {
+          return 1;
+        }
+        if (b.deliveryDate === null) {
+          return -1;
+        }
+        return (
+          new Date(a.deliveryDate).getTime() -
+          new Date(b.deliveryDate).getTime()
+        );
+      }
+    });
+  };
+
+  // Handle create button click - for offer kanban, navigate to wizard
+  const handleCreateClick = () => {
+    if (isOfferKanban) {
+      router.push(`/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`);
+    } else {
+      setModalCreate(true);
+    }
+  };
+
   return (
     <div
       key={column.id}
@@ -133,55 +204,82 @@ const Column = ({
             return <IconComponent className="h-5 w-5" />;
           })()}
         </h2>
+        {/* Column stats - different display for offer kanbans */}
         <div className="text-xs">
-          <p>
-            Progetti: <span className="font-bold">{totalTasks}</span>
-          </p>
-          <p>
-            Posizioni: <span className="font-bold">{totalPositions}</span>
-          </p>
-          <p>
-            V.Attuale:{" "}
-            <span className="font-bold">
-              {" "}
-              {(totalValue / 1000).toFixed(2)} K
-            </span>
-          </p>
-          <p>
-            V.Totale :{" "}
-            <span className="font-bold">
-              {" "}
-              {(totalColumn / 1000).toFixed(2)} K
-            </span>
-          </p>
+          {isOfferKanban ? (
+            <>
+              <p>
+                N° offerte: <span className="font-bold">{totalOffers}</span>
+              </p>
+              <p>
+                Valore totale:{" "}
+                <span className="font-bold">
+                  {(parseFloat(totalColumn) / 1000).toFixed(2)} K
+                </span>
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                Progetti: <span className="font-bold">{totalTasks}</span>
+              </p>
+              <p>
+                Posizioni: <span className="font-bold">{totalPositions}</span>
+              </p>
+              <p>
+                V.Attuale:{" "}
+                <span className="font-bold">
+                  {" "}
+                  {(parseFloat(totalValue) / 1000).toFixed(2)} K
+                </span>
+              </p>
+              <p>
+                V.Totale :{" "}
+                <span className="font-bold">
+                  {" "}
+                  {(parseFloat(totalColumn) / 1000).toFixed(2)} K
+                </span>
+              </p>
+            </>
+          )}
         </div>
-        {column.position === 1 && (
-          <Dialog
-            open={modalCreate}
-            onOpenChange={() => setModalCreate(!modalCreate)}
-          >
-            <DialogTrigger asChild>
-              <button
-                className="border p-2 rounded hover:bg-accent cursor-pointer"
-                onClick={(prev) => setModalCreate(!prev)}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
-              <DialogHeader>
-                <DialogTitle>Crea progetto</DialogTitle>
-                <DialogDescription>Crea un progetto nuovo</DialogDescription>
-              </DialogHeader>
-              <CreateProductForm
-                data={data}
-                handleClose={() => setModalCreate(false)}
-                kanbanId={(kanban as any)?.id}
-                domain={domain}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
+        {/* Create button - different behavior for offer kanbans */}
+        {isCreationColumn &&
+          (isOfferKanban ? (
+            <button
+              className="border p-2 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-colors"
+              onClick={handleCreateClick}
+              title="Crea nuova offerta"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          ) : (
+            <Dialog
+              open={modalCreate}
+              onOpenChange={() => setModalCreate(!modalCreate)}
+            >
+              <DialogTrigger asChild>
+                <button
+                  className="border p-2 rounded hover:bg-accent cursor-pointer"
+                  onClick={() => setModalCreate(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
+                <DialogHeader>
+                  <DialogTitle>Crea progetto</DialogTitle>
+                  <DialogDescription>Crea un progetto nuovo</DialogDescription>
+                </DialogHeader>
+                <CreateProductForm
+                  data={data}
+                  handleClose={() => setModalCreate(false)}
+                  kanbanId={(kanban as any)?.id}
+                  domain={domain}
+                />
+              </DialogContent>
+            </Dialog>
+          ))}
       </div>
       <div
         className={`flex-1 overflow-y-auto p-1 ${
@@ -196,27 +294,16 @@ const Column = ({
                 <Skeleton className="h-32 w-full rounded-lg" />
               </div>
             ))
-          : cards
-              .sort((a: any, b: any) => {
-                if (column.identifier.includes("SPED")) {
-                  return a.unique_code.localeCompare(b.unique_code);
-                } else {
-                  if (a.deliveryDate === null && b.deliveryDate === null) {
-                    return 0; // equal
-                  }
-                  if (a.deliveryDate === null) {
-                    return 1; // a goes to the end
-                  }
-                  if (b.deliveryDate === null) {
-                    return -1; // b goes to the end
-                  }
-                  return (
-                    new Date(a.deliveryDate).getTime() -
-                    new Date(b.deliveryDate).getTime()
-                  );
-                }
-              })
-              .map((card: any) => (
+          : sortCards(cards).map((card: any) =>
+              isInviataColumn ? (
+                <OfferMiniCard
+                  key={card.id}
+                  id={card.id}
+                  data={card}
+                  onCardClick={onMiniCardClick}
+                  domain={domain}
+                />
+              ) : (
                 <Card
                   key={card.id}
                   id={card.id}
@@ -227,7 +314,8 @@ const Column = ({
                   isSmall={areAllTabsClosed}
                   domain={domain}
                 />
-              ))}
+              )
+            )}
       </div>
     </div>
   );
@@ -313,6 +401,20 @@ function KanbanBoard({
       | "production"
       | "invoicing";
   } | null>(null);
+
+  // State for offer follow-up dialog
+  const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
+  const [selectedOfferTask, setSelectedOfferTask] = useState<Task | null>(null);
+
+  // Check if this is an offer kanban
+  const isOfferKanban =
+    kanban?.is_offer_kanban || kanban?.isOfferKanban || false;
+
+  // Handler for mini card click in offer kanban
+  const handleMiniCardClick = useCallback((task: Task) => {
+    setSelectedOfferTask(task);
+    setShowFollowUpDialog(true);
+  }, []);
 
   // Optimize moveCard function
   const moveCard = async (id: any, column: any, columnName: any) => {
@@ -803,6 +905,8 @@ function KanbanBoard({
                       isPreviewMode={isPreviewMode}
                       kanban={kanban}
                       domain={domain}
+                      isOfferKanban={isOfferKanban}
+                      onMiniCardClick={handleMiniCardClick}
                     />
                   );
                 })}
@@ -857,6 +961,22 @@ function KanbanBoard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Offer Follow-up Dialog */}
+      {isOfferKanban && (
+        <OfferFollowUpDialog
+          open={showFollowUpDialog}
+          onOpenChange={setShowFollowUpDialog}
+          task={selectedOfferTask}
+          columns={kanban?.columns || []}
+          onMoveCard={async (taskId, columnId, columnIdentifier) => {
+            await moveCard(taskId, columnId, columnIdentifier);
+            // Refetch tasks to update the sent_date if needed
+            await refetchTasks();
+          }}
+          domain={domain}
+        />
+      )}
     </DndContext>
   );
 }
