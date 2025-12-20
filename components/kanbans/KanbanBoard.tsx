@@ -61,6 +61,7 @@ const Column = ({
   domain,
   isOfferKanban,
   onMiniCardClick,
+  onTaskCreated,
 }: any) => {
   const router = useRouter();
   const [isMovingTask, setIsMovingTask] = useState(false);
@@ -182,15 +183,6 @@ const Column = ({
     });
   };
 
-  // Handle create button click - for offer kanban, navigate to wizard
-  const handleCreateClick = () => {
-    if (isOfferKanban) {
-      router.push(`/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`);
-    } else {
-      setModalCreate(true);
-    }
-  };
-
   return (
     <div
       key={column.id}
@@ -248,7 +240,11 @@ const Column = ({
           (isOfferKanban ? (
             <button
               className="border p-2 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-colors"
-              onClick={handleCreateClick}
+              onClick={() =>
+                router.push(
+                  `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`
+                )
+              }
               title="Crea nuova offerta"
             >
               <Plus className="h-4 w-4" />
@@ -273,7 +269,12 @@ const Column = ({
                 </DialogHeader>
                 <CreateProductForm
                   data={data}
-                  handleClose={() => setModalCreate(false)}
+                  handleClose={(success?: boolean) => {
+                    setModalCreate(false);
+                    if (success && onTaskCreated) {
+                      onTaskCreated();
+                    }
+                  }}
                   kanbanId={(kanban as any)?.id}
                   domain={domain}
                 />
@@ -907,6 +908,7 @@ function KanbanBoard({
                       domain={domain}
                       isOfferKanban={isOfferKanban}
                       onMiniCardClick={handleMiniCardClick}
+                      onTaskCreated={refetchTasks}
                     />
                   );
                 })}

@@ -40,18 +40,20 @@ export async function createItem(props: any, domain?: string) {
 
       const supabase = await createClient();
 
-      // Get the first column of the selected kanban
+      // Get the first column of the selected kanban (order by position to get the first one)
       const { data: firstColumn, error: columnError } = await supabase
         .from("KanbanColumn")
         .select("*")
         .eq("kanbanId", result.data.kanbanId)
-        .eq("position", 1)
+        .order("position", { ascending: true })
+        .limit(1)
         .single();
 
       if (columnError || !firstColumn) {
+        console.error("Column error:", columnError);
         return {
           error: true,
-          message: "Kanban non valido: nessuna colonna trovata!",
+          message: `Kanban non valido: nessuna colonna trovata! (${columnError?.message || "Nessuna colonna"})`,
         };
       }
 
@@ -85,8 +87,8 @@ export async function createItem(props: any, domain?: string) {
         title: "",
         name: result.data.name,
         clientId: result.data.clientId!,
-        deliveryDate: result.data.deliveryDate,
-        termine_produzione: result.data.termine_produzione,
+        deliveryDate: result.data.deliveryDate ? result.data.deliveryDate.toISOString() : null,
+        termine_produzione: result.data.termine_produzione ? result.data.termine_produzione.toISOString() : null,
         unique_code: uniqueCode,
         sellProductId: result.data.productId!,
         kanbanId: result.data.kanbanId,
@@ -144,11 +146,15 @@ export async function createItem(props: any, domain?: string) {
 
       return revalidatePath("/projects");
     } else {
-      return { error: true, message: "Validazione elemento fallita!" };
+      console.error("Validation errors:", result.error?.errors);
+      return { error: true, message: "Validazione elemento fallita!", details: result.error?.errors };
     }
   } catch (error: any) {
     console.error("Error creating task:", error);
-    // Make sure to return a plain object
-    return { message: "Creazione elemento fallita!", error: error.message };
+    // Make sure to return a plain object with the actual error message
+    return { 
+      error: true, 
+      message: `Creazione elemento fallita: ${error.message || "Errore sconosciuto"}` 
+    };
   }
 }

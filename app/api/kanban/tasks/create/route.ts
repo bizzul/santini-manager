@@ -39,23 +39,46 @@ export async function POST(req: NextRequest) {
     }
 
     if (result.success) {
-      // Get kanban and column IDs (filter by site_id if available)
-      let kanbanQuery = supabase
-        .from("Kanban")
-        .select("id, is_offer_kanban, site_id")
-        .eq("identifier", "PRODUCTION");
+      // Check if a specific kanbanId was provided
+      const providedKanbanId = body.kanbanId || result.data.kanbanId;
+      
+      let kanban: { id: number; is_offer_kanban: boolean; site_id: string | null } | null = null;
+      
+      if (providedKanbanId) {
+        // Use the provided kanbanId
+        const { data: kanbanData, error: kanbanError } = await supabase
+          .from("Kanban")
+          .select("id, is_offer_kanban, site_id")
+          .eq("id", providedKanbanId)
+          .single();
 
-      if (siteId) {
-        kanbanQuery = kanbanQuery.eq("site_id", siteId);
-      }
+        if (kanbanError || !kanbanData) {
+          return NextResponse.json({
+            error: true,
+            message: `Kanban non trovato con ID ${providedKanbanId}: ${kanbanError?.message || "Non trovato"}`,
+          }, { status: 404 });
+        }
+        kanban = kanbanData;
+      } else {
+        // Fallback: Get default PRODUCTION kanban (filter by site_id if available)
+        let kanbanQuery = supabase
+          .from("Kanban")
+          .select("id, is_offer_kanban, site_id")
+          .eq("identifier", "PRODUCTION");
 
-      const { data: kanban, error: kanbanError } = await kanbanQuery.single();
+        if (siteId) {
+          kanbanQuery = kanbanQuery.eq("site_id", siteId);
+        }
 
-      if (kanbanError) {
-        return NextResponse.json({
-          error: true,
-          message: `Kanban non trovato: ${kanbanError.message}`,
-        }, { status: 404 });
+        const { data: kanbanData, error: kanbanError } = await kanbanQuery.single();
+
+        if (kanbanError || !kanbanData) {
+          return NextResponse.json({
+            error: true,
+            message: `Kanban PRODUCTION non trovato: ${kanbanError?.message || "Non trovato"}`,
+          }, { status: 404 });
+        }
+        kanban = kanbanData;
       }
 
       // Use site_id from kanban if not already set
@@ -63,17 +86,19 @@ export async function POST(req: NextRequest) {
         siteId = kanban.site_id;
       }
 
+      // Get the first column of the kanban (order by position)
       const { data: column, error: columnError } = await supabase
         .from("KanbanColumn")
         .select("id")
-        .eq("identifier", "TODOPROD")
         .eq("kanbanId", kanban.id)
+        .order("position", { ascending: true })
+        .limit(1)
         .single();
 
-      if (columnError) {
+      if (columnError || !column) {
         return NextResponse.json({
           error: true,
-          message: `Colonna kanban non trovata: ${columnError.message}`,
+          message: `Colonna kanban non trovata: ${columnError?.message || "Nessuna colonna"}`,
         }, { status: 404 });
       }
 
@@ -96,13 +121,19 @@ export async function POST(req: NextRequest) {
       const insertData: any = {
         title: "",
         clientId: result.data.clientId,
-        deliveryDate: result.data.deliveryDate,
+        deliveryDate: result.data.deliveryDate instanceof Date 
+          ? result.data.deliveryDate.toISOString() 
+          : result.data.deliveryDate || null,
+        termine_produzione: result.data.termine_produzione instanceof Date
+          ? result.data.termine_produzione.toISOString()
+          : result.data.termine_produzione || null,
         unique_code: uniqueCode,
         sellProductId: result.data.productId,
         name: result.data.name,
         kanbanId: kanban.id,
         kanbanColumnId: column.id,
         sellPrice: result.data.sellPrice,
+        numero_pezzi: result.data.numero_pezzi || null,
         other: result.data.other,
         positions: positions,
       };
@@ -164,7 +195,7 @@ export async function POST(req: NextRequest) {
           console.error("Error creating action:", actionError);
         }
 
-        return NextResponse.json({ taskCreate, status: 200 });
+        return NextResponse.json({ data: taskCreate, status: 200 });
       } else {
         return NextResponse.json({ error: result, status: 500 });
       }

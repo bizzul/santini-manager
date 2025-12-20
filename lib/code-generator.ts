@@ -105,7 +105,83 @@ export async function saveCodeTemplate(
 }
 
 /**
+ * Trova il numero di sequenza massimo esistente nei Task per un dato sito/anno/tipo
+ */
+async function findMaxExistingSequence(
+  supabase: any,
+  siteId: string,
+  sequenceType: string,
+  year: number,
+): Promise<number> {
+  const yearPrefix = String(year).slice(-2); // es: "25" per 2025
+  
+  // Query tutti i task del sito con codici che iniziano con l'anno
+  const { data: tasks, error } = await supabase
+    .from("Task")
+    .select("unique_code")
+    .eq("site_id", siteId)
+    .like("unique_code", `${yearPrefix}-%`)
+    .order("unique_code", { ascending: false })
+    .limit(500);
+
+  if (error || !tasks || tasks.length === 0) {
+    return 0;
+  }
+
+  // Estrai il numero massimo dai codici esistenti, filtrando per tipo
+  let maxNumber = 0;
+  for (const task of tasks) {
+    const code = task.unique_code;
+    if (!code) continue;
+
+    const parts = code.split("-");
+    
+    // Determina il tipo del codice
+    // "25-001" = LAVORO (2 parti, seconda è numero)
+    // "25-OFF-001" = OFFERTA (3 parti, seconda è "OFF")
+    // "25-FATT-001" = FATTURA (3 parti, seconda è "FATT")
+    
+    let codeType: string;
+    let numPart: string;
+    
+    if (parts.length === 2) {
+      // Formato: "25-001" - potrebbe essere LAVORO
+      codeType = "LAVORO";
+      numPart = parts[1];
+    } else if (parts.length === 3) {
+      // Formato: "25-XXX-001"
+      const middle = parts[1].toUpperCase();
+      if (middle === "OFF") {
+        codeType = "OFFERTA";
+      } else if (middle === "FATT") {
+        codeType = "FATTURA";
+      } else {
+        // Formato sconosciuto, skip
+        continue;
+      }
+      numPart = parts[2];
+    } else {
+      // Formato non riconosciuto
+      continue;
+    }
+    
+    // Solo se il tipo corrisponde
+    if (codeType !== sequenceType) {
+      continue;
+    }
+    
+    const num = parseInt(numPart, 10);
+    if (!isNaN(num) && num > maxNumber) {
+      maxNumber = num;
+    }
+  }
+
+  return maxNumber;
+}
+
+/**
  * Ottiene il prossimo valore della sequenza (atomico)
+ * Controlla anche i codici esistenti nella tabella Task per evitare duplicati
  */
 export async function getNextSequenceValue(
   siteId: string,
@@ -115,7 +191,10 @@ export async function getNextSequenceValue(
   const supabase = await createClient();
   const currentYear = year || new Date().getFullYear();
 
-  // Usa la funzione SQL per garantire atomicità
+  // Prima controlla il numero massimo esistente nei Task
+  const maxExisting = await findMaxExistingSequence(supabase, siteId, sequenceType, currentYear);
+
+  // Prova a usare la funzione SQL per garantire atomicità
   const { data, error } = await supabase.rpc("get_next_sequence_value", {
     p_site_id: siteId,
     p_sequence_type: sequenceType,
@@ -123,11 +202,74 @@ export async function getNextSequenceValue(
   });
 
   if (error) {
-    logger.error("Error getting next sequence value:", error);
-    throw new Error(`Failed to get next sequence value: ${error.message}`);
+    logger.warn("RPC function not available, falling back to manual sequence:", error);
+    
+    // Fallback: usa un approccio manuale se la funzione RPC non esiste
+    const { data: existingSeq, error: seqError } = await supabase
+      .from("code_sequences")
+      .select("current_value")
+      .eq("site_id", siteId)
+      .eq("sequence_type", sequenceType)
+      .eq("year", currentYear)
+      .single();
+
+    if (seqError && seqError.code !== "PGRST116") {
+      // PGRST116 = no rows found, that's ok
+      // Usa il massimo esistente + 1
+      logger.warn("code_sequences table not available, using max existing + 1");
+      return maxExisting + 1;
+    }
+
+    // Usa il massimo tra la sequenza salvata e quella esistente nei task
+    const sequenceValue = existingSeq?.current_value || 0;
+    const nextValue = Math.max(sequenceValue, maxExisting) + 1;
+
+    // Aggiorna o inserisci il valore
+    const { error: upsertError } = await supabase
+      .from("code_sequences")
+      .upsert({
+        site_id: siteId,
+        sequence_type: sequenceType,
+        year: currentYear,
+        current_value: nextValue,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: "site_id,sequence_type,year",
+      });
+
+    if (upsertError) {
+      logger.warn("Failed to update sequence:", upsertError);
+    }
+
+    return nextValue;
   }
 
-  return data as number;
+  // RPC ha funzionato, ma verifica che sia maggiore del massimo esistente
+  const rpcValue = data as number;
+  if (rpcValue <= maxExisting) {
+    // La sequenza RPC è indietro rispetto ai task esistenti
+    // Aggiorna la sequenza al valore corretto
+    logger.warn(`RPC sequence (${rpcValue}) is behind existing tasks (${maxExisting}), syncing...`);
+    
+    const correctValue = maxExisting + 1;
+    
+    // Aggiorna la tabella code_sequences per sincronizzare
+    await supabase
+      .from("code_sequences")
+      .upsert({
+        site_id: siteId,
+        sequence_type: sequenceType,
+        year: currentYear,
+        current_value: correctValue,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: "site_id,sequence_type,year",
+      });
+    
+    return correctValue;
+  }
+
+  return rpcValue;
 }
 
 /**

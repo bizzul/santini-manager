@@ -1,14 +1,21 @@
 import { z } from "zod";
-// Define a custom Zod parser for a date string
-const parseDate = (string: any) => {
-  if (string) {
-    const date = new Date(string);
-    //@ts-ignore
-    if (isNaN(date)) {
-      throw new Error("Invalid date");
+
+// Define a custom Zod parser for a date string or Date object
+const parseDate = (value: any) => {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  if (value instanceof Date) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const date = new Date(value);
+    if (isNaN(date.getTime())) {
+      return null;
     }
     return date;
   }
+  return null;
 };
 
 export const validation = z.object({
@@ -18,8 +25,8 @@ export const validation = z.object({
     .optional()
     .nullable(),
   productId: z.preprocess((val) => Number(val), z.number()).nullable(),
-  deliveryDate: z.date().optional().nullable(),
-  termine_produzione: z.date().optional().nullable(),
+  deliveryDate: z.preprocess(parseDate, z.date().optional().nullable()),
+  termine_produzione: z.preprocess(parseDate, z.date().optional().nullable()),
   name: z.string().optional(),
   sellPrice: z.preprocess((val) => Number(val), z.number()),
   numero_pezzi: z.preprocess((val) => (val ? Number(val) : null), z.number()).optional().nullable(),

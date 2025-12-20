@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import {
   applyTemplate,
-  DEFAULT_TEMPLATES,
   generateTemplateVariables,
   getCodeTemplate,
 } from "@/lib/code-generator";
@@ -74,17 +73,63 @@ export async function GET(request: NextRequest) {
     // Ottieni il template
     const template = await getCodeTemplate(siteId, taskType);
 
-    // Per la preview, usa un numero di sequenza simulato
-    // Ottieni l'ultimo valore senza incrementare
+    // Per la preview, trova il massimo esistente nei task + il valore in code_sequences
+    // e usa il maggiore dei due per garantire unicità
+    const currentYear = new Date().getFullYear();
+    const yearPrefix = String(currentYear).slice(-2);
+    
+    // Cerca il massimo esistente nei Task
+    const { data: tasks } = await supabase
+      .from("Task")
+      .select("unique_code")
+      .eq("site_id", siteId)
+      .like("unique_code", `${yearPrefix}-%`)
+      .order("unique_code", { ascending: false })
+      .limit(500);
+
+    let maxFromTasks = 0;
+    if (tasks && tasks.length > 0) {
+      for (const task of tasks) {
+        const code = task.unique_code;
+        if (!code) continue;
+        
+        const parts = code.split("-");
+        let codeType: string;
+        let numPart: string;
+        
+        if (parts.length === 2) {
+          codeType = "LAVORO";
+          numPart = parts[1];
+        } else if (parts.length === 3) {
+          const middle = parts[1].toUpperCase();
+          if (middle === "OFF") codeType = "OFFERTA";
+          else if (middle === "FATT") codeType = "FATTURA";
+          else continue;
+          numPart = parts[2];
+        } else {
+          continue;
+        }
+        
+        if (codeType !== template.sequenceType) continue;
+        
+        const num = parseInt(numPart, 10);
+        if (!isNaN(num) && num > maxFromTasks) {
+          maxFromTasks = num;
+        }
+      }
+    }
+
+    // Leggi anche da code_sequences
     const { data: lastSequence } = await supabase
       .from("code_sequences")
       .select("current_value")
       .eq("site_id", siteId)
       .eq("sequence_type", template.sequenceType)
-      .eq("year", new Date().getFullYear())
+      .eq("year", currentYear)
       .single();
 
-    const nextValue = (lastSequence?.current_value || 0) + 1;
+    const sequenceValue = lastSequence?.current_value || 0;
+    const nextValue = Math.max(sequenceValue, maxFromTasks) + 1;
 
     // Genera le variabili
     const variables = generateTemplateVariables(

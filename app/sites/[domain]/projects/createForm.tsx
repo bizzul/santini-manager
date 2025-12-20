@@ -143,11 +143,11 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
       const res = await createItem({ data: formData }, domain);
 
       if (res?.error) {
+        console.error("Create error details:", res);
         toast({
           variant: "destructive",
           title: "Errore nella creazione",
-          description:
-            res.message || "Errore durante la creazione del progetto",
+          description: res.message || "Errore durante la creazione del progetto",
         });
         return;
       }
@@ -157,10 +157,9 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
         description: `Progetto ${formData.unique_code} creato correttamente!`,
       });
       form.reset();
-      handleClose(false);
-
-      // Refresh the page to show the new card
-      router.refresh();
+      
+      // Pass true to indicate successful creation - triggers refetch
+      handleClose(true);
     } catch (error: any) {
       toast({
         variant: "destructive",

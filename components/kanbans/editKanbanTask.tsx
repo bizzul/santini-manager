@@ -33,6 +33,7 @@ import {
 import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
 import { logger } from "@/lib/logger";
+import { useSiteId } from "@/hooks/use-site-id";
 
 type Props = {
   handleClose: any;
@@ -42,6 +43,7 @@ type Props = {
   setOpen: any;
   resource: any;
   history: any;
+  domain?: string;
 };
 
 type Supplier = {
@@ -57,8 +59,9 @@ type TaskSupplier = {
   deliveryDate: string | null;
 };
 
-const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
+const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const { toast } = useToast();
+  const { siteId } = useSiteId(domain);
   const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<z.infer<typeof validation>>({
@@ -79,6 +82,8 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
       productId: undefined,
       sellPrice: 0,
       unique_code: "",
+      kanbanId: resource?.kanbanId || undefined,
+      kanbanColumnId: resource?.kanbanColumnId || undefined,
     },
   });
 
@@ -97,6 +102,15 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     resource?.kanbanColumnId || null
   );
 
+  // Helper to build headers with siteId
+  const getHeaders = (): HeadersInit => {
+    const headers: HeadersInit = {};
+    if (siteId) {
+      headers["x-site-id"] = siteId;
+    }
+    return headers;
+  };
+
   useEffect(() => {
     if (!resource) return;
 
@@ -105,7 +119,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     const getClients = async () => {
       try {
         logger.debug("Fetching clients...");
-        const d = await fetch(`/api/clients/`);
+        const d = await fetch(`/api/clients/`, { headers: getHeaders() });
 
         if (!d.ok) {
           throw new Error("Failed to fetch clients");
@@ -123,7 +137,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     const getProducts = async () => {
       try {
         logger.debug("Fetching products...");
-        const d = await fetch(`/api/sell-products/`);
+        const d = await fetch(`/api/sell-products/`, { headers: getHeaders() });
 
         if (!d.ok) {
           throw new Error("Failed to fetch products");
@@ -140,7 +154,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
 
     const getKanbans = async () => {
       try {
-        const response = await fetch(`/api/kanban/list`);
+        const response = await fetch(`/api/kanban/list`, { headers: getHeaders() });
         if (!response.ok) throw new Error("Failed to fetch kanbans");
         const data = await response.json();
         setKanbans(Array.isArray(data) ? data : []);
@@ -152,13 +166,15 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
 
     const initializeForm = async () => {
       form.setValue("productId", resource.sellProductId!);
-      form.setValue("deliveryDate", new Date(resource.deliveryDate!));
+      form.setValue("deliveryDate", resource.deliveryDate ? new Date(resource.deliveryDate) : undefined);
       form.setValue("other", resource.other ?? undefined);
       form.setValue("sellPrice", resource.sellPrice!);
       form.setValue("clientId", resource.clientId);
       form.setValue("unique_code", resource.unique_code!);
       form.setValue("name", resource.name!);
-      resource?.positions.map((position: any, index: number) => {
+      form.setValue("kanbanId", resource.kanbanId);
+      form.setValue("kanbanColumnId", resource.kanbanColumnId);
+      resource?.positions?.map((position: any, index: number) => {
         //@ts-ignore
         form.setValue(`position${index + 1}`, position);
       });
@@ -175,7 +191,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     };
 
     loadData();
-  }, [resource, form.setValue]);
+  }, [resource, form.setValue, siteId]);
 
   // Load columns when kanban changes
   useEffect(() => {
@@ -183,7 +199,8 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
       if (selectedKanbanId) {
         try {
           const response = await fetch(
-            `/api/kanban-columns/${selectedKanbanId}`
+            `/api/kanban-columns/${selectedKanbanId}`,
+            { headers: getHeaders() }
           );
           if (!response.ok) throw new Error("Failed to fetch columns");
           const data = await response.json();
@@ -209,28 +226,30 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
     };
 
     loadColumns();
-  }, [selectedKanbanId]);
+  }, [selectedKanbanId, siteId]);
 
   useEffect(() => {
     const loadSuppliers = async () => {
       try {
-        const response = await fetch("/api/suppliers");
+        const response = await fetch("/api/suppliers", { headers: getHeaders() });
         const suppliersData = await response.json();
-        setSuppliers(suppliersData);
+        setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
 
         const taskSuppResponse = await fetch(
-          `/api/tasks/${resource.id}/suppliers`
+          `/api/tasks/${resource.id}/suppliers`,
+          { headers: getHeaders() }
         );
         const taskSuppData = await taskSuppResponse.json();
         setTaskSuppliers(Array.isArray(taskSuppData) ? taskSuppData : []);
       } catch (error) {
         logger.error("Error loading suppliers:", error);
+        setSuppliers([]);
         setTaskSuppliers([]);
       }
     };
 
     loadSuppliers();
-  }, [resource.id]);
+  }, [resource.id, siteId]);
 
   const { errors, isSubmitting } = form.formState;
   logger.debug("Form errors:", errors);
@@ -587,9 +606,9 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
           <div className="space-y-2">
             <label className="text-sm font-medium">Kanban</label>
             <Select
-              value={selectedKanbanId?.toString() || ""}
+              value={selectedKanbanId?.toString() || "__none__"}
               onValueChange={(value) =>
-                setSelectedKanbanId(value ? parseInt(value) : null)
+                setSelectedKanbanId(value && value !== "__none__" ? parseInt(value) : null)
               }
               disabled={isSubmitting}
             >
@@ -597,7 +616,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                 <SelectValue placeholder="Seleziona una kanban" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Nessuna kanban</SelectItem>
+                <SelectItem value="__none__">Nessuna kanban</SelectItem>
                 {kanbans.map((kanban) => (
                   <SelectItem key={kanban.id} value={kanban.id.toString()}>
                     {kanban.title}
@@ -612,9 +631,9 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
             <div className="space-y-2">
               <label className="text-sm font-medium">Colonna</label>
               <Select
-                value={selectedColumnId?.toString() || ""}
+                value={selectedColumnId?.toString() || "__none__"}
                 onValueChange={(value) =>
-                  setSelectedColumnId(value ? parseInt(value) : null)
+                  setSelectedColumnId(value && value !== "__none__" ? parseInt(value) : null)
                 }
                 disabled={isSubmitting || kanbanColumns.length === 0}
               >
@@ -622,7 +641,7 @@ const EditTaskKanban = ({ handleClose, resource, history }: Props) => {
                   <SelectValue placeholder="Seleziona una colonna" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nessuna colonna</SelectItem>
+                  <SelectItem value="__none__">Nessuna colonna</SelectItem>
                   {kanbanColumns.map((column) => (
                     <SelectItem key={column.id} value={column.id.toString()}>
                       {column.title}

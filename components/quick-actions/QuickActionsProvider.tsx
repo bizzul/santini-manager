@@ -196,8 +196,12 @@ export function QuickActionsProvider({
     ]
   );
 
-  const closeDialog = useCallback(() => {
+  const closeDialog = useCallback((success?: boolean) => {
     setActiveDialog(null);
+    // If creation was successful, trigger a page refresh to update any cached data
+    if (success) {
+      window.location.reload();
+    }
   }, []);
 
   const renderDialogContent = () => {

@@ -801,6 +801,7 @@ export default function Card({
                 setOpen={setShowModal}
                 resource={data}
                 history={history}
+                domain={domain}
               />
             </DialogContent>
           </Dialog>
