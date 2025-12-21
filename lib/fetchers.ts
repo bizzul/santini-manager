@@ -29,16 +29,20 @@ export async function getSiteData(domain: string) {
       subdomain,
     });
 
-    // Use service client to bypass RLS for public site access
-    const supabase = createServiceClient();
-
-    // Always query by subdomain column
-    const query = supabase.from("sites").select("*").eq("subdomain", subdomain);
-
+    // IMPORTANT: Create the Supabase client and query INSIDE the unstable_cache function
+    // to avoid stale closures when the cache revalidates. The Supabase query builder
+    // is not designed to be reused across different request contexts.
     return unstable_cache(
       async () => {
         try {
-          const result = await query.single();
+          // Create fresh client and query inside the cached function
+          const supabase = createServiceClient();
+          const result = await supabase
+            .from("sites")
+            .select("*")
+            .eq("subdomain", subdomain)
+            .single();
+
           console.log(
             "[getSiteData] Query result:",
             result.data ? "Found" : "Not found",
