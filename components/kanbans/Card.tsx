@@ -17,8 +17,9 @@ import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 import { logger } from "@/lib/logger";
-import { BellIcon } from "lucide-react";
+import { BellIcon, FileEdit } from "lucide-react";
 import { useToast } from "../ui/use-toast";
+import { Badge } from "../ui/badge";
 import { useSiteId } from "@/hooks/use-site-id";
 import {
   Tooltip,
@@ -196,6 +197,7 @@ export default function Card({
         id,
         columnIndex,
         fromColumn: data.column?.identifier,
+        fromColumnPosition: data.column?.position || columnIndex,
       },
       disabled: isLocked || data.isPreview,
     });
@@ -462,12 +464,17 @@ export default function Card({
       : "bg-red-800 dark:bg-red-800 animate-pulse";
   };
 
+  // Check if task is a draft
+  const isDraft = data.is_draft || data.isDraft;
+
   return (
     <ContextMenu>
       <div
         className={`w-full mb-2 p-1 shadow-md select-none overscroll-contain ${
           data.isPreview ? "opacity-75 cursor-not-allowed" : ""
-        } ${getBackgroundClass()} ${isSmall ? " h-24" : ""}`}
+        } ${getBackgroundClass()} ${isSmall ? " h-24" : ""} ${
+          isDraft ? "border-2 border-dashed border-amber-400 relative" : ""
+        }`}
         ref={data.isPreview ? undefined : setNodeRef}
         style={{
           ...dragStyle,
@@ -478,6 +485,15 @@ export default function Card({
         onContextMenu={(e) => e.preventDefault()}
         onClick={onClick}
       >
+        {/* Draft badge */}
+        {isDraft && (
+          <div className="absolute -top-2 -right-2 z-10">
+            <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-1.5 py-0.5 flex items-center gap-1">
+              <FileEdit className="h-3 w-3" />
+              Bozza
+            </Badge>
+          </div>
+        )}
         <ContextMenuTrigger>
           <div
             className={`p-1 ${

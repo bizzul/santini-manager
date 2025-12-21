@@ -63,10 +63,15 @@ export async function GET(
   }
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: taskId } = await params;
+  
   try {
     const supabase = await createClient();
-    const taskId = await req.json();
+    const body = await req.json();
 
     // Extract site_id from request headers or domain
     let siteId = null;
@@ -86,7 +91,7 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    //Fetch a single task (filter by site_id if available)
+    // Verify task exists (filter by site_id if available)
     let taskQuery = supabase
       .from("Task")
       .select("*")
@@ -100,25 +105,50 @@ export async function PATCH(req: NextRequest) {
 
     if (findError) throw findError;
 
-    if (task) {
-      const { data: taskData, error: updateError } = await supabase
-        .from("Task")
-        .update({})
-        .eq("id", Number(taskId))
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
+    if (!task) {
       return NextResponse.json({
-        stato: "UPDATED",
-        task: taskData,
-        status: 200,
+        message: "The task does not exist.",
+        status: 404,
       });
     }
+
+    // Build update object from allowed fields
+    const updateData: Record<string, any> = {};
+    
+    // List of allowed fields to update
+    const allowedFields = [
+      'unique_code', 'title', 'name', 'description',
+      'clientId', 'sellProductId', 'sellPrice',
+      'deliveryDate', 'termine_produzione',
+      'other', 'positions', 'numero_pezzi',
+      'kanbanColumnId', 'kanbanId',
+      'is_draft', 'task_type', 'display_mode',
+      'material', 'metalli', 'ferramenta', 'legno', 'vernice', 'altro', 'stoccato',
+      'percent_status', 'archived', 'parent_task_id'
+    ];
+
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field];
+      }
+    }
+
+    // Add updated_at timestamp
+    updateData.updated_at = new Date().toISOString();
+
+    const { data: taskData, error: updateError } = await supabase
+      .from("Task")
+      .update(updateData)
+      .eq("id", Number(taskId))
+      .select()
+      .single();
+
+    if (updateError) throw updateError;
+
     return NextResponse.json({
-      message: "The task does not exist.",
-      status: 404,
+      stato: "UPDATED",
+      task: taskData,
+      status: 200,
     });
   } catch (error) {
     console.error("Error updating task:", error);

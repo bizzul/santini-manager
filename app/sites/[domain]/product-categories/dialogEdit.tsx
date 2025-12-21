@@ -20,7 +20,7 @@ function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
       <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-scroll">
         <DialogHeader>
-          <DialogTitle>Modifica categoria prodotto</DialogTitle>
+          <DialogTitle>Modifica categoria articolo</DialogTitle>
           <DialogDescription>Modifica {data?.name}</DialogDescription>
         </DialogHeader>
         <EditForm

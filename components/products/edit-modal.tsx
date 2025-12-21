@@ -126,7 +126,7 @@ export const EditModal: FC<Props> = ({
           <div className="w-3/4">
             <h1 className="text-xl font-bold">
               <FontAwesomeIcon icon={faBox} className="mr-2" />
-              Modifica Prodotto - #{resource.id} - {resource.name}
+              Modifica articolo - #{resource.id} - {resource.name}
             </h1>
           </div>
           <div className="w-1/4 text-right">

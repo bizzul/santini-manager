@@ -30,7 +30,7 @@ export default async function Page({
   return (
     <PageLayout>
       <PageHeader>
-        <h1 className="text-2xl font-bold">Prodotti</h1>
+        <h1 className="text-2xl font-bold">Articoli</h1>
         <div className="flex gap-2">
           <ButtonExportCSV />
           <DialogImportCSV />
@@ -42,9 +42,9 @@ export default async function Page({
           <SellProductWrapper data={products} domain={domain} siteId={siteId} />
         ) : (
           <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">Nessun prodotto registrato!</h1>
+            <h1 className="font-bold text-2xl">Nessun articolo registrato!</h1>
             <p>
-              Premi (Aggiungi prodotto) per aggiungere il tuo primo prodotto!
+              Premi (Aggiungi articolo) per aggiungere il tuo primo articolo!
             </p>
           </div>
         )}

@@ -60,6 +60,9 @@ export interface Task {
     // Campo per tracking invio offerta
     sent_date?: string;
     sentDate?: string; // Alternative property name
+    // Flag per bozze offerta (quick add)
+    is_draft?: boolean;
+    isDraft?: boolean; // Alternative property name
 }
 
 // Client related types

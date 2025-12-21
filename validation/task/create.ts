@@ -25,6 +25,8 @@ export const validation = z.object({
     .optional()
     .nullable(),
   productId: z.preprocess((val) => Number(val), z.number()).nullable(),
+  // Array of product IDs for quick add (multiple products)
+  productIds: z.array(z.number()).optional().nullable(),
   deliveryDate: z.preprocess(parseDate, z.date().optional().nullable()),
   termine_produzione: z.preprocess(parseDate, z.date().optional().nullable()),
   name: z.string().optional(),
@@ -49,4 +51,11 @@ export const validation = z.object({
     .preprocess((val) => (val ? Number(val) : null), z.number())
     .optional()
     .nullable(),
+  // ID dell'offerta collegata (parent task)
+  parentTaskId: z
+    .preprocess((val) => (val ? Number(val) : null), z.number())
+    .optional()
+    .nullable(),
+  // Flag per bozze offerta (quick add)
+  isDraft: z.boolean().optional().default(false),
 });

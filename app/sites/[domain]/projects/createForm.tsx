@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
+import { OfferSelect } from "@/components/ui/offer-select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -24,7 +25,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
+import { CalendarIcon, Loader2, RefreshCw, Link } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
@@ -78,6 +79,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
       numero_pezzi: null,
       unique_code: "",
       kanbanId: kanbanId ?? undefined,
+      parentTaskId: null,
     },
   });
 
@@ -255,6 +257,35 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       })) || []
                     }
                     emptyMessage="Nessun kanban trovato."
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Offer selector - only show when NOT in an offer kanban */}
+        {!isOfferKanban && (
+          <FormField
+            name="parentTaskId"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center gap-2">
+                  <FormLabel>Collega Offerta</FormLabel>
+                  <Badge variant="outline" className="text-xs">
+                    <Link className="h-3 w-3 mr-1" />
+                    Opzionale
+                  </Badge>
+                </div>
+                <FormControl>
+                  <OfferSelect
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value)}
+                    placeholder="Cerca offerta da collegare..."
+                    disabled={isSubmitting}
+                    emptyMessage="Nessuna offerta disponibile."
                   />
                 </FormControl>
                 <FormMessage />

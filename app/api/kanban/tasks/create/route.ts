@@ -117,6 +117,9 @@ export async function POST(req: NextRequest) {
         uniqueCode = await generateTaskCode(siteId, taskType);
       }
 
+      // Determine task type
+      const taskType = body.task_type || (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
+
       // Prepare insert data with site_id
       const insertData: any = {
         title: "",
@@ -136,6 +139,9 @@ export async function POST(req: NextRequest) {
         numero_pezzi: result.data.numero_pezzi || null,
         other: result.data.other,
         positions: positions,
+        // Draft and task type fields
+        is_draft: result.data.isDraft || false,
+        task_type: taskType,
       };
 
       // Add site_id if available

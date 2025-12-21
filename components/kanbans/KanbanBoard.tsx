@@ -13,7 +13,8 @@ import {
 import Card from "./Card";
 import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
-import { Plus } from "lucide-react";
+import OfferQuickAdd from "./OfferQuickAdd";
+import { Plus, FileEdit } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
@@ -66,6 +67,7 @@ const Column = ({
   const router = useRouter();
   const [isMovingTask, setIsMovingTask] = useState(false);
   const [modalCreate, setModalCreate] = useState(false);
+  const [modalQuickAdd, setModalQuickAdd] = useState(false);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
 
   const getBaseTaskNumber = (taskTitle: string): string => {
@@ -145,6 +147,10 @@ const Column = ({
       (c: any) => c.is_creation_column || c.isCreationColumn
     ) &&
       column.position === 1);
+
+  // Check if this is the TODO column (first column) for offer kanbans
+  // TODO column is used for quick add of draft offers
+  const isTodoColumn = column.position === 1 && isOfferKanban;
 
   // Sort function based on column type
   const sortCards = (cardsToSort: any[]) => {
@@ -235,6 +241,45 @@ const Column = ({
             </>
           )}
         </div>
+        {/* Quick Add button for TODO column in offer kanbans */}
+        {isTodoColumn && (
+          <Dialog
+            open={modalQuickAdd}
+            onOpenChange={() => setModalQuickAdd(!modalQuickAdd)}
+          >
+            <DialogTrigger asChild>
+              <button
+                className="border p-2 rounded bg-amber-500 hover:bg-amber-600 text-white cursor-pointer transition-colors"
+                onClick={() => setModalQuickAdd(true)}
+                title="Aggiungi richiesta offerta rapida"
+              >
+                <FileEdit className="h-4 w-4" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Nuova Richiesta Offerta</DialogTitle>
+                <DialogDescription>
+                  Aggiungi una richiesta rapida in TODO. Potrai completare i
+                  dettagli quando lavori l&apos;offerta.
+                </DialogDescription>
+              </DialogHeader>
+              <OfferQuickAdd
+                clients={data.clients || []}
+                products={data.products || data.activeProducts || []}
+                kanbanId={(kanban as any)?.id}
+                domain={domain}
+                onSuccess={() => {
+                  setModalQuickAdd(false);
+                  if (onTaskCreated) {
+                    onTaskCreated();
+                  }
+                }}
+                onCancel={() => setModalQuickAdd(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        )}
         {/* Create button - different behavior for offer kanbans */}
         {isCreationColumn &&
           (isOfferKanban ? (
@@ -343,6 +388,7 @@ function KanbanBoard({
   snapshots,
   domain,
 }: KanbanBoardTypes) {
+  const router = useRouter();
   const { siteId } = useSiteId(domain);
 
   const [tasks, setTasks] = useState(() => {
@@ -674,6 +720,25 @@ function KanbanBoard({
 
     // Skip if card is already in this column
     if (activeData?.fromColumn === columnIdentifier) return;
+
+    // Check if this is a draft being moved out of TODO (first column)
+    const task = tasks.find((t) => t.id === cardId);
+    const isDraft = task?.is_draft || task?.isDraft;
+    const isMovingFromFirstColumn = activeData?.fromColumnPosition === 1;
+
+    if (isDraft && isOfferKanban && isMovingFromFirstColumn) {
+      // Block move and redirect to offer creation page with draft data
+      toast({
+        title: "Completa l'offerta",
+        description:
+          "Verrai reindirizzato per completare i dettagli dell'offerta.",
+      });
+      // Redirect to offer creation page with draft task ID
+      router.push(
+        `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}&draftId=${task?.id}&targetColumn=${columnId}`
+      );
+      return;
+    }
 
     // Check if moving to special columns - show confirmation
     const specialColumnTypes = ["won", "lost", "production", "invoicing"];

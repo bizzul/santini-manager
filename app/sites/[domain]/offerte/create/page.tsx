@@ -9,10 +9,14 @@ export default async function OfferCreatePage({
   searchParams,
 }: {
   params: Promise<{ domain: string }>;
-  searchParams: Promise<{ kanbanId?: string }>;
+  searchParams: Promise<{
+    kanbanId?: string;
+    draftId?: string;
+    targetColumn?: string;
+  }>;
 }) {
   const { domain } = await params;
-  const { kanbanId } = await searchParams;
+  const { kanbanId, draftId, targetColumn } = await searchParams;
 
   const supabase = await createClient();
 
@@ -67,6 +71,21 @@ export default async function OfferCreatePage({
     .eq("active", true)
     .order("name", { ascending: true });
 
+  // Fetch draft task data if draftId is provided
+  let draftTask = null;
+  if (draftId) {
+    const { data: draft } = await supabase
+      .from("Task")
+      .select("*")
+      .eq("id", parseInt(draftId))
+      .eq("site_id", siteId)
+      .single();
+
+    if (draft) {
+      draftTask = draft;
+    }
+  }
+
   return (
     <div className="container mx-auto py-8 px-4">
       <Suspense
@@ -82,6 +101,8 @@ export default async function OfferCreatePage({
           kanbanId={targetKanbanId}
           clients={clients || []}
           products={products || []}
+          draftTask={draftTask}
+          targetColumnId={targetColumn ? parseInt(targetColumn) : null}
         />
       </Suspense>
     </div>

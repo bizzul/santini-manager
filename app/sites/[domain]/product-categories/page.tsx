@@ -31,19 +31,20 @@ export default async function Page({
   return (
     <PageLayout>
       <PageHeader>
-        <h1 className="text-2xl font-bold">Categorie Prodotti</h1>
+        <h1 className="text-2xl font-bold">Categorie Articoli</h1>
         <DialogCreate domain={domain} />
       </PageHeader>
       <PageContent>
         {categories.length > 0 ? (
           <DataWrapper data={categories} domain={domain} />
         ) : (
-          <div className="w-full h-full text-center flex flex-col justify-center items-center h-80">
+          <div className="w-full text-center flex flex-col justify-center items-center h-80">
             <h1 className="font-bold text-2xl">
-              Nessuna categoria prodotto registrata!
+              Nessuna categoria articolo registrata!
             </h1>
             <p>
               Premi (Aggiungi categoria) per aggiungere la tua prima categoria
+              articolo
             </p>
           </div>
         )}

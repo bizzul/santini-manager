@@ -20,9 +20,9 @@ function DialogCreate({ domain }: { domain: string }) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-scroll">
         <DialogHeader>
-          <DialogTitle>Crea categoria prodotto</DialogTitle>
+          <DialogTitle>Crea categoria articolo</DialogTitle>
           <DialogDescription>
-            Crea una nuova categoria per i prodotti
+            Crea una nuova categoria per gli articoli
           </DialogDescription>
         </DialogHeader>
         <CreateForm domain={domain} handleClose={() => setOpen(false)} />

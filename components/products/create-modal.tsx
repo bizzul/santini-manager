@@ -74,7 +74,7 @@ export const CreateModal: FC<Props> = ({
         <div className="w-3/4">
           <h1 className="text-xl font-bold">
             <FontAwesomeIcon icon={faBox} className="mr-2" />
-            Nuovo prodotto
+            Nuovo articolo
           </h1>
         </div>
         <div className="w-1/4 text-right">

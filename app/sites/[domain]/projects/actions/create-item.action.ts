@@ -97,6 +97,10 @@ export async function createItem(props: any, domain?: string) {
         numero_pezzi: result.data.numero_pezzi,
         other: result.data.other,
         positions: positions,
+        // Link to parent offer if provided
+        parent_task_id: result.data.parentTaskId || null,
+        // Set task type based on kanban type
+        task_type: kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO",
       };
 
       if (siteId) {

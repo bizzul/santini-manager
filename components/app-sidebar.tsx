@@ -249,7 +249,7 @@ const getMenuItems = (
       href: `${basePath}/inventory`,
     },
     {
-      label: "Prodotti",
+      label: "Articoli",
       icon: "faBox",
       href: `${basePath}/products`,
       alert: false,
@@ -275,7 +275,7 @@ const getMenuItems = (
           moduleName: "categories",
         },
         {
-          label: "Prodotti",
+          label: "Articoli",
           icon: "faListUl",
           href: `${basePath}/product-categories`,
           alert: false,
@@ -715,7 +715,7 @@ export function AppSidebar() {
     const time = menuItems.filter((item) => item.label === "Ore");
     const contacts = menuItems.filter((item) => item.label === "Contatti");
     const warehouse = menuItems.filter((item) => item.label === "Magazzino");
-    const products = menuItems.filter((item) => item.label === "Prodotti");
+    const products = menuItems.filter((item) => item.label === "Articoli");
     const projectsSection = menuItems.filter(
       (item) => item.label === "Progetti"
     );
@@ -729,7 +729,7 @@ export function AppSidebar() {
           "Ore",
           "Contatti",
           "Magazzino",
-          "Prodotti",
+          "Articoli",
           "Progetti",
           "Categorie",
         ].includes(item.label)
