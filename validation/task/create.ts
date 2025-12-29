@@ -58,4 +58,6 @@ export const validation = z.object({
     .nullable(),
   // Flag per bozze offerta (quick add)
   isDraft: z.boolean().optional().default(false),
+  // Array of category IDs for draft offers (filter products when completing)
+  draftCategoryIds: z.array(z.number()).optional().nullable(),
 });

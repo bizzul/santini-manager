@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, CalendarIcon, RefreshCw, FileCheck } from "lucide-react";
+import { Loader2, CalendarIcon, RefreshCw, FileCheck, Folder } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
-import { ProductMultiSelect } from "@/components/ui/product-multi-select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -35,7 +34,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Client, SellProduct, Task } from "@/types/supabase";
+import { Client, SellProduct, SellProductCategory, Task } from "@/types/supabase";
 
 // Validation schema for completing a draft
 const completionSchema = z.object({
@@ -68,6 +67,7 @@ interface DraftCompletionWizardProps {
   task: Task | null;
   clients: Client[];
   products: SellProduct[];
+  categories?: SellProductCategory[];
   targetColumnId: number;
   targetColumnIdentifier: string;
   onComplete: (taskId: number, columnId: number, columnIdentifier: string) => Promise<void>;
@@ -80,6 +80,7 @@ export default function DraftCompletionWizard({
   task,
   clients = [],
   products = [],
+  categories = [],
   targetColumnId,
   targetColumnIdentifier,
   onComplete,
@@ -92,6 +93,34 @@ export default function DraftCompletionWizard({
   // Ensure arrays are always safe
   const safeClients = Array.isArray(clients) ? clients : [];
   const safeProducts = Array.isArray(products) ? products : [];
+  const safeCategories = Array.isArray(categories) ? categories : [];
+
+  // Get draft category IDs from task
+  const draftCategoryIds = useMemo(() => {
+    const ids = task?.draft_category_ids || task?.draftCategoryIds || [];
+    return Array.isArray(ids) ? ids : [];
+  }, [task]);
+
+  // Filter products by draft category IDs
+  const filteredProducts = useMemo(() => {
+    // If no category IDs are set, show all products
+    if (draftCategoryIds.length === 0) {
+      return safeProducts;
+    }
+    // Filter products that belong to the selected categories
+    return safeProducts.filter((product) => {
+      const productCategoryId = product.category_id || product.category?.id;
+      return productCategoryId && draftCategoryIds.includes(productCategoryId);
+    });
+  }, [safeProducts, draftCategoryIds]);
+
+  // Get selected category names for display
+  const selectedCategoryNames = useMemo(() => {
+    if (draftCategoryIds.length === 0) return [];
+    return safeCategories
+      .filter((cat) => draftCategoryIds.includes(cat.id))
+      .map((cat) => ({ name: cat.name, color: cat.color }));
+  }, [safeCategories, draftCategoryIds]);
 
   const form = useForm<CompletionFormData>({
     resolver: zodResolver(completionSchema),
@@ -191,6 +220,8 @@ export default function DraftCompletionWizard({
           other: data.other,
           positions: positions,
           is_draft: false, // Remove draft flag
+          // Clear draft category IDs since draft is now complete
+          draft_category_ids: null,
         }),
       });
 
@@ -237,6 +268,37 @@ export default function DraftCompletionWizard({
           <span className="text-sm text-muted-foreground">→</span>
           <Badge>{targetColumnIdentifier}</Badge>
         </div>
+
+        {/* Show selected categories */}
+        {selectedCategoryNames.length > 0 && (
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+            <div className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+              <Folder className="h-4 w-4" />
+              Categorie selezionate:
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {selectedCategoryNames.map((cat, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  style={{
+                    backgroundColor: cat.color ? `${cat.color}20` : undefined,
+                    borderColor: cat.color || undefined,
+                  }}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full mr-1"
+                    style={{ backgroundColor: cat.color || "#3B82F6" }}
+                  />
+                  {cat.name}
+                </Badge>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Puoi selezionare solo prodotti di queste categorie ({filteredProducts.length} disponibili)
+            </p>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -302,24 +364,35 @@ export default function DraftCompletionWizard({
               )}
             />
 
-            {/* Product */}
+            {/* Product - now filtered by categories */}
             <FormField
               name="productId"
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prodotto *</FormLabel>
+                  <FormLabel>
+                    Prodotto *
+                    {draftCategoryIds.length > 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground font-normal">
+                        (filtrati per categoria)
+                      </span>
+                    )}
+                  </FormLabel>
                   <FormControl>
                     <SearchSelect
                       value={field.value}
                       onValueChange={(value) => field.onChange(Number(value))}
                       placeholder="Cerca prodotto..."
                       disabled={isSubmitting}
-                      options={safeProducts.map((p) => ({
+                      options={filteredProducts.map((p) => ({
                         value: p.id,
-                        label: `${p.name}${p.type ? ` - ${p.type}` : ""}`,
+                        label: `${p.name}${p.type ? ` - ${p.type}` : ""}${p.category?.name ? ` (${p.category.name})` : ""}`,
                       }))}
-                      emptyMessage="Nessun prodotto trovato."
+                      emptyMessage={
+                        draftCategoryIds.length > 0
+                          ? "Nessun prodotto trovato nelle categorie selezionate."
+                          : "Nessun prodotto trovato."
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -497,4 +570,3 @@ export default function DraftCompletionWizard({
     </Dialog>
   );
 }
-

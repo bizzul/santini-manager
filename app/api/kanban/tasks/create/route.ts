@@ -142,6 +142,8 @@ export async function POST(req: NextRequest) {
         // Draft and task type fields
         is_draft: result.data.isDraft || false,
         task_type: taskType,
+        // Category IDs for draft offers (used to filter products when completing)
+        draft_category_ids: result.data.draftCategoryIds || null,
       };
 
       // Add site_id if available

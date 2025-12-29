@@ -287,8 +287,7 @@ export const fetchSellProducts = cache(async (siteId: string) => {
     const { data: products, error } = await supabase
         .from("SellProduct")
         .select("*, category:category_id(id, name, color)")
-        .eq("site_id", siteId)
-        .order("name", { ascending: true });
+        .eq("site_id", siteId);
 
     if (error) {
         log.error("Error fetching sell products:", error);
@@ -299,8 +298,21 @@ export const fetchSellProducts = cache(async (siteId: string) => {
         return [];
     }
 
+    // Sort by category name (alphabetically), then by product name
+    const sortedProducts = [...products].sort((a, b) => {
+        const catA = a.category?.name?.toLowerCase() || "";
+        const catB = b.category?.name?.toLowerCase() || "";
+        if (catA !== catB) {
+            return catA.localeCompare(catB, "it");
+        }
+        // Secondary sort by product name
+        const nameA = a.name?.toLowerCase() || "";
+        const nameB = b.name?.toLowerCase() || "";
+        return nameA.localeCompare(nameB, "it");
+    });
+
     // Fetch product-related actions with user info (limited for performance)
-    const productIds = products.map((p) => p.id);
+    const productIds = sortedProducts.map((p) => p.id);
     const { data: actions, error: actionsError } = await supabase
         .from("Action")
         .select(`
@@ -324,13 +336,13 @@ export const fetchSellProducts = cache(async (siteId: string) => {
         });
 
         // Merge products with their last action
-        return products.map((product) => ({
+        return sortedProducts.map((product) => ({
             ...product,
             lastAction: actionsByProduct.get(product.id) || null,
         }));
     }
 
-    return products.map((p) => ({ ...p, lastAction: null }));
+    return sortedProducts.map((p) => ({ ...p, lastAction: null }));
 });
 
 /**
@@ -379,25 +391,37 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
     const supabase = await createClient();
 
     // Phase 1: Fetch kanbans and tasks in parallel
-    const [kanbansResult, tasksResult, clientsResult, productsResult] =
-        await Promise.all([
-            supabase.from("Kanban").select("*").eq("site_id", siteId),
-            supabase
-                .from("Task")
-                .select("*")
-                .eq("site_id", siteId)
-                .eq("archived", false),
-            supabase.from("Client").select("*").eq("site_id", siteId),
-            supabase.from("SellProduct").select("*").eq("site_id", siteId),
-        ]);
+    const [
+        kanbansResult,
+        tasksResult,
+        clientsResult,
+        productsResult,
+        categoriesResult,
+    ] = await Promise.all([
+        supabase.from("Kanban").select("*").eq("site_id", siteId),
+        supabase
+            .from("Task")
+            .select("*")
+            .eq("site_id", siteId)
+            .eq("archived", false),
+        supabase.from("Client").select("*").eq("site_id", siteId),
+        supabase.from("SellProduct").select(
+            "*, category:sellproduct_categories(*)",
+        ).eq("site_id", siteId).eq("active", true),
+        supabase.from("sellproduct_categories").select("*").eq(
+            "site_id",
+            siteId,
+        ).order("name", { ascending: true }),
+    ]);
 
     const kanbans = kanbansResult.data || [];
     const tasks = tasksResult.data || [];
     const clients = clientsResult.data || [];
     const products = productsResult.data || [];
+    const categories = categoriesResult.data || [];
 
     if (tasks.length === 0) {
-        return { kanbans, tasks: [], clients, products };
+        return { kanbans, tasks: [], clients, products, categories };
     }
 
     // Phase 2: Fetch related data
@@ -469,6 +493,7 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
         tasks: tasksWithRelations,
         clients,
         products,
+        categories,
         history,
     };
 });

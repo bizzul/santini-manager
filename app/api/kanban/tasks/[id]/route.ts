@@ -124,7 +124,8 @@ export async function PATCH(
       'kanbanColumnId', 'kanbanId',
       'is_draft', 'task_type', 'display_mode',
       'material', 'metalli', 'ferramenta', 'legno', 'vernice', 'altro', 'stoccato',
-      'percent_status', 'archived', 'parent_task_id'
+      'percent_status', 'archived', 'parent_task_id',
+      'draft_category_ids'
     ];
 
     for (const field of allowedFields) {

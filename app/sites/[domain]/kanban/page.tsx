@@ -43,6 +43,7 @@ export default async function Page({
       kanName={kanName!}
       clients={kanbanData.clients}
       products={kanbanData.products}
+      categories={kanbanData.categories}
       history={kanbanData.history}
       initialTasks={kanbanData.tasks}
       snapshots={snapshots}

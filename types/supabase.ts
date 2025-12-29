@@ -63,6 +63,9 @@ export interface Task {
     // Flag per bozze offerta (quick add)
     is_draft?: boolean;
     isDraft?: boolean; // Alternative property name
+    // Category IDs selected during draft creation (for filtering products when completing)
+    draft_category_ids?: number[];
+    draftCategoryIds?: number[]; // Alternative property name
 }
 
 // Client related types

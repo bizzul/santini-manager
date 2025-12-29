@@ -14,6 +14,7 @@ import Card from "./Card";
 import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import OfferQuickAdd from "./OfferQuickAdd";
+import DraftCompletionWizard from "./DraftCompletionWizard";
 import { Plus, FileEdit } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
@@ -266,7 +267,7 @@ const Column = ({
               </DialogHeader>
               <OfferQuickAdd
                 clients={data.clients || []}
-                products={data.products || data.activeProducts || []}
+                categories={data.categories || []}
                 kanbanId={(kanban as any)?.id}
                 domain={domain}
                 onSuccess={() => {
@@ -371,6 +372,7 @@ interface KanbanBoardTypes {
   name: any;
   clients: any;
   products: any;
+  categories: any;
   history: Action;
   initialTasks?: any[];
   kanban: any;
@@ -382,6 +384,7 @@ function KanbanBoard({
   name,
   clients,
   products,
+  categories,
   history,
   initialTasks = [],
   kanban,
@@ -452,6 +455,14 @@ function KanbanBoard({
   // State for offer follow-up dialog
   const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
   const [selectedOfferTask, setSelectedOfferTask] = useState<Task | null>(null);
+
+  // State for draft completion dialog
+  const [showDraftCompletion, setShowDraftCompletion] = useState(false);
+  const [draftTask, setDraftTask] = useState<Task | null>(null);
+  const [draftTargetColumn, setDraftTargetColumn] = useState<{
+    id: number;
+    identifier: string;
+  } | null>(null);
 
   // Check if this is an offer kanban
   const isOfferKanban =
@@ -727,16 +738,10 @@ function KanbanBoard({
     const isMovingFromFirstColumn = activeData?.fromColumnPosition === 1;
 
     if (isDraft && isOfferKanban && isMovingFromFirstColumn) {
-      // Block move and redirect to offer creation page with draft data
-      toast({
-        title: "Completa l'offerta",
-        description:
-          "Verrai reindirizzato per completare i dettagli dell'offerta.",
-      });
-      // Redirect to offer creation page with draft task ID
-      router.push(
-        `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}&draftId=${task?.id}&targetColumn=${columnId}`
-      );
+      // Show draft completion dialog instead of redirecting
+      setDraftTask(task);
+      setDraftTargetColumn({ id: columnId, identifier: columnIdentifier });
+      setShowDraftCompletion(true);
       return;
     }
 
@@ -960,7 +965,7 @@ function KanbanBoard({
                     <Column
                       key={column.id}
                       column={column}
-                      data={{ clients, products }}
+                      data={{ clients, products, categories }}
                       cards={columnCards}
                       moveCard={moveCard}
                       openModal={openModal}
@@ -1040,6 +1045,34 @@ function KanbanBoard({
             await moveCard(taskId, columnId, columnIdentifier);
             // Refetch tasks to update the sent_date if needed
             await refetchTasks();
+          }}
+          domain={domain}
+        />
+      )}
+
+      {/* Draft Completion Dialog */}
+      {isOfferKanban && (
+        <DraftCompletionWizard
+          open={showDraftCompletion}
+          onOpenChange={(open) => {
+            setShowDraftCompletion(open);
+            if (!open) {
+              setDraftTask(null);
+              setDraftTargetColumn(null);
+            }
+          }}
+          task={draftTask}
+          clients={clients}
+          products={products}
+          categories={categories}
+          targetColumnId={draftTargetColumn?.id || 0}
+          targetColumnIdentifier={draftTargetColumn?.identifier || ""}
+          onComplete={async (taskId, columnId, columnIdentifier) => {
+            await moveCard(taskId, columnId, columnIdentifier);
+            await refetchTasks();
+            setShowDraftCompletion(false);
+            setDraftTask(null);
+            setDraftTargetColumn(null);
           }}
           domain={domain}
         />

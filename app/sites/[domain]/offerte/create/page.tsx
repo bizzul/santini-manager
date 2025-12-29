@@ -65,7 +65,7 @@ export default async function OfferCreatePage({
 
   // Get active sell products for the site
   const { data: products } = await supabase
-    .from("sell_products")
+    .from("SellProduct")
     .select("*, category:sellproduct_categories(*)")
     .eq("site_id", siteId)
     .eq("active", true)

@@ -1,16 +1,27 @@
 import React from "react";
-import { Task } from "@/types/supabase";
+import { Task, Kanban } from "@/types/supabase";
 import CalendarComponent from "@/components/calendar/calendarComponent";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 
-async function getData(): Promise<Task[]> {
+export type TaskWithKanban = Task & {
+  Kanban?: Pick<Kanban, "id" | "color" | "title"> | null;
+};
+
+async function getData(): Promise<TaskWithKanban[]> {
   // Fetch data from your API here.
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("Task")
-    .select("*")
+    .select(`
+      *,
+      Kanban (
+        id,
+        color,
+        title
+      )
+    `)
     .eq("archived", false);
   if (error) {
     console.error("Error fetching tasks:", error);
@@ -34,7 +45,7 @@ async function Page() {
 
   return (
     <div className="container w-full mx-auto relative ">
-      <CalendarComponent tasks={data} />
+      <CalendarComponent tasks={data as TaskWithKanban[]} />
     </div>
   );
 }

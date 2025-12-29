@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/ui/search-select";
-import { ProductMultiSelect } from "@/components/ui/product-multi-select";
+import { CategoryMultiSelect } from "@/components/ui/category-multi-select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -26,14 +26,14 @@ import {
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { Client, SellProduct } from "@/types/supabase";
+import { Client, SellProductCategory } from "@/types/supabase";
 
 // Validation schema for quick add form
 const quickAddSchema = z.object({
   clientId: z.number({
     required_error: "Seleziona un cliente",
   }),
-  productIds: z.array(z.number()).min(1, "Seleziona almeno un prodotto"),
+  categoryIds: z.array(z.number()).min(1, "Seleziona almeno una categoria"),
   deliveryDate: z.date().optional().nullable(),
   other: z.string().optional(),
 });
@@ -42,7 +42,7 @@ type QuickAddFormData = z.infer<typeof quickAddSchema>;
 
 interface OfferQuickAddProps {
   clients: Client[];
-  products: SellProduct[];
+  categories: SellProductCategory[];
   kanbanId: number;
   onSuccess: () => void;
   onCancel: () => void;
@@ -51,7 +51,7 @@ interface OfferQuickAddProps {
 
 export default function OfferQuickAdd({
   clients = [],
-  products = [],
+  categories = [],
   kanbanId,
   onSuccess,
   onCancel,
@@ -63,13 +63,13 @@ export default function OfferQuickAdd({
 
   // Ensure arrays are always safe
   const safeClients = Array.isArray(clients) ? clients : [];
-  const safeProducts = Array.isArray(products) ? products : [];
+  const safeCategories = Array.isArray(categories) ? categories : [];
 
   const form = useForm<QuickAddFormData>({
     resolver: zodResolver(quickAddSchema),
     defaultValues: {
       clientId: undefined,
-      productIds: [],
+      categoryIds: [],
       deliveryDate: null,
       other: "",
     },
@@ -99,7 +99,7 @@ export default function OfferQuickAdd({
     try {
       setIsSubmitting(true);
 
-      // Create task as draft
+      // Create task as draft with category IDs
       const response = await fetch("/api/kanban/tasks/create", {
         method: "POST",
         headers: {
@@ -108,8 +108,11 @@ export default function OfferQuickAdd({
         body: JSON.stringify({
           unique_code: generatedCode,
           clientId: data.clientId,
-          productId: data.productIds[0], // Primary product
-          productIds: data.productIds, // All selected products
+          // No product selected yet - will be selected when completing the draft
+          productId: null,
+          productIds: [],
+          // Store category IDs for filtering products when completing
+          draftCategoryIds: data.categoryIds,
           deliveryDate: data.deliveryDate?.toISOString() || null,
           other: data.other || "",
           kanbanId: kanbanId,
@@ -148,7 +151,8 @@ export default function OfferQuickAdd({
       <div className="flex items-center gap-2 text-muted-foreground">
         <FileEdit className="h-5 w-5" />
         <span className="text-sm">
-          Crea una richiesta offerta rapida. Potrai completare i dettagli in seguito.
+          Crea una richiesta offerta rapida. Selezionerai i prodotti specifici
+          quando completerai l&apos;offerta.
         </span>
       </div>
 
@@ -177,7 +181,9 @@ export default function OfferQuickAdd({
                       value: client.id,
                       label:
                         client.businessName ||
-                        `${client.individualFirstName || ""} ${client.individualLastName || ""}`.trim() ||
+                        `${client.individualFirstName || ""} ${
+                          client.individualLastName || ""
+                        }`.trim() ||
                         "Cliente senza nome",
                     }))}
                     emptyMessage="Nessun cliente trovato."
@@ -189,19 +195,19 @@ export default function OfferQuickAdd({
           />
 
           <FormField
-            name="productIds"
+            name="categoryIds"
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Prodotti *</FormLabel>
+                <FormLabel>Categorie Prodotti *</FormLabel>
                 <FormControl>
-                  <ProductMultiSelect
-                    products={safeProducts}
+                  <CategoryMultiSelect
+                    categories={safeCategories}
                     value={field.value}
                     onValueChange={field.onChange}
-                    placeholder="Seleziona prodotti..."
+                    placeholder="Seleziona categorie..."
                     disabled={isSubmitting}
-                    emptyMessage="Nessun prodotto trovato."
+                    emptyMessage="Nessuna categoria trovata."
                   />
                 </FormControl>
                 <FormMessage />
@@ -233,7 +239,10 @@ export default function OfferQuickAdd({
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                  <PopoverContent
+                    className="w-auto min-w-[280px] p-0"
+                    align="start"
+                  >
                     <Calendar
                       mode="single"
                       selected={field.value || undefined}
@@ -291,4 +300,3 @@ export default function OfferQuickAdd({
     </div>
   );
 }
-

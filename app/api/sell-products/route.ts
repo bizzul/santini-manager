@@ -34,7 +34,19 @@ export async function GET(req: NextRequest) {
             throw error;
         }
 
-        return NextResponse.json(data);
+        // Sort by category name (alphabetically), then by product name
+        const sortedData = data ? [...data].sort((a, b) => {
+            const catA = a.category?.name?.toLowerCase() || "";
+            const catB = b.category?.name?.toLowerCase() || "";
+            if (catA !== catB) {
+                return catA.localeCompare(catB, "it");
+            }
+            const nameA = a.name?.toLowerCase() || "";
+            const nameB = b.name?.toLowerCase() || "";
+            return nameA.localeCompare(nameB, "it");
+        }) : [];
+
+        return NextResponse.json(sortedData);
     } catch (err: unknown) {
         log.error("SellProducts API error:", err);
         return NextResponse.json(

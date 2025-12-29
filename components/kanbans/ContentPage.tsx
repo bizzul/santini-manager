@@ -6,6 +6,7 @@ function ContentPage({
   kanName,
   clients,
   products,
+  categories,
   history,
   initialTasks,
   snapshots,
@@ -15,6 +16,7 @@ function ContentPage({
   kanName: string;
   clients: any;
   products: any;
+  categories: any;
   history: any;
   initialTasks?: any[];
   snapshots: any[];
@@ -27,6 +29,7 @@ function ContentPage({
         name={kanName}
         clients={clients}
         products={products}
+        categories={categories}
         history={history}
         initialTasks={initialTasks}
         kanban={kanban}

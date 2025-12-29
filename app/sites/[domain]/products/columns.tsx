@@ -6,6 +6,7 @@ import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Check, X, Image, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -16,7 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 
 // Extended SellProduct type with lastAction
-type SellProductWithAction = SellProduct & {
+export type SellProductWithAction = SellProduct & {
   lastAction?: {
     createdAt: string;
     type: string;
@@ -32,6 +33,29 @@ type SellProductWithAction = SellProduct & {
 export const createColumns = (
   domain?: string
 ): ColumnDef<SellProductWithAction>[] => [
+  {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Seleziona tutto"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Seleziona riga"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+    size: 40,
+  },
   {
     id: "category",
     accessorFn: (row) => row.category?.name || "-",
