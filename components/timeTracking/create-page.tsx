@@ -1,8 +1,17 @@
 "use client";
-import React, { useEffect, useState } from "react";
-//import TasksFilter from "../errorTracking/filterTasks";
+import React, { useEffect, useState, useCallback } from "react";
 import { useToast } from "../ui/use-toast";
 import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { Progress } from "../ui/progress";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 import {
   Select,
   SelectContent,
@@ -10,7 +19,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { SearchSelect } from "../ui/search-select";
 import { logger } from "@/lib/logger";
+import {
+  Clock,
+  Plus,
+  Trash2,
+  Save,
+  RotateCcw,
+  Briefcase,
+  Timer,
+  MessageSquare,
+  Tag,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 
 // Define types based on Supabase schema
 interface Roles {
@@ -29,59 +52,34 @@ interface Task {
 interface Session {
   user: {
     sub: string;
+    given_name?: string;
+    family_name?: string;
   };
 }
 
-const CheckboxGroup = ({
-  options,
-  selectedValues = [],
-  onSelectionChange,
-}: any) => {
-  const handleCheckboxChange = (optionValue: string, isChecked: boolean) => {
-    const newSelectedValues = isChecked
-      ? [...selectedValues, optionValue]
-      : selectedValues.filter((value: any) => value !== optionValue);
-    onSelectionChange(newSelectedValues);
-  };
+interface TimeRow {
+  task: string;
+  taskLabel?: string;
+  start: string;
+  end: string;
+  hours: string;
+  minutes: string;
+  description: string;
+  descriptionCat: string;
+  roles: Roles | {};
+  userId: string;
+}
 
-  // const handleButtonClick = (option) => {
-  //   if (selectedValues.includes(option.id)) {
-  //     setSelectedValues(selectedValues.filter((id) => id !== option.id));
-  //   } else {
-  //     setSelectedValues([...selectedValues, option.id]);
-  //   }
-  // };
+const QUICK_TIMES = [
+  { hours: 0, minutes: 30, label: "30m" },
+  { hours: 1, minutes: 0, label: "1h" },
+  { hours: 1, minutes: 30, label: "1h 30m" },
+  { hours: 2, minutes: 0, label: "2h" },
+  { hours: 4, minutes: 0, label: "4h" },
+  { hours: 8, minutes: 0, label: "8h" },
+];
 
-  return (
-    <div className="flex flex-col">
-      {options.map((option: any) => (
-        <label key={option.id} className="md:truncate w-full">
-          <input
-            className="m-1"
-            type="checkbox"
-            value={option.id}
-            checked={selectedValues.includes(option)}
-            onChange={(event) =>
-              handleCheckboxChange(option, event.target.checked)
-            }
-          />{" "}
-          {option.name}
-        </label>
-      ))}
-      {/* {options.map((option: any) => (
-        <button
-          key={option.id}
-          className={`md:truncate w-full text-left ${
-            selectedValues.includes(option.id) ? 'bg-blue-500 text-white' : 'bg-white text-black'
-          }`}
-          onClick={() => handleButtonClick(option)}
-        >
-          {option.name}
-        </button>
-      ))} */}
-    </div>
-  );
-};
+const WORK_HOURS_TARGET = 8.5; // 8h 30m
 
 const CreatePage = ({
   data,
@@ -91,13 +89,14 @@ const CreatePage = ({
   session: Session;
 }) => {
   const rolesOptions = data.roles;
-  const [selectedTask, setSelectedTask] = useState<Task>();
-  const [success, setSuccess] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const { toast } = useToast();
-  const [rows, setRows] = useState([
-    {
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const createEmptyRow = useCallback(
+    (): TimeRow => ({
       task: "",
+      taskLabel: "",
       start: "",
       end: "",
       hours: "",
@@ -106,542 +105,534 @@ const CreatePage = ({
       descriptionCat: "",
       roles: {},
       userId: session.user.sub,
-    },
-  ]);
+    }),
+    [session.user.sub]
+  );
 
-  const [filteredRows, setFilteredRows] = useState(rows);
+  const [rows, setRows] = useState<TimeRow[]>([createEmptyRow()]);
 
+  // Load from localStorage on mount
   useEffect(() => {
-    setFilteredRows(rows.filter((row) => row.userId === session.user.sub));
-  }, [rows, session.user.sub]);
-
-  useEffect(() => {
-    const updatedRows = [...rows];
-    updatedRows[rows.length - 1].task = selectedTask?.unique_code || "";
-    setRows(updatedRows);
-  }, [selectedTask]);
-
-  //assign roles to row
-  useEffect(() => {
-    const storedData = JSON.parse(
-      //@ts-ignore
-      localStorage.getItem(`timetracking-${session.user.sub}`)
+    const storedData = localStorage.getItem(
+      `timetracking-${session.user.sub}`
     );
     if (storedData) {
-      const updatedRows = storedData.map((row: any) => ({
-        ...row,
-        roles: row.roles,
-
-        // task: row.task,
-      }));
-
-      setRows(updatedRows);
-    }
-  }, []);
-
-  //save the data to localstorage
-  const handleSaveData = async () => {
-    try {
-      const rowsToSave = [...rows];
-
-      const lastRow = rowsToSave[rowsToSave.length - 1];
-
-      // Only add a new row if the last row has some non-empty data
-      if (
-        (lastRow.task !== "" ||
-          lastRow.start !== "" ||
-          lastRow.end !== "" ||
-          lastRow.hours !== "" ||
-          lastRow.minutes !== "" ||
-          lastRow.description !== "" ||
-          lastRow.descriptionCat !== "" ||
-          lastRow.roles) &&
-        (lastRow.userId != null ||
-          lastRow.userId !== "" ||
-          (lastRow.userId !== undefined && rows.length >= 1))
-      ) {
-        rowsToSave.push({
-          task: "",
-          start: "",
-          end: "",
-          hours: "",
-          minutes: "",
-          description: "",
-          descriptionCat: "",
-          roles: {},
-          userId: session.user.sub,
-        });
+      try {
+        const parsed = JSON.parse(storedData);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRows(parsed);
+        }
+      } catch {
+        // Invalid data, start fresh
       }
+    }
+  }, [session.user.sub]);
 
-      // save the data to local storage
-      localStorage.setItem(
-        `timetracking-${session.user.sub}`,
-        JSON.stringify(rowsToSave)
-      );
+  // Calculate totals
+  const calculateTotals = useCallback(() => {
+    let totalMinutes = 0;
+    rows.forEach((row) => {
+      if (row.task) {
+        totalMinutes += (parseInt(row.hours) || 0) * 60 + (parseInt(row.minutes) || 0);
+      }
+    });
 
-      toast({
-        description: `Dati temporanei salvati`,
-      });
-      // alert("Dati temporanei salvati");
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    const targetMinutes = WORK_HOURS_TARGET * 60;
+    const remainingToTarget = Math.max(0, targetMinutes - totalMinutes);
+    const progress = Math.min(100, (totalMinutes / targetMinutes) * 100);
 
-      // alert("Dati temporanei salvati!");
-    } catch (error) {
-      alert(`An error occurred while saving data!, errore: ${error}`);
+    return {
+      totalHours,
+      totalMinutes: remainingMinutes,
+      remainingHours: Math.floor(remainingToTarget / 60),
+      remainingMinutes: Math.round(remainingToTarget % 60),
+      progress,
+      totalInMinutes: totalMinutes,
+    };
+  }, [rows]);
+
+  const totals = calculateTotals();
+
+  // Get completed entries (rows with task filled)
+  const completedEntries = rows.filter((row) => row.task).length;
+
+  // Save to localStorage
+  const handleSaveTemp = useCallback(() => {
+    localStorage.setItem(
+      `timetracking-${session.user.sub}`,
+      JSON.stringify(rows)
+    );
+    toast({ description: "Bozza salvata temporaneamente" });
+  }, [rows, session.user.sub, toast]);
+
+  // Handle task selection for a row
+  const handleTaskChange = (value: string, index: number) => {
+    const selectedTask = data.tasks.find((t) => t.id.toString() === value);
+    if (selectedTask) {
+      const updatedRows = [...rows];
+      updatedRows[index] = {
+        ...updatedRows[index],
+        task: selectedTask.unique_code || "",
+        taskLabel: selectedTask.client?.businessName
+          ? `${selectedTask.unique_code} - ${selectedTask.client.businessName}`
+          : selectedTask.unique_code || "",
+      };
+      setRows(updatedRows);
     }
   };
 
+  // Handle role selection
+  const handleRoleChange = (value: string, index: number) => {
+    const selectedRole = rolesOptions.find((r) => r.id.toString() === value);
+    if (selectedRole) {
+      const updatedRows = [...rows];
+      updatedRows[index] = {
+        ...updatedRows[index],
+        roles: selectedRole,
+      };
+      setRows(updatedRows);
+    }
+  };
+
+  // Handle input changes
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    index: number,
+    field: keyof TimeRow
+  ) => {
+    const updatedRows = [...rows];
+    updatedRows[index] = {
+      ...updatedRows[index],
+      [field]: e.target.value,
+    };
+    setRows(updatedRows);
+  };
+
+  // Handle description category change
+  const handleDescCatChange = (value: string, index: number) => {
+    const updatedRows = [...rows];
+    updatedRows[index] = {
+      ...updatedRows[index],
+      descriptionCat: value,
+    };
+    setRows(updatedRows);
+  };
+
+  // Quick time selection
+  const handleQuickTime = (hours: number, minutes: number, index: number) => {
+    const updatedRows = [...rows];
+    updatedRows[index] = {
+      ...updatedRows[index],
+      hours: hours.toString(),
+      minutes: minutes.toString(),
+    };
+    setRows(updatedRows);
+  };
+
+  // Add new row
   const handleAddRow = () => {
     const lastRow = rows[rows.length - 1];
 
-    // Check if the 'task' field in the last row is not empty
-    if (lastRow.task === "") {
+    if (!lastRow.task) {
       toast({
-        description:
-          "Inserisci un numero di progetto prima di aggiungere una nuova riga!",
+        description: "Seleziona un progetto prima di aggiungere una nuova registrazione",
+        variant: "destructive",
       });
       return;
     }
 
-    // Check if roles is empty
     if (!lastRow.roles || Object.keys(lastRow.roles).length === 0) {
       toast({
-        description: "Inserisci un reparto prima di aggiungere una nuova riga!",
+        description: "Seleziona un reparto prima di aggiungere una nuova registrazione",
+        variant: "destructive",
       });
       return;
     }
 
-    const newRow = {
-      task: "",
-      start: "",
-      end: "",
-      hours: "",
-      minutes: "",
-      description: "",
-      descriptionCat: "",
-      roles: {},
-      userId: session.user.sub,
-    };
-
-    // Only add a new row if the last row has some non-empty data
-    if (
-      lastRow.task !== "" ||
-      lastRow.start !== "" ||
-      lastRow.end !== "" ||
-      lastRow.hours !== "" ||
-      lastRow.minutes !== "" ||
-      lastRow.description !== "" ||
-      lastRow.descriptionCat !== "" ||
-      Object.keys(lastRow.roles).length > 0
-    ) {
-      handleSaveData();
-      setRows([...rows, newRow]);
-    }
-    setSelectedTask(undefined);
+    handleSaveTemp();
+    setRows([...rows, createEmptyRow()]);
   };
 
-  //remove from localstorage
-  const removeLocalStorage = async () => {
-    if (window.confirm("Sei sicuro di svuotare tutto?")) {
-      try {
-        localStorage.removeItem(`timetracking-${session.user.sub}`);
+  // Delete row
+  const handleDeleteRow = (index: number) => {
+    if (rows.length === 1) {
+      setRows([createEmptyRow()]);
+    } else {
+      const newRows = rows.filter((_, i) => i !== index);
+      setRows(newRows);
+    }
+    localStorage.setItem(
+      `timetracking-${session.user.sub}`,
+      JSON.stringify(rows.filter((_, i) => i !== index))
+    );
+  };
 
-        toast({
-          description: `Registrazioni rimosse correttamente`,
-        });
-        location.reload();
-      } catch (error) {
-        alert("Errore!");
-      }
+  // Clear all
+  const handleClearAll = () => {
+    if (window.confirm("Sei sicuro di voler eliminare tutte le registrazioni?")) {
+      localStorage.removeItem(`timetracking-${session.user.sub}`);
+      setRows([createEmptyRow()]);
+      toast({ description: "Tutte le registrazioni sono state eliminate" });
     }
   };
 
-  function handleSave() {
+  // Submit all entries
+  const handleSubmit = async () => {
     setIsSaved(true);
 
-    // Check if any element in the array has an empty 'task' field
-    const hasEmptyTask = rows.some((row) => row.task === "");
+    const validRows = rows.filter((row) => row.task);
 
-    // Check if any element has missing roles
-    const hasMissingRoles = rows.some((row) => {
-      // Skip the last empty row
-      if (row.task === "") return false;
-      // Check if roles is empty object or undefined
-      return !row.roles || Object.keys(row.roles).length === 0;
-    });
+    if (validRows.length === 0) {
+      toast({
+        description: "Devi avere almeno una registrazione da inviare",
+        variant: "destructive",
+      });
+      setIsSaved(false);
+      return;
+    }
+
+    // Check for missing roles
+    const hasMissingRoles = validRows.some(
+      (row) => !row.roles || Object.keys(row.roles).length === 0
+    );
 
     if (hasMissingRoles) {
       toast({
-        description: "Devi selezionare un reparto per tutti i record!",
+        description: "Seleziona un reparto per tutte le registrazioni",
+        variant: "destructive",
       });
       setIsSaved(false);
       return;
     }
 
-    let rowsToSend = [
-      {
-        task: "",
-        start: "",
-        end: "",
-        hours: "",
-        minutes: "",
-        description: "",
-        descriptionCat: "",
-        roles: {},
-        userId: session.user.sub,
-      },
-    ];
-    if (hasEmptyTask) {
-      // Create a new array that only includes rows with a non-empty 'task' field
-      rowsToSend = rows.filter((row) => row.task !== "");
-    } else {
-      rowsToSend = rows;
-    }
+    try {
+      const response = await fetch("/api/time-tracking/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validRows),
+      });
 
-    if (rowsToSend.length === 0) {
-      logger.error(
-        "Cannot send request: no rows have a non-empty 'task' field"
-      );
+      if (!response.ok) throw new Error("Network error");
+
+      const responseData = await response.json();
+      if (responseData.error) {
+        throw new Error(responseData.error);
+      }
+
+      setIsSuccess(true);
       toast({
-        description: `Devi avere almeno un dato da inviare!`,
+        description: `${validRows.length} registrazioni salvate! Totale: ${totals.totalHours}h ${totals.totalMinutes}m`,
       });
-      // alert("Devi avere almeno un dato da inviare!");
+
+      setTimeout(() => {
+        localStorage.removeItem(`timetracking-${session.user.sub}`);
+        window.location.reload();
+      }, 3000);
+    } catch (error) {
+      logger.error("Error saving time tracking:", error);
+      toast({
+        description: "Errore nel salvataggio. Riprova.",
+        variant: "destructive",
+      });
       setIsSaved(false);
-      return;
-    }
-
-    // Calculate total hours from the rows
-    const totalHours = rowsToSend.reduce((acc, row) => {
-      const rowHours = parseInt(row.hours) || 0;
-      const rowMinutes = parseInt(row.minutes) || 0;
-      const totalRowMinutes = rowHours * 60 + rowMinutes;
-      return acc + totalRowMinutes;
-    }, 0);
-
-    // Make a POST request to your protected API route
-    fetch("/api/time-tracking/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(rowsToSend), // Assuming the array is stored in a variable called 'rows'
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Network response was not ok");
-        } else {
-          return res.json();
-        }
-      })
-      .then((data) => {
-        if (data.error) {
-          logger.error("Error in saving data", data.error);
-          alert("Errore nel salvataggio! Riprova.." + data.error);
-          setIsSaved(false);
-          return;
-        }
-        // console.log(data); // The response from your API
-        setSuccess(true);
-        const summedHours = {
-          hours: Math.floor(totalHours / 60),
-          minutes: totalHours % 60,
-        };
-        toast({
-          description: `Ore registrate correttamente! Totale: ${summedHours.hours} ore ${summedHours.minutes} minuti`,
-        });
-        setTimeout(() => {
-          setSuccess(false);
-          localStorage.removeItem(`timetracking-${session.user.sub}`);
-          location.reload();
-        }, 5000);
-      })
-      .catch((error) => {
-        logger.error(
-          "There was an error sending the data to the server:",
-          error
-        );
-
-        alert("Errore nel salvataggio! Riprova..");
-        setIsSaved(false);
-      });
-  }
-
-  const handleInputChange = (event: any, index: number) => {
-    const { name, value } = event.target;
-
-    const updatedRows: any = [...rows];
-    if (name !== "selection") {
-      //updatedRows[index][name] = value;
-      updatedRows[index][name] = value;
-    }
-    setRows(updatedRows);
-  };
-
-  const handleCheckboxChange = (index: any, values: any) => {
-    const updatedRows = [...rows];
-    updatedRows[index].roles = values;
-    setRows(updatedRows);
-  };
-
-  const handleSelectChange = (e: string) => {
-    // Assuming e is the task ID as a string
-    logger.debug(e);
-    const selectedTaskId = e;
-    const selectedTask = data.tasks.find(
-      (task) => task.id === Number(selectedTaskId)
-    );
-    setSelectedTask(selectedTask); // Assuming setSelectedTask is a function to update state
-  };
-
-  const handleSelectChangeRole = (e: any, index: number) => {
-    const selectedRoleId = e;
-    // Assuming data.roles is an array of role objects with 'id' and 'name' properties
-    const selectedRole = data.roles.find(
-      (role) => role.id === Number(selectedRoleId)
-    );
-    if (selectedRole) {
-      const updatedRows = [...rows];
-      updatedRows[index].roles = selectedRole; // Store the whole role object here
-      setRows(updatedRows);
     }
   };
 
-  const handleDeleteRow = (index: number) => {
-    // update the state
-    const newRows = [...rows];
-    newRows.splice(index, 1);
-    setRows(newRows);
-
-    // update the local storage
-    localStorage.setItem(
-      `timetracking-${session.user.sub}`,
-      JSON.stringify(newRows)
-    );
-  };
-
-  const calculateRemainingTime = (filterRows: any) => {
-    let totalHours = 0;
-    let totalMinutes = 0;
-
-    filterRows.forEach((row: any) => {
-      totalHours += Number(row.hours); // add hours to total
-      totalMinutes += Number(row.minutes); // add minutes to total
-    });
-
-    // convert total minutes into hours and add to total hours
-    totalHours += Math.floor(totalMinutes / 60);
-    totalMinutes = totalMinutes % 60;
-
-    // predefined hours and minutes for comparison
-    let predefinedHours = 8;
-    let predefinedMinutes = 30;
-
-    // calculate remaining time
-    let remainingHours = predefinedHours - totalHours;
-    let remainingMinutes = predefinedMinutes - totalMinutes;
-
-    // if remainingMinutes is negative, subtract one hour from remainingHours and add 60 to remainingMinutes
-    if (remainingMinutes < 0) {
-      remainingHours -= 1;
-      remainingMinutes += 60;
-    }
-
-    // if remainingHours is negative, set both remainingHours and remainingMinutes to 0
-    if (remainingHours < 0) {
-      remainingHours = 0;
-      remainingMinutes = 0;
-    }
-
-    return {
-      total: {
-        hours: totalHours,
-        minutes: totalMinutes,
-      },
-      remaining: {
-        hours: remainingHours,
-        minutes: remainingMinutes,
-      },
-    };
-  };
-
-  // usage
-  const { total, remaining } = calculateRemainingTime(filteredRows);
+  const isRowComplete = (row: TimeRow) =>
+    row.task && row.roles && Object.keys(row.roles).length > 0;
 
   return (
-    <div className="flex justify-center w-auto min-h-screen flex-col items-center   gap-10 ">
-      <h1 className="text-3xl pt-4 ">Registrazione ore</h1>
-
-      {filteredRows.map((row, index) => (
-        <div
-          key={index}
-          className="flex flex-row gap-4 border flex-wrap md:flex-nowrap justify-center items-center p-4  w-full  "
-        >
-          <div className="flex flex-col items-center w-1/2">
-            <p className="font-bold">Selezionato</p> <p>{row.task}</p>
-          </div>
-          <div className="flex flex-col items-center w-1/2">
-            {/* @ts-ignore */}
-            {row.roles && row.roles.name ? (
-              <>
-                <p className="font-bold">Selezionato</p>
-                <div className="mt-2 text-sm text-white font-bold">
-                  {/* @ts-ignore */}
-                  {row.roles.name}
+    <div className="min-h-screen pb-24">
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Progress Summary Card */}
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                  <Timer className="h-6 w-6 text-primary" />
                 </div>
+                <div>
+                  <CardTitle className="text-lg">Riepilogo giornata</CardTitle>
+                  <CardDescription>
+                    {completedEntries} registrazion{completedEntries === 1 ? "e" : "i"} completat{completedEntries === 1 ? "a" : "e"}
+                  </CardDescription>
+                </div>
+              </div>
+              {isSuccess && (
+                <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Salvato
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-background/60 rounded-xl p-4 backdrop-blur-sm">
+                <p className="text-sm text-muted-foreground mb-1">Ore registrate</p>
+                <p className="text-2xl font-bold text-primary">
+                  {totals.totalHours}
+                  <span className="text-lg font-normal">h </span>
+                  {totals.totalMinutes}
+                  <span className="text-lg font-normal">m</span>
+                </p>
+              </div>
+              <div className="bg-background/60 rounded-xl p-4 backdrop-blur-sm">
+                <p className="text-sm text-muted-foreground mb-1">Rimanenti</p>
+                <p className="text-2xl font-bold text-muted-foreground">
+                  {totals.remainingHours}
+                  <span className="text-lg font-normal">h </span>
+                  {totals.remainingMinutes}
+                  <span className="text-lg font-normal">m</span>
+                </p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Progresso giornaliero</span>
+                <span className="font-medium">{Math.round(totals.progress)}%</span>
+              </div>
+              <Progress value={totals.progress} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Time Entries */}
+        <div className="space-y-4">
+          {rows.map((row, index) => (
+            <Card
+              key={index}
+              className={`transition-all duration-300 ${
+                isRowComplete(row)
+                  ? "border-green-500/30 bg-green-500/5"
+                  : "border-border"
+              }`}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        isRowComplete(row)
+                          ? "bg-green-500/20 text-green-600"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {isRowComplete(row) ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        index + 1
+                      )}
+                    </div>
+                    <div>
+                      <CardTitle className="text-base">
+                        {row.taskLabel || row.task || "Nuova registrazione"}
+                      </CardTitle>
+                      {(row.roles as Roles)?.name && (
+                        <Badge variant="secondary" className="mt-1 text-xs">
+                          {(row.roles as Roles).name}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDeleteRow(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Project & Role Selection */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      Progetto
+                    </label>
+                    <SearchSelect
+                      value={
+                        data.tasks.find((t) => t.unique_code === row.task)?.id.toString() || ""
+                      }
+                      onValueChange={(v) => handleTaskChange(v.toString(), index)}
+                      placeholder="Seleziona progetto..."
+                      options={data.tasks.map((t) => ({
+                        value: t.id.toString(),
+                        label: t.client?.businessName
+                          ? `${t.unique_code} - ${t.client.businessName}`
+                          : t.unique_code || "",
+                      }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      Reparto
+                    </label>
+                    <Select
+                      value={(row.roles as Roles)?.id?.toString() || ""}
+                      onValueChange={(v) => handleRoleChange(v, index)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona reparto..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rolesOptions.map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Time Input */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    Tempo impiegato
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {QUICK_TIMES.map((qt) => (
+                      <Button
+                        key={qt.label}
+                        variant="outline"
+                        size="sm"
+                        className={`text-xs ${
+                          row.hours === qt.hours.toString() &&
+                          row.minutes === qt.minutes.toString()
+                            ? "bg-primary text-primary-foreground"
+                            : ""
+                        }`}
+                        onClick={() => handleQuickTime(qt.hours, qt.minutes, index)}
+                      >
+                        {qt.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          max="24"
+                          value={row.hours}
+                          onChange={(e) => handleInputChange(e, index, "hours")}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          h
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          max="59"
+                          value={row.minutes}
+                          onChange={(e) => handleInputChange(e, index, "minutes")}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          m
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      Commento
+                    </label>
+                    <Input
+                      placeholder="Descrizione attività..."
+                      value={row.description}
+                      onChange={(e) => handleInputChange(e, index, "description")}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                      Tipologia
+                    </label>
+                    <Select
+                      value={row.descriptionCat}
+                      onValueChange={(v) => handleDescCatChange(v, index)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona tipologia..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Nessuna">Nessuna</SelectItem>
+                        <SelectItem value="Logistica">Logistica</SelectItem>
+                        <SelectItem value="Speciale">Speciale</SelectItem>
+                        <SelectItem value="Errore">Errore</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Add Row Button */}
+        <Button
+          variant="outline"
+          className="w-full border-dashed border-2 h-14 text-muted-foreground hover:text-foreground hover:border-primary"
+          onClick={handleAddRow}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Aggiungi registrazione
+        </Button>
+      </div>
+
+      {/* Fixed Bottom Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t p-4 z-50">
+        <div className="max-w-4xl mx-auto flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleClearAll}
+            disabled={isSaved}
+          >
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Azzera
+          </Button>
+          <Button
+            className="flex-[2] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            onClick={handleSubmit}
+            disabled={isSaved || completedEntries === 0}
+          >
+            {isSaved ? (
+              <>
+                <span className="animate-spin mr-2">⏳</span>
+                Salvataggio...
               </>
             ) : (
-              <div className="mt-2 text-sm text-gray-400">
-                Nessun reparto selezionato
-              </div>
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Salva ({completedEntries})
+              </>
             )}
-          </div>
-          {index === rows.length - 1 && ( // show only for the last row
-            <div className="flex flex-col items-center w-1/2  ">
-              <label>Progetto</label>
-              <Select onValueChange={handleSelectChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona progetto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {data.tasks.map((task, index) => (
-                    <SelectItem value={task.id.toString()} key={task.id}>
-                      {task.unique_code}
-                      {/* @ts-ignore */}
-                      {task.client?.businessName &&
-                        //@ts-ignore
-                        " - " + task.client?.businessName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <input
-            type="hidden"
-            name="task"
-            value={row.task}
-            onChange={(event) => handleInputChange(event, index)}
-          />
-
-          {index === rows.length - 1 && (
-            <div className="flex w-full flex-col items-center ">
-              <label>Reparto/i</label>
-              {/* <CheckboxGroup
-              options={rolesOptions}
-              selectedValues={row.roles}
-              onSelectionChange={(values: any) =>
-                handleCheckboxChange(index, values)
-              }
-            /> */}
-              <Select onValueChange={(e) => handleSelectChangeRole(e, index)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona reparto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {rolesOptions.map((role, index) => (
-                    <SelectItem value={role.id.toString()} key={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* <input
-              type="hidden"
-              name="roles"
-              value={row.roles}
-              onChange={(event) => handleInputChange(event, index)}
-            /> */}
-            </div>
-          )}
-          <div className="flex flex-row gap-1 ">
-            <div className="flex flex-col items-center">
-              <label>Ore</label>
-              <Input
-                type="number"
-                className="bg-transparent  w-24"
-                name="hours"
-                value={row.hours}
-                onChange={(event) => handleInputChange(event, index)}
-              />
-            </div>
-            <div className="flex flex-col items-center ">
-              <label>Minuti</label>
-              <Input
-                type="number"
-                className="bg-transparent w-24"
-                name="minutes"
-                value={row.minutes}
-                onChange={(event) => handleInputChange(event, index)}
-              />
-            </div>
-            <div className="flex flex-col items-center ">
-              <label>Commento</label>
-              <Input
-                type="text"
-                className="bg-transparent  w-40"
-                name="description"
-                value={row.description}
-                onChange={(event) => handleInputChange(event, index)}
-              />
-            </div>
-            <div className="flex flex-col items-center">
-              <label>Desc. Tipo</label>
-              <select
-                name="descriptionCat"
-                value={row.descriptionCat}
-                className="border rounded-xs  py-2 px-4"
-                onChange={(event) => handleInputChange(event, index)}
-              >
-                <option value="">Nessuna</option>
-                <option value="Logistica">Logistica</option>
-                <option value="Speciale">Speciale</option>
-                <option value="Errore">Errore</option>
-              </select>
-            </div>
-          </div>
-          {index != rows.length - 1 && (
-            <button
-              className="border bg-red-600/50 w-1/2 p-2 text-xs mt-3"
-              onClick={() => handleDeleteRow(index)}
-            >
-              Cancella registrazione
-            </button>
-          )}
+          </Button>
         </div>
-      ))}
-      <div>
-        {" "}
-        <h2 className="text-xl font-light -my-6">
-          Ore registrate:{" "}
-          <span className="font-bold">
-            {total.hours}:{total.minutes}{" "}
-          </span>
-          / ore rimanenti:{" "}
-          <span className="font-bold">
-            {remaining.hours}:{remaining.minutes}
-          </span>
-        </h2>
-      </div>
-      <div className="flex flex-row gap-10">
-        <button className="border w-full p-4" onClick={handleAddRow}>
-          Aggiungi registrazione
-        </button>
-        <button
-          className={`border bg-green-600 w-full p-4 opacity-100 transition-all duration-300 ${
-            isSaved == true && "opacity-20 cursor-not-allowed"
-          }}`}
-          //@ts-ignore
-          disabled={isSaved ? true : false}
-          onClick={handleSave}
-        >
-          Salva a fine giornata
-        </button>
-        <button
-          className="border bg-red-600 w-full p-4"
-          onClick={removeLocalStorage}
-        >
-          Azzera
-        </button>
       </div>
     </div>
   );

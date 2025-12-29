@@ -35,23 +35,102 @@ export const createColumns = (
 ): ColumnDef<SellProductWithAction>[] => [
   {
     id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+    header: ({ table }) => {
+      // Helper to find all scrollable ancestors and save their scroll positions
+      const saveScrollPositions = (element: HTMLElement | null): Array<{el: HTMLElement, scrollTop: number}> => {
+        const positions: Array<{el: HTMLElement, scrollTop: number}> = [];
+        let current = element;
+        while (current) {
+          const { overflow, overflowY } = window.getComputedStyle(current);
+          if (overflow === 'auto' || overflow === 'scroll' || overflowY === 'auto' || overflowY === 'scroll') {
+            positions.push({ el: current, scrollTop: current.scrollTop });
+          }
+          current = current.parentElement;
         }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Seleziona tutto"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Seleziona riga"
-      />
-    ),
+        return positions;
+      };
+      
+      return (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            const scrollPositions = saveScrollPositions(e.currentTarget as HTMLElement);
+            const windowScrollY = window.scrollY;
+            
+            table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected());
+            
+            requestAnimationFrame(() => {
+              scrollPositions.forEach(({ el, scrollTop }) => {
+                el.scrollTop = scrollTop;
+              });
+              window.scrollTo({ top: windowScrollY, behavior: "instant" });
+            });
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={() => {}}
+            aria-label="Seleziona tutto"
+            tabIndex={-1}
+          />
+        </div>
+      );
+    },
+    cell: ({ row }) => {
+      // Helper to find all scrollable ancestors and save their scroll positions
+      const saveScrollPositions = (element: HTMLElement | null): Array<{el: HTMLElement, scrollTop: number}> => {
+        const positions: Array<{el: HTMLElement, scrollTop: number}> = [];
+        let current = element;
+        while (current) {
+          const { overflow, overflowY } = window.getComputedStyle(current);
+          if (overflow === 'auto' || overflow === 'scroll' || overflowY === 'auto' || overflowY === 'scroll') {
+            positions.push({ el: current, scrollTop: current.scrollTop });
+          }
+          current = current.parentElement;
+        }
+        return positions;
+      };
+      
+      return (
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            // Save scroll positions of ALL scrollable ancestors
+            const scrollPositions = saveScrollPositions(e.currentTarget as HTMLElement);
+            const windowScrollY = window.scrollY;
+            
+            row.toggleSelected(!row.getIsSelected());
+            
+            // Restore all scroll positions on next frame
+            requestAnimationFrame(() => {
+              scrollPositions.forEach(({ el, scrollTop }) => {
+                el.scrollTop = scrollTop;
+              });
+              window.scrollTo({ top: windowScrollY, behavior: "instant" });
+            });
+          }}
+          onMouseDown={(e) => {
+            // Prevent focus shift which can cause scroll
+            e.preventDefault();
+          }}
+        >
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={() => {}}
+            aria-label="Seleziona riga"
+            tabIndex={-1}
+          />
+        </div>
+      );
+    },
     enableSorting: false,
     enableHiding: false,
     size: 40,

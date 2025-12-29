@@ -3,6 +3,10 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/server";
 import CreatePage from "@/components/timeTracking/create-page";
 import { getUserContext } from "@/lib/auth-utils";
+import { getSiteData } from "@/lib/fetchers";
+import { Clock, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // Define types to match what CreatePage expects
 interface Roles {
@@ -23,13 +27,14 @@ export type Datas = {
   roles: Roles[];
 };
 
-async function getData(session: any): Promise<Datas> {
-  // Fetch data from your API here.
-  // Fetch all items that match specified conditions
+async function getData(siteId: string): Promise<Datas> {
   const supabase = await createClient();
+  
+  // Filter tasks by site_id
   const { data: tasks, error: tasksError } = await supabase
-    .from("task")
-    .select("*")
+    .from("Task")
+    .select("*, client:Client(businessName)")
+    .eq("site_id", siteId)
     .order("unique_code", { ascending: false });
 
   if (tasksError) {
@@ -37,16 +42,17 @@ async function getData(session: any): Promise<Datas> {
     return { tasks: [], roles: [] };
   }
 
+  // Filter roles by site_id
   const { data: roles, error: rolesError } = await supabase
-    .from("roles")
-    .select("*");
+    .from("Roles")
+    .select("*")
+    .eq("site_id", siteId);
 
   if (rolesError) {
     console.error("Error fetching roles:", rolesError);
     return { tasks: [], roles: [] };
   }
   
-  // Transform the data to match our local types
   const transformedTasks: Task[] = (tasks || []).map((task: any) => ({
     id: task.id,
     unique_code: task.unique_code || undefined,
@@ -61,29 +67,82 @@ async function getData(session: any): Promise<Datas> {
   return { tasks: transformedTasks, roles: transformedRoles };
 }
 
-async function Page() {
+async function Page({ params }: { params: Promise<{ domain: string }> }) {
+  const { domain } = await params;
   const session = await getUserContext();
 
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
     "/timetracking/create"
   )}`;
+  
   if (!session || !session.user) {
-    // Handle the absence of a session. Redirect or return an error.
-    // For example, you might redirect to the login page:
     return redirect(returnLink);
   }
 
-  const data = await getData(session);
-
+  // Get site data to filter by site_id
+  const siteResponse = await getSiteData(domain);
+  if (!siteResponse?.data?.id) {
+    return redirect("/sites/select?error=site_not_found");
+  }
+  
+  const siteId = siteResponse.data.id;
+  const data = await getData(siteId);
   const { user } = session;
 
+  // Get user profile data
+  const userProfile = user?.user_metadata;
+  const displayName = userProfile?.full_name || 
+    (userProfile?.name && userProfile?.last_name
+      ? `${userProfile.name} ${userProfile.last_name}`
+      : user?.email || "User");
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
-    <>
-      <h1 className="pt-4 text-center text-xl">
-        Ciao {user.given_name} {user.family_name}
-      </h1>
+    <div className="min-h-screen">
+      {/* Hero Header */}
+      <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex items-center gap-4">
+            <Link 
+              href={`/sites/${domain}/timetracking`}
+              className="p-2 hover:bg-background/80 rounded-xl transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+            </Link>
+            <div className="flex items-center gap-3 flex-1">
+              <div className="p-2.5 bg-primary/10 rounded-xl">
+                <Clock className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Ciao {userProfile?.name || user?.email?.split("@")[0]}
+                </p>
+                <h1 className="text-xl md:text-2xl font-bold">
+                  Registrazione Ore
+                </h1>
+              </div>
+            </div>
+            {/* User Avatar */}
+            <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-lg">
+              <AvatarImage
+                src={userProfile?.picture || undefined}
+                alt={displayName}
+              />
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        </div>
+      </div>
+
       <CreatePage data={data} session={session} />
-    </>
+    </div>
   );
 }
 
