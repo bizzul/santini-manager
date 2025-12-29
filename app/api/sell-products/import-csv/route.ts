@@ -6,7 +6,8 @@ import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
     COD_INT: "internal_code",
-    CATEGORIA: "name",
+    CATEGORIA: "category_name", // Special field for category lookup
+    NOME_PRODOTTO: "name",
     SOTTOCATEGORIA: "type",
     DESCRIZIONE: "description",
     LISTINO_PREZZI: "price_list",
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Validate required headers
-        const requiredHeaders = ["COD_INT", "CATEGORIA", "SOTTOCATEGORIA"];
+        const requiredHeaders = ["COD_INT", "NOME_PRODOTTO"];
         const missingHeaders = requiredHeaders.filter((h) =>
             !headers.includes(h)
         );
@@ -218,8 +219,8 @@ export async function POST(request: NextRequest) {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const product = mapRowToSellProduct(headers, row);
-            if (product.name && !categoryMap.has(product.name.toLowerCase())) {
-                categoriesToCreate.add(product.name);
+            if (product.category_name && !categoryMap.has(product.category_name.toLowerCase())) {
+                categoriesToCreate.add(product.category_name);
             }
         }
 
@@ -276,24 +277,20 @@ export async function POST(request: NextRequest) {
                 // Validate required fields
                 if (!product.name) {
                     result.errors.push(
-                        `Riga ${i + 2}: Categoria richiesta`,
+                        `Riga ${i + 2}: Nome prodotto richiesto`,
                     );
                     result.skipped++;
                     continue;
                 }
 
-                if (!product.type) {
-                    result.errors.push(
-                        `Riga ${i + 2}: Sottocategoria richiesta`,
-                    );
-                    result.skipped++;
-                    continue;
-                }
-
-                // Set category_id based on category name
-                const categoryId = categoryMap.get(product.name.toLowerCase());
-                if (categoryId) {
-                    product.category_id = categoryId;
+                // Set category_id based on category name (optional)
+                if (product.category_name) {
+                    const categoryId = categoryMap.get(product.category_name.toLowerCase());
+                    if (categoryId) {
+                        product.category_id = categoryId;
+                    }
+                    // Remove category_name as it's not a database field
+                    delete product.category_name;
                 }
 
                 // Add to existing codes set to prevent duplicates within the same import

@@ -21,6 +21,7 @@ import {
   Download,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
+import { useSiteId } from "@/hooks/use-site-id";
 
 interface ImportResult {
   success: boolean;
@@ -34,8 +35,9 @@ interface ImportResult {
 // CSV columns definition with required/optional status
 const CSV_COLUMNS = [
   { name: "COD_INT", description: "Codice Interno (univoco)", required: true },
-  { name: "CATEGORIA", description: "Categoria", required: true },
-  { name: "SOTTOCATEGORIA", description: "Sottocategoria", required: true },
+  { name: "CATEGORIA", description: "Categoria (dalla tabella categorie)", required: false },
+  { name: "NOME_PRODOTTO", description: "Nome del prodotto", required: true },
+  { name: "SOTTOCATEGORIA", description: "Sottocategoria", required: false },
   { name: "DESCRIZIONE", description: "Descrizione", required: false },
   { name: "LISTINO_PREZZI", description: "Listino Prezzi (SI/NO)", required: false },
   { name: "URL_IMMAGINE", description: "URL Immagine", required: false },
@@ -45,9 +47,10 @@ const CSV_COLUMNS = [
 // Example row data for the CSV template
 const EXAMPLE_ROW = {
   COD_INT: "PROD_001",
-  CATEGORIA: "Elettronica",
-  SOTTOCATEGORIA: "Smartphone",
-  DESCRIZIONE: "Smartphone ultimo modello con caratteristiche avanzate",
+  CATEGORIA: "Arredamento",
+  NOME_PRODOTTO: "Tavolo moderno in legno",
+  SOTTOCATEGORIA: "Tavoli",
+  DESCRIZIONE: "Tavolo in legno massello con design moderno",
   LISTINO_PREZZI: "SI",
   URL_IMMAGINE: "https://example.com/image.jpg",
   URL_DOC: "https://drive.google.com/folder/documents",
@@ -67,6 +70,7 @@ function DialogImportCSV() {
 
   // Extract domain from pathname (e.g., /sites/santini/products -> santini)
   const domain = pathname.split("/")[2] || "";
+  const { siteId } = useSiteId(domain);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -112,6 +116,14 @@ function DialogImportCSV() {
       return;
     }
 
+    if (!siteId) {
+      toast({
+        variant: "destructive",
+        description: "Site non trovato",
+      });
+      return;
+    }
+
     setLoading(true);
     setResult(null);
 
@@ -124,7 +136,7 @@ function DialogImportCSV() {
         method: "POST",
         body: formData,
         headers: {
-          "x-site-domain": domain,
+          "x-site-id": siteId,
         },
       });
 

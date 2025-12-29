@@ -249,7 +249,7 @@ const getMenuItems = (
       href: `${basePath}/inventory`,
     },
     {
-      label: "Articoli",
+      label: "Prodotti",
       icon: "faBox",
       href: `${basePath}/products`,
       alert: false,
@@ -275,7 +275,7 @@ const getMenuItems = (
           moduleName: "categories",
         },
         {
-          label: "Articoli",
+          label: "Prodotti",
           icon: "faListUl",
           href: `${basePath}/product-categories`,
           alert: false,

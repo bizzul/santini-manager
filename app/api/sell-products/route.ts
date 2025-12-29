@@ -19,10 +19,13 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        // Query directly with site filter
+        // Query directly with site filter, include category relation
         const { data, error } = await supabase
             .from("SellProduct")
-            .select("*")
+            .select(`
+                *,
+                category:sellproduct_categories(id, name)
+            `)
             .eq("site_id", siteId)
             .eq("active", true);
 
