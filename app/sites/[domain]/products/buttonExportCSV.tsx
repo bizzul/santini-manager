@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Download, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useSiteId } from "@/hooks/use-site-id";
 
 // CSV columns for export
 const CSV_COLUMNS = [
@@ -44,15 +45,24 @@ function ButtonExportCSV() {
 
   // Extract domain from pathname
   const domain = pathname.split("/")[2] || "";
+  const { siteId, loading: siteLoading } = useSiteId(domain);
 
   const handleExport = async () => {
+    if (!siteId) {
+      toast({
+        variant: "destructive",
+        description: "Site non trovato",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await fetch("/api/sell-products", {
         method: "GET",
         headers: {
-          "x-site-domain": domain,
+          "x-site-id": siteId,
         },
       });
 
@@ -111,7 +121,7 @@ function ButtonExportCSV() {
   };
 
   return (
-    <Button variant="outline" onClick={handleExport} disabled={isLoading}>
+    <Button variant="outline" onClick={handleExport} disabled={isLoading || siteLoading || !siteId}>
       {isLoading ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

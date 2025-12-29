@@ -184,14 +184,14 @@ const getMenuItems = (
       alert: false,
       items: [
         {
-          label: "Data Produzione",
+          label: "Produzione",
           icon: "faCalendarCheck",
           href: `${basePath}/calendar`,
           alert: false,
           moduleName: "calendar",
         },
         {
-          label: "Data Posa",
+          label: "Posa",
           icon: "faCalendarDays",
           href: `${basePath}/calendar-installation`,
           alert: false,
