@@ -1,7 +1,14 @@
-import { unstable_cache } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { createServiceClient } from "@/utils/supabase/server";
 import { logger } from "@/lib/logger";
 
+/**
+ * Fetch site data by domain/subdomain
+ *
+ * This function uses Next.js cache with a 15-minute revalidation period.
+ * IMPORTANT: If the site is not found, we don't cache that result to avoid
+ * issues when sites are created or renamed.
+ */
 export async function getSiteData(domain: string) {
   try {
     // Decode URL encoding and normalize domain
@@ -29,10 +36,8 @@ export async function getSiteData(domain: string) {
       subdomain,
     });
 
-    // IMPORTANT: Create the Supabase client and query INSIDE the unstable_cache function
-    // to avoid stale closures when the cache revalidates. The Supabase query builder
-    // is not designed to be reused across different request contexts.
-    return unstable_cache(
+    // First, try to get from cache
+    const cachedResult = await unstable_cache(
       async () => {
         try {
           // Create fresh client and query inside the cached function
@@ -48,19 +53,79 @@ export async function getSiteData(domain: string) {
             result.data ? "Found" : "Not found",
             result.error?.message,
           );
-          return result;
+
+          // If site is found, return it for caching
+          if (result.data) {
+            return result;
+          }
+
+          // If not found, return a special marker that we can detect
+          // This prevents caching null results for too long
+          return { data: null, error: result.error, _notFound: true };
         } catch (error) {
           console.error("[getSiteData] Query error:", error);
           logger.error("Error in getSiteData query:", error);
-          return null;
+          return { data: null, error, _error: true };
         }
       },
       [`${subdomain}-metadata`], // Use subdomain for cache key
       {
-        revalidate: 900,
+        revalidate: 900, // 15 minutes for successful lookups
         tags: [`${subdomain}-metadata`],
       },
     )();
+
+    // If the cached result indicates the site wasn't found or there was an error,
+    // try a fresh query without cache to handle recently created sites
+    const resultWithMarkers = cachedResult as {
+      _notFound?: boolean;
+      _error?: boolean;
+    } | null;
+    if (resultWithMarkers?._notFound || resultWithMarkers?._error) {
+      console.log(
+        "[getSiteData] Cached result was empty, trying fresh query for:",
+        subdomain,
+      );
+
+      try {
+        const supabase = createServiceClient();
+        const freshResult = await supabase
+          .from("sites")
+          .select("*")
+          .eq("subdomain", subdomain)
+          .single();
+
+        console.log(
+          "[getSiteData] Fresh query result:",
+          freshResult.data ? "Found" : "Not found",
+          freshResult.error?.message,
+        );
+
+        // If found on fresh query, revalidate the cache tag so next request uses the new data
+        if (freshResult.data) {
+          console.log(
+            "[getSiteData] Site found on fresh query, revalidating cache tag:",
+            `${subdomain}-metadata`,
+          );
+          try {
+            revalidateTag(`${subdomain}-metadata`);
+          } catch (e) {
+            // revalidateTag might fail in some contexts, that's ok
+            console.log("[getSiteData] Could not revalidate tag:", e);
+          }
+          return freshResult;
+        }
+
+        // Still not found after fresh query
+        return freshResult;
+      } catch (error) {
+        console.error("[getSiteData] Fresh query error:", error);
+        logger.error("Error in getSiteData fresh query:", error);
+        return null;
+      }
+    }
+
+    return cachedResult;
   } catch (error) {
     console.error("[getSiteData] Error:", error);
     logger.error("Error in getSiteData:", error);

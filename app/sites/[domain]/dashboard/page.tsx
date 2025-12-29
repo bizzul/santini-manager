@@ -11,11 +11,20 @@ export async function generateMetadata({
   params: Promise<{ domain: string }>;
 }) {
   const { domain } = await params;
-  const siteContext = await requireServerSiteContext(domain);
-
-  return {
-    title: `${siteContext.siteData?.name || "Site"} - Dashboard`,
-  };
+  
+  try {
+    const siteContext = await requireServerSiteContext(domain);
+    return {
+      title: `${siteContext.siteData?.name || "Site"} - Dashboard`,
+    };
+  } catch (error) {
+    // If site context fails, return a generic title
+    // The page component will handle the error properly
+    console.log("[Dashboard] generateMetadata failed for domain:", domain, error);
+    return {
+      title: "Dashboard",
+    };
+  }
 }
 
 export default async function SiteDashboardPage({
