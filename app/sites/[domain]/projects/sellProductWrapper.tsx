@@ -7,7 +7,11 @@ import { Data } from "./page";
 const SellProductWrapper = ({ data }: { data: Data }) => {
   return (
     <div className="container mx-auto ">
-      <DataTable columns={columns} data={data.tasks} />
+      <DataTable 
+        columns={columns} 
+        data={data.tasks} 
+        categories={data.categories}
+      />
     </div>
   );
 };

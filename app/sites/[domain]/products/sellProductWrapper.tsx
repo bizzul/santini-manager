@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import React from "react";
+import React, { useMemo } from "react";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { SellProduct } from "@/types/supabase";
@@ -14,8 +14,11 @@ const SellProductWrapper = ({
   domain: string;
   siteId: string;
 }) => {
+  // Memoize columns to prevent scroll reset on row selection
+  const columns = useMemo(() => createColumns(domain), [domain]);
+  
   return (
-    <DataTable columns={createColumns(domain)} data={data} domain={domain} />
+    <DataTable columns={columns} data={data} domain={domain} />
   );
 };
 

@@ -13,7 +13,6 @@ import {
   FormMessage,
 } from "../../components/ui/form";
 import { Input } from "../../components/ui/input";
-import { DatePicker } from "../../components/ui/date-picker";
 import { SearchSelect } from "../../components/ui/search-select";
 import { Textarea } from "../../components/ui/textarea";
 import { editItem } from "@/app/sites/[domain]/projects/actions/edit-item.action";
@@ -31,9 +30,16 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Button } from "../ui/button";
-import { Plus } from "lucide-react";
+import { Plus, CalendarIcon } from "lucide-react";
 import { logger } from "@/lib/logger";
 import { useSiteId } from "@/hooks/use-site-id";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type Props = {
   handleClose: any;
@@ -68,8 +74,8 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     resolver: zodResolver(validation),
     defaultValues: {
       clientId: undefined,
-      name: "",
       deliveryDate: undefined,
+      termine_produzione: undefined,
       position1: "",
       other: "",
       position2: "",
@@ -81,6 +87,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       position8: "",
       productId: undefined,
       sellPrice: 0,
+      numero_pezzi: null,
       unique_code: "",
       kanbanId: resource?.kanbanId || undefined,
       kanbanColumnId: resource?.kanbanColumnId || undefined,
@@ -167,11 +174,12 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     const initializeForm = async () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue("deliveryDate", resource.deliveryDate ? new Date(resource.deliveryDate) : undefined);
+      form.setValue("termine_produzione", resource.termine_produzione ? new Date(resource.termine_produzione) : undefined);
       form.setValue("other", resource.other ?? undefined);
       form.setValue("sellPrice", resource.sellPrice!);
+      form.setValue("numero_pezzi", resource.numero_pezzi ?? null);
       form.setValue("clientId", resource.clientId);
       form.setValue("unique_code", resource.unique_code!);
-      form.setValue("name", resource.name!);
       form.setValue("kanbanId", resource.kanbanId);
       form.setValue("kanbanColumnId", resource.kanbanColumnId);
       resource?.positions?.map((position: any, index: number) => {
@@ -494,19 +502,6 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             )}
           />
           <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nome</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
             name="clientId"
             control={form.control}
             render={({ field }) => {
@@ -580,27 +575,88 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             }}
           />
 
-          <FormField
-            name="deliveryDate"
-            disabled={isSubmitting}
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Data di carico in sede</FormLabel>
-                <FormControl>
-                  <DatePicker
-                    date={field.value ?? undefined}
-                    onValueChange={(selectedDate) => {
-                      field.onChange(selectedDate);
-                    }}
-                    disabled={isSubmitting}
-                    minDate={new Date()}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {/* Date Fields Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              name="termine_produzione"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Termine di produzione</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          disabled={isSubmitting}
+                        >
+                          {field.value
+                            ? field.value.toLocaleDateString("it-IT")
+                            : "Seleziona data"}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value || undefined}
+                        onSelect={field.onChange}
+                        captionLayout="dropdown"
+                        startMonth={new Date(new Date().getFullYear(), 0)}
+                        endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              name="deliveryDate"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Data di posa</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                          disabled={isSubmitting}
+                        >
+                          {field.value
+                            ? field.value.toLocaleDateString("it-IT")
+                            : "Seleziona data"}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value || undefined}
+                        onSelect={field.onChange}
+                        captionLayout="dropdown"
+                        startMonth={new Date(new Date().getFullYear(), 0)}
+                        endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {/* Kanban Selection */}
           <div className="space-y-2">
@@ -657,25 +713,57 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             </div>
           )}
 
-          <div className="grid grid-rows-2 grid-cols-4 gap-2">
-            {Array.from({ length: 8 }, (_, i) => (
+          <div className="flex">
+            <div className="flex-1 pr-4">
+              <div className="grid grid-rows-2 grid-cols-4 gap-2">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <FormField
+                    key={i}
+                    //@ts-ignore
+                    name={`position${i + 1}`}
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
+                        <FormControl>
+                          {/* @ts-ignore */}
+                          <Input {...field} disabled={isSubmitting} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="border-l border-border" />
+
+            <div className="pl-4 flex items-center justify-center">
               <FormField
-                key={i}
-                //@ts-ignore
-                name={`position${i + 1}`}
+                name="numero_pezzi"
                 control={form.control}
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{`Posizione ${i + 1}`}</FormLabel>
+                  <FormItem className="w-full max-w-32">
+                    <FormLabel>Numero pezzi</FormLabel>
                     <FormControl>
-                      {/* @ts-ignore */}
-                      <Input {...field} />
+                      <Input
+                        {...field}
+                        type="number"
+                        value={field.value ?? ""}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value ? Number(e.target.value) : null
+                          )
+                        }
+                        disabled={isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            ))}
+            </div>
           </div>
 
           <FormField

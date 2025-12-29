@@ -558,7 +558,7 @@ export const fetchTasksWithRelations = cache(async (siteId: string) => {
             Kanban!kanbanId (id, title),
             KanbanColumn!kanbanColumnId (id, title),
             Client!clientId (businessName, individualFirstName, individualLastName),
-            SellProduct!sellProductId (name),
+            SellProduct!sellProductId (name, type, category_id, category:sellproduct_categories(id, name, color)),
             Action (id, createdAt, User (picture, authId, given_name))
         `)
         .eq("site_id", siteId);
@@ -796,14 +796,15 @@ export const fetchTimetrackingData = cache(async (siteId: string) => {
  * Fetch data for projects page
  */
 export const fetchProjectsData = cache(async (siteId: string) => {
-    const [clients, products, kanbans, tasks] = await Promise.all([
+    const [clients, products, kanbans, tasks, categories] = await Promise.all([
         fetchClients(siteId),
         fetchSellProducts(siteId),
         fetchKanbans(siteId),
         fetchTasksWithRelations(siteId),
+        fetchSellProductCategories(siteId),
     ]);
 
-    return { clients, activeProducts: products, kanbans, tasks };
+    return { clients, activeProducts: products, kanbans, tasks, categories };
 });
 
 /**

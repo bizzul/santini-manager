@@ -543,7 +543,12 @@ export default function Card({
 
                 <div className="flex flex-row gap-2">
                   <div className="flex flex-col w-full">
-                    {data.positions.length > 0 && (
+                    {/* Priorità a numero_pezzi, altrimenti mostra posizioni */}
+                    {data.numero_pezzi && data.numero_pezzi > 0 ? (
+                      <div className="flex items-center justify-center pb-2 border border-white/50 rounded">
+                        <p className="text-lg font-bold">{data.numero_pezzi} pz</p>
+                      </div>
+                    ) : data.positions && data.positions.length > 0 && (
                       <div className="grid grid-rows-2 grid-cols-4  pb-2">
                         {data.positions.map(
                           (position: string, index: number) => (

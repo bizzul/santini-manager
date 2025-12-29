@@ -4,7 +4,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext, fetchProjectsData } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import SellProductWrapper from "./sellProductWrapper";
-import { Client, SellProduct, Kanban } from "@/types/supabase";
+import { Client, SellProduct, Kanban, SellProductCategory } from "@/types/supabase";
 
 // Type for data returned by fetchProjectsData
 export type Data = {
@@ -12,6 +12,7 @@ export type Data = {
   activeProducts: SellProduct[];
   kanbans: Kanban[];
   tasks: Awaited<ReturnType<typeof fetchProjectsData>>["tasks"];
+  categories: SellProductCategory[];
 };
 
 export default async function Page({

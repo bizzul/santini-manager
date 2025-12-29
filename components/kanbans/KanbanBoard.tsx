@@ -103,12 +103,18 @@ const Column = ({
     .reduce((total: number, card: any) => total + (card.sellPrice || 0), 0)
     .toFixed(2);
 
+  // Priorità a numero_pezzi rispetto alle posizioni
   const totalPositions = cards.reduce(
-    (sum: number, card: any) =>
-      sum +
-      (card.positions
+    (sum: number, card: any) => {
+      // Se numero_pezzi è definito, usa quello
+      if (card.numero_pezzi && card.numero_pezzi > 0) {
+        return sum + card.numero_pezzi;
+      }
+      // Altrimenti conta le posizioni riempite
+      return sum + (card.positions
         ? card.positions.filter((position: string) => position !== "").length
-        : 0),
+        : 0);
+    },
     0
   );
 

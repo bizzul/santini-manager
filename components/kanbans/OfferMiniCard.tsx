@@ -12,6 +12,7 @@ interface OfferMiniCardProps {
     sellProduct?: { type?: string; name?: string };
     column?: KanbanColumn;
     positions?: string[];
+    numero_pezzi?: number | null;
     isPreview?: boolean;
     locked?: boolean;
   };
@@ -80,11 +81,17 @@ export default function OfferMiniCard({
     return DateManager.formatEUDate(sentDate);
   }, [data.sent_date, data.sentDate]);
 
-  // Count filled positions
-  const filledPositions = useMemo(() => {
-    if (!data.positions) return 0;
-    return data.positions.filter((p) => p && p.trim() !== "").length;
-  }, [data.positions]);
+  // Priorità a numero_pezzi, altrimenti conta le posizioni riempite
+  const piecesOrPositions = useMemo(() => {
+    // Se numero_pezzi è definito, usa quello
+    if (data.numero_pezzi && data.numero_pezzi > 0) {
+      return { value: data.numero_pezzi, label: 'pz' };
+    }
+    // Altrimenti conta le posizioni riempite
+    if (!data.positions) return { value: 0, label: 'pos.' };
+    const count = data.positions.filter((p) => p && p.trim() !== "").length;
+    return { value: count, label: 'pos.' };
+  }, [data.positions, data.numero_pezzi]);
 
   // Background class based on overdue status
   const getBackgroundClass = () => {
@@ -134,10 +141,10 @@ export default function OfferMiniCard({
       {/* Client Name */}
       <div className="font-semibold text-sm truncate mb-1">{clientName}</div>
 
-      {/* Footer: Positions & Value */}
+      {/* Footer: Pezzi/Positions & Value */}
       <div className="flex justify-between items-center mt-2 pt-1 border-t border-white/20">
         <span className="text-xs">
-          {filledPositions > 0 ? `${filledPositions} pos.` : "-"}
+          {piecesOrPositions.value > 0 ? `${piecesOrPositions.value} ${piecesOrPositions.label}` : "-"}
         </span>
         <span className="font-bold text-sm">
           {((data.sellPrice || 0) / 1000).toFixed(2)} K
