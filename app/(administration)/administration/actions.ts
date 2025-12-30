@@ -373,9 +373,10 @@ export async function createOrganizationAndInviteUser(
         const { data: inviteData, error: inviteError } = await supabaseService
             .auth.admin
             .inviteUserByEmail(adminEmail, {
-                redirectTo: `${baseUrl}/auth/complete-signup?email=${
-                    encodeURIComponent(adminEmail)
-                }`,
+                redirectTo: baseUrl,
+                data: {
+                    role: "admin",
+                },
             });
 
         if (inviteError) {
@@ -1574,6 +1575,9 @@ export async function getOrganizationUsersWithRoles(organizationId: string) {
 // - Regular users (role=user) are added to user_sites
 // - Admin users (role=admin) are added to user_organizations (org admin)
 // - Superadmin users are not added to any junction table (they see everything)
+// Supports two modes:
+// 1. Invitation mode (default): sends email invitation for user to set password
+// 2. Password mode: creates user with password directly (user is immediately active)
 export async function createUser(
     prevState: any,
     formData: FormData,
@@ -1603,6 +1607,11 @@ export async function createUser(
         const role = formData.get("role") as string;
         const name = formData.get("name") as string;
         const last_name = formData.get("last_name") as string;
+        
+        // Check if we're creating with password or invitation
+        const createWithPassword = formData.get("createWithPassword") === "true";
+        const password = formData.get("password") as string;
+        const confirmPassword = formData.get("confirmPassword") as string;
 
         // Get sites for regular users, organizations for admins
         const siteIds = formData.getAll("site") as string[];
@@ -1628,6 +1637,22 @@ export async function createUser(
                 success: false,
                 message: "Compila tutti i campi obbligatori",
             };
+        }
+
+        // Password validation if creating with password
+        if (createWithPassword) {
+            if (!password || password.length < 6) {
+                return {
+                    success: false,
+                    message: "La password deve essere di almeno 6 caratteri",
+                };
+            }
+            if (password !== confirmPassword) {
+                return {
+                    success: false,
+                    message: "Le password non corrispondono",
+                };
+            }
         }
 
         // Check if user can create users with the specified role
@@ -1677,6 +1702,20 @@ export async function createUser(
 
         const supabaseService = await createServiceClient();
 
+        // Get organization ID for the user based on role
+        let userOrganizationId: string | null = null;
+        if (role === "admin" && orgId) {
+            userOrganizationId = orgId;
+        } else if (role === "user" && siteIds.length > 0) {
+            // Get organization ID from the first selected site
+            const { data: siteData } = await supabase
+                .from("sites")
+                .select("organization_id")
+                .eq("id", siteIds[0])
+                .single();
+            userOrganizationId = siteData?.organization_id || null;
+        }
+
         // Get site/organization names for the email template
         let contextText = "";
         if (role === "user" && siteIds.length > 0) {
@@ -1698,71 +1737,106 @@ export async function createUser(
             contextText = orgData?.name || "";
         }
 
-        // Use invitation flow instead of creating user directly
-        // This will send an invitation email and let the user complete their profile
+        let userId: string;
 
-        // Get base URL - prioritize NEXT_PUBLIC_URL, then VERCEL_URL, then localhost
-        let baseUrl = process.env.NEXT_PUBLIC_URL;
-        if (!baseUrl && process.env.VERCEL_URL) {
-            baseUrl = `https://${process.env.VERCEL_URL}`;
-        }
-        if (!baseUrl) {
-            baseUrl = "http://localhost:3000";
-        }
+        if (createWithPassword) {
+            // Create user directly with password using admin API
+            const { data: createData, error: createError } = await supabaseService
+                .auth.admin
+                .createUser({
+                    email: email,
+                    password: password,
+                    email_confirm: true, // Auto-confirm email since admin is creating
+                    user_metadata: {
+                        name: name,
+                        last_name: last_name,
+                        role: role,
+                        context_text: contextText,
+                    },
+                });
 
-        const { data: inviteData, error: inviteError } = await supabaseService
-            .auth.admin
-            .inviteUserByEmail(email, {
-                redirectTo: `${baseUrl}/auth/complete-signup?email=${
-                    encodeURIComponent(email)
-                }&name=${encodeURIComponent(name)}&last_name=${
-                    encodeURIComponent(last_name)
-                }&role=${encodeURIComponent(role)}${
-                    role === "user"
-                        ? `&sites=${encodeURIComponent(siteIds.join(","))}`
-                        : ""
-                }${
-                    role === "admin"
-                        ? `&organization=${encodeURIComponent(orgId)}`
-                        : ""
-                }`,
-                data: {
-                    name: name,
-                    last_name: last_name,
+            if (createError) {
+                return {
+                    success: false,
+                    message: "Errore nella creazione dell'utente: " + createError.message,
+                };
+            }
+
+            userId = createData.user.id;
+            logger.info("User created with password:", userId);
+
+            // Insert into User table with role - user is immediately enabled
+            const { error: userError } = await supabase.from("User")
+                .insert({
+                    authId: userId,
+                    auth_id: userId,
+                    email: email,
+                    given_name: name,
+                    family_name: last_name,
                     role: role,
-                    context_text: contextText,
-                },
-            });
+                    enabled: true, // User is immediately active when created with password
+                });
 
-        console.log("invitedData", inviteData);
+            if (userError) {
+                return {
+                    success: false,
+                    message: userError.message,
+                };
+            }
+        } else {
+            // Use invitation flow - send email invitation
+            // Get base URL - prioritize NEXT_PUBLIC_URL, then VERCEL_URL, then localhost
+            let baseUrl = process.env.NEXT_PUBLIC_URL;
+            if (!baseUrl && process.env.VERCEL_URL) {
+                baseUrl = `https://${process.env.VERCEL_URL}`;
+            }
+            if (!baseUrl) {
+                baseUrl = "http://localhost:3000";
+            }
 
-        if (inviteError) {
-            return {
-                success: false,
-                message: "Failed to send invitation: " + inviteError.message,
-            };
-        }
+            // Redirect to the base URL - the InvitationHandler component will handle
+            // reading the hash fragment and redirecting to complete-signup
+            const { data: inviteData, error: inviteError } = await supabaseService
+                .auth.admin
+                .inviteUserByEmail(email, {
+                    redirectTo: baseUrl,
+                    data: {
+                        name: name,
+                        last_name: last_name,
+                        role: role,
+                        context_text: contextText,
+                    },
+                });
 
-        // Get the user ID from the invitation response
-        const userId = inviteData.user.id;
+            logger.debug("invitedData", inviteData);
 
-        // Insert into User table with role
-        const { error: userError } = await supabase.from("User")
-            .insert({
-                authId: userId,
-                auth_id: userId,
-                email: email,
-                given_name: name,
-                family_name: last_name,
-                role: role,
-                enabled: false, // User starts as inactive until they confirm their email
-            });
+            if (inviteError) {
+                return {
+                    success: false,
+                    message: "Failed to send invitation: " + inviteError.message,
+                };
+            }
 
-        if (userError) {
-            return {
-                success: false,
-                message: userError.message,
-            };
+            userId = inviteData.user.id;
+
+            // Insert into User table with role
+            const { error: userError } = await supabase.from("User")
+                .insert({
+                    authId: userId,
+                    auth_id: userId,
+                    email: email,
+                    given_name: name,
+                    family_name: last_name,
+                    role: role,
+                    enabled: false, // User starts as inactive until they confirm their email
+                });
+
+            if (userError) {
+                return {
+                    success: false,
+                    message: userError.message,
+                };
+            }
         }
 
         // Insert into the appropriate junction table based on role
@@ -1771,7 +1845,6 @@ export async function createUser(
             const userSiteInserts = siteIds.map((siteId) => ({
                 site_id: siteId,
                 user_id: userId,
-                role: "user",
             }));
 
             const { error: userSiteError } = await supabase.from("user_sites")
@@ -1782,6 +1855,19 @@ export async function createUser(
                     success: false,
                     message: userSiteError.message,
                 };
+            }
+
+            // Also add user to organization
+            if (userOrganizationId) {
+                const { error: userOrgError } = await supabase.from("user_organizations")
+                    .insert({
+                        organization_id: userOrganizationId,
+                        user_id: userId,
+                    });
+
+                if (userOrgError && !userOrgError.message.includes("duplicate")) {
+                    logger.warn("Could not add user to organization:", userOrgError.message);
+                }
             }
         } else if (role === "admin") {
             // Admin users go into user_organizations
@@ -1803,11 +1889,18 @@ export async function createUser(
         // Note: superadmin users don't need to be in any junction table
 
         revalidatePath("/administration/users");
-        return {
-            success: true,
-            message:
-                "Utente invitato con successo! Riceverà un'email per impostare la password.",
-        };
+        
+        if (createWithPassword) {
+            return {
+                success: true,
+                message: "Utente creato con successo! L'utente può accedere immediatamente con le credenziali fornite.",
+            };
+        } else {
+            return {
+                success: true,
+                message: "Utente invitato con successo! Riceverà un'email per impostare la password.",
+            };
+        }
     } catch (error: any) {
         logger.error("Error creating user:", error);
         return {
@@ -2151,7 +2244,6 @@ export async function getUserSites(userId: string) {
         .from("user_sites")
         .select(`
             site_id,
-            role,
             created_at,
             site:sites(*)
         `)

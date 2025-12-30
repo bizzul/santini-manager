@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { createUser } from "../actions";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Mail, KeyRound } from "lucide-react";
 
 const initialState = {
   success: false,
@@ -35,6 +36,34 @@ export function CreateUserForm({
   const [selectedRole, setSelectedRole] = useState(
     availableRoles.includes(defaultRole) ? defaultRole : "user"
   );
+
+  // Password fields state
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (confirmPassword && value !== confirmPassword) {
+      setPasswordError("Le password non corrispondono");
+    } else if (value.length > 0 && value.length < 6) {
+      setPasswordError("La password deve essere di almeno 6 caratteri");
+    } else {
+      setPasswordError("");
+    }
+  };
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value);
+    if (password && value !== password) {
+      setPasswordError("Le password non corrispondono");
+    } else {
+      setPasswordError("");
+    }
+  };
+
+  // Check if password fields are valid for "create with password" action
+  const isPasswordValid = password.length >= 6 && password === confirmPassword && !passwordError;
 
   return (
     <form action={formAction} className="space-y-5">
@@ -202,14 +231,107 @@ export function CreateUserForm({
         </div>
       )}
 
-      <div className="pt-2">
+      {/* Optional password fields for direct creation */}
+      <div className="bg-white/5 border border-white/20 rounded-lg p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <KeyRound className="h-4 w-4 text-white/60" />
+          <span className="text-sm font-medium text-white/80">
+            Password (opzionale)
+          </span>
+        </div>
+        <p className="text-xs text-white/50 -mt-2 mb-3">
+          Compila per creare l'utente con password diretta, altrimenti lascia vuoto per inviare invito via email
+        </p>
+        
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-white/80 mb-2"
+          >
+            Password
+          </label>
+          <input
+            type="password"
+            name="password"
+            id="password"
+            minLength={6}
+            value={password}
+            onChange={(e) => handlePasswordChange(e.target.value)}
+            className="w-full bg-white/10 border border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 rounded-lg px-4 py-3 backdrop-blur-sm"
+            placeholder="Inserisci password (min. 6 caratteri)"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="confirmPassword"
+            className="block text-sm font-medium text-white/80 mb-2"
+          >
+            Conferma Password
+          </label>
+          <input
+            type="password"
+            name="confirmPassword"
+            id="confirmPassword"
+            minLength={6}
+            value={confirmPassword}
+            onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+            className="w-full bg-white/10 border border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 rounded-lg px-4 py-3 backdrop-blur-sm"
+            placeholder="Conferma la password"
+          />
+        </div>
+
+        {passwordError && (
+          <p className="text-sm text-red-300">{passwordError}</p>
+        )}
+      </div>
+
+      {/* Two action buttons */}
+      <div className="pt-4 space-y-3">
+        {/* Hidden input to pass the mode - will be set by button click */}
+        <input type="hidden" name="createWithPassword" id="createWithPasswordInput" value="false" />
+        
         <Button
           type="submit"
           variant="outline"
-          className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300 py-3 font-semibold"
+          onClick={() => {
+            const input = document.getElementById('createWithPasswordInput') as HTMLInputElement;
+            if (input) input.value = "false";
+          }}
+          className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300 py-3 font-semibold flex items-center justify-center gap-2"
         >
-          Crea Utente
+          <Mail className="h-4 w-4" />
+          Invia Invito via Email
         </Button>
+
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/20"></div>
+          </div>
+          <div className="relative px-3 bg-transparent">
+            <span className="text-xs text-white/40 bg-[#1a1a2e] px-2">oppure</span>
+          </div>
+        </div>
+
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={!isPasswordValid}
+          onClick={() => {
+            const input = document.getElementById('createWithPasswordInput') as HTMLInputElement;
+            if (input) input.value = "true";
+          }}
+          className="w-full border-2 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20 hover:border-emerald-400 transition-all duration-300 py-3 font-semibold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-emerald-500/50"
+        >
+          <KeyRound className="h-4 w-4" />
+          Crea con Password
+        </Button>
+        
+        {!isPasswordValid && (password.length > 0 || confirmPassword.length > 0) && (
+          <p className="text-xs text-white/50 text-center">
+            Inserisci una password valida per abilitare la creazione diretta
+          </p>
+        )}
       </div>
 
       {state?.message && (

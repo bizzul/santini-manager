@@ -9,10 +9,13 @@ import {
   UserWelcome,
   UserWelcomeSkeleton,
 } from "@/components/home/user-welcome";
+import { InvitationHandler } from "@/components/home/invitation-handler";
 
 export default function Home() {
   return (
     <>
+      {/* Handle invitation tokens in URL hash */}
+      <InvitationHandler />
       <Suspense fallback={<TopBarSkeleton />}>
         <TopBarWrapper />
       </Suspense>

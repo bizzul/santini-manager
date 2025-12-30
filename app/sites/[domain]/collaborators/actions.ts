@@ -326,17 +326,14 @@ export async function inviteNewCollaborator(
         baseUrl = "http://localhost:3000";
     }
 
-    // Invite new user
+    // Invite new user - redirect to base URL, InvitationHandler will process the token
     const { data: inviteData, error: inviteError } = await supabaseService
         .auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${baseUrl}/auth/complete-signup?email=${
-                encodeURIComponent(email)
-            }&name=${encodeURIComponent(givenName)}&last_name=${
-                encodeURIComponent(familyName)
-            }&role=user&sites=${encodeURIComponent(siteId)}`,
+            redirectTo: baseUrl,
             data: {
                 name: givenName,
                 last_name: familyName,
+                role: "user",
             },
         });
 
