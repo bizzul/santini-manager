@@ -1,6 +1,5 @@
 "use client";
 
-import { Product } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
@@ -13,8 +12,68 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 
-// Extended Product type with lastAction
-type ProductWithAction = Product & {
+// Type for the flattened inventory row (item + variant)
+export type InventoryRow = {
+  id: string;
+  item_id: string;
+  variant_id?: string;
+  site_id: string;
+  name: string;
+  description?: string;
+  item_type?: string;
+  category_id?: string;
+  supplier_id?: string;
+  category?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  supplier?: {
+    id: string;
+    name: string;
+    code?: string;
+  };
+  is_stocked: boolean;
+  is_consumable: boolean;
+  is_active: boolean;
+  // Variant fields
+  internal_code?: string;
+  supplier_code?: string;
+  producer?: string;
+  producer_code?: string;
+  unit_id?: string;
+  unit?: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  purchase_unit_price?: number;
+  sell_unit_price?: number;
+  attributes?: Record<string, any>;
+  image_url?: string;
+  url_tds?: string;
+  warehouse_number?: string;
+  // Flattened attributes
+  color?: string;
+  color_code?: string;
+  width?: number;
+  height?: number;
+  length?: number;
+  thickness?: number;
+  diameter?: number;
+  subcategory?: string;
+  subcategory_code?: string;
+  subcategory2?: string;
+  subcategory2_code?: string;
+  // Stock
+  stock_quantity: number;
+  quantity: number; // Alias for compatibility
+  // Legacy compatibility
+  unit_price?: number;
+  sell_price?: number;
+  total_price?: number;
+  created_at?: string;
+  updated_at?: string;
   lastAction?: {
     createdAt: string;
     type: string;
@@ -27,7 +86,7 @@ type ProductWithAction = Product & {
   } | null;
 };
 
-export const columns: ColumnDef<ProductWithAction>[] = [
+export const columns: ColumnDef<InventoryRow>[] = [
   {
     accessorKey: "internal_code",
     header: ({ column }) => (
@@ -38,12 +97,6 @@ export const columns: ColumnDef<ProductWithAction>[] = [
       return code || "-";
     },
   },
-  // {
-  //   accessorKey: "inventoryId",
-  //   header: ({ column }) => (
-  //     <DataTableColumnHeader column={column} title="ID" />
-  //   ),
-  // },
   {
     accessorKey: "category",
     header: ({ column }) => (
@@ -51,7 +104,18 @@ export const columns: ColumnDef<ProductWithAction>[] = [
     ),
     cell: ({ row }) => {
       const cat = row.original.category;
-      return cat || "-";
+      if (cat) {
+        return cat.code ? `[${cat.code}] ${cat.name}` : cat.name;
+      }
+      // Fallback to attributes
+      const attrs = row.original.attributes || {};
+      return attrs.category || "-";
+    },
+    filterFn: (row, id, value): boolean => {
+      const cat = row.original.category;
+      if (!value) return true;
+      if (!cat) return false;
+      return cat.id === value || cat.name?.toLowerCase().includes(value.toLowerCase()) || false;
     },
   },
   {
@@ -110,10 +174,14 @@ export const columns: ColumnDef<ProductWithAction>[] = [
       <DataTableColumnHeader column={column} title="Fornitore" />
     ),
     cell: ({ row }) => {
-      // @ts-ignore - supplierInfo may come from join
-      const supplierInfo = row.original.supplierInfo;
       const supplier = row.original.supplier;
-      return supplierInfo?.name || supplier || "-";
+      return supplier?.name || "-";
+    },
+    filterFn: (row, id, value): boolean => {
+      const supplier = row.original.supplier;
+      if (!value) return true;
+      if (!supplier) return false;
+      return supplier.id === value || supplier.name?.toLowerCase().includes(value.toLowerCase()) || false;
     },
   },
   {
@@ -154,31 +222,31 @@ export const columns: ColumnDef<ProductWithAction>[] = [
       <DataTableColumnHeader column={column} title="Qta." />
     ),
     cell: ({ row }) => {
-      const qty = row.original.quantity;
+      const qty = row.original.stock_quantity ?? row.original.quantity;
       const unit = row.original.unit;
       if (qty != null) {
-        return unit ? `${qty} ${unit}` : qty;
+        return unit ? `${qty} ${unit.code}` : qty.toString();
       }
       return "-";
     },
   },
   {
-    accessorKey: "unit_price",
+    accessorKey: "purchase_unit_price",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="P. Acquisto" />
     ),
     cell: ({ row }) => {
-      const price = row.original.unit_price;
+      const price = row.original.purchase_unit_price ?? row.original.unit_price;
       return price != null ? `${price.toFixed(2)} CHF` : "-";
     },
   },
   {
-    accessorKey: "sell_price",
+    accessorKey: "sell_unit_price",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="P. Vendita" />
     ),
     cell: ({ row }) => {
-      const price = row.original.sell_price;
+      const price = row.original.sell_unit_price ?? row.original.sell_price;
       return price != null ? `${price.toFixed(2)} CHF` : "-";
     },
   },
@@ -188,8 +256,10 @@ export const columns: ColumnDef<ProductWithAction>[] = [
       <DataTableColumnHeader column={column} title="Totale" />
     ),
     cell: ({ row }) => {
-      const price = row.original.total_price;
-      return price != null ? `${price.toFixed(2)} CHF` : "-";
+      const unitPrice = row.original.purchase_unit_price ?? row.original.unit_price ?? 0;
+      const qty = row.original.stock_quantity ?? row.original.quantity ?? 0;
+      const total = unitPrice * qty;
+      return total > 0 ? `${total.toFixed(2)} CHF` : "-";
     },
   },
   {
@@ -209,7 +279,21 @@ export const columns: ColumnDef<ProductWithAction>[] = [
     ),
     cell: ({ row }) => {
       const lastAction = row.original.lastAction;
-      if (!lastAction?.createdAt) return "-";
+      if (!lastAction?.createdAt) {
+        // Fallback to updated_at
+        const updatedAt = row.original.updated_at;
+        if (updatedAt) {
+          const date = new Date(updatedAt);
+          const timeAgo = formatDistanceToNow(date, {
+            addSuffix: true,
+            locale: it,
+          });
+          return (
+            <span className="text-sm text-muted-foreground">{timeAgo}</span>
+          );
+        }
+        return "-";
+      }
 
       const date = new Date(lastAction.createdAt);
       const timeAgo = formatDistanceToNow(date, {
@@ -256,7 +340,6 @@ export const columns: ColumnDef<ProductWithAction>[] = [
           ? `${user.given_name} ${user.family_name}`
           : user.given_name || "Utente";
 
-      // Generate initials from name
       const initials =
         user.initials ||
         (user.given_name && user.family_name

@@ -1,7 +1,6 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { usePathname } from "next/navigation";
 
@@ -16,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "@/validation/products/create";
+import { createInventoryItemSchema, type CreateInventoryItemInput } from "@/validation/inventory";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
@@ -25,14 +24,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product_category, Supplier } from "@/types/supabase";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CategorySelector } from "@/components/inventory/CategorySelector";
+import { InventoryCategory, InventorySupplier, InventoryUnit, InventoryWarehouse } from "@/types/supabase";
 
 const CreateProductForm = ({
   handleClose,
@@ -44,59 +42,85 @@ const CreateProductForm = ({
   const { toast } = useToast();
   const pathname = usePathname();
 
-  // Extract domain from pathname (e.g., /sites/santini/inventory -> santini)
+  // Extract domain from pathname
   const domain = pathname.split("/")[2] || "";
 
-  const form = useForm<z.infer<typeof validation>>({
-    resolver: zodResolver(validation),
+  const [units, setUnits] = useState<InventoryUnit[]>(data.units || []);
+  const [categories, setCategories] = useState<InventoryCategory[]>(data.categories || []);
+  const [suppliers, setSuppliers] = useState<InventorySupplier[]>(data.suppliers || []);
+  const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>(data.warehouses || []);
+
+  const form = useForm<CreateInventoryItemInput>({
+    resolver: zodResolver(createInventoryItemSchema),
     defaultValues: {
       name: "",
-      supplierId: undefined,
-      productCategoryId: undefined,
-      type: "",
       description: "",
-      width: 0,
-      height: 0,
-      length: 0,
+      item_type: "",
+      category_id: undefined,
+      supplier_id: undefined,
+      is_stocked: true,
+      is_consumable: true,
+      is_active: true,
+      // Variant fields
+      internal_code: "",
+      supplier_code: "",
+      producer: "",
+      producer_code: "",
+      unit_id: undefined,
+      purchase_unit_price: null,
+      sell_unit_price: null,
+      image_url: "",
+      url_tds: "",
+      warehouse_number: "",
+      // Attributes
+      color: "",
+      color_code: "",
+      width: null,
+      height: null,
+      length: null,
       thickness: null,
       diameter: null,
-      quantity: 0,
-      unit_price: 0,
-      sell_price: null,
-      unit: "",
-      // New fields
       category: "",
       category_code: "",
       subcategory: "",
       subcategory_code: "",
       subcategory2: "",
       subcategory2_code: "",
-      color: "",
-      color_code: "",
-      internal_code: "",
-      warehouse_number: "",
-      supplier_code: "",
-      producer: "",
-      producer_code: "",
-      url_tds: "",
-      image_url: "",
+      // Initial stock
+      initial_quantity: 0,
+      warehouse_id: undefined,
     },
   });
 
   const { isSubmitting } = form.formState;
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
+  // Fetch units if not provided
+  useEffect(() => {
+    if (units.length === 0) {
+      fetch("/api/inventory/units/")
+        .then(res => res.json())
+        .then(data => setUnits(data))
+        .catch(console.error);
+    }
+  }, [units.length]);
+
+  const onSubmit: SubmitHandler<CreateInventoryItemInput> = async (d) => {
     try {
-      // Use form.getValues() to ensure all registered field values are captured
-      const formValues = form.getValues();
-      //@ts-ignore
-      await createItem(formValues, domain);
-      handleClose(false);
-      toast({
-        description: `Elemento ${formValues.name} creato correttamente!`,
-      });
+      const result = await createItem(d, domain);
+      if (result.error) {
+        toast({
+          variant: "destructive",
+          description: result.error,
+        });
+      } else {
+        handleClose(false);
+        toast({
+          description: `Elemento ${d.name} creato correttamente!`,
+        });
+      }
     } catch (e) {
       toast({
+        variant: "destructive",
         description: `Errore nel creare l'elemento! ${e}`,
       });
     }
@@ -114,18 +138,28 @@ const CreateProductForm = ({
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="productCategoryId"
+              name="category_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
                   <FormControl>
-                    <CategorySelector
-                      categories={data.categories || []}
-                      value={field.value?.toString()}
+                    <Select
                       onValueChange={field.onChange}
+                      value={field.value || undefined}
                       disabled={isSubmitting}
-                      domain={domain}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona categoria..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.code && `[${cat.code}] `}
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -133,22 +167,22 @@ const CreateProductForm = ({
             />
             <FormField
               control={form.control}
-              name="supplierId"
+              name="supplier_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fornitore</FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}
-                      defaultValue={field.value?.toString()}
+                      value={field.value || undefined}
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleziona..." />
+                        <SelectValue placeholder="Seleziona fornitore..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {data.suppliers?.map((sup: Supplier) => (
-                          <SelectItem key={sup.id} value={sup.id.toString()}>
+                        {suppliers.map((sup) => (
+                          <SelectItem key={sup.id} value={sup.id}>
                             {sup.name}
                           </SelectItem>
                         ))}
@@ -168,7 +202,7 @@ const CreateProductForm = ({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome</FormLabel>
+                  <FormLabel>Nome *</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -179,12 +213,12 @@ const CreateProductForm = ({
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="type"
+              name="item_type"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -198,9 +232,9 @@ const CreateProductForm = ({
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Descrizione / N. Articolo</FormLabel>
+                <FormLabel>Descrizione</FormLabel>
                 <FormControl>
-                  <Input {...field} />
+                  <Input {...field} value={field.value || ""} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -220,7 +254,7 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Codice Interno</FormLabel>
                   <FormControl>
-                    <Input placeholder="es. LG_PA_MEL_9010" {...field} />
+                    <Input placeholder="es. LG_PA_MEL_9010" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -234,7 +268,7 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Nr. Magazzino</FormLabel>
                   <FormControl>
-                    <Input placeholder="es. 1000" {...field} />
+                    <Input placeholder="es. 1000" {...field} value={field.value || ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -257,7 +291,14 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Larghezza</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -271,7 +312,14 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Altezza</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -285,7 +333,14 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Lunghezza</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -306,9 +361,7 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
                       }
                     />
                   </FormControl>
@@ -329,9 +382,7 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
                       }
                     />
                   </FormControl>
@@ -351,26 +402,45 @@ const CreateProductForm = ({
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="quantity"
+              name="initial_quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Qta.</FormLabel>
+                  <FormLabel>Qta. Iniziale</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? 0}
+                      onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
-              disabled={isSubmitting}
               control={form.control}
-              name="unit"
+              name="unit_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unità</FormLabel>
                   <FormControl>
-                    <Input placeholder="PZ, ML, KG..." {...field} />
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Unità..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.code} - {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -379,20 +449,19 @@ const CreateProductForm = ({
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="unit_price"
+              name="purchase_unit_price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prezzo Acquisto</FormLabel>
+                  <FormLabel>P. Acquisto</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
                       {...field}
-                      value={field.value ?? 0}
-                      onChange={(e) => {
-                        const num = parseFloat(e.target.value);
-                        field.onChange(isNaN(num) ? 0 : num);
-                      }}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -402,10 +471,10 @@ const CreateProductForm = ({
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="sell_price"
+              name="sell_unit_price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prezzo Vendita</FormLabel>
+                  <FormLabel>P. Vendita</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -413,9 +482,7 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
                       }
                     />
                   </FormControl>
@@ -442,7 +509,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Sottocategoria</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. Pannelli" {...field} />
+                        <Input placeholder="es. Pannelli" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -456,7 +523,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Sottocategoria</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. PA" {...field} />
+                        <Input placeholder="es. PA" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -472,10 +539,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. Pannello melaminico"
-                          {...field}
-                        />
+                        <Input placeholder="es. Pannello melaminico" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -489,7 +553,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. MEL" {...field} />
+                        <Input placeholder="es. MEL" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -513,7 +577,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Colore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. BIANCO" {...field} />
+                        <Input placeholder="es. BIANCO" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -527,7 +591,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Colore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. 9010" {...field} />
+                        <Input placeholder="es. 9010" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -551,7 +615,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Produttore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. HERZOG-HELMIGER" {...field} />
+                        <Input placeholder="es. HERZOG-HELMIGER" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -565,7 +629,7 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Produttore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. HEHE" {...field} />
+                        <Input placeholder="es. HEHE" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -580,7 +644,7 @@ const CreateProductForm = ({
                   <FormItem>
                     <FormLabel>Codice Fornitore</FormLabel>
                     <FormControl>
-                      <Input placeholder="es. HEHE" {...field} />
+                      <Input placeholder="es. HEHE" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -602,7 +666,7 @@ const CreateProductForm = ({
                   <FormItem>
                     <FormLabel>URL Scheda Tecnica</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="https://..." {...field} />
+                      <Input type="url" placeholder="https://..." {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -616,7 +680,7 @@ const CreateProductForm = ({
                   <FormItem>
                     <FormLabel>URL Immagine</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="https://..." {...field} />
+                      <Input type="url" placeholder="https://..." {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

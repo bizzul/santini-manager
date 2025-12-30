@@ -26,16 +26,6 @@ export async function getSiteData(domain: string) {
       ? domainWithoutPort.replace(`.${rootDomain}`, "")
       : domainWithoutPort;
 
-    // Debug logging
-    console.log("[getSiteData] Input:", {
-      domain,
-      decodedDomain,
-      rootDomain,
-      domainWithoutPort,
-      isFullDomain,
-      subdomain,
-    });
-
     // First, try to get from cache
     const cachedResult = await unstable_cache(
       async () => {

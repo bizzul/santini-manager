@@ -29,20 +29,23 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
     DIAMETRO: "diameter",
     "UNITÀ": "unit",
     PZ: "quantity",
-    CHF_ACQUISTO: "unit_price",
-    CHF_VENDITA: "sell_price",
+    CHF_ACQUISTO: "purchase_unit_price",
+    CHF_VENDITA: "sell_unit_price",
     TOTALE: "total_price",
+    // Legacy field mapping
+    LUNGHEZZA: "length",
 };
 
 // Numeric fields that should be parsed as numbers
 const NUMERIC_FIELDS = [
     "width",
     "height",
+    "length",
     "thickness",
     "diameter",
     "quantity",
-    "unit_price",
-    "sell_price",
+    "purchase_unit_price",
+    "sell_unit_price",
     "total_price",
 ];
 
@@ -114,7 +117,6 @@ function mapRowToProduct(
 
     // If name is empty, generate one from other fields
     if (!product.name) {
-        // Try to create a descriptive name from available fields
         const nameParts: string[] = [];
 
         if (product.subcategory2) {
@@ -132,22 +134,8 @@ function mapRowToProduct(
         if (nameParts.length > 0) {
             product.name = nameParts.join(" - ");
         } else if (product.internal_code) {
-            // Fallback to internal_code as name
             product.name = product.internal_code;
         }
-    }
-
-    // Set default values for NOT NULL fields
-    if (product.unit_price == null) {
-        product.unit_price = 0;
-    }
-    if (product.quantity == null) {
-        product.quantity = 0;
-    }
-
-    // Calculate total_price if not provided
-    if (product.total_price == null) {
-        product.total_price = product.unit_price * product.quantity;
     }
 
     return product;
@@ -207,28 +195,25 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Get existing internal_codes for duplicate checking
-        const { data: existingProducts, error: fetchError } = await supabase
-            .from("Product")
+        // Get existing internal_codes for duplicate checking (from new inventory_item_variants)
+        const { data: existingVariants, error: fetchError } = await supabase
+            .from("inventory_item_variants")
             .select("internal_code")
+            .eq("site_id", siteId)
             .not("internal_code", "is", null);
 
         if (fetchError) {
-            console.error("Error fetching existing products:", fetchError);
-            return NextResponse.json(
-                { error: "Errore nel recupero dei prodotti esistenti" },
-                { status: 500 },
-            );
+            console.error("Error fetching existing variants:", fetchError);
         }
 
         const existingCodes = new Set(
-            existingProducts?.map((p) => p.internal_code) || [],
+            existingVariants?.map((v) => v.internal_code) || [],
         );
 
         // Get existing categories for this site
         const { data: existingCategories, error: categoryFetchError } =
             await supabase
-                .from("Product_category")
+                .from("inventory_categories")
                 .select("id, name, code")
                 .eq("site_id", siteId);
 
@@ -236,9 +221,9 @@ export async function POST(request: NextRequest) {
             console.error("Error fetching categories:", categoryFetchError);
         }
 
-        // Create a map of categories by code and by name for quick lookup
-        const categoryByCode = new Map<string, number>();
-        const categoryByName = new Map<string, number>();
+        // Create category maps
+        const categoryByCode = new Map<string, string>();
+        const categoryByName = new Map<string, string>();
         existingCategories?.forEach((cat) => {
             if (cat.code) {
                 categoryByCode.set(cat.code.toLowerCase(), cat.id);
@@ -247,6 +232,27 @@ export async function POST(request: NextRequest) {
                 categoryByName.set(cat.name.toLowerCase(), cat.id);
             }
         });
+
+        // Get existing suppliers
+        const { data: existingSuppliers } = await supabase
+            .from("inventory_suppliers")
+            .select("id, name")
+            .eq("site_id", siteId);
+
+        const supplierByName = new Map<string, string>();
+        existingSuppliers?.forEach((sup) => {
+            if (sup.name) {
+                supplierByName.set(sup.name.toLowerCase(), sup.id);
+            }
+        });
+
+        // Get default unit (pz)
+        const { data: defaultUnit } = await supabase
+            .from("inventory_units")
+            .select("id")
+            .eq("code", "pz")
+            .single();
+        const defaultUnitId = defaultUnit?.id;
 
         const result: ImportResult = {
             success: true,
@@ -257,24 +263,18 @@ export async function POST(request: NextRequest) {
             duplicates: [],
         };
 
-        // Process rows in batches for better performance
-        const BATCH_SIZE = 50;
-        const productsToInsert: Record<string, any>[] = [];
-
         // Helper function to find or create category
         const findOrCreateCategory = async (
             categoryName: string | null,
             categoryCode: string | null,
-        ): Promise<number | null> => {
+        ): Promise<string | null> => {
             if (!categoryName && !categoryCode) {
                 return null;
             }
 
             // First try to find by code
             if (categoryCode) {
-                const existingId = categoryByCode.get(
-                    categoryCode.toLowerCase(),
-                );
+                const existingId = categoryByCode.get(categoryCode.toLowerCase());
                 if (existingId) {
                     return existingId;
                 }
@@ -282,9 +282,7 @@ export async function POST(request: NextRequest) {
 
             // Then try to find by name
             if (categoryName) {
-                const existingId = categoryByName.get(
-                    categoryName.toLowerCase(),
-                );
+                const existingId = categoryByName.get(categoryName.toLowerCase());
                 if (existingId) {
                     return existingId;
                 }
@@ -292,11 +290,10 @@ export async function POST(request: NextRequest) {
 
             // Category doesn't exist, create it
             const { data: newCategory, error: createError } = await supabase
-                .from("Product_category")
+                .from("inventory_categories")
                 .insert({
                     name: categoryName || categoryCode,
                     code: categoryCode || null,
-                    description: "",
                     site_id: siteId,
                 })
                 .select("id")
@@ -307,19 +304,12 @@ export async function POST(request: NextRequest) {
                 return null;
             }
 
-            // Add to our maps for future lookups
             if (newCategory) {
                 if (categoryCode) {
-                    categoryByCode.set(
-                        categoryCode.toLowerCase(),
-                        newCategory.id,
-                    );
+                    categoryByCode.set(categoryCode.toLowerCase(), newCategory.id);
                 }
                 if (categoryName) {
-                    categoryByName.set(
-                        categoryName.toLowerCase(),
-                        newCategory.id,
-                    );
+                    categoryByName.set(categoryName.toLowerCase(), newCategory.id);
                 }
                 return newCategory.id;
             }
@@ -327,115 +317,184 @@ export async function POST(request: NextRequest) {
             return null;
         };
 
+        // Helper function to find or create supplier
+        const findOrCreateSupplier = async (
+            supplierName: string | null,
+        ): Promise<string | null> => {
+            if (!supplierName) {
+                return null;
+            }
+
+            const existingId = supplierByName.get(supplierName.toLowerCase());
+            if (existingId) {
+                return existingId;
+            }
+
+            // Create new supplier
+            const { data: newSupplier, error } = await supabase
+                .from("inventory_suppliers")
+                .insert({
+                    name: supplierName,
+                    site_id: siteId,
+                })
+                .select("id")
+                .single();
+
+            if (error) {
+                console.error("Error creating supplier:", error);
+                return null;
+            }
+
+            if (newSupplier) {
+                supplierByName.set(supplierName.toLowerCase(), newSupplier.id);
+                return newSupplier.id;
+            }
+
+            return null;
+        };
+
+        // Process rows
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
                 const product = mapRowToProduct(headers, row);
 
                 // Check for duplicate
-                if (
-                    product.internal_code &&
-                    existingCodes.has(product.internal_code)
-                ) {
+                if (product.internal_code && existingCodes.has(product.internal_code)) {
                     result.duplicates.push(product.internal_code);
                     if (skipDuplicates) {
                         result.skipped++;
                         continue;
                     } else {
-                        // If not skipping duplicates, still skip but note it
                         result.skipped++;
                         continue;
                     }
                 }
 
-                // Validate required fields - at minimum we need a name or internal_code
+                // Validate required fields
                 if (!product.name && !product.internal_code) {
-                    result.errors.push(
-                        `Riga ${i + 2}: Nome o codice interno richiesto`,
-                    );
+                    result.errors.push(`Riga ${i + 2}: Nome o codice interno richiesto`);
                     result.skipped++;
                     continue;
                 }
 
-                // Find or create the category based on CAT and COD_CAT
-                if (product.category || product.category_code) {
-                    const categoryId = await findOrCreateCategory(
-                        product.category,
-                        product.category_code,
-                    );
-                    if (categoryId) {
-                        product.product_category_id = categoryId;
-                    }
+                // Find or create category
+                const categoryId = await findOrCreateCategory(
+                    product.category,
+                    product.category_code,
+                );
+
+                // Find or create supplier
+                const supplierId = await findOrCreateSupplier(product.supplier);
+
+                // Create inventory_item
+                const { data: item, error: itemError } = await supabase
+                    .from("inventory_items")
+                    .insert({
+                        site_id: siteId,
+                        name: product.name || product.internal_code,
+                        description: product.description || null,
+                        category_id: categoryId,
+                        supplier_id: supplierId,
+                        is_stocked: true,
+                        is_consumable: true,
+                        is_active: true,
+                    })
+                    .select("id")
+                    .single();
+
+                if (itemError) {
+                    result.errors.push(`Riga ${i + 2}: Errore creazione item - ${itemError.message}`);
+                    result.skipped++;
+                    continue;
                 }
 
-                // Add to existing codes set to prevent duplicates within the same import
+                // Build attributes for variant
+                const attributes = {
+                    color: product.color || null,
+                    color_code: product.color_code || null,
+                    width: product.width || null,
+                    height: product.height || null,
+                    length: product.length || null,
+                    thickness: product.thickness || null,
+                    diameter: product.diameter || null,
+                    category: product.category || null,
+                    category_code: product.category_code || null,
+                    subcategory: product.subcategory || null,
+                    subcategory_code: product.subcategory_code || null,
+                    subcategory2: product.subcategory2 || null,
+                    subcategory2_code: product.subcategory2_code || null,
+                    legacy_unit: product.unit || null,
+                };
+
+                // Create inventory_item_variant
+                const { data: variant, error: variantError } = await supabase
+                    .from("inventory_item_variants")
+                    .insert({
+                        item_id: item.id,
+                        site_id: siteId,
+                        internal_code: product.internal_code || null,
+                        supplier_code: product.supplier_code || null,
+                        producer: product.producer || null,
+                        producer_code: product.producer_code || null,
+                        unit_id: defaultUnitId,
+                        purchase_unit_price: product.purchase_unit_price || 0,
+                        sell_unit_price: product.sell_unit_price || null,
+                        attributes,
+                        image_url: product.image_url || null,
+                        url_tds: product.url_tds || null,
+                        warehouse_number: product.warehouse_number || null,
+                    })
+                    .select("id")
+                    .single();
+
+                if (variantError) {
+                    // Rollback item
+                    await supabase.from("inventory_items").delete().eq("id", item.id);
+                    result.errors.push(`Riga ${i + 2}: Errore creazione variante - ${variantError.message}`);
+                    result.skipped++;
+                    continue;
+                }
+
+                // Create initial stock movement if quantity > 0
+                const quantity = product.quantity || 0;
+                if (quantity > 0) {
+                    await supabase
+                        .from("inventory_stock_movements")
+                        .insert({
+                            site_id: siteId,
+                            variant_id: variant.id,
+                            movement_type: "opening",
+                            quantity,
+                            unit_id: defaultUnitId,
+                            reason: "Importazione CSV",
+                            reference_type: "csv_import",
+                        });
+                }
+
+                // Add to existing codes set
                 if (product.internal_code) {
                     existingCodes.add(product.internal_code);
                 }
 
-                // Add site_id to the product
-                product.site_id = siteId;
-
-                productsToInsert.push(product);
+                result.imported++;
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
                 result.skipped++;
             }
         }
 
-        // Insert products in batches and collect inserted product IDs
-        const insertedProductIds: number[] = [];
-
-        for (let i = 0; i < productsToInsert.length; i += BATCH_SIZE) {
-            const batch = productsToInsert.slice(i, i + BATCH_SIZE);
-
-            const { data: insertedProducts, error: insertError } =
-                await supabase
-                    .from("Product")
-                    .insert(batch)
-                    .select("id");
-
-            if (insertError) {
-                console.error("Error inserting batch:", insertError);
-                result.errors.push(
-                    `Errore inserimento batch ${
-                        Math.floor(i / BATCH_SIZE) + 1
-                    }: ${insertError.message}`,
-                );
-            } else {
-                result.imported += batch.length;
-                // Collect inserted product IDs
-                if (insertedProducts) {
-                    insertedProductIds.push(
-                        ...insertedProducts.map((p) => p.id),
-                    );
-                }
-            }
-        }
-
-        // Create action records for each imported product
-        if (insertedProductIds.length > 0) {
-            const actionRecords = insertedProductIds.map((productId) => ({
-                type: "product_import",
-                productId: productId,
+        // Create action record for the import
+        if (result.imported > 0) {
+            await supabase.from("Action").insert({
+                type: "inventory_csv_import",
                 user_id: userContext.user.id,
-                data: {},
-            }));
-
-            // Insert actions in batches
-            for (let i = 0; i < actionRecords.length; i += BATCH_SIZE) {
-                const actionBatch = actionRecords.slice(i, i + BATCH_SIZE);
-                const { error: actionError } = await supabase
-                    .from("Action")
-                    .insert(actionBatch);
-
-                if (actionError) {
-                    console.error(
-                        "Error creating action records:",
-                        actionError,
-                    );
-                }
-            }
+                data: {
+                    imported: result.imported,
+                    skipped: result.skipped,
+                    duplicates: result.duplicates.length,
+                },
+            });
         }
 
         result.success = result.errors.length === 0 || result.imported > 0;

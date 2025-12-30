@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { usePathname } from "next/navigation";
 
@@ -15,10 +14,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { validation } from "@/validation/products/edit";
+import { editInventoryItemSchema, type EditInventoryItemInput } from "@/validation/inventory";
 import { useToast } from "@/components/ui/use-toast";
-import { useFormStatus } from "react-dom";
-import { Product_category, Supplier } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
 import {
   Select,
@@ -33,145 +30,131 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CategorySelector } from "@/components/inventory/CategorySelector";
+import { InventoryCategory, InventorySupplier, InventoryUnit } from "@/types/supabase";
 
 type Props = {
   handleClose: any;
-  data: any;
+  data: any; // The row data (flattened item+variant)
 };
 
 const EditProductForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
   const pathname = usePathname();
-
-  // Extract domain from pathname (e.g., /sites/santini/inventory -> santini)
   const domain = pathname.split("/")[2] || "";
 
-  const form = useForm<z.infer<typeof validation>>({
-    resolver: zodResolver(validation),
+  const [categories, setCategories] = useState<InventoryCategory[]>([]);
+  const [suppliers, setSuppliers] = useState<InventorySupplier[]>([]);
+  const [units, setUnits] = useState<InventoryUnit[]>([]);
+
+  const form = useForm<EditInventoryItemInput>({
+    resolver: zodResolver(editInventoryItemSchema),
     defaultValues: {
       name: "",
-      supplierId: undefined,
-      productCategoryId: undefined,
-      type: "",
       description: "",
-      width: 0,
-      height: 0,
-      length: 0,
+      item_type: "",
+      category_id: undefined,
+      supplier_id: undefined,
+      internal_code: "",
+      supplier_code: "",
+      producer: "",
+      producer_code: "",
+      unit_id: undefined,
+      purchase_unit_price: null,
+      sell_unit_price: null,
+      image_url: "",
+      url_tds: "",
+      color: "",
+      color_code: "",
+      width: null,
+      height: null,
+      length: null,
       thickness: null,
       diameter: null,
-      quantity: 0,
-      unit_price: 0,
-      sell_price: null,
-      unit: "",
-      // New fields
-      category: "",
-      category_code: "",
       subcategory: "",
       subcategory_code: "",
       subcategory2: "",
       subcategory2_code: "",
-      color: "",
-      color_code: "",
-      internal_code: "",
-      warehouse_number: "",
-      supplier_code: "",
-      producer: "",
-      producer_code: "",
-      url_tds: "",
-      image_url: "",
     },
   });
+
   const { setValue } = form;
   const { isSubmitting } = form.formState;
-  const { pending } = useFormStatus();
-
-  const [categories, setCategories] = useState<Product_category[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   useEffect(() => {
     if (!domain) return;
 
-    const getSuppliers = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`/api/inventory/suppliers/`, {
-          headers: {
-            "x-site-domain": domain,
-          },
-        });
-        if (!response.ok) {
-          console.error("Failed to fetch suppliers");
-          return;
+        const [suppliersRes, categoriesRes, unitsRes] = await Promise.all([
+          fetch(`/api/inventory/suppliers/`, {
+            headers: { "x-site-domain": domain },
+          }),
+          fetch(`/api/inventory/categories/`, {
+            headers: { "x-site-domain": domain },
+          }),
+          fetch(`/api/inventory/units/`),
+        ]);
+
+        if (suppliersRes.ok) {
+          const suppliersData = await suppliersRes.json();
+          setSuppliers(suppliersData);
         }
-        const suppliers = await response.json();
-        setSuppliers(suppliers);
+        if (categoriesRes.ok) {
+          const categoriesData = await categoriesRes.json();
+          setCategories(categoriesData);
+        }
+        if (unitsRes.ok) {
+          const unitsData = await unitsRes.json();
+          setUnits(unitsData);
+        }
       } catch (error) {
-        console.error("Error fetching suppliers:", error);
+        console.error("Error fetching form data:", error);
       }
     };
 
-    const getCategories = async () => {
-      try {
-        const response = await fetch(`/api/inventory/categories/`, {
-          headers: {
-            "x-site-domain": domain,
-          },
-        });
-        if (!response.ok) {
-          console.error("Failed to fetch categories");
-          return;
-        }
-        const categories = await response.json();
-        setCategories(categories);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
+    fetchData();
 
-    // Set base fields
+    // Populate form with data
     setValue("name", data.name ?? "");
-    setValue("type", data.type ?? "");
     setValue("description", data.description ?? "");
-    setValue("width", data.width ?? 0);
-    setValue("height", data.height ?? 0);
-    setValue("length", data.length ?? 0);
-    setValue("thickness", data.thickness ?? null);
-    setValue("diameter", data.diameter ?? null);
-    setValue("quantity", data.quantity ?? 0);
-    const unitPrice = Number(data.unit_price);
-    setValue("unit_price", isNaN(unitPrice) ? 0 : unitPrice);
-    setValue("sell_price", data.sell_price ?? null);
-    setValue("unit", data.unit ?? "");
-    setValue("supplierId", data.supplierId ?? data.supplier_id);
-    setValue("productCategoryId", data.categoryId ?? data.product_category_id);
-
-    // Set new inventory fields
-    setValue("category", data.category ?? "");
-    setValue("category_code", data.category_code ?? "");
-    setValue("subcategory", data.subcategory ?? "");
-    setValue("subcategory_code", data.subcategory_code ?? "");
-    setValue("subcategory2", data.subcategory2 ?? "");
-    setValue("subcategory2_code", data.subcategory2_code ?? "");
-    setValue("color", data.color ?? "");
-    setValue("color_code", data.color_code ?? "");
+    setValue("item_type", data.item_type ?? "");
+    setValue("category_id", data.category_id ?? undefined);
+    setValue("supplier_id", data.supplier_id ?? undefined);
+    
+    // Variant fields
     setValue("internal_code", data.internal_code ?? "");
-    setValue("warehouse_number", data.warehouse_number ?? "");
     setValue("supplier_code", data.supplier_code ?? "");
     setValue("producer", data.producer ?? "");
     setValue("producer_code", data.producer_code ?? "");
-    setValue("url_tds", data.url_tds ?? "");
+    setValue("unit_id", data.unit_id ?? undefined);
+    setValue("purchase_unit_price", data.purchase_unit_price ?? data.unit_price ?? null);
+    setValue("sell_unit_price", data.sell_unit_price ?? data.sell_price ?? null);
     setValue("image_url", data.image_url ?? "");
+    setValue("url_tds", data.url_tds ?? "");
 
-    getSuppliers();
-    getCategories();
+    // Attributes (could be in data directly or in data.attributes)
+    const attrs = data.attributes || {};
+    setValue("color", data.color ?? attrs.color ?? "");
+    setValue("color_code", data.color_code ?? attrs.color_code ?? "");
+    setValue("width", data.width ?? attrs.width ?? null);
+    setValue("height", data.height ?? attrs.height ?? null);
+    setValue("length", data.length ?? attrs.length ?? null);
+    setValue("thickness", data.thickness ?? attrs.thickness ?? null);
+    setValue("diameter", data.diameter ?? attrs.diameter ?? null);
+    setValue("subcategory", data.subcategory ?? attrs.subcategory ?? "");
+    setValue("subcategory_code", data.subcategory_code ?? attrs.subcategory_code ?? "");
+    setValue("subcategory2", data.subcategory2 ?? attrs.subcategory2 ?? "");
+    setValue("subcategory2_code", data.subcategory2_code ?? attrs.subcategory2_code ?? "");
+
   }, [data, setValue, domain]);
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    // Use form.getValues() to ensure we get all registered field values
+  const onSubmit: SubmitHandler<EditInventoryItemInput> = async (d) => {
     const formValues = form.getValues();
-    const response = await editItem(formValues, data?.id);
+    const response = await editItem(formValues, data.item_id, data.variant_id);
+    
     if (response?.error) {
       toast({
+        variant: "destructive",
         description: `Errore! ${response.error}`,
       });
     } else {
@@ -195,21 +178,28 @@ const EditProductForm = ({ handleClose, data }: Props) => {
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="productCategoryId"
+              name="category_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria</FormLabel>
                   <FormControl>
-                    <CategorySelector
-                      categories={categories}
-                      value={field.value?.toString()}
+                    <Select
                       onValueChange={field.onChange}
+                      value={field.value || undefined}
                       disabled={isSubmitting}
-                      domain={domain}
-                      onCategoryCreated={(newCat) => {
-                        setCategories((prev) => [...prev, newCat]);
-                      }}
-                    />
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona categoria..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.code && `[${cat.code}] `}
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -217,22 +207,22 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             />
             <FormField
               control={form.control}
-              name="supplierId"
+              name="supplier_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fornitore</FormLabel>
                   <FormControl>
                     <Select
                       onValueChange={field.onChange}
-                      value={field.value?.toString()}
+                      value={field.value || undefined}
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Seleziona fornitore" />
+                        <SelectValue placeholder="Seleziona fornitore..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {suppliers.map((sup: Supplier) => (
-                          <SelectItem key={sup.id} value={sup.id.toString()}>
+                        {suppliers.map((sup) => (
+                          <SelectItem key={sup.id} value={sup.id}>
                             {sup.name}
                           </SelectItem>
                         ))}
@@ -263,7 +253,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="type"
+              name="item_type"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tipo</FormLabel>
@@ -282,7 +272,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Descrizione / N. Articolo</FormLabel>
+                <FormLabel>Descrizione</FormLabel>
                 <FormControl>
                   <Input {...field} value={field.value ?? ""} />
                 </FormControl>
@@ -304,29 +294,35 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Codice Interno</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="es. LG_PA_MEL_9010"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
+                    <Input placeholder="es. LG_PA_MEL_9010" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
-              disabled={isSubmitting}
               control={form.control}
-              name="warehouse_number"
+              name="unit_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nr. Magazzino</FormLabel>
+                  <FormLabel>Unità di Misura</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="es. 1000"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || undefined}
+                      disabled={isSubmitting}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona unità..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {units.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.code} - {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -349,7 +345,14 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Larghezza</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} value={field.value ?? 0} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -363,7 +366,14 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Altezza</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} value={field.value ?? 0} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -377,7 +387,14 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Lunghezza</FormLabel>
                   <FormControl>
-                    <Input type="number" {...field} value={field.value ?? 0} />
+                    <Input
+                      type="number"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -398,9 +415,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
                       }
                     />
                   </FormControl>
@@ -421,9 +436,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
                       }
                     />
                   </FormControl>
@@ -434,48 +447,16 @@ const EditProductForm = ({ handleClose, data }: Props) => {
           </div>
         </div>
 
-        {/* Quantity & Price Section */}
+        {/* Prices Section */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground">
-            Quantità e Prezzi
+            Prezzi
           </h3>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-4">
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="quantity"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Qta.</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} value={field.value ?? 0} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              disabled={isSubmitting}
-              control={form.control}
-              name="unit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unità</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="PZ, ML, KG..."
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              disabled={isSubmitting}
-              control={form.control}
-              name="unit_price"
+              name="purchase_unit_price"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Prezzo Acquisto</FormLabel>
@@ -484,11 +465,10 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       type="number"
                       step="0.01"
                       {...field}
-                      value={field.value ?? 0}
-                      onChange={(e) => {
-                        const num = parseFloat(e.target.value);
-                        field.onChange(isNaN(num) ? 0 : num);
-                      }}
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -498,7 +478,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             <FormField
               disabled={isSubmitting}
               control={form.control}
-              name="sell_price"
+              name="sell_unit_price"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Prezzo Vendita</FormLabel>
@@ -509,9 +489,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
+                        field.onChange(e.target.value ? Number(e.target.value) : null)
                       }
                     />
                   </FormControl>
@@ -538,11 +516,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Sottocategoria</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. Pannelli"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. Pannelli" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -556,11 +530,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Codice Sottocategoria</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. PA"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. PA" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -576,11 +546,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. Pannello melaminico"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. Pannello melaminico" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -594,11 +560,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Codice Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. MEL"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. MEL" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -622,11 +584,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Colore</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. BIANCO"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. BIANCO" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -640,11 +598,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Codice Colore</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. 9010"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. 9010" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -668,11 +622,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Produttore</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. HERZOG-HELMIGER"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. HERZOG-HELMIGER" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -686,11 +636,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                     <FormItem>
                       <FormLabel>Codice Produttore</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="es. HEHE"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
+                        <Input placeholder="es. HEHE" {...field} value={field.value ?? ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -705,11 +651,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                   <FormItem>
                     <FormLabel>Codice Fornitore</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="es. HEHE"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
+                      <Input placeholder="es. HEHE" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -731,12 +673,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                   <FormItem>
                     <FormLabel>URL Scheda Tecnica</FormLabel>
                     <FormControl>
-                      <Input
-                        type="url"
-                        placeholder="https://..."
-                        {...field}
-                        value={field.value ?? ""}
-                      />
+                      <Input type="url" placeholder="https://..." {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -750,12 +687,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                   <FormItem>
                     <FormLabel>URL Immagine</FormLabel>
                     <FormControl>
-                      <Input
-                        type="url"
-                        placeholder="https://..."
-                        {...field}
-                        value={field.value ?? ""}
-                      />
+                      <Input type="url" placeholder="https://..." {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

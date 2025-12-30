@@ -363,7 +363,8 @@ export const fetchKanbans = cache(async (siteId: string) => {
 });
 
 /**
- * Fetch inventory products for a site
+ * Fetch inventory products for a site (legacy - uses old Product table)
+ * @deprecated Use fetchInventoryItems instead
  */
 export const fetchInventory = cache(async (siteId: string) => {
     const supabase = await createClient();
@@ -374,6 +375,133 @@ export const fetchInventory = cache(async (siteId: string) => {
 
     if (error) {
         log.error("Error fetching inventory:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch inventory items with variants and stock from new unified system
+ */
+export const fetchInventoryItems = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    
+    // Fetch items with variants
+    const { data: items, error: itemsError } = await supabase
+        .from("inventory_items")
+        .select(`
+            *,
+            category:inventory_categories(*),
+            supplier:inventory_suppliers(*),
+            variants:inventory_item_variants(
+                *,
+                unit:inventory_units(*)
+            )
+        `)
+        .eq("site_id", siteId)
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+
+    if (itemsError) {
+        log.error("Error fetching inventory items:", itemsError);
+        return [];
+    }
+
+    // Fetch stock quantities
+    const { data: stock, error: stockError } = await supabase
+        .from("inventory_stock")
+        .select("*")
+        .eq("site_id", siteId);
+
+    if (stockError) {
+        log.error("Error fetching inventory stock:", stockError);
+    }
+
+    // Create stock lookup map
+    const stockMap = new Map<string, number>();
+    (stock || []).forEach((s: any) => {
+        const key = `${s.variant_id}-${s.warehouse_id || 'default'}`;
+        stockMap.set(key, (stockMap.get(key) || 0) + (s.quantity || 0));
+    });
+
+    // Merge stock quantities into variants
+    const itemsWithStock = (items || []).map((item: any) => ({
+        ...item,
+        variants: (item.variants || []).map((variant: any) => ({
+            ...variant,
+            stock_quantity: stockMap.get(`${variant.id}-default`) || 0,
+        })),
+    }));
+
+    return itemsWithStock;
+});
+
+/**
+ * Fetch inventory categories for a site
+ */
+export const fetchInventoryCategories = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("inventory_categories")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching inventory categories:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch inventory suppliers for a site
+ */
+export const fetchInventorySuppliers = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("inventory_suppliers")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching inventory suppliers:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch inventory units (global)
+ */
+export const fetchInventoryUnits = cache(async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("inventory_units")
+        .select("*")
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching inventory units:", error);
+        return [];
+    }
+    return data || [];
+});
+
+/**
+ * Fetch inventory warehouses for a site
+ */
+export const fetchInventoryWarehouses = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from("inventory_warehouses")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching inventory warehouses:", error);
         return [];
     }
     return data || [];
@@ -712,69 +840,172 @@ export const fetchReportsData = cache(async (siteId: string) => {
 
 /**
  * Fetch data for inventory page with last modification info
+ * Uses new unified inventory system
  */
 export const fetchInventoryData = cache(async (siteId: string) => {
     const supabase = await createClient();
 
-    const [inventoryResult, categoriesResult, suppliersResult] = await Promise
-        .all([
-            supabase.from("Product").select("*").eq("site_id", siteId),
-            supabase
-                .from("Product_category")
-                .select("*")
-                .eq("site_id", siteId)
-                .order("name", { ascending: true }),
-            supabase
-                .from("Supplier")
-                .select("*")
-                .eq("site_id", siteId)
-                .order("name", { ascending: true }),
-        ]);
-
-    const inventory = inventoryResult.data || [];
-
-    // Fetch product-related actions with user info (limited for performance)
-    if (inventory.length > 0) {
-        const productIds = inventory.map((p) => p.id);
-        const { data: actions, error: actionsError } = await supabase
-            .from("Action")
+    const [
+        itemsResult,
+        categoriesResult,
+        suppliersResult,
+        unitsResult,
+        warehousesResult,
+        stockResult,
+    ] = await Promise.all([
+        supabase
+            .from("inventory_items")
             .select(`
-                id, createdAt, productId,
-                User:user_id (id, given_name, family_name, picture, initials)
+                *,
+                category:inventory_categories(*),
+                supplier:inventory_suppliers(*),
+                variants:inventory_item_variants(
+                    *,
+                    unit:inventory_units(*)
+                )
             `)
-            .in("productId", productIds)
-            .order("createdAt", { ascending: false })
-            .limit(500);
+            .eq("site_id", siteId)
+            .eq("is_active", true)
+            .order("name", { ascending: true }),
+        supabase
+            .from("inventory_categories")
+            .select("*")
+            .eq("site_id", siteId)
+            .order("name", { ascending: true }),
+        supabase
+            .from("inventory_suppliers")
+            .select("*")
+            .eq("site_id", siteId)
+            .order("name", { ascending: true }),
+        supabase
+            .from("inventory_units")
+            .select("*")
+            .order("name", { ascending: true }),
+        supabase
+            .from("inventory_warehouses")
+            .select("*")
+            .eq("site_id", siteId)
+            .order("name", { ascending: true }),
+        supabase
+            .from("inventory_stock")
+            .select("*")
+            .eq("site_id", siteId),
+    ]);
 
-        if (!actionsError && actions) {
-            // Group actions by productId and get the most recent one
-            const actionsByProduct = new Map<number, any>();
-            actions.forEach((action) => {
-                if (
-                    action.productId && !actionsByProduct.has(action.productId)
-                ) {
-                    actionsByProduct.set(action.productId, action);
-                }
+    const items = itemsResult.data || [];
+    const stock = stockResult.data || [];
+
+    // Create stock lookup map (variant_id -> total quantity)
+    const stockMap = new Map<string, number>();
+    stock.forEach((s: any) => {
+        const currentQty = stockMap.get(s.variant_id) || 0;
+        stockMap.set(s.variant_id, currentQty + (s.quantity || 0));
+    });
+
+    // Flatten items with variants for display
+    // Each variant becomes a row in the inventory table
+    const inventory: any[] = [];
+    items.forEach((item: any) => {
+        const variants = item.variants || [];
+        if (variants.length === 0) {
+            // Item without variants (shouldn't happen, but handle gracefully)
+            inventory.push({
+                id: item.id,
+                item_id: item.id,
+                variant_id: null,
+                site_id: item.site_id,
+                name: item.name,
+                description: item.description,
+                item_type: item.item_type,
+                category_id: item.category_id,
+                supplier_id: item.supplier_id,
+                category: item.category,
+                supplier: item.supplier,
+                is_stocked: item.is_stocked,
+                is_consumable: item.is_consumable,
+                is_active: item.is_active,
+                // Variant fields
+                internal_code: null,
+                supplier_code: null,
+                producer: null,
+                producer_code: null,
+                unit_id: null,
+                unit: null,
+                purchase_unit_price: null,
+                sell_unit_price: null,
+                attributes: {},
+                image_url: null,
+                url_tds: null,
+                warehouse_number: null,
+                stock_quantity: 0,
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+                lastAction: null,
             });
-
-            // Merge products with their last action
-            const inventoryWithActions = inventory.map((product) => ({
-                ...product,
-                lastAction: actionsByProduct.get(product.id) || null,
-            }));
-
-            return {
-                inventory: inventoryWithActions,
-                categories: categoriesResult.data || [],
-                suppliers: suppliersResult.data || [],
-            };
+        } else {
+            variants.forEach((variant: any) => {
+                const attrs = variant.attributes || {};
+                inventory.push({
+                    id: variant.id, // Use variant ID as primary ID for the row
+                    item_id: item.id,
+                    variant_id: variant.id,
+                    site_id: item.site_id,
+                    name: item.name,
+                    description: item.description,
+                    item_type: item.item_type,
+                    category_id: item.category_id,
+                    supplier_id: item.supplier_id,
+                    category: item.category,
+                    supplier: item.supplier,
+                    is_stocked: item.is_stocked,
+                    is_consumable: item.is_consumable,
+                    is_active: item.is_active,
+                    // Variant fields
+                    internal_code: variant.internal_code,
+                    supplier_code: variant.supplier_code,
+                    producer: variant.producer,
+                    producer_code: variant.producer_code,
+                    unit_id: variant.unit_id,
+                    unit: variant.unit,
+                    purchase_unit_price: variant.purchase_unit_price,
+                    sell_unit_price: variant.sell_unit_price,
+                    attributes: attrs,
+                    image_url: variant.image_url,
+                    url_tds: variant.url_tds,
+                    warehouse_number: variant.warehouse_number,
+                    // Flattened attributes for easy access
+                    color: attrs.color,
+                    color_code: attrs.color_code,
+                    width: attrs.width,
+                    height: attrs.height,
+                    length: attrs.length,
+                    thickness: attrs.thickness,
+                    diameter: attrs.diameter,
+                    subcategory: attrs.subcategory,
+                    subcategory_code: attrs.subcategory_code,
+                    subcategory2: attrs.subcategory2,
+                    subcategory2_code: attrs.subcategory2_code,
+                    // Stock
+                    stock_quantity: stockMap.get(variant.id) || 0,
+                    quantity: stockMap.get(variant.id) || 0, // Alias for compatibility
+                    // Legacy compatibility fields
+                    unit_price: variant.purchase_unit_price,
+                    sell_price: variant.sell_unit_price,
+                    total_price: (variant.purchase_unit_price || 0) * (stockMap.get(variant.id) || 0),
+                    created_at: variant.created_at || item.created_at,
+                    updated_at: variant.updated_at || item.updated_at,
+                    lastAction: null,
+                });
+            });
         }
-    }
+    });
 
     return {
-        inventory: inventory.map((p) => ({ ...p, lastAction: null })),
+        inventory,
         categories: categoriesResult.data || [],
         suppliers: suppliersResult.data || [],
+        units: unitsResult.data || [],
+        warehouses: warehousesResult.data || [],
     };
 });
 

@@ -35,15 +35,18 @@ function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
   async function handleDelete(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
-    const response = await removeItem(data);
-    if (response?.message) {
+    // Use item_id for the new inventory structure
+    const itemId = data?.item_id || data?.id;
+    const response = await removeItem(itemId);
+    if (response?.error) {
       toast({
-        description: `Errore! ${response.message}`,
+        variant: "destructive",
+        description: `Errore! ${response.error}`,
       });
       setPending(false);
     } else {
       toast({
-        description: `Elemento eliminato!`,
+        description: `Elemento "${data?.name}" eliminato!`,
       });
       setPending(false);
       setOpen(false);
@@ -55,7 +58,7 @@ function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
       <DialogTrigger asChild></DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Cancellare {data?.id}</DialogTitle>
+          <DialogTitle>Cancellare &quot;{data?.name}&quot;?</DialogTitle>
           <DialogDescription>Azione irreversibile</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleDelete} className="w-full">

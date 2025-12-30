@@ -28,10 +28,10 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { Product_category } from "@/types/supabase";
+import { InventoryCategory } from "@/types/supabase";
 import { Plus } from "lucide-react";
 import * as z from "zod";
-import { createItem } from "@/app/sites/[domain]/categories/actions/create-item.action";
+// Category creation is now handled via API
 
 const categoryValidation = z.object({
   name: z.string().min(1, "Nome richiesto"),
@@ -40,12 +40,12 @@ const categoryValidation = z.object({
 });
 
 type CategorySelectorProps = {
-  categories: Product_category[];
+  categories: InventoryCategory[];
   value?: string;
   onValueChange: (value: string) => void;
   disabled?: boolean;
   domain: string;
-  onCategoryCreated?: (category: Product_category) => void;
+  onCategoryCreated?: (category: InventoryCategory) => void;
 };
 
 export const CategorySelector: React.FC<CategorySelectorProps> = ({
@@ -57,7 +57,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   onCategoryCreated,
 }) => {
   const [categories, setCategories] =
-    useState<Product_category[]>(initialCategories);
+    useState<InventoryCategory[]>(initialCategories);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -95,16 +95,22 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
   const onSubmit = async (data: z.infer<typeof categoryValidation>) => {
     try {
-      const result = await createItem(
-        {
-          name: data.name,
-          code: data.code || "",
-          description: data.description || "",
+      const response = await fetch(`/api/inventory/categories/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-site-domain": domain,
         },
-        domain
-      );
+        body: JSON.stringify({
+          name: data.name,
+          code: data.code || null,
+          description: data.description || null,
+        }),
+      });
 
-      if (result.success && result.data) {
+      if (response.ok) {
+        const newCategory = await response.json();
+        
         toast({
           description: `Categoria "${data.name}" creata correttamente!`,
         });
@@ -113,19 +119,20 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
         await refreshCategories();
 
         // Select the newly created category
-        onValueChange(result.data.id.toString());
+        onValueChange(newCategory.id);
 
         // Notify parent component
         if (onCategoryCreated) {
-          onCategoryCreated(result.data);
+          onCategoryCreated(newCategory);
         }
 
         // Close dialog and reset form
         setIsDialogOpen(false);
         form.reset();
       } else {
+        const error = await response.json();
         toast({
-          description: result.message || "Errore nel creare la categoria",
+          description: error.error || "Errore nel creare la categoria",
           variant: "destructive",
         });
       }
@@ -148,8 +155,8 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           <SelectValue placeholder="Seleziona categoria..." />
         </SelectTrigger>
         <SelectContent>
-          {categories.map((cat: Product_category) => (
-            <SelectItem key={cat.id} value={cat.id.toString()}>
+          {categories.map((cat: InventoryCategory) => (
+            <SelectItem key={cat.id} value={cat.id}>
               {cat.code && `[${cat.code}] `}
               {cat.name}
               {cat.description && ` - ${cat.description}`}

@@ -415,7 +415,183 @@ export interface ErrorTracking {
     updated_at?: string;
 }
 
-// Inventory related types
+// ==========================================
+// NEW UNIFIED INVENTORY TYPES
+// ==========================================
+
+// Unit of measure
+export interface InventoryUnit {
+    id: string;
+    code: string;
+    name: string;
+    unit_type: 'unit' | 'weight' | 'volume' | 'length' | 'area' | 'other';
+    base_unit_id?: string;
+    multiplier?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Inventory category (replaces Product_category for inventory)
+export interface InventoryCategory {
+    id: string;
+    site_id: string;
+    name: string;
+    description?: string;
+    code?: string;
+    parent_id?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Inventory supplier
+export interface InventorySupplier {
+    id: string;
+    site_id: string;
+    name: string;
+    code?: string;
+    notes?: string;
+    short_name?: string;
+    address?: string;
+    location?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    contact?: string;
+    cap?: number;
+    supplier_image?: string;
+    supplier_category_id?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Inventory warehouse
+export interface InventoryWarehouse {
+    id: string;
+    site_id: string;
+    name: string;
+    description?: string;
+    code?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Inventory item (master data)
+export interface InventoryItem {
+    id: string;
+    site_id: string;
+    name: string;
+    description?: string;
+    item_type?: string;
+    category_id?: string;
+    supplier_id?: string;
+    is_stocked: boolean;
+    is_consumable: boolean;
+    is_active: boolean;
+    created_at?: string;
+    updated_at?: string;
+    // Relations
+    category?: InventoryCategory;
+    supplier?: InventorySupplier;
+    variants?: InventoryItemVariant[];
+}
+
+// Variant attributes stored in JSONB
+export interface VariantAttributes {
+    color?: string;
+    color_code?: string;
+    width?: number;
+    height?: number;
+    length?: number;
+    thickness?: number;
+    diameter?: number;
+    category?: string;
+    category_code?: string;
+    subcategory?: string;
+    subcategory_code?: string;
+    subcategory2?: string;
+    subcategory2_code?: string;
+    legacy_unit?: string;
+    legacy_inventory_id?: number;
+    [key: string]: any;
+}
+
+// Inventory item variant
+export interface InventoryItemVariant {
+    id: string;
+    item_id: string;
+    site_id: string;
+    internal_code?: string;
+    supplier_code?: string;
+    producer?: string;
+    producer_code?: string;
+    unit_id?: string;
+    purchase_unit_price?: number;
+    sell_unit_price?: number;
+    attributes: VariantAttributes;
+    image_url?: string;
+    url_tds?: string;
+    warehouse_number?: string;
+    created_at?: string;
+    updated_at?: string;
+    // Relations
+    item?: InventoryItem;
+    unit?: InventoryUnit;
+    // Computed from stock
+    current_quantity?: number;
+}
+
+// Stock movement types
+export type StockMovementType = 'opening' | 'in' | 'out' | 'adjust' | 'transfer_in' | 'transfer_out';
+
+// Stock movement
+export interface InventoryStockMovement {
+    id: string;
+    site_id: string;
+    variant_id: string;
+    warehouse_id?: string;
+    movement_type: StockMovementType;
+    quantity: number;
+    unit_id?: string;
+    reason?: string;
+    reference_type?: string;
+    reference_id?: string;
+    occurred_at: string;
+    created_at?: string;
+    // Relations
+    variant?: InventoryItemVariant;
+    warehouse?: InventoryWarehouse;
+    unit?: InventoryUnit;
+}
+
+// Stock view (computed)
+export interface InventoryStock {
+    site_id: string;
+    variant_id: string;
+    warehouse_id?: string;
+    quantity: number;
+}
+
+// Extended variant with stock info for display
+export interface InventoryVariantWithStock extends InventoryItemVariant {
+    item: InventoryItem;
+    stock_quantity: number;
+    lastAction?: {
+        createdAt: string;
+        type: string;
+        User?: {
+            given_name: string | null;
+            family_name: string | null;
+            picture: string | null;
+            initials: string | null;
+        };
+    } | null;
+}
+
+// ==========================================
+// LEGACY INVENTORY TYPES (kept for backwards compatibility)
+// ==========================================
+
+// Legacy Inventory type
 export interface Inventory {
     id: number;
     product_id?: number;

@@ -3,56 +3,11 @@ import { createClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 
-const log = logger.scope("InventoryCategories");
+const log = logger.scope("InventoryWarehouses");
 
 export async function GET(req: NextRequest) {
     try {
         const supabase = await createClient();
-
-        // Check for x-site-domain header first (used by client components)
-        const siteDomain = req.headers.get("x-site-domain");
-        let siteId: string | null = null;
-
-        if (siteDomain) {
-            const context = await getSiteContextFromDomain(siteDomain);
-            siteId = context.siteId;
-        } else {
-            const context = await getSiteContext(req);
-            siteId = context.siteId;
-        }
-
-        // In multi-tenant, siteId is required
-        if (!siteId) {
-            log.warn("Categories API called without siteId");
-            return NextResponse.json(
-                { error: "Site ID required" },
-                { status: 400 },
-            );
-        }
-
-        // Query new inventory_categories table
-        const { data: categories, error } = await supabase
-            .from("inventory_categories")
-            .select("*")
-            .eq("site_id", siteId)
-            .order("name", { ascending: true });
-
-        if (error) {
-            log.error("Error fetching inventory categories:", error);
-            return NextResponse.json([], { status: 200 });
-        }
-
-        return NextResponse.json(categories || []);
-    } catch (err: unknown) {
-        log.error("Error in inventory categories API:", err);
-        return NextResponse.json([], { status: 200 });
-    }
-}
-
-export async function POST(req: NextRequest) {
-    try {
-        const supabase = await createClient();
-        const body = await req.json();
 
         // Check for x-site-domain header first
         const siteDomain = req.headers.get("x-site-domain");
@@ -67,13 +22,55 @@ export async function POST(req: NextRequest) {
         }
 
         if (!siteId) {
+            log.warn("Warehouses API called without siteId");
             return NextResponse.json(
                 { error: "Site ID required" },
                 { status: 400 },
             );
         }
 
-        const { name, code, description, parent_id } = body;
+        const { data: warehouses, error } = await supabase
+            .from("inventory_warehouses")
+            .select("*")
+            .eq("site_id", siteId)
+            .order("name", { ascending: true });
+
+        if (error) {
+            log.error("Error fetching inventory warehouses:", error);
+            return NextResponse.json([], { status: 200 });
+        }
+
+        return NextResponse.json(warehouses || []);
+    } catch (err: unknown) {
+        log.error("Error in inventory warehouses API:", err);
+        return NextResponse.json([], { status: 200 });
+    }
+}
+
+export async function POST(req: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const body = await req.json();
+
+        const siteDomain = req.headers.get("x-site-domain");
+        let siteId: string | null = null;
+
+        if (siteDomain) {
+            const context = await getSiteContextFromDomain(siteDomain);
+            siteId = context.siteId;
+        } else {
+            const context = await getSiteContext(req);
+            siteId = context.siteId;
+        }
+
+        if (!siteId) {
+            return NextResponse.json(
+                { error: "Site ID required" },
+                { status: 400 },
+            );
+        }
+
+        const { name, description, code } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -82,32 +79,32 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { data: category, error } = await supabase
-            .from("inventory_categories")
+        const { data: warehouse, error } = await supabase
+            .from("inventory_warehouses")
             .insert({
                 site_id: siteId,
                 name,
-                code: code || null,
                 description: description || null,
-                parent_id: parent_id || null,
+                code: code || null,
             })
             .select()
             .single();
 
         if (error) {
-            log.error("Error creating inventory category:", error);
+            log.error("Error creating warehouse:", error);
             return NextResponse.json(
                 { error: error.message },
                 { status: 500 },
             );
         }
 
-        return NextResponse.json(category);
+        return NextResponse.json(warehouse);
     } catch (err: unknown) {
-        log.error("Error in create inventory category API:", err);
+        log.error("Error in create warehouse API:", err);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 },
         );
     }
 }
+
