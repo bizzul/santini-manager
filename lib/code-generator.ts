@@ -429,3 +429,190 @@ export const AVAILABLE_VARIABLES = [
   { key: "mese", description: "Mese corrente", example: "12" },
   { key: "giorno", description: "Giorno corrente", example: "10" },
 ];
+
+// =====================================================
+// Internal Category Code Generation
+// =====================================================
+
+/**
+ * Trova il numero di sequenza massimo esistente nei Task per una categoria interna
+ */
+async function findMaxInternalSequence(
+  supabase: any,
+  siteId: string,
+  categoryId: number,
+  baseCode: number,
+): Promise<number> {
+  // Query all tasks from kanbans in this category with internal codes
+  const { data: tasks, error } = await supabase
+    .from("Task")
+    .select("unique_code, kanban_id")
+    .eq("site_id", siteId)
+    .like("unique_code", `${baseCode}-%`)
+    .order("unique_code", { ascending: false })
+    .limit(500);
+
+  if (error || !tasks || tasks.length === 0) {
+    return 0;
+  }
+
+  // Extract the maximum sequence number from existing codes
+  let maxNumber = 0;
+  for (const task of tasks) {
+    const code = task.unique_code;
+    if (!code) continue;
+
+    // Format: "1000-1", "1000-2", etc.
+    const parts = code.split("-");
+    if (parts.length !== 2) continue;
+
+    const basePart = parseInt(parts[0], 10);
+    if (basePart !== baseCode) continue;
+
+    const seqPart = parseInt(parts[1], 10);
+    if (!isNaN(seqPart) && seqPart > maxNumber) {
+      maxNumber = seqPart;
+    }
+  }
+
+  return maxNumber;
+}
+
+/**
+ * Ottiene il prossimo valore della sequenza per una categoria interna
+ */
+export async function getNextInternalSequenceValue(
+  siteId: string,
+  categoryId: number,
+  baseCode: number,
+): Promise<number> {
+  const supabase = await createClient();
+  const currentYear = new Date().getFullYear();
+
+  // Check the maximum existing sequence in Task table
+  const maxExisting = await findMaxInternalSequence(supabase, siteId, categoryId, baseCode);
+
+  // Try to get the sequence from code_sequences (with category_id)
+  const { data: existingSeq, error: seqError } = await supabase
+    .from("code_sequences")
+    .select("current_value")
+    .eq("site_id", siteId)
+    .eq("sequence_type", "INTERNO")
+    .eq("year", currentYear)
+    .eq("category_id", categoryId)
+    .single();
+
+  if (seqError && seqError.code !== "PGRST116") {
+    // PGRST116 = no rows found, that's ok
+    logger.warn("Error fetching internal sequence:", seqError);
+  }
+
+  // Use the maximum between saved sequence and existing tasks
+  const sequenceValue = existingSeq?.current_value || 0;
+  const nextValue = Math.max(sequenceValue, maxExisting) + 1;
+
+  // Update or insert the sequence value
+  const { error: upsertError } = await supabase
+    .from("code_sequences")
+    .upsert({
+      site_id: siteId,
+      sequence_type: "INTERNO",
+      year: currentYear,
+      category_id: categoryId,
+      current_value: nextValue,
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: "site_id,sequence_type,year,category_id",
+    });
+
+  if (upsertError) {
+    logger.warn("Failed to update internal sequence:", upsertError);
+  }
+
+  return nextValue;
+}
+
+/**
+ * Genera un codice univoco per un task in una categoria interna
+ * Formato: {base_code}-{sequenza} (es. 1000-1, 1000-2)
+ */
+export async function generateInternalTaskCode(
+  siteId: string,
+  categoryId: number,
+  baseCode: number,
+): Promise<string> {
+  const sequenceValue = await getNextInternalSequenceValue(siteId, categoryId, baseCode);
+  return `${baseCode}-${sequenceValue}`;
+}
+
+/**
+ * Verifica se una kanban appartiene a una categoria interna
+ * e restituisce le informazioni necessarie per la generazione del codice
+ */
+export async function getInternalCategoryInfo(
+  kanbanId: string,
+): Promise<{ isInternal: boolean; categoryId?: number; baseCode?: number } | null> {
+  const supabase = await createClient();
+
+  // Get the kanban with its category
+  const { data: kanban, error: kanbanError } = await supabase
+    .from("Kanban")
+    .select(`
+      id,
+      category_id,
+      category:KanbanCategory(
+        id,
+        is_internal,
+        internal_base_code
+      )
+    `)
+    .eq("id", kanbanId)
+    .single();
+
+  if (kanbanError || !kanban) {
+    logger.warn("Error fetching kanban for internal check:", kanbanError);
+    return null;
+  }
+
+  // Check if the category is internal
+  const category = kanban.category as any;
+  if (!category || !category.is_internal) {
+    return { isInternal: false };
+  }
+
+  return {
+    isInternal: true,
+    categoryId: category.id,
+    baseCode: category.internal_base_code,
+  };
+}
+
+/**
+ * Preview di un codice interno (senza consumare la sequenza)
+ */
+export async function previewInternalCode(
+  siteId: string,
+  categoryId: number,
+  baseCode: number,
+): Promise<string> {
+  const supabase = await createClient();
+  const currentYear = new Date().getFullYear();
+
+  // Check the maximum existing sequence
+  const maxExisting = await findMaxInternalSequence(supabase, siteId, categoryId, baseCode);
+
+  // Get current sequence value
+  const { data: existingSeq } = await supabase
+    .from("code_sequences")
+    .select("current_value")
+    .eq("site_id", siteId)
+    .eq("sequence_type", "INTERNO")
+    .eq("year", currentYear)
+    .eq("category_id", categoryId)
+    .single();
+
+  const sequenceValue = existingSeq?.current_value || 0;
+  const nextValue = Math.max(sequenceValue, maxExisting) + 1;
+
+  return `${baseCode}-${nextValue}`;
+}

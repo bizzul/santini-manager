@@ -14,6 +14,8 @@ export interface KanbanCategory {
   site_id?: string | null;
   created_at?: string;
   updated_at?: string;
+  is_internal?: boolean;
+  internal_base_code?: number | null;
 }
 
 export async function getKanbanCategories(

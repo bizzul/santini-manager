@@ -60,33 +60,54 @@ export async function POST(req: NextRequest) {
         : data.roles?.id?.toString();
       const useCNC = roleId ? parseInt(roleId) === 2 : false;
 
-      // Get task ID from unique code with site_id filtering
-      let taskQuery = supabase
-        .from("Task")
-        .select("id")
-        .eq("unique_code", data.task);
+      // Determine activity type (default to 'project' for backwards compatibility)
+      const activityType = data.activityType || "project";
+      const isInternalActivity = activityType === "internal";
 
-      if (siteId) {
-        taskQuery = taskQuery.eq("site_id", siteId);
+      let taskId: number | null = null;
+
+      // Only fetch task if it's a project-based activity
+      if (!isInternalActivity && data.task) {
+        let taskQuery = supabase
+          .from("Task")
+          .select("id")
+          .eq("unique_code", data.task);
+
+        if (siteId) {
+          taskQuery = taskQuery.eq("site_id", siteId);
+        }
+
+        const { data: task, error: taskError } = await taskQuery.single();
+
+        if (taskError) throw taskError;
+        taskId = task.id;
       }
 
-      const { data: task, error: taskError } = await taskQuery.single();
-
-      if (taskError) throw taskError;
-
       // Create timetracking entry
+      const insertData: any = {
+        description: data.description,
+        description_type: data.descriptionCat,
+        hours: data.hours,
+        minutes: data.minutes,
+        totalTime: roundedTotalTime,
+        use_cnc: useCNC,
+        employee_id: parseInt(data.userId),
+        activity_type: activityType,
+      };
+
+      // Add task_id only for project activities
+      if (taskId) {
+        insertData.task_id = taskId;
+      }
+
+      // Add internal_activity for internal activities
+      if (isInternalActivity && data.internalActivity) {
+        insertData.internal_activity = data.internalActivity;
+      }
+
       const { data: timetracking, error: timetrackingError } = await supabase
         .from("Timetracking")
-        .insert({
-          description: data.description,
-          description_type: data.descriptionCat,
-          hours: data.hours,
-          minutes: data.minutes,
-          totalTime: roundedTotalTime,
-          use_cnc: useCNC,
-          task_id: task.id,
-          employee_id: parseInt(data.userId),
-        })
+        .insert(insertData)
         .select()
         .single();
 

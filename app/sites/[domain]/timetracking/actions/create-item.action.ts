@@ -33,30 +33,45 @@ export async function createItem(props: Timetracking, domain?: string) {
     try {
       const supabase = await createClient();
       const totalTimeInHours = result.data.hours + result.data.minutes / 60;
-      //const roundedTotalTime = Math.round(totalTimeInHours * 2) / 2; // round to nearest half hour
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
+
       // Check if the user used the CNC
       let useCNC = false;
       if (result.data.roles === "CNC") {
         useCNC = true;
-      } else {
-        useCNC = false;
+      }
+
+      // Determine activity type (default to 'project' for backwards compatibility)
+      const activityType = result.data.activityType || "project";
+      const isInternalActivity = activityType === "internal";
+
+      // Build insert data
+      const insertData: any = {
+        created_at: new Date(result.data.date),
+        description: result.data.description,
+        description_type: result.data.descriptionCat,
+        hours: result.data.hours,
+        minutes: result.data.minutes,
+        totalTime: roundedTotalTime,
+        use_cnc: useCNC,
+        employee_id: Number(result.data.userId),
+        site_id: siteId,
+        activity_type: activityType,
+      };
+
+      // Add task_id only for project activities
+      if (!isInternalActivity && result.data.task) {
+        insertData.task_id = Number(result.data.task);
+      }
+
+      // Add internal_activity for internal activities
+      if (isInternalActivity && result.data.internalActivity) {
+        insertData.internal_activity = result.data.internalActivity;
       }
 
       const { data: timetracking, error: timetrackingError } = await supabase
         .from("Timetracking")
-        .insert({
-          created_at: new Date(result.data.date),
-          description: result.data.description,
-          description_type: result.data.descriptionCat,
-          hours: result.data.hours,
-          minutes: result.data.minutes,
-          totalTime: roundedTotalTime,
-          use_cnc: useCNC,
-          task_id: Number(result.data.task),
-          employee_id: Number(result.data.userId),
-          site_id: siteId,
-        })
+        .insert(insertData)
         .select()
         .single();
 

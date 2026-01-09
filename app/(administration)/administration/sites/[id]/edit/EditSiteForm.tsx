@@ -450,6 +450,7 @@ export default function EditSiteForm({
             </p>
             <ModuleManagementModal
               siteId={site.id}
+              domain={site.subdomain}
               trigger={
                 <Button
                   variant="outline"

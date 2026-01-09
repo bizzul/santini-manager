@@ -27,10 +27,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Folder } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Folder, Building2 } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { IconSelectorWithColor } from "@/components/kanbans/IconSelector";
 import { useQueryClient } from "@tanstack/react-query";
+import { Switch } from "@/components/ui/switch";
 
 interface KanbanCategoryManagerModalProps {
   siteId: string;
@@ -49,6 +50,8 @@ interface KanbanCategory {
   site_id: string;
   created_at: string;
   updated_at: string;
+  is_internal?: boolean;
+  internal_base_code?: number | null;
 }
 
 // Helper function to generate identifier from name
@@ -88,6 +91,8 @@ export default function KanbanCategoryManagerModal({
     icon: "Folder",
     color: "#3B82F6",
     display_order: 0,
+    is_internal: false,
+    internal_base_code: "",
   });
 
   // Get the full domain for API calls
@@ -129,6 +134,8 @@ export default function KanbanCategoryManagerModal({
         icon: category.icon || "Folder",
         color: category.color || "#3B82F6",
         display_order: category.display_order,
+        is_internal: category.is_internal || false,
+        internal_base_code: category.internal_base_code?.toString() || "",
       });
     } else {
       setEditingCategory(null);
@@ -139,6 +146,8 @@ export default function KanbanCategoryManagerModal({
         icon: "Folder",
         color: "#3B82F6",
         display_order: categories.length,
+        is_internal: false,
+        internal_base_code: "",
       });
     }
     setIsFormOpen(true);
@@ -165,6 +174,24 @@ export default function KanbanCategoryManagerModal({
       return;
     }
 
+    // Validate internal category
+    if (formData.is_internal && !formData.internal_base_code) {
+      toast.error("Il codice base è obbligatorio per le categorie interne");
+      return;
+    }
+
+    const baseCode = formData.internal_base_code
+      ? parseInt(formData.internal_base_code, 10)
+      : null;
+
+    if (
+      formData.is_internal &&
+      (baseCode === null || isNaN(baseCode) || baseCode <= 0)
+    ) {
+      toast.error("Il codice base deve essere un numero positivo");
+      return;
+    }
+
     // Auto-generate identifier if empty
     const identifier = formData.identifier || generateIdentifier(formData.name);
 
@@ -178,6 +205,8 @@ export default function KanbanCategoryManagerModal({
         icon: formData.icon,
         color: formData.color,
         display_order: formData.display_order,
+        is_internal: formData.is_internal,
+        internal_base_code: formData.is_internal ? baseCode : null,
       };
 
       const response = await fetch(`/api/kanban/categories/save`, {
@@ -307,15 +336,34 @@ export default function KanbanCategoryManagerModal({
                                 <IconComponent className="w-5 h-5 text-white" />
                               </div>
                               <div>
-                                <CardTitle className="text-base text-white">
-                                  {category.name}
-                                </CardTitle>
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs mt-1 border-white/30 text-white/70"
-                                >
-                                  {category.identifier}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <CardTitle className="text-base text-white">
+                                    {category.name}
+                                  </CardTitle>
+                                  {category.is_internal && (
+                                    <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
+                                      <Building2 className="w-3 h-3 mr-1" />
+                                      Interna
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs border-white/30 text-white/70"
+                                  >
+                                    {category.identifier}
+                                  </Badge>
+                                  {category.is_internal &&
+                                    category.internal_base_code && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs border-purple-500/30 text-purple-300"
+                                      >
+                                        Base: {category.internal_base_code}
+                                      </Badge>
+                                    )}
+                                </div>
                               </div>
                             </div>
                             <div className="flex gap-1">
@@ -485,6 +533,61 @@ export default function KanbanCategoryManagerModal({
               />
             </div>
 
+            {/* Internal Category Settings */}
+            <div className="pt-4 border-t border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="is_internal" className="text-white/80">
+                    Categoria Interna
+                  </Label>
+                  <p className="text-xs text-white/50">
+                    I progetti interni usano una numerazione separata (es.
+                    1000-1, 1000-2)
+                  </p>
+                </div>
+                <Switch
+                  id="is_internal"
+                  checked={formData.is_internal}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_internal: checked })
+                  }
+                />
+              </div>
+
+              {formData.is_internal && (
+                <div className="grid gap-2">
+                  <Label htmlFor="internal_base_code" className="text-white/80">
+                    Codice Base *
+                  </Label>
+                  <Input
+                    id="internal_base_code"
+                    type="number"
+                    min="1"
+                    value={formData.internal_base_code}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        internal_base_code: e.target.value,
+                      })
+                    }
+                    placeholder="es. 1000, 2000, 3000"
+                    className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
+                  />
+                  <p className="text-xs text-white/50">
+                    I task in questa categoria avranno codici come{" "}
+                    <code className="bg-white/10 px-1 rounded">
+                      {formData.internal_base_code || "1000"}-1
+                    </code>
+                    ,{" "}
+                    <code className="bg-white/10 px-1 rounded">
+                      {formData.internal_base_code || "1000"}-2
+                    </code>
+                    , ecc.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Preview */}
             <div className="pt-2 border-t border-white/10">
               <Label className="text-white/80 text-sm">Anteprima Sidebar</Label>
@@ -504,7 +607,21 @@ export default function KanbanCategoryManagerModal({
                   <span className="text-white font-medium">
                     {formData.name || "Nome categoria"}
                   </span>
+                  {formData.is_internal && (
+                    <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">
+                      <Building2 className="w-3 h-3 mr-1" />
+                      Interna
+                    </Badge>
+                  )}
                 </div>
+                {formData.is_internal && formData.internal_base_code && (
+                  <p className="text-xs text-white/50 mt-2 pl-8">
+                    Formato codici:{" "}
+                    <code className="bg-white/10 px-1 rounded">
+                      {formData.internal_base_code}-N
+                    </code>
+                  </p>
+                )}
               </div>
             </div>
           </div>

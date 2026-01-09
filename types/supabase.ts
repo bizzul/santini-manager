@@ -329,6 +329,10 @@ export interface Action {
     createdAt?: string; // Alternative property name
 }
 
+// Activity types for time tracking
+export type TimetrackingActivityType = 'project' | 'internal';
+export type InternalActivityType = 'pulizie' | 'manutenzione' | 'logistica' | 'inventario' | 'formazione' | 'riunione' | 'altro';
+
 // Time tracking related types
 export interface Timetracking {
     id: number;
@@ -344,6 +348,8 @@ export interface Timetracking {
     description?: string;
     description_category?: string;
     description_type?: string;
+    activity_type?: TimetrackingActivityType;
+    internal_activity?: InternalActivityType;
     created_at?: string;
     site_id?: string;
     updated_at?: string;

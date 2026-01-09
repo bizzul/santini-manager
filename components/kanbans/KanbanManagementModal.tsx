@@ -420,8 +420,14 @@ export default function KanbanManagementModal({
               id="identifier"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              disabled={false}
+              disabled={mode === "edit"}
             />
+            {mode === "edit" && (
+              <p className="text-xs text-muted-foreground">
+                L&apos;identificatore non può essere modificato dopo la
+                creazione
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="color">Colore</Label>

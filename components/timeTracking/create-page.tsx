@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from "../ui/select";
 import { SearchSelect } from "../ui/search-select";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Label } from "../ui/label";
 import { logger } from "@/lib/logger";
 import {
   Clock,
@@ -33,7 +35,29 @@ import {
   Tag,
   CheckCircle2,
   AlertCircle,
+  Wrench,
 } from "lucide-react";
+
+// Internal activity types and labels
+const INTERNAL_ACTIVITIES = [
+  "pulizie",
+  "manutenzione",
+  "logistica",
+  "inventario",
+  "formazione",
+  "riunione",
+  "altro",
+] as const;
+
+const INTERNAL_ACTIVITY_LABELS: Record<string, string> = {
+  pulizie: "Pulizie",
+  manutenzione: "Manutenzione",
+  logistica: "Logistica",
+  inventario: "Inventario",
+  formazione: "Formazione",
+  riunione: "Riunione",
+  altro: "Altro",
+};
 
 // Define types based on Supabase schema
 interface Roles {
@@ -47,6 +71,26 @@ interface Task {
   client?: {
     businessName?: string;
   };
+}
+
+interface TodayEntry {
+  id: number;
+  hours: number;
+  minutes: number;
+  totalTime: number;
+  description?: string;
+  activity_type?: string;
+  internal_activity?: string;
+  task?: {
+    unique_code?: string;
+    client?: {
+      businessName?: string;
+    };
+  };
+  roles?: {
+    name?: string;
+  }[];
+  created_at: string;
 }
 
 interface Session {
@@ -68,6 +112,8 @@ interface TimeRow {
   descriptionCat: string;
   roles: Roles | {};
   userId: string;
+  activityType: "project" | "internal";
+  internalActivity?: string;
 }
 
 const QUICK_TIMES = [
@@ -85,13 +131,21 @@ const CreatePage = ({
   data,
   session,
 }: {
-  data: { roles: Roles[]; tasks: Task[] };
+  data: { roles: Roles[]; tasks: Task[]; todayEntries?: TodayEntry[] };
   session: Session;
 }) => {
   const rolesOptions = data.roles;
+  const todayEntries = data.todayEntries || [];
   const { toast } = useToast();
   const [isSaved, setIsSaved] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Calculate saved hours from today's entries
+  const savedTodayMinutes = todayEntries.reduce((acc, entry) => {
+    return acc + (entry.hours || 0) * 60 + (entry.minutes || 0);
+  }, 0);
+  const savedTodayHours = Math.floor(savedTodayMinutes / 60);
+  const savedTodayRemaining = savedTodayMinutes % 60;
 
   const createEmptyRow = useCallback(
     (): TimeRow => ({
@@ -105,6 +159,8 @@ const CreatePage = ({
       descriptionCat: "",
       roles: {},
       userId: session.user.sub,
+      activityType: "project",
+      internalActivity: undefined,
     }),
     [session.user.sub]
   );
@@ -113,9 +169,7 @@ const CreatePage = ({
 
   // Load from localStorage on mount
   useEffect(() => {
-    const storedData = localStorage.getItem(
-      `timetracking-${session.user.sub}`
-    );
+    const storedData = localStorage.getItem(`timetracking-${session.user.sub}`);
     if (storedData) {
       try {
         const parsed = JSON.parse(storedData);
@@ -128,15 +182,22 @@ const CreatePage = ({
     }
   }, [session.user.sub]);
 
-  // Calculate totals
+  // Calculate totals (including both new entries and saved entries)
   const calculateTotals = useCallback(() => {
-    let totalMinutes = 0;
+    // Minutes from new entries being created
+    let newMinutes = 0;
     rows.forEach((row) => {
-      if (row.task) {
-        totalMinutes += (parseInt(row.hours) || 0) * 60 + (parseInt(row.minutes) || 0);
+      // Count both project and internal activities
+      const hasActivity =
+        row.activityType === "project" ? row.task : row.internalActivity;
+      if (hasActivity) {
+        newMinutes +=
+          (parseInt(row.hours) || 0) * 60 + (parseInt(row.minutes) || 0);
       }
     });
 
+    // Total includes both saved and new entries
+    const totalMinutes = savedTodayMinutes + newMinutes;
     const totalHours = Math.floor(totalMinutes / 60);
     const remainingMinutes = totalMinutes % 60;
     const targetMinutes = WORK_HOURS_TARGET * 60;
@@ -150,13 +211,18 @@ const CreatePage = ({
       remainingMinutes: Math.round(remainingToTarget % 60),
       progress,
       totalInMinutes: totalMinutes,
+      newMinutes,
+      newHours: Math.floor(newMinutes / 60),
+      newRemainingMinutes: newMinutes % 60,
     };
-  }, [rows]);
+  }, [rows, savedTodayMinutes]);
 
   const totals = calculateTotals();
 
-  // Get completed entries (rows with task filled)
-  const completedEntries = rows.filter((row) => row.task).length;
+  // Get completed entries (rows with task or internal activity filled)
+  const completedEntries = rows.filter((row) =>
+    row.activityType === "project" ? row.task : row.internalActivity
+  ).length;
 
   // Save to localStorage
   const handleSaveTemp = useCallback(() => {
@@ -181,6 +247,35 @@ const CreatePage = ({
       };
       setRows(updatedRows);
     }
+  };
+
+  // Handle activity type change
+  const handleActivityTypeChange = (
+    value: "project" | "internal",
+    index: number
+  ) => {
+    const updatedRows = [...rows];
+    updatedRows[index] = {
+      ...updatedRows[index],
+      activityType: value,
+      // Clear the other field when switching
+      task: value === "project" ? updatedRows[index].task : "",
+      taskLabel: value === "project" ? updatedRows[index].taskLabel : "",
+      internalActivity:
+        value === "internal" ? updatedRows[index].internalActivity : undefined,
+    };
+    setRows(updatedRows);
+  };
+
+  // Handle internal activity change
+  const handleInternalActivityChange = (value: string, index: number) => {
+    const updatedRows = [...rows];
+    updatedRows[index] = {
+      ...updatedRows[index],
+      internalActivity: value,
+      taskLabel: INTERNAL_ACTIVITY_LABELS[value] || value,
+    };
+    setRows(updatedRows);
   };
 
   // Handle role selection
@@ -235,20 +330,34 @@ const CreatePage = ({
   const handleAddRow = () => {
     const lastRow = rows[rows.length - 1];
 
-    if (!lastRow.task) {
-      toast({
-        description: "Seleziona un progetto prima di aggiungere una nuova registrazione",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!lastRow.roles || Object.keys(lastRow.roles).length === 0) {
-      toast({
-        description: "Seleziona un reparto prima di aggiungere una nuova registrazione",
-        variant: "destructive",
-      });
-      return;
+    if (lastRow.activityType === "project") {
+      // Project requires both task and role
+      if (!lastRow.task) {
+        toast({
+          description:
+            "Seleziona un progetto prima di aggiungere una nuova registrazione",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!lastRow.roles || Object.keys(lastRow.roles).length === 0) {
+        toast({
+          description:
+            "Seleziona un reparto prima di aggiungere una nuova registrazione",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // Internal activity only requires the activity type
+      if (!lastRow.internalActivity) {
+        toast({
+          description:
+            "Seleziona un'attività interna prima di aggiungere una nuova registrazione",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     handleSaveTemp();
@@ -271,7 +380,9 @@ const CreatePage = ({
 
   // Clear all
   const handleClearAll = () => {
-    if (window.confirm("Sei sicuro di voler eliminare tutte le registrazioni?")) {
+    if (
+      window.confirm("Sei sicuro di voler eliminare tutte le registrazioni?")
+    ) {
       localStorage.removeItem(`timetracking-${session.user.sub}`);
       setRows([createEmptyRow()]);
       toast({ description: "Tutte le registrazioni sono state eliminate" });
@@ -282,7 +393,10 @@ const CreatePage = ({
   const handleSubmit = async () => {
     setIsSaved(true);
 
-    const validRows = rows.filter((row) => row.task);
+    // Filter rows that have either a task (for project) or internal activity (for internal)
+    const validRows = rows.filter((row) =>
+      row.activityType === "project" ? row.task : row.internalActivity
+    );
 
     if (validRows.length === 0) {
       toast({
@@ -293,14 +407,16 @@ const CreatePage = ({
       return;
     }
 
-    // Check for missing roles
+    // Check for missing roles only for project activities
     const hasMissingRoles = validRows.some(
-      (row) => !row.roles || Object.keys(row.roles).length === 0
+      (row) =>
+        row.activityType === "project" &&
+        (!row.roles || Object.keys(row.roles).length === 0)
     );
 
     if (hasMissingRoles) {
       toast({
-        description: "Seleziona un reparto per tutte le registrazioni",
+        description: "Seleziona un reparto per le registrazioni su progetto",
         variant: "destructive",
       });
       setIsSaved(false);
@@ -340,8 +456,16 @@ const CreatePage = ({
     }
   };
 
-  const isRowComplete = (row: TimeRow) =>
-    row.task && row.roles && Object.keys(row.roles).length > 0;
+  // Check if a row is complete (has activity, and role if project)
+  const isRowComplete = (row: TimeRow) => {
+    if (row.activityType === "project") {
+      // Project requires both task and role
+      return !!row.task && row.roles && Object.keys(row.roles).length > 0;
+    } else {
+      // Internal activity only requires the activity type
+      return !!row.internalActivity;
+    }
+  };
 
   return (
     <div className="min-h-screen pb-24">
@@ -357,7 +481,14 @@ const CreatePage = ({
                 <div>
                   <CardTitle className="text-lg">Riepilogo giornata</CardTitle>
                   <CardDescription>
-                    {completedEntries} registrazion{completedEntries === 1 ? "e" : "i"} completat{completedEntries === 1 ? "a" : "e"}
+                    {todayEntries.length > 0 && (
+                      <span className="text-green-600">
+                        {todayEntries.length} già salvat
+                        {todayEntries.length === 1 ? "a" : "e"} •{" "}
+                      </span>
+                    )}
+                    {completedEntries} nuov{completedEntries === 1 ? "a" : "e"}{" "}
+                    da salvare
                   </CardDescription>
                 </div>
               </div>
@@ -372,13 +503,20 @@ const CreatePage = ({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-background/60 rounded-xl p-4 backdrop-blur-sm">
-                <p className="text-sm text-muted-foreground mb-1">Ore registrate</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Ore totali oggi
+                </p>
                 <p className="text-2xl font-bold text-primary">
                   {totals.totalHours}
                   <span className="text-lg font-normal">h </span>
                   {totals.totalMinutes}
                   <span className="text-lg font-normal">m</span>
                 </p>
+                {savedTodayMinutes > 0 && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ({savedTodayHours}h {savedTodayRemaining}m già salvate)
+                  </p>
+                )}
               </div>
               <div className="bg-background/60 rounded-xl p-4 backdrop-blur-sm">
                 <p className="text-sm text-muted-foreground mb-1">Rimanenti</p>
@@ -392,11 +530,56 @@ const CreatePage = ({
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Progresso giornaliero</span>
-                <span className="font-medium">{Math.round(totals.progress)}%</span>
+                <span className="text-muted-foreground">
+                  Progresso giornaliero
+                </span>
+                <span className="font-medium">
+                  {Math.round(totals.progress)}%
+                </span>
               </div>
               <Progress value={totals.progress} className="h-2" />
             </div>
+
+            {/* Today's Saved Entries */}
+            {todayEntries.length > 0 && (
+              <div className="pt-2 border-t">
+                <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  Ore già salvate oggi
+                </p>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {todayEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex items-center justify-between bg-green-500/5 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-background"
+                        >
+                          {entry.hours}h {entry.minutes}m
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          {entry.activity_type === "internal"
+                            ? INTERNAL_ACTIVITY_LABELS[
+                                entry.internal_activity || ""
+                              ] || entry.internal_activity
+                            : entry.task?.client?.businessName
+                            ? `${entry.task.unique_code} - ${entry.task.client.businessName}`
+                            : entry.task?.unique_code || "Progetto"}
+                        </span>
+                      </div>
+                      {entry.roles?.[0]?.name && (
+                        <Badge variant="secondary" className="text-xs">
+                          {entry.roles[0].name}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -449,48 +632,122 @@ const CreatePage = ({
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Project & Role Selection */}
+                {/* Activity Type Toggle */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tipo Attività</label>
+                  <RadioGroup
+                    value={row.activityType}
+                    onValueChange={(v) =>
+                      handleActivityTypeChange(
+                        v as "project" | "internal",
+                        index
+                      )
+                    }
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="project" id={`project-${index}`} />
+                      <Label
+                        htmlFor={`project-${index}`}
+                        className="flex items-center gap-1 cursor-pointer"
+                      >
+                        <Briefcase className="h-4 w-4" />
+                        Progetto
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem
+                        value="internal"
+                        id={`internal-${index}`}
+                      />
+                      <Label
+                        htmlFor={`internal-${index}`}
+                        className="flex items-center gap-1 cursor-pointer"
+                      >
+                        <Wrench className="h-4 w-4" />
+                        Attività Interna
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {/* Project/Internal Activity & Role Selection */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      Progetto
-                    </label>
-                    <SearchSelect
-                      value={
-                        data.tasks.find((t) => t.unique_code === row.task)?.id.toString() || ""
-                      }
-                      onValueChange={(v) => handleTaskChange(v.toString(), index)}
-                      placeholder="Seleziona progetto..."
-                      options={data.tasks.map((t) => ({
-                        value: t.id.toString(),
-                        label: t.client?.businessName
-                          ? `${t.unique_code} - ${t.client.businessName}`
-                          : t.unique_code || "",
-                      }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <Tag className="h-4 w-4 text-muted-foreground" />
-                      Reparto
-                    </label>
-                    <Select
-                      value={(row.roles as Roles)?.id?.toString() || ""}
-                      onValueChange={(v) => handleRoleChange(v, index)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona reparto..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rolesOptions.map((role) => (
-                          <SelectItem key={role.id} value={role.id.toString()}>
-                            {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {row.activityType === "project" ? (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />
+                          Progetto
+                        </label>
+                        <SearchSelect
+                          value={
+                            data.tasks
+                              .find((t) => t.unique_code === row.task)
+                              ?.id.toString() || ""
+                          }
+                          onValueChange={(v) =>
+                            handleTaskChange(v.toString(), index)
+                          }
+                          placeholder="Seleziona progetto..."
+                          options={data.tasks.map((t) => ({
+                            value: t.id.toString(),
+                            label: t.client?.businessName
+                              ? `${t.unique_code} - ${t.client.businessName}`
+                              : t.unique_code || "",
+                          }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          Reparto
+                        </label>
+                        <Select
+                          value={(row.roles as Roles)?.id?.toString() || ""}
+                          onValueChange={(v) => handleRoleChange(v, index)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona reparto..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {rolesOptions.map((role) => (
+                              <SelectItem
+                                key={role.id}
+                                value={role.id.toString()}
+                              >
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Wrench className="h-4 w-4 text-muted-foreground" />
+                        Attività Interna
+                      </label>
+                      <Select
+                        value={row.internalActivity || ""}
+                        onValueChange={(v) =>
+                          handleInternalActivityChange(v, index)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona attività..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {INTERNAL_ACTIVITIES.map((activity) => (
+                            <SelectItem key={activity} value={activity}>
+                              {INTERNAL_ACTIVITY_LABELS[activity]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Time Input */}
@@ -511,7 +768,9 @@ const CreatePage = ({
                             ? "bg-primary text-primary-foreground"
                             : ""
                         }`}
-                        onClick={() => handleQuickTime(qt.hours, qt.minutes, index)}
+                        onClick={() =>
+                          handleQuickTime(qt.hours, qt.minutes, index)
+                        }
                       >
                         {qt.label}
                       </Button>
@@ -535,20 +794,27 @@ const CreatePage = ({
                       </div>
                     </div>
                     <div className="flex-1">
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          min="0"
-                          max="59"
-                          value={row.minutes}
-                          onChange={(e) => handleInputChange(e, index, "minutes")}
-                          className="pr-8"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          m
-                        </span>
-                      </div>
+                      <Select
+                        value={row.minutes || "0"}
+                        onValueChange={(v) => {
+                          const updatedRows = [...rows];
+                          updatedRows[index] = {
+                            ...updatedRows[index],
+                            minutes: v,
+                          };
+                          setRows(updatedRows);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="00" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">00 min</SelectItem>
+                          <SelectItem value="15">15 min</SelectItem>
+                          <SelectItem value="30">30 min</SelectItem>
+                          <SelectItem value="45">45 min</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -563,7 +829,9 @@ const CreatePage = ({
                     <Input
                       placeholder="Descrizione attività..."
                       value={row.description}
-                      onChange={(e) => handleInputChange(e, index, "description")}
+                      onChange={(e) =>
+                        handleInputChange(e, index, "description")
+                      }
                     />
                   </div>
                   <div className="space-y-2">

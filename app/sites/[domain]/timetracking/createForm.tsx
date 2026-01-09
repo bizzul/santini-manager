@@ -22,16 +22,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { createItem } from "./actions/create-item.action";
-import { validation } from "@/validation/timeTracking/createManual";
+import {
+  validation,
+  INTERNAL_ACTIVITIES,
+} from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
 import { Roles, Task, User } from "@/types/supabase";
 import { useParams } from "next/navigation";
 import { logger } from "@/lib/logger";
+import { Briefcase, Wrench } from "lucide-react";
 
 export interface Typology {
   name: string;
 }
+
+// Labels for internal activities
+const INTERNAL_ACTIVITY_LABELS: Record<string, string> = {
+  pulizie: "Pulizie",
+  manutenzione: "Manutenzione",
+  logistica: "Logistica",
+  inventario: "Inventario",
+  formazione: "Formazione",
+  riunione: "Riunione",
+  altro: "Altro",
+};
 
 const CreateProductForm = ({
   handleClose,
@@ -51,16 +68,21 @@ const CreateProductForm = ({
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
-      date: "", // if it's a date string or use new Date() if it expects a Date object
+      date: new Date().toISOString().split("T")[0], // Default to today's date (YYYY-MM-DD)
       description: "",
       descriptionCat: "",
-      hours: 0, // Assuming hours is a number
-      minutes: 0, // Assuming minutes is a number
-      roles: "", // Assuming roles is an array
-      task: "", // or the default value for a task id or object
-      userId: "", // Assuming userId is a string or number
+      hours: 0,
+      minutes: 0,
+      roles: "",
+      task: "",
+      userId: "",
+      activityType: "project",
+      internalActivity: undefined,
     },
   });
+
+  // Watch activity type to show/hide fields
+  const activityType = form.watch("activityType");
 
   const typology = [
     {
@@ -200,107 +222,209 @@ const CreateProductForm = ({
             </FormItem>
           )}
         />
+        {/* Activity Type Toggle */}
         <FormField
-          disabled={isSubmitting || loadingUserRoles}
           control={form.control}
-          name="roles"
+          name="activityType"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ruolo</FormLabel>
+              <FormLabel>Tipo Attività</FormLabel>
               <FormControl>
-                {/* @ts-ignore */}
-                <Select
+                <RadioGroup
                   value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={isSubmitting || loadingUserRoles || !selectedUserId}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        !selectedUserId
-                          ? "Seleziona prima un dipendente"
-                          : loadingUserRoles
-                          ? "Caricamento ruoli..."
-                          : "Seleziona un ruolo"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userAssignedRoles.length === 0 &&
-                    selectedUserId &&
-                    !loadingUserRoles ? (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        Nessun ruolo assegnato
-                      </div>
-                    ) : (
-                      userAssignedRoles.map((r: Roles) => (
-                        <SelectItem key={r.id} value={r.id.toString()}>
-                          {r.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </FormControl>
-              {/* <FormDescription>Il nome del prodotto</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          disabled={isSubmitting}
-          control={form.control}
-          name="task"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Progetto</FormLabel>
-              <FormControl>
-                <SearchSelect
-                  value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    // Clear the other field when switching
+                    if (value === "project") {
+                      form.setValue("internalActivity", undefined);
+                    } else {
+                      form.setValue("task", "");
+                    }
+                  }}
+                  className="flex gap-4"
                   disabled={isSubmitting}
-                  options={data.map((t: Task) => ({
-                    value: t.id.toString(),
-                    label: t.unique_code!,
-                  }))}
-                  placeholder="Seleziona progetto..."
-                />
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="project" id="project" />
+                    <Label
+                      htmlFor="project"
+                      className="flex items-center gap-1 cursor-pointer"
+                    >
+                      <Briefcase className="h-4 w-4" />
+                      Progetto
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="internal" id="internal" />
+                    <Label
+                      htmlFor="internal"
+                      className="flex items-center gap-1 cursor-pointer"
+                    >
+                      <Wrench className="h-4 w-4" />
+                      Attività Interna
+                    </Label>
+                  </div>
+                </RadioGroup>
               </FormControl>
-              {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
-        <FormField
-          disabled={isSubmitting}
-          control={form.control}
-          name="hours"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ore</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} />
-              </FormControl>
-              {/* <FormDescription>Tipologia</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          disabled={isSubmitting}
-          control={form.control}
-          name="minutes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Minuti</FormLabel>
-              <FormControl>
-                <Input type="number" {...field} />
-              </FormControl>
-              {/* <FormDescription>Numero articolo</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
+        {/* Project Selection and Role (shown when activityType is 'project') */}
+        {activityType === "project" && (
+          <>
+            <FormField
+              disabled={isSubmitting}
+              control={form.control}
+              name="task"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Progetto</FormLabel>
+                  <FormControl>
+                    <SearchSelect
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={isSubmitting}
+                      options={data.map((t: any) => ({
+                        value: t.id.toString(),
+                        label: t.client?.businessName
+                          ? `${t.unique_code} - ${t.client.businessName}`
+                          : t.unique_code || "",
+                      }))}
+                      placeholder="Seleziona progetto..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              disabled={isSubmitting || loadingUserRoles}
+              control={form.control}
+              name="roles"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reparto</FormLabel>
+                  <FormControl>
+                    <Select
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={
+                        isSubmitting || loadingUserRoles || !selectedUserId
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            !selectedUserId
+                              ? "Seleziona prima un dipendente"
+                              : loadingUserRoles
+                              ? "Caricamento ruoli..."
+                              : "Seleziona un reparto"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userAssignedRoles.length === 0 &&
+                        selectedUserId &&
+                        !loadingUserRoles ? (
+                          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                            Nessun ruolo assegnato
+                          </div>
+                        ) : (
+                          userAssignedRoles.map((r: Roles) => (
+                            <SelectItem key={r.id} value={r.id.toString()}>
+                              {r.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+
+        {/* Internal Activity Selection (shown when activityType is 'internal') */}
+        {activityType === "internal" && (
+          <FormField
+            disabled={isSubmitting}
+            control={form.control}
+            name="internalActivity"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Attività Interna</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona attività..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INTERNAL_ACTIVITIES.map((activity) => (
+                        <SelectItem key={activity} value={activity}>
+                          {INTERNAL_ACTIVITY_LABELS[activity]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        <div className="flex gap-4">
+          <FormField
+            disabled={isSubmitting}
+            control={form.control}
+            name="hours"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Ore</FormLabel>
+                <FormControl>
+                  <Input type="number" min="0" max="24" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            disabled={isSubmitting}
+            control={form.control}
+            name="minutes"
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel>Minuti</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value?.toString() || "0"}
+                    onValueChange={(value) => field.onChange(parseInt(value))}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="00" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">00</SelectItem>
+                      <SelectItem value="15">15</SelectItem>
+                      <SelectItem value="30">30</SelectItem>
+                      <SelectItem value="45">45</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           disabled={isSubmitting}
           control={form.control}

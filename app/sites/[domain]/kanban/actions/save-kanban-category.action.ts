@@ -12,6 +12,8 @@ export interface KanbanCategoryInput {
   icon?: string | null;
   color?: string | null;
   display_order?: number;
+  is_internal?: boolean;
+  internal_base_code?: number | null;
 }
 
 export async function saveKanbanCategory(
@@ -58,6 +60,34 @@ export async function saveKanbanCategory(
       );
     }
 
+    // Validate internal category settings
+    if (category.is_internal && !category.internal_base_code) {
+      throw new Error(
+        "Il codice base è obbligatorio per le categorie interne"
+      );
+    }
+
+    // Check if internal_base_code is unique for this site (if provided)
+    if (category.internal_base_code) {
+      const baseCodeQuery = supabase
+        .from("KanbanCategory")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("internal_base_code", category.internal_base_code);
+
+      if (category.id) {
+        baseCodeQuery.neq("id", category.id);
+      }
+
+      const { data: existingBaseCode } = await baseCodeQuery.single();
+
+      if (existingBaseCode) {
+        throw new Error(
+          "Una categoria con questo codice base esiste già per questo sito"
+        );
+      }
+    }
+
     const categoryData = {
       name: category.name,
       identifier: category.identifier,
@@ -66,6 +96,8 @@ export async function saveKanbanCategory(
       color: category.color,
       display_order: category.display_order ?? 0,
       site_id: siteId,
+      is_internal: category.is_internal ?? false,
+      internal_base_code: category.is_internal ? category.internal_base_code : null,
     };
 
     let result;

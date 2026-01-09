@@ -22,14 +22,35 @@ interface Task {
   };
 }
 
+interface TodayEntry {
+  id: number;
+  hours: number;
+  minutes: number;
+  totalTime: number;
+  description?: string;
+  activity_type?: string;
+  internal_activity?: string;
+  task?: {
+    unique_code?: string;
+    client?: {
+      businessName?: string;
+    };
+  };
+  roles?: {
+    name?: string;
+  }[];
+  created_at: string;
+}
+
 export type Datas = {
   tasks: Task[];
   roles: Roles[];
+  todayEntries: TodayEntry[];
 };
 
-async function getData(siteId: string): Promise<Datas> {
+async function getData(siteId: string, userId: string): Promise<Datas> {
   const supabase = await createClient();
-  
+
   // Filter tasks by site_id
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
@@ -39,24 +60,89 @@ async function getData(siteId: string): Promise<Datas> {
 
   if (tasksError) {
     console.error("Error fetching tasks:", tasksError);
-    return { tasks: [], roles: [] };
+    return { tasks: [], roles: [], todayEntries: [] };
   }
 
-  // Filter roles by site_id
+  // Get both site-specific and global roles (site_id is null for global)
   const { data: roles, error: rolesError } = await supabase
     .from("Roles")
     .select("*")
-    .eq("site_id", siteId);
+    .or(`site_id.eq.${siteId},site_id.is.null`);
 
   if (rolesError) {
     console.error("Error fetching roles:", rolesError);
-    return { tasks: [], roles: [] };
+    return { tasks: [], roles: [], todayEntries: [] };
   }
-  
+
+  // Fetch today's timetracking entries for the current user
+  // First, get the user's internal ID from their auth ID
+  const { data: userData, error: userError } = await supabase
+    .from("User")
+    .select("id")
+    .eq("authId", userId)
+    .single();
+
+  let todayEntries: TodayEntry[] = [];
+
+  if (!userError && userData) {
+    // Get start and end of today (in UTC)
+    const today = new Date();
+    const startOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const endOfDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() + 1
+    );
+
+    const { data: timetrackingData, error: timetrackingError } = await supabase
+      .from("Timetracking")
+      .select(
+        `
+        id,
+        hours,
+        minutes,
+        totalTime,
+        description,
+        activity_type,
+        internal_activity,
+        created_at,
+        task:task_id(unique_code, client:Client(businessName)),
+        roles:_RolesToTimetracking(role:Roles(name))
+      `
+      )
+      .eq("employee_id", userData.id)
+      .gte("created_at", startOfDay.toISOString())
+      .lt("created_at", endOfDay.toISOString())
+      .order("created_at", { ascending: false });
+
+    if (timetrackingError) {
+      console.error("Error fetching today's timetracking:", timetrackingError);
+    } else {
+      todayEntries = (timetrackingData || []).map((entry: any) => ({
+        id: entry.id,
+        hours: entry.hours,
+        minutes: entry.minutes,
+        totalTime: entry.totalTime,
+        description: entry.description,
+        activity_type: entry.activity_type,
+        internal_activity: entry.internal_activity,
+        created_at: entry.created_at,
+        task: entry.task,
+        roles: entry.roles?.map((r: any) => r.role) || [],
+      }));
+    }
+  }
+
   const transformedTasks: Task[] = (tasks || []).map((task: any) => ({
     id: task.id,
     unique_code: task.unique_code || undefined,
-    client: task.client ? { businessName: task.client.businessName } : undefined,
+    client: task.client
+      ? { businessName: task.client.businessName }
+      : undefined,
   }));
 
   const transformedRoles: Roles[] = (roles || []).map((role: any) => ({
@@ -64,7 +150,7 @@ async function getData(siteId: string): Promise<Datas> {
     name: role.name,
   }));
 
-  return { tasks: transformedTasks, roles: transformedRoles };
+  return { tasks: transformedTasks, roles: transformedRoles, todayEntries };
 }
 
 async function Page({ params }: { params: Promise<{ domain: string }> }) {
@@ -74,7 +160,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
     "/timetracking/create"
   )}`;
-  
+
   if (!session || !session.user) {
     return redirect(returnLink);
   }
@@ -84,14 +170,15 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
   if (!siteResponse?.data?.id) {
     return redirect("/sites/select?error=site_not_found");
   }
-  
+
   const siteId = siteResponse.data.id;
-  const data = await getData(siteId);
   const { user } = session;
+  const data = await getData(siteId, user.id);
 
   // Get user profile data
   const userProfile = user?.user_metadata;
-  const displayName = userProfile?.full_name || 
+  const displayName =
+    userProfile?.full_name ||
     (userProfile?.name && userProfile?.last_name
       ? `${userProfile.name} ${userProfile.last_name}`
       : user?.email || "User");
@@ -108,7 +195,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
       <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center gap-4">
-            <Link 
+            <Link
               href={`/sites/${domain}/timetracking`}
               className="p-2 hover:bg-background/80 rounded-xl transition-colors"
             >
@@ -123,7 +210,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
                   Ciao {userProfile?.name || user?.email?.split("@")[0]}
                 </p>
                 <h1 className="text-xl md:text-2xl font-bold">
-                  Registrazione Ore
+                  Registrazione ore
                 </h1>
               </div>
             </div>

@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Settings,
   Loader2,
@@ -47,6 +48,7 @@ import {
 
 interface ModuleManagementModalProps {
   siteId: string;
+  domain?: string; // Subdomain to invalidate cache
   trigger?: React.ReactNode;
 }
 
@@ -109,6 +111,7 @@ const categoryConfig: Record<
 
 export default function ModuleManagementModal({
   siteId,
+  domain,
   trigger,
 }: ModuleManagementModalProps) {
   const [open, setOpen] = useState(false);
@@ -116,6 +119,7 @@ export default function ModuleManagementModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const fetchModules = useCallback(async () => {
     setLoading(true);
@@ -152,6 +156,18 @@ export default function ModuleManagementModal({
     setSaving(true);
     try {
       await updateSiteModules(siteId, modules);
+
+      // Invalidate the site modules cache so the sidebar updates immediately
+      if (domain) {
+        await queryClient.invalidateQueries({
+          queryKey: ["site-modules", domain],
+        });
+      }
+      // Also invalidate all site-modules queries as a fallback
+      await queryClient.invalidateQueries({
+        queryKey: ["site-modules"],
+        exact: false,
+      });
 
       toast({
         title: "Successo",

@@ -418,8 +418,14 @@ const getMenuItems = (
   return siteSpecificItems;
 };
 
-const UserSection = memo(function UserSection({ user }: { user: UserContext }) {
-  return <NavUser user={user} />;
+const UserSection = memo(function UserSection({
+  user,
+  domain,
+}: {
+  user: UserContext;
+  domain?: string;
+}) {
+  return <NavUser user={user} domain={domain} />;
 });
 
 export function AppSidebar() {
@@ -1420,7 +1426,7 @@ export function AppSidebar() {
         <div className="flex flex-col gap-2">
           <ThemeSwitcher />
           {userContext ? (
-            <UserSection user={userContext} />
+            <UserSection user={userContext} domain={domain} />
           ) : (
             /* Show skeleton only while user context is loading */
             <div className="flex items-center gap-3 px-2 py-2 rounded-md">

@@ -658,13 +658,13 @@ export const fetchSingleKanban = cache(
 );
 
 /**
- * Fetch tasks for a site (without relations)
+ * Fetch tasks for a site (with client relation for display)
  */
 export const fetchTasks = cache(async (siteId: string) => {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("Task")
-        .select("*")
+        .select("*, client:Client!clientId(businessName)")
         .eq("site_id", siteId)
         .eq("archived", false)
         .order("unique_code", { ascending: true });
@@ -701,35 +701,70 @@ export const fetchTasksWithRelations = cache(async (siteId: string) => {
 });
 
 /**
- * Fetch users for a site
+ * Fetch users for a site (includes site users and organization admins)
  */
 export const fetchUsers = cache(async (siteId: string) => {
     const supabase = await createClient();
 
-    // Get user IDs from user_sites
+    // Step 1: Get the site's organization_id
+    const { data: site, error: siteError } = await supabase
+        .from("sites")
+        .select("organization_id")
+        .eq("id", siteId)
+        .single();
+
+    if (siteError) {
+        log.error("Error fetching site for users:", siteError.message);
+    }
+
+    // Step 2: Get user IDs from user_sites (direct site users)
     const { data: userSites, error: userSitesError } = await supabase
         .from("user_sites")
         .select("user_id")
         .eq("site_id", siteId);
 
-    if (userSitesError || !userSites?.length) {
+    if (userSitesError) {
+        log.error("Error fetching user_sites:", userSitesError.message);
+    }
+
+    // Step 3: Get organization admin user IDs from user_organizations
+    let orgAdminUserIds: string[] = [];
+    if (site?.organization_id) {
+        const { data: orgUsers, error: orgUsersError } = await supabase
+            .from("user_organizations")
+            .select("user_id")
+            .eq("organization_id", site.organization_id);
+
+        if (orgUsersError) {
+            log.error("Error fetching user_organizations:", orgUsersError.message);
+        } else {
+            orgAdminUserIds = orgUsers?.map((ou) => ou.user_id) || [];
+        }
+    }
+
+    // Combine user IDs from both sources (deduplicated)
+    const siteUserIds = userSites?.map((us) => us.user_id) || [];
+    const allUserIds = Array.from(new Set([...siteUserIds, ...orgAdminUserIds]));
+
+    if (!allUserIds.length) {
         return [];
     }
 
-    const userIds = userSites.map((us) => us.user_id);
-
+    // Step 4: Get user details from User table
     const { data: users, error } = await supabase
         .from("User")
         .select("*")
         .eq("enabled", true)
-        .in("authId", userIds)
+        .in("authId", allUserIds)
         .order("family_name", { ascending: true });
 
     if (error) {
         log.error("Error fetching users:", error);
         return [];
     }
-    return users || [];
+
+    // Filter out superadmins but include admins
+    return (users || []).filter((user) => user.role !== "superadmin");
 });
 
 /**

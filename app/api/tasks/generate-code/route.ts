@@ -4,6 +4,7 @@ import {
   applyTemplate,
   generateTemplateVariables,
   getCodeTemplate,
+  previewInternalCode,
 } from "@/lib/code-generator";
 
 /**
@@ -29,12 +30,24 @@ export async function GET(request: NextRequest) {
     let siteId: string | null = null;
     let isOfferKanban = false;
     let taskType = "LAVORO";
+    let isInternalCategory = false;
+    let internalCategoryId: number | null = null;
+    let internalBaseCode: number | null = null;
 
     if (kanbanId) {
-      // Ottieni info sulla kanban
+      // Ottieni info sulla kanban con la categoria
       const { data: kanban, error: kanbanError } = await supabase
         .from("Kanban")
-        .select("site_id, is_offer_kanban")
+        .select(`
+          site_id, 
+          is_offer_kanban,
+          category_id,
+          category:KanbanCategory(
+            id,
+            is_internal,
+            internal_base_code
+          )
+        `)
         .eq("id", kanbanId)
         .single();
 
@@ -47,7 +60,17 @@ export async function GET(request: NextRequest) {
 
       siteId = kanban.site_id;
       isOfferKanban = kanban.is_offer_kanban || false;
-      taskType = isOfferKanban ? "OFFERTA" : "LAVORO";
+      
+      // Check if kanban belongs to an internal category
+      const category = kanban.category as any;
+      if (category && category.is_internal && category.internal_base_code) {
+        isInternalCategory = true;
+        internalCategoryId = category.id;
+        internalBaseCode = category.internal_base_code;
+        taskType = "INTERNO";
+      } else {
+        taskType = isOfferKanban ? "OFFERTA" : "LAVORO";
+      }
     } else if (domain) {
       // Ottieni siteId dal domain
       const { data: site, error: siteError } = await supabase
@@ -70,6 +93,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Handle internal category codes
+    if (isInternalCategory && internalCategoryId && internalBaseCode) {
+      const code = await previewInternalCode(siteId, internalCategoryId, internalBaseCode);
+      return NextResponse.json({
+        code,
+        taskType: "INTERNO",
+        isOfferKanban: false,
+        isInternalCategory: true,
+        isPreview: true,
+      });
+    }
+
+    // Standard code generation (OFFERTA, LAVORO, FATTURA)
     // Ottieni il template
     const template = await getCodeTemplate(siteId, taskType);
 
@@ -145,6 +181,7 @@ export async function GET(request: NextRequest) {
       code,
       taskType,
       isOfferKanban,
+      isInternalCategory: false,
       isPreview: true,
     });
   } catch (error) {
@@ -177,11 +214,24 @@ export async function POST(request: NextRequest) {
     let siteId: string | null = null;
     let isOfferKanban = false;
     let taskType = overrideTaskType || "LAVORO";
+    let isInternalCategory = false;
+    let internalCategoryId: number | null = null;
+    let internalBaseCode: number | null = null;
 
     if (kanbanId) {
+      // Get kanban info with category
       const { data: kanban, error: kanbanError } = await supabase
         .from("Kanban")
-        .select("site_id, is_offer_kanban")
+        .select(`
+          site_id, 
+          is_offer_kanban,
+          category_id,
+          category:KanbanCategory(
+            id,
+            is_internal,
+            internal_base_code
+          )
+        `)
         .eq("id", kanbanId)
         .single();
 
@@ -194,7 +244,15 @@ export async function POST(request: NextRequest) {
 
       siteId = kanban.site_id;
       isOfferKanban = kanban.is_offer_kanban || false;
-      if (!overrideTaskType) {
+      
+      // Check if kanban belongs to an internal category
+      const category = kanban.category as any;
+      if (category && category.is_internal && category.internal_base_code) {
+        isInternalCategory = true;
+        internalCategoryId = category.id;
+        internalBaseCode = category.internal_base_code;
+        taskType = "INTERNO";
+      } else if (!overrideTaskType) {
         taskType = isOfferKanban ? "OFFERTA" : "LAVORO";
       }
     } else if (domain) {
@@ -218,6 +276,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle internal category codes
+    if (isInternalCategory && internalCategoryId && internalBaseCode) {
+      // Import the function dynamically to avoid circular dependency
+      const { generateInternalTaskCode } = await import("@/lib/code-generator");
+      const code = await generateInternalTaskCode(siteId, internalCategoryId, internalBaseCode);
+      
+      return NextResponse.json({
+        code,
+        taskType: "INTERNO",
+        isOfferKanban: false,
+        isInternalCategory: true,
+      });
+    }
+
+    // Standard code generation (OFFERTA, LAVORO, FATTURA)
     // Ottieni il template
     const template = await getCodeTemplate(siteId, taskType);
 
@@ -253,6 +326,7 @@ export async function POST(request: NextRequest) {
       code,
       taskType,
       isOfferKanban,
+      isInternalCategory: false,
       sequenceValue,
     });
   } catch (error) {

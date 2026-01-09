@@ -28,10 +28,18 @@ import {
 import { UserContext } from "@/lib/auth-utils";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
+import { useSiteId } from "@/hooks/use-site-id";
 
-export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
+export const NavUser = memo(function NavUser({
+  user,
+  domain,
+}: {
+  user: UserContext;
+  domain?: string;
+}) {
   const { isMobile } = useSidebar();
   const { logout } = useLogout();
+  const { siteId } = useSiteId(domain);
 
   // Extract user information from the context
   const userData = user.user;
@@ -135,7 +143,14 @@ export const NavUser = memo(function NavUser({ user }: { user: UserContext }) {
               </DropdownMenuItem>
               {(user.role === "admin" || user.role === "superadmin") && (
                 <DropdownMenuItem asChild>
-                  <Link href="/administration" className="w-full">
+                  <Link
+                    href={
+                      siteId
+                        ? `/administration/sites/${siteId}/edit`
+                        : "/administration"
+                    }
+                    className="w-full"
+                  >
                     <ShieldCheck />
                     Administration
                   </Link>

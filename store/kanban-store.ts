@@ -10,6 +10,8 @@ export interface KanbanCategory {
   color?: string | null;
   display_order: number;
   site_id?: string | null;
+  is_internal?: boolean;
+  internal_base_code?: number | null;
 }
 
 export interface Kanban {
