@@ -22,6 +22,7 @@ import {
 import { SearchSelect } from "../ui/search-select";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Label } from "../ui/label";
+import { Checkbox } from "../ui/checkbox";
 import { logger } from "@/lib/logger";
 import {
   Clock,
@@ -36,6 +37,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Wrench,
+  X,
 } from "lucide-react";
 
 // Internal activity types and labels
@@ -95,9 +97,15 @@ interface TodayEntry {
 
 interface Session {
   user: {
-    sub: string;
+    id: string;
+    sub?: string; // Legacy support
     given_name?: string;
     family_name?: string;
+    email?: string;
+    user_metadata?: {
+      name?: string;
+      full_name?: string;
+    };
   };
 }
 
@@ -139,6 +147,76 @@ const CreatePage = ({
   const { toast } = useToast();
   const [isSaved, setIsSaved] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [selectedEntries, setSelectedEntries] = useState<Set<number>>(
+    new Set()
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Toggle selection for a single entry
+  const toggleEntrySelection = (entryId: number) => {
+    setSelectedEntries((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(entryId)) {
+        newSet.delete(entryId);
+      } else {
+        newSet.add(entryId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select/deselect all entries
+  const toggleAllEntries = () => {
+    if (selectedEntries.size === todayEntries.length) {
+      setSelectedEntries(new Set());
+    } else {
+      setSelectedEntries(new Set(todayEntries.map((e) => e.id)));
+    }
+  };
+
+  // Delete selected entries
+  const handleDeleteSelected = async () => {
+    if (selectedEntries.size === 0) return;
+
+    const confirmDelete = window.confirm(
+      `Sei sicuro di voler eliminare ${selectedEntries.size} registrazion${
+        selectedEntries.size === 1 ? "e" : "i"
+      }?`
+    );
+
+    if (!confirmDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch("/api/time-tracking/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedEntries) }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Errore durante l'eliminazione");
+      }
+
+      toast({
+        description: `${selectedEntries.size} registrazion${
+          selectedEntries.size === 1 ? "e eliminata" : "i eliminate"
+        }`,
+      });
+
+      setSelectedEntries(new Set());
+      // Reload page to refresh data
+      window.location.reload();
+    } catch (error) {
+      logger.error("Error deleting entries:", error);
+      toast({
+        description: "Errore durante l'eliminazione. Riprova.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Calculate saved hours from today's entries
   const savedTodayMinutes = todayEntries.reduce((acc, entry) => {
@@ -156,31 +234,36 @@ const CreatePage = ({
       hours: "",
       minutes: "",
       description: "",
-      descriptionCat: "",
+      descriptionCat: "Nessuna",
       roles: {},
-      userId: session.user.sub,
+      userId: session.user.id,
       activityType: "project",
       internalActivity: undefined,
     }),
-    [session.user.sub]
+    [session.user.id]
   );
 
   const [rows, setRows] = useState<TimeRow[]>([createEmptyRow()]);
 
   // Load from localStorage on mount
   useEffect(() => {
-    const storedData = localStorage.getItem(`timetracking-${session.user.sub}`);
+    const storedData = localStorage.getItem(`timetracking-${session.user.id}`);
     if (storedData) {
       try {
         const parsed = JSON.parse(storedData);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setRows(parsed);
+          // Ensure each row has userId (might be missing from old localStorage data)
+          const rowsWithUserId = parsed.map((row: TimeRow) => ({
+            ...row,
+            userId: row.userId || session.user.id,
+          }));
+          setRows(rowsWithUserId);
         }
       } catch {
         // Invalid data, start fresh
       }
     }
-  }, [session.user.sub]);
+  }, [session.user.id]);
 
   // Calculate totals (including both new entries and saved entries)
   const calculateTotals = useCallback(() => {
@@ -227,11 +310,11 @@ const CreatePage = ({
   // Save to localStorage
   const handleSaveTemp = useCallback(() => {
     localStorage.setItem(
-      `timetracking-${session.user.sub}`,
+      `timetracking-${session.user.id}`,
       JSON.stringify(rows)
     );
     toast({ description: "Bozza salvata temporaneamente" });
-  }, [rows, session.user.sub, toast]);
+  }, [rows, session.user.id, toast]);
 
   // Handle task selection for a row
   const handleTaskChange = (value: string, index: number) => {
@@ -373,7 +456,7 @@ const CreatePage = ({
       setRows(newRows);
     }
     localStorage.setItem(
-      `timetracking-${session.user.sub}`,
+      `timetracking-${session.user.id}`,
       JSON.stringify(rows.filter((_, i) => i !== index))
     );
   };
@@ -383,7 +466,7 @@ const CreatePage = ({
     if (
       window.confirm("Sei sicuro di voler eliminare tutte le registrazioni?")
     ) {
-      localStorage.removeItem(`timetracking-${session.user.sub}`);
+      localStorage.removeItem(`timetracking-${session.user.id}`);
       setRows([createEmptyRow()]);
       toast({ description: "Tutte le registrazioni sono state eliminate" });
     }
@@ -424,17 +507,31 @@ const CreatePage = ({
     }
 
     try {
+      // Clean up roles and ensure userId is present
+      const cleanedRows = validRows.map((row) => ({
+        ...row,
+        userId: row.userId || session.user.id,
+        roles:
+          row.roles && Object.keys(row.roles).length > 0
+            ? row.roles
+            : undefined,
+      }));
+
+      console.log("Sending timetracking data:", cleanedRows);
+
       const response = await fetch("/api/time-tracking/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validRows),
+        body: JSON.stringify(cleanedRows),
       });
 
-      if (!response.ok) throw new Error("Network error");
-
       const responseData = await response.json();
-      if (responseData.error) {
-        throw new Error(responseData.error);
+
+      if (!response.ok || responseData.error) {
+        console.error("API Error:", responseData);
+        throw new Error(
+          responseData.error || responseData.details || "Errore sconosciuto"
+        );
       }
 
       setIsSuccess(true);
@@ -443,13 +540,15 @@ const CreatePage = ({
       });
 
       setTimeout(() => {
-        localStorage.removeItem(`timetracking-${session.user.sub}`);
+        localStorage.removeItem(`timetracking-${session.user.id}`);
         window.location.reload();
       }, 3000);
     } catch (error) {
       logger.error("Error saving time tracking:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Errore nel salvataggio";
       toast({
-        description: "Errore nel salvataggio. Riprova.",
+        description: errorMessage,
         variant: "destructive",
       });
       setIsSaved(false);
@@ -543,38 +642,83 @@ const CreatePage = ({
             {/* Today's Saved Entries */}
             {todayEntries.length > 0 && (
               <div className="pt-2 border-t">
-                <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  Ore già salvate oggi
-                </p>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={
+                        selectedEntries.size === todayEntries.length &&
+                        todayEntries.length > 0
+                      }
+                      onCheckedChange={toggleAllEntries}
+                    />
+                    <label
+                      htmlFor="select-all"
+                      className="text-sm font-medium flex items-center gap-2 cursor-pointer"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      Ore già salvate oggi
+                    </label>
+                  </div>
+                  {selectedEntries.size > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDeleteSelected}
+                      disabled={isDeleting}
+                      className="h-7 px-2 text-xs"
+                    >
+                      {isDeleting ? (
+                        <span className="animate-spin mr-1">⏳</span>
+                      ) : (
+                        <Trash2 className="h-3 w-3 mr-1" />
+                      )}
+                      Elimina ({selectedEntries.size})
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
                   {todayEntries.map((entry) => (
                     <div
                       key={entry.id}
-                      className="flex items-center justify-between bg-green-500/5 rounded-lg px-3 py-2 text-sm"
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                        selectedEntries.has(entry.id)
+                          ? "bg-red-500/10 border border-red-500/30"
+                          : "bg-green-500/5"
+                      }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-background"
-                        >
-                          {entry.hours}h {entry.minutes}m
-                        </Badge>
-                        <span className="text-muted-foreground">
-                          {entry.activity_type === "internal"
-                            ? INTERNAL_ACTIVITY_LABELS[
-                                entry.internal_activity || ""
-                              ] || entry.internal_activity
-                            : entry.task?.client?.businessName
-                            ? `${entry.task.unique_code} - ${entry.task.client.businessName}`
-                            : entry.task?.unique_code || "Progetto"}
-                        </span>
+                      <Checkbox
+                        id={`entry-${entry.id}`}
+                        checked={selectedEntries.has(entry.id)}
+                        onCheckedChange={() => toggleEntrySelection(entry.id)}
+                      />
+                      <div className="flex items-center justify-between flex-1 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Badge
+                            variant="outline"
+                            className="text-xs bg-background shrink-0"
+                          >
+                            {entry.hours}h {entry.minutes}m
+                          </Badge>
+                          <span className="text-muted-foreground truncate">
+                            {entry.activity_type === "internal"
+                              ? INTERNAL_ACTIVITY_LABELS[
+                                  entry.internal_activity || ""
+                                ] || entry.internal_activity
+                              : entry.task?.client?.businessName
+                              ? `${entry.task.unique_code} - ${entry.task.client.businessName}`
+                              : entry.task?.unique_code || "Progetto"}
+                          </span>
+                        </div>
+                        {entry.roles?.[0]?.name && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs shrink-0 ml-2"
+                          >
+                            {entry.roles[0].name}
+                          </Badge>
+                        )}
                       </div>
-                      {entry.roles?.[0]?.name && (
-                        <Badge variant="secondary" className="text-xs">
-                          {entry.roles[0].name}
-                        </Badge>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -752,30 +896,51 @@ const CreatePage = ({
 
                 {/* Time Input */}
                 <div className="space-y-3">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    Tempo impiegato
-                  </label>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {QUICK_TIMES.map((qt) => (
-                      <Button
-                        key={qt.label}
-                        variant="outline"
-                        size="sm"
-                        className={`text-xs ${
-                          row.hours === qt.hours.toString() &&
-                          row.minutes === qt.minutes.toString()
-                            ? "bg-primary text-primary-foreground"
-                            : ""
-                        }`}
-                        onClick={() =>
-                          handleQuickTime(qt.hours, qt.minutes, index)
-                        }
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      Tempo impiegato
+                    </label>
+                    {/* Display selected time */}
+                    {(parseInt(row.hours) > 0 || parseInt(row.minutes) > 0) && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-primary/10 text-primary font-semibold"
                       >
-                        {qt.label}
-                      </Button>
-                    ))}
+                        {parseInt(row.hours) > 0 && `${row.hours}h `}
+                        {parseInt(row.minutes) > 0 && `${row.minutes}m`}
+                        {parseInt(row.hours) === 0 &&
+                          parseInt(row.minutes) === 0 &&
+                          "0m"}
+                      </Badge>
+                    )}
                   </div>
+                  {/* Quick time buttons */}
+                  <div className="flex flex-wrap gap-2">
+                    {QUICK_TIMES.map((qt) => {
+                      const isSelected =
+                        parseInt(row.hours || "0") === qt.hours &&
+                        parseInt(row.minutes || "0") === qt.minutes;
+                      return (
+                        <Button
+                          key={qt.label}
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          className={`text-xs transition-all ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground shadow-md scale-105"
+                              : "hover:bg-primary/10 hover:border-primary"
+                          }`}
+                          onClick={() =>
+                            handleQuickTime(qt.hours, qt.minutes, index)
+                          }
+                        >
+                          {qt.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  {/* Manual input */}
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <div className="relative">
@@ -786,10 +951,10 @@ const CreatePage = ({
                           max="24"
                           value={row.hours}
                           onChange={(e) => handleInputChange(e, index, "hours")}
-                          className="pr-8"
+                          className="pr-10 text-center font-medium"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          h
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                          ore
                         </span>
                       </div>
                     </div>
@@ -805,8 +970,8 @@ const CreatePage = ({
                           setRows(updatedRows);
                         }}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="00" />
+                        <SelectTrigger className="font-medium">
+                          <SelectValue>{row.minutes || "0"} min</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="0">00 min</SelectItem>

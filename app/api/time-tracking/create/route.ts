@@ -36,8 +36,14 @@ export async function POST(req: NextRequest) {
       throw new Error("Invalid JSON payload");
     });
 
+    console.log("Received timetracking data:", JSON.stringify(data, null, 2));
+
     const dataArray = validation.safeParse(data);
     if (!dataArray.success) {
+      console.error(
+        "Validation failed:",
+        JSON.stringify(dataArray.error.format(), null, 2),
+      );
       return NextResponse.json(
         {
           error: "Validation failed",
@@ -116,10 +122,14 @@ export async function POST(req: NextRequest) {
           taskQuery = taskQuery.eq("site_id", siteId);
         }
 
-        const { data: task, error: taskError } = await taskQuery.single();
+        // Use limit(1) instead of single() to handle potential duplicates
+        const { data: tasks, error: taskError } = await taskQuery.limit(1);
 
         if (taskError) throw taskError;
-        taskId = task.id;
+        if (!tasks || tasks.length === 0) {
+          throw new Error(`Task not found: ${data.task}`);
+        }
+        taskId = tasks[0].id;
       }
 
       // Create timetracking entry
@@ -167,27 +177,42 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Create action record
-      const actionData: any = {
-        type: "timetracking_create",
-        data: {
-          timetracking: timetracking.id,
-        },
-        user_id: employeeId,
-      };
+      // Create action record (optional - don't fail if it doesn't work)
+      let action = null;
+      try {
+        const actionData: any = {
+          type: "timetracking_create",
+          data: {
+            timetracking: timetracking.id,
+          },
+          user_id: employeeId,
+        };
 
-      // Add site_id if available
-      if (siteId) {
-        actionData.site_id = siteId;
+        // Add site_id if available
+        if (siteId) {
+          actionData.site_id = siteId;
+        }
+
+        const { data: actionResult, error: actionError } = await supabase
+          .from("Action")
+          .insert(actionData)
+          .select()
+          .single();
+
+        if (actionError) {
+          console.error(
+            "Error creating action record (non-blocking):",
+            actionError,
+          );
+        } else {
+          action = actionResult;
+        }
+      } catch (actionErr) {
+        console.error(
+          "Error creating action record (non-blocking):",
+          actionErr,
+        );
       }
-
-      const { data: action, error: actionError } = await supabase
-        .from("Action")
-        .insert(actionData)
-        .select()
-        .single();
-
-      if (actionError) throw actionError;
 
       results.push({ timetracking, action });
     }
