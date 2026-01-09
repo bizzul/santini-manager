@@ -82,6 +82,7 @@ export default function Card({
   history,
   isSmall: isSmallInitial,
   domain,
+  onTaskDeleted,
 }: {
   id: number;
   title: string;
@@ -90,6 +91,7 @@ export default function Card({
   history: Action;
   isSmall: boolean;
   domain?: string;
+  onTaskDeleted?: () => void;
 }) {
   const { siteId } = useSiteId(domain);
   const [showModal, setShowModal] = useState(false);
@@ -546,21 +548,26 @@ export default function Card({
                     {/* Priorità a numero_pezzi, altrimenti mostra posizioni */}
                     {data.numero_pezzi && data.numero_pezzi > 0 ? (
                       <div className="flex items-center justify-center pb-2 border border-white/50 rounded">
-                        <p className="text-lg font-bold">{data.numero_pezzi} pz</p>
+                        <p className="text-lg font-bold">
+                          {data.numero_pezzi} pz
+                        </p>
                       </div>
-                    ) : data.positions && data.positions.length > 0 && (
-                      <div className="grid grid-rows-2 grid-cols-4  pb-2">
-                        {data.positions.map(
-                          (position: string, index: number) => (
-                            <p
-                              className="border-[0.75px] dark:border-white text-center pl-1 text-xs"
-                              key={index}
-                            >
-                              {position}
-                            </p>
-                          )
-                        )}
-                      </div>
+                    ) : (
+                      data.positions &&
+                      data.positions.length > 0 && (
+                        <div className="grid grid-rows-2 grid-cols-4  pb-2">
+                          {data.positions.map(
+                            (position: string, index: number) => (
+                              <p
+                                className="border-[0.75px] dark:border-white text-center pl-1 text-xs"
+                                key={index}
+                              >
+                                {position}
+                              </p>
+                            )
+                          )}
+                        </div>
+                      )
                     )}
                   </div>
                   <div className="flex flex-col w-full h-1/2">
@@ -745,58 +752,48 @@ export default function Card({
               </div>
             ) : (
               <div>
-                <div className="flex flex-col justify-between h-full gap-2">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row justify-between align-middle items-start">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold">{data.unique_code}</span>
-                        {/* Indicatore stato offerta */}
-                        {displayMode === "small_green" && (
-                          <span className="text-xs bg-white/20 px-1 rounded">
-                            VINTA
-                          </span>
-                        )}
-                        {displayMode === "small_red" && (
-                          <span className="text-xs bg-white/20 px-1 rounded">
-                            PERSA
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm">
-                          <FontAwesomeIcon icon={faClock} className="pr-1" />
-                          {data.deliveryDate !== null &&
-                            DateManager.formatEUDate(data.deliveryDate)}
-                          {data.deliveryDate !== null && (
-                            <span className="pl-1 font-bold">
-                              | {DateManager.getWeekNumber(data.deliveryDate)}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-row text-sm">
-                      <p>
-                        {data.client?.clientType === "BUSINESS"
-                          ? data.client?.businessName || "-"
-                          : `${data.client?.individualFirstName || ""} ${
-                              data.client?.individualLastName || ""
-                            }`.trim() || "-"}
-                      </p>
-                    </div>
+                <div className="flex flex-col justify-between h-full gap-1">
+                  {/* Riga 1: Codice + Data */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-base whitespace-nowrap">
+                      {data.unique_code}
+                    </span>
+                    {/* Data consegna */}
+                    {data.deliveryDate !== null && (
+                      <span className="text-xs whitespace-nowrap flex items-center gap-1">
+                        <FontAwesomeIcon
+                          icon={faClock}
+                          className="text-[10px]"
+                        />
+                        {DateManager.formatEUDate(data.deliveryDate)}
+                        <span className="font-bold">
+                          | {DateManager.getWeekNumber(data.deliveryDate)}
+                        </span>
+                      </span>
+                    )}
                   </div>
-                  {/* Mostra prezzo per offerte, progress bar per lavori */}
+
+                  {/* Riga 2: Nome cliente */}
+                  <p className="text-sm truncate">
+                    {data.client?.clientType === "BUSINESS"
+                      ? data.client?.businessName || "-"
+                      : `${data.client?.individualFirstName || ""} ${
+                          data.client?.individualLastName || ""
+                        }`.trim() || "-"}
+                  </p>
+
+                  {/* Riga 3: Prezzo o progress bar */}
                   {displayMode !== "normal" ? (
-                    <div className="flex flex-row justify-between items-center text-sm">
-                      <span>Valore:</span>
+                    <div className="flex items-center justify-between text-sm mt-auto">
+                      <span className="text-xs opacity-80">Valore:</span>
                       <span className="font-bold">
                         {((data.sellPrice || 0) / 1000).toFixed(2)} K
                       </span>
                     </div>
                   ) : (
-                    <div className="flex flex-row gap-2 justify-end align-middle items-center">
-                      <p className="text-xs">{data.percentStatus}%</p>
-                      <div className="w-full bg-gray-200 rounded-full">
+                    <div className="flex items-center gap-2 mt-auto">
+                      <span className="text-xs">{data.percentStatus}%</span>
+                      <div className="flex-1 bg-gray-200 rounded-full h-2">
                         <div
                           style={{ width: `${data.percentStatus}%` }}
                           className="h-2 bg-green-500 rounded-full"
@@ -815,7 +812,12 @@ export default function Card({
                 {/* <DialogDescription>Crea un prodotto nuovo</DialogDescription> */}
               </DialogHeader>
               <EditTaskKanban
-                handleClose={() => setShowModal(false)}
+                handleClose={(wasDeleted?: boolean) => {
+                  setShowModal(false);
+                  if (wasDeleted && onTaskDeleted) {
+                    onTaskDeleted();
+                  }
+                }}
                 setIsLocked={setIsLocked}
                 open={showModal}
                 setOpenModal={setShowModal}

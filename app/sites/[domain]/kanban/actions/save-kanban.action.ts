@@ -15,6 +15,7 @@ export async function saveKanban(kanban: {
   // Nuovi campi per sistema offerte
   is_offer_kanban?: boolean;
   target_work_kanban_id?: number | null;
+  code_change_column_id?: number | null; // Colonna che triggera il cambio codice da OFFERTA a LAVORO
   // Nuovi campi per routing produzione/fatturazione
   is_work_kanban?: boolean;
   is_production_kanban?: boolean;
@@ -79,6 +80,7 @@ export async function saveKanban(kanban: {
         // Nuovi campi per sistema offerte
         is_offer_kanban: kanban.is_offer_kanban || false,
         target_work_kanban_id: kanban.target_work_kanban_id || null,
+        code_change_column_id: kanban.is_offer_kanban ? (kanban.code_change_column_id || null) : null,
         // Nuovi campi per routing produzione/fatturazione
         is_work_kanban: kanban.is_work_kanban || false,
         is_production_kanban: kanban.is_production_kanban || false,
@@ -126,6 +128,7 @@ export async function saveKanban(kanban: {
         // Nuovi campi per sistema offerte
         is_offer_kanban: kanban.is_offer_kanban || false,
         target_work_kanban_id: kanban.target_work_kanban_id || null,
+        code_change_column_id: kanban.is_offer_kanban ? (kanban.code_change_column_id || null) : null,
         // Nuovi campi per routing produzione/fatturazione
         is_work_kanban: kanban.is_work_kanban || false,
         is_production_kanban: kanban.is_production_kanban || false,

@@ -385,7 +385,7 @@ export const fetchInventory = cache(async (siteId: string) => {
  */
 export const fetchInventoryItems = cache(async (siteId: string) => {
     const supabase = await createClient();
-    
+
     // Fetch items with variants
     const { data: items, error: itemsError } = await supabase
         .from("inventory_items")
@@ -420,7 +420,7 @@ export const fetchInventoryItems = cache(async (siteId: string) => {
     // Create stock lookup map
     const stockMap = new Map<string, number>();
     (stock || []).forEach((s: any) => {
-        const key = `${s.variant_id}-${s.warehouse_id || 'default'}`;
+        const key = `${s.variant_id}-${s.warehouse_id || "default"}`;
         stockMap.set(key, (stockMap.get(key) || 0) + (s.quantity || 0));
     });
 
@@ -567,7 +567,9 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
             supabase.from("File").select("*").in("taskId", taskIds),
             supabase.from("QualityControl").select("*").in("taskId", taskIds),
             supabase.from("PackingControl").select("*").in("taskId", taskIds),
-            supabase.from("Action").select("*").eq("site_id", siteId),
+            supabase.from("Action").select(
+                "*, User(id, picture, given_name, family_name)",
+            ).eq("site_id", siteId),
         ]);
 
     const columns = columnsResult.data || [];
@@ -991,7 +993,8 @@ export const fetchInventoryData = cache(async (siteId: string) => {
                     // Legacy compatibility fields
                     unit_price: variant.purchase_unit_price,
                     sell_price: variant.sell_unit_price,
-                    total_price: (variant.purchase_unit_price || 0) * (stockMap.get(variant.id) || 0),
+                    total_price: (variant.purchase_unit_price || 0) *
+                        (stockMap.get(variant.id) || 0),
                     created_at: variant.created_at || item.created_at,
                     updated_at: variant.updated_at || item.updated_at,
                     lastAction: null,

@@ -30,7 +30,18 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Button } from "../ui/button";
-import { Plus, CalendarIcon } from "lucide-react";
+import { Plus, CalendarIcon, Trash2, User } from "lucide-react";
+import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { logger } from "@/lib/logger";
 import { useSiteId } from "@/hooks/use-site-id";
 import { Calendar } from "@/components/ui/calendar";
@@ -42,7 +53,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type Props = {
-  handleClose: any;
+  handleClose: (wasDeleted?: boolean) => void;
   setIsLocked: any;
   open: boolean;
   setOpenModal: any;
@@ -108,6 +119,8 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const [selectedColumnId, setSelectedColumnId] = useState<number | null>(
     resource?.kanbanColumnId || null
   );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Helper to build headers with siteId
   const getHeaders = (): HeadersInit => {
@@ -161,7 +174,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     const getKanbans = async () => {
       try {
-        const response = await fetch(`/api/kanban/list`, { headers: getHeaders() });
+        const response = await fetch(`/api/kanban/list`, {
+          headers: getHeaders(),
+        });
         if (!response.ok) throw new Error("Failed to fetch kanbans");
         const data = await response.json();
         setKanbans(Array.isArray(data) ? data : []);
@@ -173,8 +188,16 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     const initializeForm = async () => {
       form.setValue("productId", resource.sellProductId!);
-      form.setValue("deliveryDate", resource.deliveryDate ? new Date(resource.deliveryDate) : undefined);
-      form.setValue("termine_produzione", resource.termine_produzione ? new Date(resource.termine_produzione) : undefined);
+      form.setValue(
+        "deliveryDate",
+        resource.deliveryDate ? new Date(resource.deliveryDate) : undefined
+      );
+      form.setValue(
+        "termine_produzione",
+        resource.termine_produzione
+          ? new Date(resource.termine_produzione)
+          : undefined
+      );
       form.setValue("other", resource.other ?? undefined);
       form.setValue("sellPrice", resource.sellPrice!);
       form.setValue("numero_pezzi", resource.numero_pezzi ?? null);
@@ -239,7 +262,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   useEffect(() => {
     const loadSuppliers = async () => {
       try {
-        const response = await fetch("/api/suppliers", { headers: getHeaders() });
+        const response = await fetch("/api/suppliers", {
+          headers: getHeaders(),
+        });
         const suppliersData = await response.json();
         setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
 
@@ -374,6 +399,33 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     }
   };
 
+  const handleDeleteTask = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await removeItem(resource.id, domain);
+      if (result && typeof result === "object" && "error" in result) {
+        toast({
+          variant: "destructive",
+          description: result.message || "Errore durante l'eliminazione",
+        });
+      } else {
+        toast({
+          description: `Task ${resource.unique_code} eliminato con successo`,
+        });
+        handleClose(true);
+      }
+    } catch (error) {
+      logger.error("Error deleting task:", error);
+      toast({
+        variant: "destructive",
+        description: "Errore durante l'eliminazione del task",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   // Add null check for resource after all hooks and functions
   if (!resource) {
     return <div>Loading...</div>;
@@ -405,13 +457,17 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
               {filteredHistory.map((item: any) => (
                 <li className="mb-10 ml-6" key={item.id}>
                   <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-8 ring-white dark:ring-gray-900 dark:bg-blue-900">
-                    <Image
-                      className="rounded-full shadow-lg"
-                      src={item.User?.picture || "/default-avatar.png"}
-                      width={30}
-                      height={30}
-                      alt={item.User?.given_name || "User"}
-                    />
+                    {item.User?.picture ? (
+                      <Image
+                        className="rounded-full shadow-lg"
+                        src={item.User.picture}
+                        width={30}
+                        height={30}
+                        alt={item.User?.given_name || "User"}
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-blue-600 dark:text-blue-300" />
+                    )}
                   </span>
                   <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
                     <time className="mb-1 text-xs font-normal text-gray-400 sm:order-last sm:mb-0">
@@ -601,7 +657,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                    <PopoverContent
+                      className="w-auto min-w-[280px] p-0"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
                         selected={field.value || undefined}
@@ -641,7 +700,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                    <PopoverContent
+                      className="w-auto min-w-[280px] p-0"
+                      align="start"
+                    >
                       <Calendar
                         mode="single"
                         selected={field.value || undefined}
@@ -664,7 +726,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             <Select
               value={selectedKanbanId?.toString() || "__none__"}
               onValueChange={(value) =>
-                setSelectedKanbanId(value && value !== "__none__" ? parseInt(value) : null)
+                setSelectedKanbanId(
+                  value && value !== "__none__" ? parseInt(value) : null
+                )
               }
               disabled={isSubmitting}
             >
@@ -689,7 +753,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
               <Select
                 value={selectedColumnId?.toString() || "__none__"}
                 onValueChange={(value) =>
-                  setSelectedColumnId(value && value !== "__none__" ? parseInt(value) : null)
+                  setSelectedColumnId(
+                    value && value !== "__none__" ? parseInt(value) : null
+                  )
                 }
                 disabled={isSubmitting || kanbanColumns.length === 0}
               >
@@ -918,15 +984,50 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             </div>
           </div>
 
-          <Button type="submit" disabled={isSubmitting}>
-            {" "}
-            {isSubmitting && (
-              <span className="spinner-border spinner-border-sm mr-1"></span>
-            )}{" "}
-            Salva
-          </Button>
+          <div className="flex gap-2 justify-between pt-4 border-t">
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isSubmitting || isDeleting}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Elimina
+            </Button>
+            <Button type="submit" disabled={isSubmitting || isDeleting}>
+              {isSubmitting && (
+                <span className="spinner-border spinner-border-sm mr-1"></span>
+              )}
+              Salva
+            </Button>
+          </div>
         </form>
       </Form>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma Eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare il task{" "}
+              <strong>{resource.unique_code}</strong>?
+              <br />
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Eliminando..." : "Elimina"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

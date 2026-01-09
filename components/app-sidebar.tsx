@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useCallback, memo } from "react";
+import React, { useState, useMemo, useCallback, memo, useEffect } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -64,6 +64,38 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
 import { getKanbanIcon } from "@/lib/kanban-icons";
+
+// localStorage keys for sidebar state persistence
+const SIDEBAR_COLLAPSED_MENUS_KEY = "santini-sidebar-collapsed-menus";
+const SIDEBAR_KANBAN_OPENED_KEY = "santini-sidebar-kanban-opened";
+
+// Helper function to get initial collapsed menus state from localStorage
+const getInitialCollapsedMenus = (): Record<string, boolean> => {
+  if (typeof window === "undefined") return { Kanban: true };
+  try {
+    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_MENUS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+  return { Kanban: true };
+};
+
+// Helper function to get initial kanban opened state from localStorage
+const getInitialKanbanOpened = (): boolean => {
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = localStorage.getItem(SIDEBAR_KANBAN_OPENED_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+  return false;
+};
 
 // Icon mapping for sidebar
 const iconMap = {
@@ -394,16 +426,40 @@ export function AppSidebar() {
   const pathname = usePathname();
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
-  // Initialize Kanban as collapsed by default - data will be fetched on expand
+  // Initialize collapsed menus from localStorage (with Kanban collapsed by default)
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
-    { Kanban: true }
+    getInitialCollapsedMenus
   );
   const { toast } = useToast();
   const { isOnline } = useOnlineStatus();
   const queryClient = useQueryClient();
 
   // Track if Kanban section has been opened at least once (for lazy loading)
-  const [kanbanOpened, setKanbanOpened] = useState(false);
+  const [kanbanOpened, setKanbanOpened] = useState(getInitialKanbanOpened);
+
+  // Persist collapsed menus state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SIDEBAR_COLLAPSED_MENUS_KEY,
+        JSON.stringify(collapsedMenus)
+      );
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, [collapsedMenus]);
+
+  // Persist kanban opened state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SIDEBAR_KANBAN_OPENED_KEY,
+        JSON.stringify(kanbanOpened)
+      );
+    } catch (e) {
+      // Ignore localStorage errors
+    }
+  }, [kanbanOpened]);
 
   // Optimized domain extraction
   const domain = useMemo(() => extractDomainFromPath(pathname), [pathname]);

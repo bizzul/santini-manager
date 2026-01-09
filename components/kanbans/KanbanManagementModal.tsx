@@ -116,6 +116,9 @@ export default function KanbanManagementModal({
   const [targetWorkKanbanId, setTargetWorkKanbanId] = useState<number | null>(
     kanban?.target_work_kanban_id || null
   );
+  const [codeChangeColumnId, setCodeChangeColumnId] = useState<number | null>(
+    kanban?.code_change_column_id || null
+  );
   const [availableKanbans, setAvailableKanbans] = useState<any[]>([]);
   // Nuovi stati per routing produzione/fatturazione
   const [isWorkKanban, setIsWorkKanban] = useState(
@@ -175,6 +178,7 @@ export default function KanbanManagementModal({
       // Reset offer kanban fields
       setIsOfferKanban(kanban?.is_offer_kanban || false);
       setTargetWorkKanbanId(kanban?.target_work_kanban_id || null);
+      setCodeChangeColumnId(kanban?.code_change_column_id || null);
       // Reset work/production kanban fields
       setIsWorkKanban(kanban?.is_work_kanban || false);
       setIsProductionKanban(kanban?.is_production_kanban || false);
@@ -240,6 +244,7 @@ export default function KanbanManagementModal({
         // Nuovi campi per sistema offerte
         is_offer_kanban: isOfferKanban,
         target_work_kanban_id: isOfferKanban ? targetWorkKanbanId : null,
+        code_change_column_id: isOfferKanban ? codeChangeColumnId : null,
         // Nuovi campi per routing produzione/fatturazione
         is_work_kanban: isWorkKanban,
         is_production_kanban: isProductionKanban,
@@ -363,7 +368,7 @@ export default function KanbanManagementModal({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>
@@ -478,29 +483,72 @@ export default function KanbanManagementModal({
                 </Label>
               </div>
               {isOfferKanban && (
-                <div className="space-y-2 pl-6">
-                  <Label htmlFor="targetKanban" className="text-xs">
-                    Kanban destinazione lavori
-                  </Label>
-                  <Select
-                    value={targetWorkKanbanId?.toString() || ""}
-                    onValueChange={(value) =>
-                      setTargetWorkKanbanId(value ? parseInt(value) : null)
-                    }
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Seleziona kanban avor..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableKanbans
-                        .filter((k) => !k.is_offer_kanban)
-                        .map((k) => (
-                          <SelectItem key={k.id} value={k.id.toString()}>
-                            {k.title}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-3 pl-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="targetKanban" className="text-xs">
+                      Kanban destinazione lavori
+                    </Label>
+                    <Select
+                      value={targetWorkKanbanId?.toString() || ""}
+                      onValueChange={(value) =>
+                        setTargetWorkKanbanId(value ? parseInt(value) : null)
+                      }
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Seleziona kanban lavori..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableKanbans
+                          .filter((k) => !k.is_offer_kanban)
+                          .map((k) => (
+                            <SelectItem key={k.id} value={k.id.toString()}>
+                              {k.title}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Colonna cambio codice (da OFFERTA a LAVORO) */}
+                  {mode === "edit" && columns.length > 0 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="codeChangeColumn" className="text-xs">
+                        Colonna cambio codice (da OFF a LAVORO)
+                      </Label>
+                      <Select
+                        value={codeChangeColumnId?.toString() || "__none__"}
+                        onValueChange={(value) =>
+                          setCodeChangeColumnId(
+                            value && value !== "__none__"
+                              ? parseInt(value)
+                              : null
+                          )
+                        }
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Seleziona colonna..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Nessuna</SelectItem>
+                          {columns
+                            .filter((col: any) => col.id) // Solo colonne già salvate
+                            .map((col: any) => (
+                              <SelectItem
+                                key={col.id}
+                                value={col.id.toString()}
+                              >
+                                {col.title || col.identifier}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Quando un&apos;offerta viene spostata in questa colonna,
+                        il codice cambierà automaticamente da formato OFFERTA a
+                        formato LAVORO (es: 25-OFF-001 → 25-001).
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -705,7 +753,7 @@ export default function KanbanManagementModal({
                         )
                       }
                     >
-                      <SelectTrigger className="w-[100px]">
+                      <SelectTrigger className="w-[120px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -730,7 +778,11 @@ export default function KanbanManagementModal({
                   {/* Creation column selector - only one column can be selected */}
                   <button
                     type="button"
-                    title={column.is_creation_column ? "Colonna di creazione" : "Imposta come colonna di creazione"}
+                    title={
+                      column.is_creation_column
+                        ? "Colonna di creazione"
+                        : "Imposta come colonna di creazione"
+                    }
                     onClick={() =>
                       setColumns((prev) =>
                         prev.map((col, i) => ({

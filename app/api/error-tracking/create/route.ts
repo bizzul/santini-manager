@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
       // Success
       if (result) {
-        if (body.fileIds !== null) {
+        if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
           // Save the Cloudinary IDs of the uploaded files to the task record
           await Promise.all(
             body.fileIds.map((fileId: number) => {

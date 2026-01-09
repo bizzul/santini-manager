@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
           identifier,
           is_offer_kanban,
           target_work_kanban_id,
+          code_change_column_id,
           is_work_kanban,
           is_production_kanban,
           target_invoice_kanban_id
@@ -156,10 +157,10 @@ export async function POST(req: NextRequest) {
       });
 
       // Check if moving to "Inviata" column - set sent_date
-      const isInviataColumn = 
+      const isInviataColumn =
         targetColumn.identifier?.toUpperCase().includes("INVIAT") ||
         targetColumn.title?.toUpperCase().includes("INVIAT");
-      
+
       if (isInviataColumn && !task.sent_date) {
         logger.debug("Setting sent_date for offer moved to Inviata column");
       }
@@ -250,6 +251,35 @@ export async function POST(req: NextRequest) {
           const archiveSettings = await getAutoArchiveSettings(siteId);
           if (archiveSettings.enabled) {
             autoArchiveAt = calculateAutoArchiveDate(archiveSettings.days);
+          }
+        }
+      }
+    }
+
+    // =====================================================
+    // Logica Cambio Codice (OFFERTA -> LAVORO) su colonna configurata
+    // =====================================================
+    let newUniqueCode: string | null = null;
+    if (isOfferKanban && siteId) {
+      const codeChangeColumnId = task?.kanban?.code_change_column_id;
+
+      // Verifica se stiamo spostando nella colonna configurata per il cambio codice
+      if (codeChangeColumnId && targetColumn.id === codeChangeColumnId) {
+        // Verifica che il task non abbia già un codice LAVORO
+        const currentCode = task.unique_code || "";
+        const isOfferCode = currentCode.includes("-OFF-");
+
+        if (isOfferCode) {
+          try {
+            // Genera nuovo codice LAVORO
+            newUniqueCode = await generateTaskCode(siteId, "LAVORO");
+            logger.debug("Changing unique_code from OFFERTA to LAVORO:", {
+              oldCode: currentCode,
+              newCode: newUniqueCode,
+              columnId: targetColumn.id,
+            });
+          } catch (codeError) {
+            logger.error("Error generating new LAVORO code:", codeError);
           }
         }
       }
@@ -543,12 +573,19 @@ export async function POST(req: NextRequest) {
       updateData.auto_archive_at = autoArchiveAt.toISOString();
     }
 
+    // Aggiorna unique_code se è stato cambiato (da OFFERTA a LAVORO)
+    if (newUniqueCode) {
+      updateData.unique_code = newUniqueCode;
+      updateData.task_type = "LAVORO";
+      logger.debug("Adding unique_code change to update:", newUniqueCode);
+    }
+
     // Set sent_date when moving to "Inviata" column in offer kanban
     if (isOfferKanban) {
-      const isInviataColumn = 
+      const isInviataColumn =
         targetColumn.identifier?.toUpperCase().includes("INVIAT") ||
         targetColumn.title?.toUpperCase().includes("INVIAT");
-      
+
       if (isInviataColumn && !task.sent_date) {
         updateData.sent_date = now.toISOString();
         logger.debug("Set sent_date:", updateData.sent_date);

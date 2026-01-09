@@ -64,6 +64,7 @@ const Column = ({
   isOfferKanban,
   onMiniCardClick,
   onTaskCreated,
+  onTaskDeleted,
 }: any) => {
   const router = useRouter();
   const [isMovingTask, setIsMovingTask] = useState(false);
@@ -104,19 +105,19 @@ const Column = ({
     .toFixed(2);
 
   // Priorità a numero_pezzi rispetto alle posizioni
-  const totalPositions = cards.reduce(
-    (sum: number, card: any) => {
-      // Se numero_pezzi è definito, usa quello
-      if (card.numero_pezzi && card.numero_pezzi > 0) {
-        return sum + card.numero_pezzi;
-      }
-      // Altrimenti conta le posizioni riempite
-      return sum + (card.positions
+  const totalPositions = cards.reduce((sum: number, card: any) => {
+    // Se numero_pezzi è definito, usa quello
+    if (card.numero_pezzi && card.numero_pezzi > 0) {
+      return sum + card.numero_pezzi;
+    }
+    // Altrimenti conta le posizioni riempite
+    return (
+      sum +
+      (card.positions
         ? card.positions.filter((position: string) => position !== "").length
-        : 0);
-    },
-    0
-  );
+        : 0)
+    );
+  }, 0);
 
   const { isOver, setNodeRef } = useDroppable({
     id: `column-${column.id}`,
@@ -137,11 +138,11 @@ const Column = ({
     return () => clearTimeout(timer);
   }, [cards]);
 
-  // Check if this is the "Inviata" column in an offer kanban
-  const isInviataColumn =
+  // Check if this is the "Trattativa" column in an offer kanban (for follow-up dialog)
+  const isTrattativaColumn =
     isOfferKanban &&
-    (column.identifier?.toUpperCase().includes("INVIAT") ||
-      column.title?.toUpperCase().includes("INVIAT"));
+    (column.identifier?.toUpperCase().includes("TRATTATIV") ||
+      column.title?.toUpperCase().includes("TRATTATIV"));
 
   // Check if this column should show the create button
   // Uses is_creation_column flag, falls back to position === 1 for backwards compatibility
@@ -162,8 +163,8 @@ const Column = ({
   // Sort function based on column type
   const sortCards = (cardsToSort: any[]) => {
     return [...cardsToSort].sort((a: any, b: any) => {
-      // For "Inviata" column in offer kanban: sort by sent_date (oldest first)
-      if (isInviataColumn) {
+      // For "Trattativa" column in offer kanban: sort by sent_date (oldest first)
+      if (isTrattativaColumn) {
         const sentA = a.sent_date || a.sentDate;
         const sentB = b.sent_date || b.sentDate;
 
@@ -348,7 +349,7 @@ const Column = ({
               </div>
             ))
           : sortCards(cards).map((card: any) =>
-              isInviataColumn ? (
+              isTrattativaColumn ? (
                 <OfferMiniCard
                   key={card.id}
                   id={card.id}
@@ -366,6 +367,7 @@ const Column = ({
                   history={history}
                   isSmall={areAllTabsClosed}
                   domain={domain}
+                  onTaskDeleted={onTaskDeleted}
                 />
               )
             )}
@@ -404,6 +406,16 @@ function KanbanBoard({
     // Ensure initialTasks is always an array
     return Array.isArray(initialTasks) ? initialTasks : [];
   });
+
+  // Sync tasks state when kanban changes (e.g., user clicks on a different kanban)
+  // This is needed because useState only uses the initial value on first render
+  useEffect(() => {
+    if (Array.isArray(initialTasks)) {
+      setTasks(initialTasks);
+    } else {
+      setTasks([]);
+    }
+  }, [kanban?.id]); // Reset when kanban changes
 
   // Function to refetch tasks from the API
   const refetchTasks = useCallback(async () => {
@@ -985,6 +997,7 @@ function KanbanBoard({
                       isOfferKanban={isOfferKanban}
                       onMiniCardClick={handleMiniCardClick}
                       onTaskCreated={refetchTasks}
+                      onTaskDeleted={refetchTasks}
                     />
                   );
                 })}

@@ -4,7 +4,13 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Loader2, CalendarIcon, RefreshCw, FileCheck, Folder } from "lucide-react";
+import {
+  Loader2,
+  CalendarIcon,
+  RefreshCw,
+  FileCheck,
+  Folder,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +40,12 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Client, SellProduct, SellProductCategory, Task } from "@/types/supabase";
+import {
+  Client,
+  SellProduct,
+  SellProductCategory,
+  Task,
+} from "@/types/supabase";
 
 // Validation schema for completing a draft
 const completionSchema = z.object({
@@ -70,7 +81,11 @@ interface DraftCompletionWizardProps {
   categories?: SellProductCategory[];
   targetColumnId: number;
   targetColumnIdentifier: string;
-  onComplete: (taskId: number, columnId: number, columnIdentifier: string) => Promise<void>;
+  onComplete: (
+    taskId: number,
+    columnId: number,
+    columnIdentifier: string
+  ) => Promise<void>;
   domain?: string;
 }
 
@@ -295,7 +310,8 @@ export default function DraftCompletionWizard({
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Puoi selezionare solo prodotti di queste categorie ({filteredProducts.length} disponibili)
+              Puoi selezionare solo prodotti di queste categorie (
+              {filteredProducts.length} disponibili)
             </p>
           </div>
         )}
@@ -327,7 +343,11 @@ export default function DraftCompletionWizard({
                         onClick={generateCode}
                         disabled={isSubmitting || isLoadingCode}
                       >
-                        <RefreshCw className={`h-4 w-4 ${isLoadingCode ? "animate-spin" : ""}`} />
+                        <RefreshCw
+                          className={`h-4 w-4 ${
+                            isLoadingCode ? "animate-spin" : ""
+                          }`}
+                        />
                       </Button>
                     </div>
                   </FormControl>
@@ -353,7 +373,9 @@ export default function DraftCompletionWizard({
                         value: client.id,
                         label:
                           client.businessName ||
-                          `${client.individualFirstName || ""} ${client.individualLastName || ""}`.trim() ||
+                          `${client.individualFirstName || ""} ${
+                            client.individualLastName || ""
+                          }`.trim() ||
                           "Cliente",
                       }))}
                       emptyMessage="Nessun cliente trovato."
@@ -386,7 +408,9 @@ export default function DraftCompletionWizard({
                       disabled={isSubmitting}
                       options={filteredProducts.map((p) => ({
                         value: p.id,
-                        label: `${p.name}${p.type ? ` - ${p.type}` : ""}${p.category?.name ? ` (${p.category.name})` : ""}`,
+                        label: `${p.name}${p.type ? ` - ${p.type}` : ""}${
+                          p.category?.name ? ` (${p.category.name})` : ""
+                        }`,
                       }))}
                       emptyMessage={
                         draftCategoryIds.length > 0
@@ -426,7 +450,10 @@ export default function DraftCompletionWizard({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                      <PopoverContent
+                        className="w-auto min-w-[280px] p-0"
+                        align="start"
+                      >
                         <Calendar
                           mode="single"
                           selected={field.value || undefined}
@@ -463,7 +490,10 @@ export default function DraftCompletionWizard({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                      <PopoverContent
+                        className="w-auto min-w-[280px] p-0"
+                        align="start"
+                      >
                         <Calendar
                           mode="single"
                           selected={field.value || undefined}
@@ -483,13 +513,15 @@ export default function DraftCompletionWizard({
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Valore offerta (€)</FormLabel>
+                  <FormLabel>Valore:</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
                       type="number"
                       step="0.01"
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        field.onChange(parseFloat(e.target.value) || 0)
+                      }
                       disabled={isSubmitting}
                     />
                   </FormControl>

@@ -24,7 +24,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, Loader2, Phone, Mail, MessageSquare } from "lucide-react";
+import {
+  CalendarIcon,
+  Loader2,
+  Phone,
+  Mail,
+  MessageSquare,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -35,9 +41,18 @@ import { useSiteId } from "@/hooks/use-site-id";
 interface OfferFollowUpDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task: (Task & { client?: Client; sellProduct?: { type?: string; name?: string } }) | null;
+  task:
+    | (Task & {
+        client?: Client;
+        sellProduct?: { type?: string; name?: string };
+      })
+    | null;
   columns: KanbanColumn[];
-  onMoveCard: (taskId: number, columnId: number, columnIdentifier: string) => Promise<void>;
+  onMoveCard: (
+    taskId: number,
+    columnId: number,
+    columnIdentifier: string
+  ) => Promise<void>;
   domain?: string;
 }
 
@@ -59,26 +74,29 @@ export default function OfferFollowUpDialog({
   const [note, setNote] = useState("");
   const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 
-  // Filter columns to show only valid destinations (Trattativa, Vinta, Persa)
-  // These are columns after "Inviata" that make sense for follow-up
+  // Filter columns to show only valid destinations (Vinta, Persa)
+  // These are columns after "Trattativa" that make sense for follow-up
   const destinationColumns = useMemo(() => {
     if (!columns) return [];
-    
-    // Get columns that are not the current column (Inviata)
-    // and are either normal type or won/lost type
+
+    // Get columns that are not the current column (Trattativa)
+    // and are either won or lost type
     return columns
       .filter((col) => {
         const colType = col.column_type || col.columnType || "normal";
         const colIdentifier = col.identifier?.toUpperCase() || "";
-        
-        // Exclude "Inviata" column and "Elaborazione" column
-        if (colIdentifier.includes("INVIAT") || colIdentifier.includes("ELABOR")) {
+
+        // Exclude "Inviata", "Elaborazione" and "Trattativa" columns
+        if (
+          colIdentifier.includes("INVIAT") ||
+          colIdentifier.includes("ELABOR") ||
+          colIdentifier.includes("TRATTATIV")
+        ) {
           return false;
         }
-        
-        // Include Trattativa (normal), Vinta (won), Persa (lost)
+
+        // Include only Vinta (won), Persa (lost)
         return (
-          colIdentifier.includes("TRATTATIV") ||
           colType === "won" ||
           colType === "lost" ||
           colIdentifier.includes("VINT") ||
@@ -142,7 +160,9 @@ export default function OfferFollowUpDialog({
         other: "Altro",
       };
 
-      const fullNote = `[${format(contactDate, "dd/MM/yyyy", { locale: it })}] ${contactTypeLabels[contactType]}: ${note}`;
+      const fullNote = `[${format(contactDate, "dd/MM/yyyy", {
+        locale: it,
+      })}] ${contactTypeLabels[contactType]}: ${note}`;
 
       // Save the note via API
       const headers: HeadersInit = {
@@ -177,7 +197,9 @@ export default function OfferFollowUpDialog({
 
       toast({
         title: "Follow-up salvato",
-        description: `Offerta spostata in "${selectedColumn.title || selectedColumn.identifier}"`,
+        description: `Offerta spostata in "${
+          selectedColumn.title || selectedColumn.identifier
+        }"`,
       });
 
       onOpenChange(false);
@@ -297,7 +319,10 @@ export default function OfferFollowUpDialog({
           {/* Destination Column */}
           <div className="space-y-2">
             <Label>Sposta in</Label>
-            <Select value={selectedColumnId} onValueChange={setSelectedColumnId}>
+            <Select
+              value={selectedColumnId}
+              onValueChange={setSelectedColumnId}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Seleziona destinazione..." />
               </SelectTrigger>
@@ -307,7 +332,7 @@ export default function OfferFollowUpDialog({
                   let icon = "";
                   if (colType === "won") icon = "🏆 ";
                   if (colType === "lost") icon = "❌ ";
-                  
+
                   return (
                     <SelectItem key={col.id} value={col.id.toString()}>
                       {icon}
@@ -328,7 +353,10 @@ export default function OfferFollowUpDialog({
           >
             Annulla
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || !selectedColumnId}>
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !selectedColumnId}
+          >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -343,4 +371,3 @@ export default function OfferFollowUpDialog({
     </Dialog>
   );
 }
-
