@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
     const timetrackings = dataArray.data;
     const results: { timetracking: any; action: any }[] = [];
 
+    // Cache for user ID lookups (authId -> internal user id)
+    const userIdCache = new Map<string, number>();
+
     // Process each time tracking entry
     for (const data of timetrackings) {
       const roundedTotalTime = calculateTotalHours(data.hours, data.minutes);
@@ -63,6 +66,42 @@ export async function POST(req: NextRequest) {
       // Determine activity type (default to 'project' for backwards compatibility)
       const activityType = data.activityType || "project";
       const isInternalActivity = activityType === "internal";
+
+      // Get internal user ID from auth ID
+      let employeeId: number;
+      const authUserId = data.userId;
+
+      if (userIdCache.has(authUserId)) {
+        employeeId = userIdCache.get(authUserId)!;
+      } else {
+        // Check if userId is already an integer (internal ID) or a UUID (auth ID)
+        const parsedId = parseInt(authUserId);
+        if (!isNaN(parsedId) && parsedId.toString() === authUserId) {
+          // It's already an integer ID
+          employeeId = parsedId;
+        } else {
+          // It's a UUID, look up the internal user ID
+          const { data: userData, error: userError } = await supabase
+            .from("User")
+            .select("id")
+            .eq("authId", authUserId)
+            .single();
+
+          if (userError || !userData) {
+            console.error("Error fetching user:", userError);
+            return NextResponse.json(
+              {
+                error: "User not found",
+                details: `Could not find user with auth ID: ${authUserId}`,
+                status: 404,
+              },
+              { status: 404 },
+            );
+          }
+          employeeId = userData.id;
+        }
+        userIdCache.set(authUserId, employeeId);
+      }
 
       let taskId: number | null = null;
 
@@ -91,7 +130,7 @@ export async function POST(req: NextRequest) {
         minutes: data.minutes,
         totalTime: roundedTotalTime,
         use_cnc: useCNC,
-        employee_id: parseInt(data.userId),
+        employee_id: employeeId,
         activity_type: activityType,
       };
 
@@ -134,7 +173,7 @@ export async function POST(req: NextRequest) {
         data: {
           timetracking: timetracking.id,
         },
-        user_id: data.userId,
+        user_id: employeeId,
       };
 
       // Add site_id if available

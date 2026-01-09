@@ -63,17 +63,6 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
     return { tasks: [], roles: [], todayEntries: [] };
   }
 
-  // Get both site-specific and global roles (site_id is null for global)
-  const { data: roles, error: rolesError } = await supabase
-    .from("Roles")
-    .select("*")
-    .or(`site_id.eq.${siteId},site_id.is.null`);
-
-  if (rolesError) {
-    console.error("Error fetching roles:", rolesError);
-    return { tasks: [], roles: [], todayEntries: [] };
-  }
-
   // Fetch today's timetracking entries for the current user
   // First, get the user's internal ID from their auth ID
   const { data: userData, error: userError } = await supabase
@@ -81,6 +70,36 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
     .select("id")
     .eq("authId", userId)
     .single();
+
+  // Get roles assigned to the user from _RolesToUser junction table
+  let roles: { id: number; name: string }[] = [];
+
+  if (!userError && userData) {
+    // Get role IDs assigned to this user
+    const { data: userRoleLinks, error: userRolesError } = await supabase
+      .from("_RolesToUser")
+      .select("A")
+      .eq("B", userData.id);
+
+    if (userRolesError) {
+      console.error("Error fetching user role links:", userRolesError);
+    } else if (userRoleLinks && userRoleLinks.length > 0) {
+      const roleIds = userRoleLinks.map((link: { A: number }) => link.A);
+
+      // Get the roles that are assigned to the user AND belong to this site (or are global)
+      const { data: rolesData, error: rolesError } = await supabase
+        .from("Roles")
+        .select("id, name")
+        .in("id", roleIds)
+        .or(`site_id.eq.${siteId},site_id.is.null`);
+
+      if (rolesError) {
+        console.error("Error fetching roles:", rolesError);
+      } else {
+        roles = rolesData || [];
+      }
+    }
+  }
 
   let todayEntries: TodayEntry[] = [];
 
