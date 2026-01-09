@@ -18,29 +18,47 @@ export const GET = async (
 
         const { userId } = await params;
 
-        // Check if the user is requesting their own roles or if they have admin privileges
-        const isOwnProfile = userContext.userId === userId;
+        console.log("=== ASSIGNED ROLES DEBUG ===");
+        console.log("Requested userId:", userId);
+        console.log("userContext.role:", userContext.role);
+        console.log("userContext.user?.id:", userContext.user?.id);
+
+        // Admin and superadmin can view any user's roles
         const isAdmin = userContext.role === "admin" ||
             userContext.role === "superadmin";
 
-        if (!isOwnProfile && !isAdmin) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        console.log("isAdmin:", isAdmin);
+
+        // For non-admins, check if they're viewing their own profile
+        if (!isAdmin) {
+            // Get the current user's internal ID to compare
+            const { data: currentUserData } = await supabase
+                .from("User")
+                .select("id")
+                .eq("authId", userContext.user?.id)
+                .single();
+
+            console.log("currentUserData:", currentUserData);
+            const isOwnProfile = currentUserData?.id?.toString() === userId;
+            console.log("isOwnProfile:", isOwnProfile);
+
+            if (!isOwnProfile) {
+                console.log("FORBIDDEN - not own profile and not admin");
+                return NextResponse.json({ error: "Forbidden" }, {
+                    status: 403,
+                });
+            }
         }
 
-        // First, get the User.id from authId
-        const { data: userData, error: userError } = await supabase
-            .from("User")
-            .select("id")
-            .eq("id", userId)
-            .single();
+        // userId parameter is the internal User.id
+        const userDbId = parseInt(userId);
+        console.log("Fetching roles for userDbId:", userDbId);
 
-        if (userError || !userData) {
-            return NextResponse.json({ error: "User not found" }, {
-                status: 404,
+        if (isNaN(userDbId)) {
+            return NextResponse.json({ error: "Invalid user ID" }, {
+                status: 400,
             });
         }
-
-        const userDbId = userData.id;
 
         // Get user's assigned roles with role details
         const { data: userRoles, error } = await supabase
@@ -54,6 +72,8 @@ export const GET = async (
       `)
             .eq("B", userDbId);
 
+        console.log("User roles query result:", userRoles, "Error:", error);
+
         if (error) throw error;
 
         // Transform the data to include role details
@@ -61,6 +81,8 @@ export const GET = async (
             roleId: ur.A,
             roleName: ur.Roles.name,
         })) || [];
+
+        console.log("Assigned roles:", assignedRoles);
 
         return NextResponse.json({ assignedRoles });
     } catch (err: any) {

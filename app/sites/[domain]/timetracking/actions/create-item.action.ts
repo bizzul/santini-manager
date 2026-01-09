@@ -4,13 +4,22 @@ import { Timetracking } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/timeTracking/createManual";
-import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
 export async function createItem(props: Timetracking, domain?: string) {
+  console.log("=== CREATE ITEM ACTION START ===");
+  console.log("Props received:", JSON.stringify(props, null, 2));
+  console.log("Domain:", domain);
+
   const result = validation.safeParse(props);
-  const session = await getUserContext();
-  let userId = null;
+  console.log("Validation result:", result.success ? "SUCCESS" : "FAILED");
+  if (!result.success) {
+    console.error(
+      "Validation errors:",
+      JSON.stringify(result.error.format(), null, 2),
+    );
+  }
+
   let siteId = null;
 
   // Get site_id from domain if provided
@@ -25,10 +34,6 @@ export async function createItem(props: Timetracking, domain?: string) {
     }
   }
 
-  if (session && session.user && session.user.id) {
-    // Use the authId directly for the Action table (it expects UUID, not integer)
-    userId = session.user.id;
-  }
   if (result.success) {
     try {
       const supabase = await createClient();
@@ -100,24 +105,38 @@ export async function createItem(props: Timetracking, domain?: string) {
 
       const resultSave = timetracking;
 
-      // Create a new Action record to track the user action
-      if (timetracking && userId) {
-        const actionData: any = {
-          type: "timetracking_create",
-          data: {
-            timetrackingId: resultSave.id,
-          },
-          user_id: userId,
-        };
+      // Create a new Action record to track the user action (non-blocking)
+      if (timetracking) {
+        try {
+          const actionData: any = {
+            type: "timetracking_create",
+            data: {
+              timetrackingId: resultSave.id,
+            },
+            user_id: Number(result.data.userId), // Use the employee_id (internal user id)
+          };
 
-        // Add site_id if available
-        if (siteId) {
-          actionData.site_id = siteId;
+          // Add site_id if available
+          if (siteId) {
+            actionData.site_id = siteId;
+          }
+
+          const { error: actionError } = await supabase
+            .from("Action")
+            .insert(actionData);
+
+          if (actionError) {
+            console.error(
+              "Error creating action record (non-blocking):",
+              actionError,
+            );
+          }
+        } catch (actionErr) {
+          console.error(
+            "Error creating action record (non-blocking):",
+            actionErr,
+          );
         }
-
-        const { error: actionError } = await supabase
-          .from("Action")
-          .insert(actionData);
       }
 
       revalidatePath(`/sites/${domain}/timetracking`);
