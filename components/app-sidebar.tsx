@@ -1426,7 +1426,7 @@ export function AppSidebar() {
         <div className="flex flex-col gap-2">
           <ThemeSwitcher />
           {userContext ? (
-            <UserSection user={userContext} domain={domain} />
+            <UserSection user={userContext} domain={domain ?? undefined} />
           ) : (
             /* Show skeleton only while user context is loading */
             <div className="flex items-center gap-3 px-2 py-2 rounded-md">
