@@ -18,6 +18,8 @@ export interface SiteContext {
 export async function getSiteContext(req: NextRequest): Promise<SiteContext> {
     // First check for explicit site_id header (preferred for API calls)
     const siteIdFromHeader = req.headers.get("x-site-id");
+    // Check for x-site-domain header (used by export CSV buttons)
+    const siteDomainFromHeader = req.headers.get("x-site-domain");
     const domain = req.headers.get("host");
 
     if (siteIdFromHeader) {
@@ -27,7 +29,23 @@ export async function getSiteContext(req: NextRequest): Promise<SiteContext> {
         };
     }
 
-    // Fall back to domain lookup
+    // Check for x-site-domain header and resolve to site ID
+    if (siteDomainFromHeader) {
+        try {
+            const siteResult = await getSiteData(siteDomainFromHeader);
+            if (siteResult?.data) {
+                return {
+                    siteId: siteResult.data.id,
+                    domain: siteDomainFromHeader,
+                    siteData: siteResult.data,
+                };
+            }
+        } catch (error) {
+            log.error("Error fetching site data from x-site-domain:", error);
+        }
+    }
+
+    // Fall back to host header domain lookup
     if (domain) {
         try {
             const siteResult = await getSiteData(domain);

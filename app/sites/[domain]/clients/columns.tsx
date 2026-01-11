@@ -4,6 +4,7 @@ import { Client } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -29,6 +30,28 @@ type ClientWithAction = Client & {
 
 export const columns: ColumnDef<ClientWithAction>[] = [
   {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Seleziona tutti"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Seleziona riga"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     accessorKey: "clientType",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tipo" />
@@ -39,19 +62,22 @@ export const columns: ColumnDef<ClientWithAction>[] = [
     },
   },
   {
-    accessorKey: "businessName",
+    id: "name",
+    accessorFn: (row) => {
+      if (row.clientType === "BUSINESS") {
+        return row.businessName || "";
+      } else {
+        const firstName = row.individualFirstName || "";
+        const lastName = row.individualLastName || "";
+        return `${firstName} ${lastName}`.trim();
+      }
+    },
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Nome" />
     ),
     cell: ({ row }) => {
-      const client = row.original;
-      if (client.clientType === "BUSINESS") {
-        return client.businessName || "-";
-      } else {
-        const firstName = client.individualFirstName || "";
-        const lastName = client.individualLastName || "";
-        return `${firstName} ${lastName}`.trim() || "-";
-      }
+      const value = row.getValue("name") as string;
+      return value || "-";
     },
   },
   {
@@ -88,7 +114,10 @@ export const columns: ColumnDef<ClientWithAction>[] = [
       if (!lastAction?.createdAt) return "-";
 
       const date = new Date(lastAction.createdAt);
-      const timeAgo = formatDistanceToNow(date, { addSuffix: true, locale: it });
+      const timeAgo = formatDistanceToNow(date, {
+        addSuffix: true,
+        locale: it,
+      });
       const fullDate = date.toLocaleDateString("it-IT", {
         day: "2-digit",
         month: "2-digit",
@@ -121,16 +150,18 @@ export const columns: ColumnDef<ClientWithAction>[] = [
     cell: ({ row }) => {
       const lastAction = row.original.lastAction;
       const user = lastAction?.User;
-      
+
       if (!user) return "-";
 
-      const displayName = user.given_name && user.family_name
-        ? `${user.given_name} ${user.family_name}`
-        : user.given_name || "Utente";
+      const displayName =
+        user.given_name && user.family_name
+          ? `${user.given_name} ${user.family_name}`
+          : user.given_name || "Utente";
 
       // Generate initials from name
-      const initials = user.initials || 
-        (user.given_name && user.family_name 
+      const initials =
+        user.initials ||
+        (user.given_name && user.family_name
           ? `${user.given_name.charAt(0)}${user.family_name.charAt(0)}`
           : user.given_name?.charAt(0) || "U");
 

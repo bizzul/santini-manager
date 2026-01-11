@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -88,6 +89,28 @@ export type InventoryRow = {
 
 export const columns: ColumnDef<InventoryRow>[] = [
   {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+        aria-label="Seleziona tutti"
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+        aria-label="Seleziona riga"
+      />
+    ),
+    enableSorting: false,
+    enableHiding: false,
+  },
+  {
     accessorKey: "internal_code",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Cod. Interno" />
@@ -115,7 +138,11 @@ export const columns: ColumnDef<InventoryRow>[] = [
       const cat = row.original.category;
       if (!value) return true;
       if (!cat) return false;
-      return cat.id === value || cat.name?.toLowerCase().includes(value.toLowerCase()) || false;
+      return (
+        cat.id === value ||
+        cat.name?.toLowerCase().includes(value.toLowerCase()) ||
+        false
+      );
     },
   },
   {
@@ -181,7 +208,11 @@ export const columns: ColumnDef<InventoryRow>[] = [
       const supplier = row.original.supplier;
       if (!value) return true;
       if (!supplier) return false;
-      return supplier.id === value || supplier.name?.toLowerCase().includes(value.toLowerCase()) || false;
+      return (
+        supplier.id === value ||
+        supplier.name?.toLowerCase().includes(value.toLowerCase()) ||
+        false
+      );
     },
   },
   {
@@ -256,7 +287,8 @@ export const columns: ColumnDef<InventoryRow>[] = [
       <DataTableColumnHeader column={column} title="Totale" />
     ),
     cell: ({ row }) => {
-      const unitPrice = row.original.purchase_unit_price ?? row.original.unit_price ?? 0;
+      const unitPrice =
+        row.original.purchase_unit_price ?? row.original.unit_price ?? 0;
       const qty = row.original.stock_quantity ?? row.original.quantity ?? 0;
       const total = unitPrice * qty;
       return total > 0 ? `${total.toFixed(2)} CHF` : "-";

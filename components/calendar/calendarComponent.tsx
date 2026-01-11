@@ -49,8 +49,14 @@ export default function CalendarComponent({
     const kanbanColor = task.Kanban?.color || "#1e293b";
     const textColor = getContrastColor(kanbanColor);
 
+    // Build title with code and project name
+    const projectName = task.title || task.name;
+    const displayTitle = projectName
+      ? `${task.unique_code} - ${projectName}`
+      : task.unique_code!;
+
     return {
-      title: task.unique_code!,
+      title: displayTitle,
       date: `${year}-${month}-${day}`, // Format as YYYY-MM-DD using local date
       backgroundColor: kanbanColor,
       borderColor: kanbanColor,
