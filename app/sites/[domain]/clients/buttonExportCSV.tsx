@@ -19,7 +19,7 @@ const CSV_COLUMNS = [
   { key: "city", header: "CITTA" },
   { key: "countryCode", header: "NAZIONE" },
   { key: "zipCode", header: "CAP" },
-  { key: "phone", header: "TELEFONO" },
+  { key: "landlinePhone", header: "TELEFONO" },
   { key: "mobilePhone", header: "CELLULARE" },
   { key: "email", header: "EMAIL" },
 ];

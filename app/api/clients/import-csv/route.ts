@@ -16,7 +16,7 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
     CITTA: "city",
     NAZIONE: "countryCode",
     CAP: "zipCode",
-    TELEFONO: "phone",
+    TELEFONO: "landlinePhone",
     CELLULARE: "mobilePhone",
     EMAIL: "email",
 };
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
                 } else {
                     // For new records, remove ID (if present but not in DB) and add to insert list
                     delete client.id;
-                    
+
                     // Add to existing sets to prevent duplicates within the same import
                     if (client.email) {
                         existingEmails.add(client.email.toLowerCase());
@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
                             client.businessName.toLowerCase(),
                         );
                     }
-                    
+
                     clientsToInsert.push(client);
                 }
             } catch (error: any) {
@@ -393,7 +393,8 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        result.success = result.errors.length === 0 || result.imported > 0 || result.updated > 0;
+        result.success = result.errors.length === 0 || result.imported > 0 ||
+            result.updated > 0;
 
         return NextResponse.json(result);
     } catch (error: any) {
