@@ -85,6 +85,15 @@ export async function GET(request: NextRequest) {
 
     console.log("[Auth Callback] User profile:", userProfile);
 
+    // If this is a password recovery flow, redirect to update-password page
+    // The session has been established by the code exchange above
+    if (type === "recovery") {
+        console.log(
+            "[Auth Callback] Password recovery flow, redirecting to update-password",
+        );
+        return NextResponse.redirect(`${origin}/auth/update-password`);
+    }
+
     // If this is an invite type and user profile doesn't exist or is not enabled
     if (type === "invite") {
         // Get user's organizations
