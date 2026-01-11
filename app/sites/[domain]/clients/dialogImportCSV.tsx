@@ -26,6 +26,7 @@ interface ImportResult {
   success: boolean;
   totalRows: number;
   imported: number;
+  updated: number;
   skipped: number;
   errors: string[];
   duplicates: string[];
@@ -33,6 +34,11 @@ interface ImportResult {
 
 // CSV columns definition with required/optional status
 const CSV_COLUMNS = [
+  {
+    name: "ID",
+    description: "ID cliente (per aggiornare record esistenti)",
+    required: false,
+  },
   {
     name: "TIPO",
     description: "Tipo cliente (BUSINESS/INDIVIDUAL)",
@@ -70,6 +76,7 @@ const CSV_COLUMNS = [
 
 // Example row data for the CSV template
 const EXAMPLE_ROW = {
+  ID: "",
   TIPO: "BUSINESS",
   RAGIONE_SOCIALE: "Azienda Esempio SA",
   TITOLO: "",
@@ -87,6 +94,7 @@ const EXAMPLE_ROW = {
 
 // Example row for individual client
 const EXAMPLE_ROW_INDIVIDUAL = {
+  ID: "",
   TIPO: "INDIVIDUAL",
   RAGIONE_SOCIALE: "",
   TITOLO: "Sig.",
@@ -185,9 +193,12 @@ function DialogImportCSV() {
 
       setResult(data);
 
-      if (data.imported > 0) {
+      if (data.imported > 0 || data.updated > 0) {
+        const messages = [];
+        if (data.imported > 0) messages.push(`${data.imported} nuovi`);
+        if (data.updated > 0) messages.push(`${data.updated} aggiornati`);
         toast({
-          description: `Importati ${data.imported} clienti con successo!`,
+          description: `Clienti: ${messages.join(", ")}!`,
         });
         router.refresh();
       }
@@ -276,8 +287,8 @@ function DialogImportCSV() {
         <DialogHeader>
           <DialogTitle>Importa Clienti da CSV</DialogTitle>
           <DialogDescription>
-            Carica un file CSV con i dati dei clienti. I duplicati saranno
-            identificati tramite email o ragione sociale.
+            Carica un file CSV con i dati dei clienti. Se il file contiene la
+            colonna ID con valori esistenti, i record verranno aggiornati.
           </DialogDescription>
         </DialogHeader>
 
@@ -419,6 +430,8 @@ function DialogImportCSV() {
 
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
+            <br />• <strong>Per aggiornare:</strong> esporta i clienti, modifica
+            il CSV e reimporta (l'ID identifica i record)
             <br />• TIPO deve essere BUSINESS (azienda) o INDIVIDUAL (privato)
             <br />• Per BUSINESS è richiesta RAGIONE_SOCIALE
             <br />• Per INDIVIDUAL sono richiesti NOME e COGNOME
@@ -447,8 +460,13 @@ function DialogImportCSV() {
                   <div className="text-sm mt-2 space-y-1">
                     <p>Righe totali: {result.totalRows}</p>
                     <p className="text-green-600">
-                      Importati: {result.imported}
+                      Nuovi importati: {result.imported}
                     </p>
+                    {result.updated > 0 && (
+                      <p className="text-blue-600">
+                        Aggiornati: {result.updated}
+                      </p>
+                    )}
                     <p className="text-yellow-600">Saltati: {result.skipped}</p>
                     {result.duplicates.length > 0 && (
                       <p className="text-orange-600">

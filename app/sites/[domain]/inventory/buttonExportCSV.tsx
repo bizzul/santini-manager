@@ -6,7 +6,9 @@ import { Download, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 // CSV columns for export - matching import format
+// ID is included to allow updating existing records on re-import
 const CSV_COLUMNS = [
+  { key: "variant_id", header: "ID" },
   { key: "category", header: "CAT" },
   { key: "category_code", header: "COD_CAT" },
   { key: "subcategory", header: "S_CAT" },
@@ -39,19 +41,23 @@ function escapeCSVValue(value: any): string {
   if (value === null || value === undefined) {
     return "";
   }
-  
+
   // Format numbers with 2 decimal places for prices
   if (typeof value === "number") {
     return String(value);
   }
-  
+
   const stringValue = String(value);
-  
+
   // Escape values with commas, quotes, or newlines
-  if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+  if (
+    stringValue.includes(",") ||
+    stringValue.includes('"') ||
+    stringValue.includes("\n")
+  ) {
     return `"${stringValue.replace(/"/g, '""')}"`;
   }
-  
+
   return stringValue;
 }
 
@@ -109,7 +115,9 @@ function ButtonExportCSV() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `inventario_export_${new Date().toISOString().split("T")[0]}.csv`;
+      link.download = `inventario_export_${
+        new Date().toISOString().split("T")[0]
+      }.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -146,4 +154,3 @@ function ButtonExportCSV() {
 }
 
 export default ButtonExportCSV;
-

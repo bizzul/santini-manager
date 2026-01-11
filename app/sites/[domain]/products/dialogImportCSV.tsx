@@ -27,6 +27,7 @@ interface ImportResult {
   success: boolean;
   totalRows: number;
   imported: number;
+  updated: number;
   skipped: number;
   errors: string[];
   duplicates: string[];
@@ -34,18 +35,32 @@ interface ImportResult {
 
 // CSV columns definition with required/optional status
 const CSV_COLUMNS = [
+  {
+    name: "ID",
+    description: "ID prodotto (per aggiornare record esistenti)",
+    required: false,
+  },
   { name: "COD_INT", description: "Codice Interno (univoco)", required: true },
-  { name: "CATEGORIA", description: "Categoria (dalla tabella categorie)", required: false },
+  {
+    name: "CATEGORIA",
+    description: "Categoria (dalla tabella categorie)",
+    required: false,
+  },
   { name: "NOME_PRODOTTO", description: "Nome del prodotto", required: true },
   { name: "SOTTOCATEGORIA", description: "Sottocategoria", required: false },
   { name: "DESCRIZIONE", description: "Descrizione", required: false },
-  { name: "LISTINO_PREZZI", description: "Listino Prezzi (SI/NO)", required: false },
+  {
+    name: "LISTINO_PREZZI",
+    description: "Listino Prezzi (SI/NO)",
+    required: false,
+  },
   { name: "URL_IMMAGINE", description: "URL Immagine", required: false },
   { name: "URL_DOC", description: "URL Cartella Documenti", required: false },
 ];
 
 // Example row data for the CSV template
 const EXAMPLE_ROW = {
+  ID: "",
   COD_INT: "PROD_001",
   CATEGORIA: "Arredamento",
   NOME_PRODOTTO: "Tavolo moderno in legno",
@@ -148,9 +163,12 @@ function DialogImportCSV() {
 
       setResult(data);
 
-      if (data.imported > 0) {
+      if (data.imported > 0 || data.updated > 0) {
+        const messages = [];
+        if (data.imported > 0) messages.push(`${data.imported} nuovi`);
+        if (data.updated > 0) messages.push(`${data.updated} aggiornati`);
         toast({
-          description: `Importati ${data.imported} prodotti con successo!`,
+          description: `Prodotti: ${messages.join(", ")}!`,
         });
         router.refresh();
       }
@@ -233,8 +251,8 @@ function DialogImportCSV() {
         <DialogHeader>
           <DialogTitle>Importa Prodotti da CSV</DialogTitle>
           <DialogDescription>
-            Carica un file CSV con i dati dei prodotti. I duplicati
-            saranno identificati tramite il codice interno (COD_INT).
+            Carica un file CSV con i dati dei prodotti. Se il file contiene la
+            colonna ID con valori esistenti, i record verranno aggiornati.
           </DialogDescription>
         </DialogHeader>
 
@@ -376,6 +394,8 @@ function DialogImportCSV() {
 
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
+            <br />• <strong>Per aggiornare:</strong> esporta i prodotti,
+            modifica il CSV e reimporta (l'ID identifica i record)
             <br />• LISTINO_PREZZI accetta valori: SI, NO, 1, 0, TRUE, FALSE
             <br />• I campi URL devono essere link validi (https://...)
           </p>
@@ -402,8 +422,13 @@ function DialogImportCSV() {
                   <div className="text-sm mt-2 space-y-1">
                     <p>Righe totali: {result.totalRows}</p>
                     <p className="text-green-600">
-                      Importati: {result.imported}
+                      Nuovi importati: {result.imported}
                     </p>
+                    {result.updated > 0 && (
+                      <p className="text-blue-600">
+                        Aggiornati: {result.updated}
+                      </p>
+                    )}
                     <p className="text-yellow-600">Saltati: {result.skipped}</p>
                     {result.duplicates.length > 0 && (
                       <p className="text-orange-600">
@@ -461,4 +486,3 @@ function DialogImportCSV() {
 }
 
 export default DialogImportCSV;
-

@@ -7,7 +7,9 @@ import { usePathname } from "next/navigation";
 import { useSiteId } from "@/hooks/use-site-id";
 
 // CSV columns for export
+// ID is included to allow updating existing records on re-import
 const CSV_COLUMNS = [
+  { key: "id", header: "ID" },
   { key: "internal_code", header: "COD_INT" },
   { key: "category.name", header: "CATEGORIA" },
   { key: "name", header: "NOME_PRODOTTO" },

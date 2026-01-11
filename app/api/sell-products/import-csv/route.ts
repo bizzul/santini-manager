@@ -5,6 +5,7 @@ import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
+    ID: "id",
     COD_INT: "internal_code",
     CATEGORIA: "category_name", // Special field for category lookup
     NOME_PRODOTTO: "name",
@@ -14,6 +15,9 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
     URL_IMMAGINE: "image_url",
     URL_DOC: "doc_url",
 };
+
+// Numeric fields that should be parsed as numbers
+const NUMERIC_FIELDS = ["id"];
 
 // Boolean fields that should be parsed as booleans
 const BOOLEAN_FIELDS = ["price_list"];
@@ -25,6 +29,7 @@ interface ImportResult {
     success: boolean;
     totalRows: number;
     imported: number;
+    updated: number;
     skipped: number;
     errors: string[];
     duplicates: string[];
@@ -77,6 +82,10 @@ function mapRowToSellProduct(
             // Handle empty values
             if (value === "") {
                 value = null;
+            } else if (NUMERIC_FIELDS.includes(dbField)) {
+                // Parse numeric fields
+                const parsed = parseInt(value, 10);
+                value = isNaN(parsed) ? null : parsed;
             } else if (BOOLEAN_FIELDS.includes(dbField)) {
                 // Parse boolean fields
                 value = BOOLEAN_TRUE_VALUES.includes(value.toUpperCase());
@@ -164,12 +173,11 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Get existing internal_codes for duplicate checking (scoped by site)
+        // Get existing products for duplicate checking (scoped by site)
         const { data: existingProducts, error: fetchError } = await supabase
             .from("SellProduct")
-            .select("internal_code")
-            .eq("site_id", siteId)
-            .not("internal_code", "is", null);
+            .select("id, internal_code")
+            .eq("site_id", siteId);
 
         if (fetchError) {
             console.error("Error fetching existing products:", fetchError);
@@ -199,14 +207,19 @@ export async function POST(request: NextRequest) {
             existingCategories?.map((c) => [c.name.toLowerCase(), c.id]) || [],
         );
 
+        // Create set of existing IDs for update checking
+        const existingIds = new Set(
+            existingProducts?.map((p) => p.id) || [],
+        );
         const existingCodes = new Set(
-            existingProducts?.map((p) => p.internal_code) || [],
+            existingProducts?.filter((p) => p.internal_code).map((p) => p.internal_code) || [],
         );
 
         const result: ImportResult = {
             success: true,
             totalRows: rows.length,
             imported: 0,
+            updated: 0,
             skipped: 0,
             errors: [],
             duplicates: [],
@@ -252,25 +265,30 @@ export async function POST(request: NextRequest) {
         // Process rows in batches for better performance
         const BATCH_SIZE = 50;
         const productsToInsert: Record<string, any>[] = [];
+        const productsToUpdate: Record<string, any>[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
                 const product = mapRowToSellProduct(headers, row);
 
-                // Check for duplicate
-                if (
-                    product.internal_code &&
-                    existingCodes.has(product.internal_code)
-                ) {
-                    result.duplicates.push(product.internal_code);
-                    if (skipDuplicates) {
-                        result.skipped++;
-                        continue;
-                    } else {
-                        // If not skipping duplicates, still skip but note it
-                        result.skipped++;
-                        continue;
+                // Check if this is an update (has ID that exists in DB)
+                const isUpdate = product.id && existingIds.has(product.id);
+
+                if (!isUpdate) {
+                    // For new records, check for duplicate by internal_code
+                    if (
+                        product.internal_code &&
+                        existingCodes.has(product.internal_code)
+                    ) {
+                        result.duplicates.push(product.internal_code);
+                        if (skipDuplicates) {
+                            result.skipped++;
+                            continue;
+                        } else {
+                            result.skipped++;
+                            continue;
+                        }
                     }
                 }
 
@@ -293,19 +311,49 @@ export async function POST(request: NextRequest) {
                     delete product.category_name;
                 }
 
-                // Add to existing codes set to prevent duplicates within the same import
-                if (product.internal_code) {
-                    existingCodes.add(product.internal_code);
-                }
-
                 // Add site_id to the product
                 product.site_id = siteId;
-                product.active = true;
 
-                productsToInsert.push(product);
+                if (isUpdate) {
+                    // For updates, keep the ID and add to update list
+                    productsToUpdate.push(product);
+                } else {
+                    // For new records, remove ID and add to insert list
+                    delete product.id;
+                    product.active = true;
+
+                    // Add to existing codes set to prevent duplicates within the same import
+                    if (product.internal_code) {
+                        existingCodes.add(product.internal_code);
+                    }
+
+                    productsToInsert.push(product);
+                }
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
                 result.skipped++;
+            }
+        }
+
+        // Update existing products one by one
+        for (const product of productsToUpdate) {
+            const productId = product.id;
+            delete product.id;
+            delete product.site_id;
+
+            const { error: updateError } = await supabase
+                .from("SellProduct")
+                .update(product)
+                .eq("id", productId)
+                .eq("site_id", siteId);
+
+            if (updateError) {
+                console.error("Error updating product:", updateError);
+                result.errors.push(
+                    `Errore aggiornamento prodotto ID ${productId}: ${updateError.message}`,
+                );
+            } else {
+                result.updated++;
             }
         }
 
@@ -363,7 +411,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        result.success = result.errors.length === 0 || result.imported > 0;
+        result.success = result.errors.length === 0 || result.imported > 0 || result.updated > 0;
 
         return NextResponse.json(result);
     } catch (error: any) {

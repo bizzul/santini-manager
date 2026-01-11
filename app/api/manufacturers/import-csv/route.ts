@@ -8,6 +8,7 @@ const log = logger.scope("Manufacturers CSV Import");
 
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
+    ID: "id",
     NOME: "name",
     ABBREVIATO: "short_name",
     DESCRIZIONE: "description",
@@ -22,12 +23,13 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
 };
 
 // Numeric fields that should be parsed as numbers
-const NUMERIC_FIELDS = ["cap"];
+const NUMERIC_FIELDS = ["id", "cap"];
 
 interface ImportResult {
     success: boolean;
     totalRows: number;
     imported: number;
+    updated: number;
     skipped: number;
     errors: string[];
     duplicates: string[];
@@ -147,11 +149,11 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Get existing manufacturers for duplicate checking (by name and short_name)
+        // Get existing manufacturers for duplicate checking (by id, name and short_name)
         const { data: existingManufacturers, error: fetchError } =
             await supabase
                 .from("Manufacturer")
-                .select("name, short_name")
+                .select("id, name, short_name")
                 .eq("site_id", siteId);
 
         if (fetchError) {
@@ -188,6 +190,10 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // Create set of existing IDs for update checking
+        const existingIds = new Set(
+            existingManufacturers?.map((m) => m.id) || [],
+        );
         const existingNames = new Set(
             existingManufacturers
                 ?.filter((m) => m.name)
@@ -242,6 +248,7 @@ export async function POST(request: NextRequest) {
             success: true,
             totalRows: rows.length,
             imported: 0,
+            updated: 0,
             skipped: 0,
             errors: [],
             duplicates: [],
@@ -250,31 +257,37 @@ export async function POST(request: NextRequest) {
         // Process rows in batches for better performance
         const BATCH_SIZE = 50;
         const manufacturersToInsert: Record<string, any>[] = [];
+        const manufacturersToUpdate: Record<string, any>[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
                 const manufacturer = mapRowToManufacturer(headers, row);
 
-                // Check for duplicates
-                const nameDuplicate = manufacturer.name &&
-                    existingNames.has(manufacturer.name.toLowerCase());
-                const shortNameDuplicate = manufacturer.short_name &&
-                    existingShortNames.has(
-                        manufacturer.short_name.toLowerCase(),
-                    );
+                // Check if this is an update (has ID that exists in DB)
+                const isUpdate = manufacturer.id && existingIds.has(manufacturer.id);
 
-                if (nameDuplicate || shortNameDuplicate) {
-                    const duplicateField = nameDuplicate
-                        ? manufacturer.name
-                        : manufacturer.short_name;
-                    result.duplicates.push(duplicateField);
-                    if (skipDuplicates) {
-                        result.skipped++;
-                        continue;
-                    } else {
-                        result.skipped++;
-                        continue;
+                if (!isUpdate) {
+                    // For new records, check for duplicates
+                    const nameDuplicate = manufacturer.name &&
+                        existingNames.has(manufacturer.name.toLowerCase());
+                    const shortNameDuplicate = manufacturer.short_name &&
+                        existingShortNames.has(
+                            manufacturer.short_name.toLowerCase(),
+                        );
+
+                    if (nameDuplicate || shortNameDuplicate) {
+                        const duplicateField = nameDuplicate
+                            ? manufacturer.name
+                            : manufacturer.short_name;
+                        result.duplicates.push(duplicateField);
+                        if (skipDuplicates) {
+                            result.skipped++;
+                            continue;
+                        } else {
+                            result.skipped++;
+                            continue;
+                        }
                     }
                 }
 
@@ -295,23 +308,53 @@ export async function POST(request: NextRequest) {
                 // Remove the old category string field (we now use manufacturer_category_id)
                 delete manufacturer.category;
 
-                // Add to existing sets to prevent duplicates within the same import
-                if (manufacturer.name) {
-                    existingNames.add(manufacturer.name.toLowerCase());
-                }
-                if (manufacturer.short_name) {
-                    existingShortNames.add(
-                        manufacturer.short_name.toLowerCase(),
-                    );
-                }
-
                 // Add site_id to the manufacturer
                 manufacturer.site_id = siteId;
 
-                manufacturersToInsert.push(manufacturer);
+                if (isUpdate) {
+                    // For updates, keep the ID and add to update list
+                    manufacturersToUpdate.push(manufacturer);
+                } else {
+                    // For new records, remove ID and add to insert list
+                    delete manufacturer.id;
+
+                    // Add to existing sets to prevent duplicates within the same import
+                    if (manufacturer.name) {
+                        existingNames.add(manufacturer.name.toLowerCase());
+                    }
+                    if (manufacturer.short_name) {
+                        existingShortNames.add(
+                            manufacturer.short_name.toLowerCase(),
+                        );
+                    }
+
+                    manufacturersToInsert.push(manufacturer);
+                }
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
                 result.skipped++;
+            }
+        }
+
+        // Update existing manufacturers one by one
+        for (const manufacturer of manufacturersToUpdate) {
+            const manufacturerId = manufacturer.id;
+            delete manufacturer.id;
+            delete manufacturer.site_id;
+
+            const { error: updateError } = await supabase
+                .from("Manufacturer")
+                .update(manufacturer)
+                .eq("id", manufacturerId)
+                .eq("site_id", siteId);
+
+            if (updateError) {
+                log.error("Error updating manufacturer:", updateError);
+                result.errors.push(
+                    `Errore aggiornamento produttore ID ${manufacturerId}: ${updateError.message}`,
+                );
+            } else {
+                result.updated++;
             }
         }
 
@@ -365,7 +408,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        result.success = result.errors.length === 0 || result.imported > 0;
+        result.success = result.errors.length === 0 || result.imported > 0 || result.updated > 0;
 
         return NextResponse.json(result);
     } catch (error: any) {

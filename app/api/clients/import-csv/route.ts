@@ -5,6 +5,7 @@ import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
+    ID: "id",
     TIPO: "clientType",
     RAGIONE_SOCIALE: "businessName",
     TITOLO: "individualTitle",
@@ -16,17 +17,18 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
     NAZIONE: "countryCode",
     CAP: "zipCode",
     TELEFONO: "phone",
-    CELLULARE: "mobile",
+    CELLULARE: "mobilePhone",
     EMAIL: "email",
 };
 
 // Numeric fields that should be parsed as numbers
-const NUMERIC_FIELDS = ["zipCode"];
+const NUMERIC_FIELDS = ["id", "zipCode"];
 
 interface ImportResult {
     success: boolean;
     totalRows: number;
     imported: number;
+    updated: number;
     skipped: number;
     errors: string[];
     duplicates: string[];
@@ -161,10 +163,10 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Get existing clients for duplicate checking (by email and businessName)
+        // Get existing clients for duplicate checking (by id, email and businessName)
         const { data: existingClients, error: fetchError } = await supabase
             .from("Client")
-            .select("email, businessName")
+            .select("id, email, businessName")
             .eq("site_id", siteId);
 
         if (fetchError) {
@@ -175,6 +177,10 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Create sets for duplicate checking
+        const existingIds = new Set(
+            existingClients?.map((c) => c.id) || [],
+        );
         const existingEmails = new Set(
             existingClients
                 ?.filter((c) => c.email)
@@ -190,6 +196,7 @@ export async function POST(request: NextRequest) {
             success: true,
             totalRows: rows.length,
             imported: 0,
+            updated: 0,
             skipped: 0,
             errors: [],
             duplicates: [],
@@ -198,31 +205,37 @@ export async function POST(request: NextRequest) {
         // Process rows in batches for better performance
         const BATCH_SIZE = 50;
         const clientsToInsert: Record<string, any>[] = [];
+        const clientsToUpdate: Record<string, any>[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
                 const client = mapRowToClient(headers, row);
 
-                // Check for duplicates
-                const emailDuplicate = client.email &&
-                    existingEmails.has(client.email.toLowerCase());
-                const businessNameDuplicate = client.businessName &&
-                    existingBusinessNames.has(
-                        client.businessName.toLowerCase(),
-                    );
+                // Check if this is an update (has ID that exists in DB)
+                const isUpdate = client.id && existingIds.has(client.id);
 
-                if (emailDuplicate || businessNameDuplicate) {
-                    const duplicateField = emailDuplicate
-                        ? client.email
-                        : client.businessName;
-                    result.duplicates.push(duplicateField);
-                    if (skipDuplicates) {
-                        result.skipped++;
-                        continue;
-                    } else {
-                        result.skipped++;
-                        continue;
+                if (!isUpdate) {
+                    // For new records, check for duplicates
+                    const emailDuplicate = client.email &&
+                        existingEmails.has(client.email.toLowerCase());
+                    const businessNameDuplicate = client.businessName &&
+                        existingBusinessNames.has(
+                            client.businessName.toLowerCase(),
+                        );
+
+                    if (emailDuplicate || businessNameDuplicate) {
+                        const duplicateField = emailDuplicate
+                            ? client.email
+                            : client.businessName;
+                        result.duplicates.push(duplicateField);
+                        if (skipDuplicates) {
+                            result.skipped++;
+                            continue;
+                        } else {
+                            result.skipped++;
+                            continue;
+                        }
                     }
                 }
 
@@ -276,27 +289,57 @@ export async function POST(request: NextRequest) {
                     continue;
                 }
 
-                // Add to existing sets to prevent duplicates within the same import
-                if (client.email) {
-                    existingEmails.add(client.email.toLowerCase());
-                }
-                if (client.businessName) {
-                    existingBusinessNames.add(
-                        client.businessName.toLowerCase(),
-                    );
-                }
-
                 // Add site_id to the client
                 client.site_id = siteId;
 
-                clientsToInsert.push(client);
+                if (isUpdate) {
+                    // For updates, keep the ID and add to update list
+                    clientsToUpdate.push(client);
+                } else {
+                    // For new records, remove ID (if present but not in DB) and add to insert list
+                    delete client.id;
+                    
+                    // Add to existing sets to prevent duplicates within the same import
+                    if (client.email) {
+                        existingEmails.add(client.email.toLowerCase());
+                    }
+                    if (client.businessName) {
+                        existingBusinessNames.add(
+                            client.businessName.toLowerCase(),
+                        );
+                    }
+                    
+                    clientsToInsert.push(client);
+                }
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
                 result.skipped++;
             }
         }
 
-        // Insert clients in batches and collect inserted client IDs
+        // Update existing clients one by one (Supabase doesn't support batch updates)
+        for (const client of clientsToUpdate) {
+            const clientId = client.id;
+            delete client.id; // Remove id from update payload
+            delete client.site_id; // Don't update site_id
+
+            const { error: updateError } = await supabase
+                .from("Client")
+                .update(client)
+                .eq("id", clientId)
+                .eq("site_id", siteId);
+
+            if (updateError) {
+                console.error("Error updating client:", updateError);
+                result.errors.push(
+                    `Errore aggiornamento cliente ID ${clientId}: ${updateError.message}`,
+                );
+            } else {
+                result.updated++;
+            }
+        }
+
+        // Insert new clients in batches and collect inserted client IDs
         const insertedClientIds: number[] = [];
 
         for (let i = 0; i < clientsToInsert.length; i += BATCH_SIZE) {
@@ -350,7 +393,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        result.success = result.errors.length === 0 || result.imported > 0;
+        result.success = result.errors.length === 0 || result.imported > 0 || result.updated > 0;
 
         return NextResponse.json(result);
     } catch (error: any) {

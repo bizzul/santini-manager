@@ -6,7 +6,9 @@ import { Download, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 // CSV columns for export - matching import format
+// ID is included to allow updating existing records on re-import
 const CSV_COLUMNS = [
+  { key: "id", header: "ID" },
   { key: "name", header: "NOME" },
   { key: "short_name", header: "ABBREVIATO" },
   { key: "description", header: "DESCRIZIONE" },

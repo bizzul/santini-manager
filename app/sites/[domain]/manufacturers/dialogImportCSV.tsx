@@ -26,6 +26,7 @@ interface ImportResult {
   success: boolean;
   totalRows: number;
   imported: number;
+  updated: number;
   skipped: number;
   errors: string[];
   duplicates: string[];
@@ -33,6 +34,11 @@ interface ImportResult {
 
 // CSV columns definition with required/optional status
 const CSV_COLUMNS = [
+  {
+    name: "ID",
+    description: "ID produttore (per aggiornare record esistenti)",
+    required: false,
+  },
   { name: "NOME", description: "Nome produttore", required: true },
   { name: "ABBREVIATO", description: "Nome abbreviato", required: false },
   { name: "DESCRIZIONE", description: "Descrizione", required: false },
@@ -52,6 +58,7 @@ const CSV_COLUMNS = [
 
 // Example row data for the CSV template
 const EXAMPLE_ROW = {
+  ID: "",
   NOME: "Produttore Esempio SA",
   ABBREVIATO: "PROD-ES",
   DESCRIZIONE: "Produttore di componenti elettronici",
@@ -148,9 +155,12 @@ function DialogImportCSV() {
 
       setResult(data);
 
-      if (data.imported > 0) {
+      if (data.imported > 0 || data.updated > 0) {
+        const messages = [];
+        if (data.imported > 0) messages.push(`${data.imported} nuovi`);
+        if (data.updated > 0) messages.push(`${data.updated} aggiornati`);
         toast({
-          description: `Importati ${data.imported} produttori con successo!`,
+          description: `Produttori: ${messages.join(", ")}!`,
         });
         router.refresh();
       }
@@ -233,8 +243,8 @@ function DialogImportCSV() {
         <DialogHeader>
           <DialogTitle>Importa Produttori da CSV</DialogTitle>
           <DialogDescription>
-            Carica un file CSV con i dati dei produttori. I duplicati saranno
-            identificati tramite nome o nome abbreviato.
+            Carica un file CSV con i dati dei produttori. Se il file contiene la
+            colonna ID con valori esistenti, i record verranno aggiornati.
           </DialogDescription>
         </DialogHeader>
 
@@ -376,10 +386,11 @@ function DialogImportCSV() {
 
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
+            <br />• <strong>Per aggiornare:</strong> esporta i produttori,
+            modifica il CSV e reimporta (l'ID identifica i record)
             <br />• Solo il <strong>NOME</strong> è obbligatorio
             <br />• La CATEGORIA viene creata automaticamente se non esiste
             <br />• ABBREVIATO è utile per codici brevi (es. PROD-ES)
-            <br />• Il CAP deve essere numerico
           </p>
 
           {/* Results */}
@@ -404,8 +415,13 @@ function DialogImportCSV() {
                   <div className="text-sm mt-2 space-y-1">
                     <p>Righe totali: {result.totalRows}</p>
                     <p className="text-green-600">
-                      Importati: {result.imported}
+                      Nuovi importati: {result.imported}
                     </p>
+                    {result.updated > 0 && (
+                      <p className="text-blue-600">
+                        Aggiornati: {result.updated}
+                      </p>
+                    )}
                     <p className="text-yellow-600">Saltati: {result.skipped}</p>
                     {result.duplicates.length > 0 && (
                       <p className="text-orange-600">

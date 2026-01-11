@@ -8,6 +8,7 @@ const log = logger.scope("Suppliers CSV Import");
 
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
+    ID: "id",
     NOME: "name",
     ABBREVIATO: "short_name",
     DESCRIZIONE: "description",
@@ -22,12 +23,13 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
 };
 
 // Numeric fields that should be parsed as numbers
-const NUMERIC_FIELDS = ["cap"];
+const NUMERIC_FIELDS = ["id", "cap"];
 
 interface ImportResult {
     success: boolean;
     totalRows: number;
     imported: number;
+    updated: number;
     skipped: number;
     errors: string[];
     duplicates: string[];
@@ -147,10 +149,10 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Get existing suppliers for duplicate checking (by name and short_name)
+        // Get existing suppliers for duplicate checking (by id, name and short_name)
         const { data: existingSuppliers, error: fetchError } = await supabase
             .from("Supplier")
-            .select("name, short_name")
+            .select("id, name, short_name")
             .eq("site_id", siteId);
 
         if (fetchError) {
@@ -187,6 +189,10 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        // Create set of existing IDs for update checking
+        const existingIds = new Set(
+            existingSuppliers?.map((s) => s.id) || [],
+        );
         const existingNames = new Set(
             existingSuppliers
                 ?.filter((s) => s.name)
@@ -241,6 +247,7 @@ export async function POST(request: NextRequest) {
             success: true,
             totalRows: rows.length,
             imported: 0,
+            updated: 0,
             skipped: 0,
             errors: [],
             duplicates: [],
@@ -249,29 +256,35 @@ export async function POST(request: NextRequest) {
         // Process rows in batches for better performance
         const BATCH_SIZE = 50;
         const suppliersToInsert: Record<string, any>[] = [];
+        const suppliersToUpdate: Record<string, any>[] = [];
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             try {
                 const supplier = mapRowToSupplier(headers, row);
 
-                // Check for duplicates
-                const nameDuplicate = supplier.name &&
-                    existingNames.has(supplier.name.toLowerCase());
-                const shortNameDuplicate = supplier.short_name &&
-                    existingShortNames.has(supplier.short_name.toLowerCase());
+                // Check if this is an update (has ID that exists in DB)
+                const isUpdate = supplier.id && existingIds.has(supplier.id);
 
-                if (nameDuplicate || shortNameDuplicate) {
-                    const duplicateField = nameDuplicate
-                        ? supplier.name
-                        : supplier.short_name;
-                    result.duplicates.push(duplicateField);
-                    if (skipDuplicates) {
-                        result.skipped++;
-                        continue;
-                    } else {
-                        result.skipped++;
-                        continue;
+                if (!isUpdate) {
+                    // For new records, check for duplicates
+                    const nameDuplicate = supplier.name &&
+                        existingNames.has(supplier.name.toLowerCase());
+                    const shortNameDuplicate = supplier.short_name &&
+                        existingShortNames.has(supplier.short_name.toLowerCase());
+
+                    if (nameDuplicate || shortNameDuplicate) {
+                        const duplicateField = nameDuplicate
+                            ? supplier.name
+                            : supplier.short_name;
+                        result.duplicates.push(duplicateField);
+                        if (skipDuplicates) {
+                            result.skipped++;
+                            continue;
+                        } else {
+                            result.skipped++;
+                            continue;
+                        }
                     }
                 }
 
@@ -292,21 +305,51 @@ export async function POST(request: NextRequest) {
                 // Remove the old category string field (we now use supplier_category_id)
                 delete supplier.category;
 
-                // Add to existing sets to prevent duplicates within the same import
-                if (supplier.name) {
-                    existingNames.add(supplier.name.toLowerCase());
-                }
-                if (supplier.short_name) {
-                    existingShortNames.add(supplier.short_name.toLowerCase());
-                }
-
                 // Add site_id to the supplier
                 supplier.site_id = siteId;
 
-                suppliersToInsert.push(supplier);
+                if (isUpdate) {
+                    // For updates, keep the ID and add to update list
+                    suppliersToUpdate.push(supplier);
+                } else {
+                    // For new records, remove ID and add to insert list
+                    delete supplier.id;
+                    
+                    // Add to existing sets to prevent duplicates within the same import
+                    if (supplier.name) {
+                        existingNames.add(supplier.name.toLowerCase());
+                    }
+                    if (supplier.short_name) {
+                        existingShortNames.add(supplier.short_name.toLowerCase());
+                    }
+
+                    suppliersToInsert.push(supplier);
+                }
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
                 result.skipped++;
+            }
+        }
+
+        // Update existing suppliers one by one
+        for (const supplier of suppliersToUpdate) {
+            const supplierId = supplier.id;
+            delete supplier.id;
+            delete supplier.site_id;
+
+            const { error: updateError } = await supabase
+                .from("Supplier")
+                .update(supplier)
+                .eq("id", supplierId)
+                .eq("site_id", siteId);
+
+            if (updateError) {
+                log.error("Error updating supplier:", updateError);
+                result.errors.push(
+                    `Errore aggiornamento fornitore ID ${supplierId}: ${updateError.message}`,
+                );
+            } else {
+                result.updated++;
             }
         }
 
@@ -362,7 +405,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        result.success = result.errors.length === 0 || result.imported > 0;
+        result.success = result.errors.length === 0 || result.imported > 0 || result.updated > 0;
 
         return NextResponse.json(result);
     } catch (error: any) {

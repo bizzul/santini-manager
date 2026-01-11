@@ -6,7 +6,9 @@ import { Download, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 // CSV columns for export - matching import format
+// ID is included to allow updating existing records on re-import
 const CSV_COLUMNS = [
+  { key: "id", header: "ID" },
   { key: "clientType", header: "TIPO" },
   { key: "businessName", header: "RAGIONE_SOCIALE" },
   { key: "individualTitle", header: "TITOLO" },
@@ -18,7 +20,7 @@ const CSV_COLUMNS = [
   { key: "countryCode", header: "NAZIONE" },
   { key: "zipCode", header: "CAP" },
   { key: "phone", header: "TELEFONO" },
-  { key: "mobile", header: "CELLULARE" },
+  { key: "mobilePhone", header: "CELLULARE" },
   { key: "email", header: "EMAIL" },
 ];
 

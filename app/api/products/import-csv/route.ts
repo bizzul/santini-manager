@@ -5,6 +5,7 @@ import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 
 // CSV field mapping from Italian headers to database columns
 const CSV_FIELD_MAPPING: Record<string, string> = {
+    ID: "variant_id",
     CAT: "category",
     COD_CAT: "category_code",
     S_CAT: "subcategory",
@@ -49,10 +50,14 @@ const NUMERIC_FIELDS = [
     "total_price",
 ];
 
+// UUID fields that should remain as strings
+const UUID_FIELDS = ["variant_id"];
+
 interface ImportResult {
     success: boolean;
     totalRows: number;
     imported: number;
+    updated: number;
     skipped: number;
     errors: string[];
     duplicates: string[];
@@ -105,6 +110,9 @@ function mapRowToProduct(
             // Handle empty values
             if (value === "") {
                 value = null;
+            } else if (UUID_FIELDS.includes(dbField)) {
+                // Keep UUID fields as strings
+                value = value;
             } else if (NUMERIC_FIELDS.includes(dbField)) {
                 // Parse numeric fields
                 const parsed = parseFloat(value.replace(",", "."));
@@ -195,19 +203,24 @@ export async function POST(request: NextRequest) {
 
         const supabase = await createClient();
 
-        // Get existing internal_codes for duplicate checking (from new inventory_item_variants)
+        // Get existing variants for duplicate and update checking
         const { data: existingVariants, error: fetchError } = await supabase
             .from("inventory_item_variants")
-            .select("internal_code")
-            .eq("site_id", siteId)
-            .not("internal_code", "is", null);
+            .select("id, internal_code")
+            .eq("site_id", siteId);
 
         if (fetchError) {
             console.error("Error fetching existing variants:", fetchError);
         }
 
+        // Create set of existing IDs for update checking
+        const existingIds = new Set(
+            existingVariants?.map((v) => v.id) || [],
+        );
         const existingCodes = new Set(
-            existingVariants?.map((v) => v.internal_code) || [],
+            existingVariants?.filter((v) => v.internal_code).map((v) =>
+                v.internal_code
+            ) || [],
         );
 
         // Get existing categories for this site
@@ -258,6 +271,7 @@ export async function POST(request: NextRequest) {
             success: true,
             totalRows: rows.length,
             imported: 0,
+            updated: 0,
             skipped: 0,
             errors: [],
             duplicates: [],
@@ -274,7 +288,9 @@ export async function POST(request: NextRequest) {
 
             // First try to find by code
             if (categoryCode) {
-                const existingId = categoryByCode.get(categoryCode.toLowerCase());
+                const existingId = categoryByCode.get(
+                    categoryCode.toLowerCase(),
+                );
                 if (existingId) {
                     return existingId;
                 }
@@ -282,7 +298,9 @@ export async function POST(request: NextRequest) {
 
             // Then try to find by name
             if (categoryName) {
-                const existingId = categoryByName.get(categoryName.toLowerCase());
+                const existingId = categoryByName.get(
+                    categoryName.toLowerCase(),
+                );
                 if (existingId) {
                     return existingId;
                 }
@@ -306,10 +324,16 @@ export async function POST(request: NextRequest) {
 
             if (newCategory) {
                 if (categoryCode) {
-                    categoryByCode.set(categoryCode.toLowerCase(), newCategory.id);
+                    categoryByCode.set(
+                        categoryCode.toLowerCase(),
+                        newCategory.id,
+                    );
                 }
                 if (categoryName) {
-                    categoryByName.set(categoryName.toLowerCase(), newCategory.id);
+                    categoryByName.set(
+                        categoryName.toLowerCase(),
+                        newCategory.id,
+                    );
                 }
                 return newCategory.id;
             }
@@ -359,52 +383,32 @@ export async function POST(request: NextRequest) {
             try {
                 const product = mapRowToProduct(headers, row);
 
-                // Check for duplicate
-                if (product.internal_code && existingCodes.has(product.internal_code)) {
-                    result.duplicates.push(product.internal_code);
-                    if (skipDuplicates) {
-                        result.skipped++;
-                        continue;
-                    } else {
-                        result.skipped++;
-                        continue;
+                // Check if this is an update (has variant_id that exists in DB)
+                const isUpdate = product.variant_id &&
+                    existingIds.has(product.variant_id);
+
+                if (!isUpdate) {
+                    // For new records, check for duplicate by internal_code
+                    if (
+                        product.internal_code &&
+                        existingCodes.has(product.internal_code)
+                    ) {
+                        result.duplicates.push(product.internal_code);
+                        if (skipDuplicates) {
+                            result.skipped++;
+                            continue;
+                        } else {
+                            result.skipped++;
+                            continue;
+                        }
                     }
                 }
 
                 // Validate required fields
                 if (!product.name && !product.internal_code) {
-                    result.errors.push(`Riga ${i + 2}: Nome o codice interno richiesto`);
-                    result.skipped++;
-                    continue;
-                }
-
-                // Find or create category
-                const categoryId = await findOrCreateCategory(
-                    product.category,
-                    product.category_code,
-                );
-
-                // Find or create supplier
-                const supplierId = await findOrCreateSupplier(product.supplier);
-
-                // Create inventory_item
-                const { data: item, error: itemError } = await supabase
-                    .from("inventory_items")
-                    .insert({
-                        site_id: siteId,
-                        name: product.name || product.internal_code,
-                        description: product.description || null,
-                        category_id: categoryId,
-                        supplier_id: supplierId,
-                        is_stocked: true,
-                        is_consumable: true,
-                        is_active: true,
-                    })
-                    .select("id")
-                    .single();
-
-                if (itemError) {
-                    result.errors.push(`Riga ${i + 2}: Errore creazione item - ${itemError.message}`);
+                    result.errors.push(
+                        `Riga ${i + 2}: Nome o codice interno richiesto`,
+                    );
                     result.skipped++;
                     continue;
                 }
@@ -427,57 +431,141 @@ export async function POST(request: NextRequest) {
                     legacy_unit: product.unit || null,
                 };
 
-                // Create inventory_item_variant
-                const { data: variant, error: variantError } = await supabase
-                    .from("inventory_item_variants")
-                    .insert({
-                        item_id: item.id,
-                        site_id: siteId,
-                        internal_code: product.internal_code || null,
-                        supplier_code: product.supplier_code || null,
-                        producer: product.producer || null,
-                        producer_code: product.producer_code || null,
-                        unit_id: defaultUnitId,
-                        purchase_unit_price: product.purchase_unit_price || 0,
-                        sell_unit_price: product.sell_unit_price || null,
-                        attributes,
-                        image_url: product.image_url || null,
-                        url_tds: product.url_tds || null,
-                        warehouse_number: product.warehouse_number || null,
-                    })
-                    .select("id")
-                    .single();
+                if (isUpdate) {
+                    // Update existing variant
+                    const variantId = product.variant_id;
 
-                if (variantError) {
-                    // Rollback item
-                    await supabase.from("inventory_items").delete().eq("id", item.id);
-                    result.errors.push(`Riga ${i + 2}: Errore creazione variante - ${variantError.message}`);
-                    result.skipped++;
-                    continue;
-                }
+                    const { error: updateError } = await supabase
+                        .from("inventory_item_variants")
+                        .update({
+                            internal_code: product.internal_code || null,
+                            supplier_code: product.supplier_code || null,
+                            producer: product.producer || null,
+                            producer_code: product.producer_code || null,
+                            purchase_unit_price: product.purchase_unit_price ||
+                                0,
+                            sell_unit_price: product.sell_unit_price || null,
+                            attributes,
+                            image_url: product.image_url || null,
+                            url_tds: product.url_tds || null,
+                            warehouse_number: product.warehouse_number || null,
+                        })
+                        .eq("id", variantId)
+                        .eq("site_id", siteId);
 
-                // Create initial stock movement if quantity > 0
-                const quantity = product.quantity || 0;
-                if (quantity > 0) {
-                    await supabase
-                        .from("inventory_stock_movements")
+                    if (updateError) {
+                        result.errors.push(
+                            `Riga ${
+                                i + 2
+                            }: Errore aggiornamento variante - ${updateError.message}`,
+                        );
+                        result.skipped++;
+                        continue;
+                    }
+
+                    result.updated++;
+                } else {
+                    // Create new item and variant
+                    // Find or create category
+                    const categoryId = await findOrCreateCategory(
+                        product.category,
+                        product.category_code,
+                    );
+
+                    // Find or create supplier
+                    const supplierId = await findOrCreateSupplier(
+                        product.supplier,
+                    );
+
+                    // Create inventory_item
+                    const { data: item, error: itemError } = await supabase
+                        .from("inventory_items")
                         .insert({
                             site_id: siteId,
-                            variant_id: variant.id,
-                            movement_type: "opening",
-                            quantity,
-                            unit_id: defaultUnitId,
-                            reason: "Importazione CSV",
-                            reference_type: "csv_import",
-                        });
-                }
+                            name: product.name || product.internal_code,
+                            description: product.description || null,
+                            category_id: categoryId,
+                            supplier_id: supplierId,
+                            is_stocked: true,
+                            is_consumable: true,
+                            is_active: true,
+                        })
+                        .select("id")
+                        .single();
 
-                // Add to existing codes set
-                if (product.internal_code) {
-                    existingCodes.add(product.internal_code);
-                }
+                    if (itemError) {
+                        result.errors.push(
+                            `Riga ${
+                                i + 2
+                            }: Errore creazione item - ${itemError.message}`,
+                        );
+                        result.skipped++;
+                        continue;
+                    }
 
-                result.imported++;
+                    // Create inventory_item_variant
+                    const { data: variant, error: variantError } =
+                        await supabase
+                            .from("inventory_item_variants")
+                            .insert({
+                                item_id: item.id,
+                                site_id: siteId,
+                                internal_code: product.internal_code || null,
+                                supplier_code: product.supplier_code || null,
+                                producer: product.producer || null,
+                                producer_code: product.producer_code || null,
+                                unit_id: defaultUnitId,
+                                purchase_unit_price:
+                                    product.purchase_unit_price || 0,
+                                sell_unit_price: product.sell_unit_price ||
+                                    null,
+                                attributes,
+                                image_url: product.image_url || null,
+                                url_tds: product.url_tds || null,
+                                warehouse_number: product.warehouse_number ||
+                                    null,
+                            })
+                            .select("id")
+                            .single();
+
+                    if (variantError) {
+                        // Rollback item
+                        await supabase.from("inventory_items").delete().eq(
+                            "id",
+                            item.id,
+                        );
+                        result.errors.push(
+                            `Riga ${
+                                i + 2
+                            }: Errore creazione variante - ${variantError.message}`,
+                        );
+                        result.skipped++;
+                        continue;
+                    }
+
+                    // Create initial stock movement if quantity > 0
+                    const quantity = product.quantity || 0;
+                    if (quantity > 0) {
+                        await supabase
+                            .from("inventory_stock_movements")
+                            .insert({
+                                site_id: siteId,
+                                variant_id: variant.id,
+                                movement_type: "opening",
+                                quantity,
+                                unit_id: defaultUnitId,
+                                reason: "Importazione CSV",
+                                reference_type: "csv_import",
+                            });
+                    }
+
+                    // Add to existing codes set
+                    if (product.internal_code) {
+                        existingCodes.add(product.internal_code);
+                    }
+
+                    result.imported++;
+                }
             } catch (error: any) {
                 result.errors.push(`Riga ${i + 2}: ${error.message}`);
                 result.skipped++;
@@ -485,19 +573,21 @@ export async function POST(request: NextRequest) {
         }
 
         // Create action record for the import
-        if (result.imported > 0) {
+        if (result.imported > 0 || result.updated > 0) {
             await supabase.from("Action").insert({
                 type: "inventory_csv_import",
                 user_id: userContext.user.id,
                 data: {
                     imported: result.imported,
+                    updated: result.updated,
                     skipped: result.skipped,
                     duplicates: result.duplicates.length,
                 },
             });
         }
 
-        result.success = result.errors.length === 0 || result.imported > 0;
+        result.success = result.errors.length === 0 || result.imported > 0 ||
+            result.updated > 0;
 
         return NextResponse.json(result);
     } catch (error: any) {

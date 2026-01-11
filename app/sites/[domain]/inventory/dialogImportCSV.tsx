@@ -26,6 +26,7 @@ interface ImportResult {
   success: boolean;
   totalRows: number;
   imported: number;
+  updated: number;
   skipped: number;
   errors: string[];
   duplicates: string[];
@@ -33,6 +34,11 @@ interface ImportResult {
 
 // CSV columns definition with required/optional status
 const CSV_COLUMNS = [
+  {
+    name: "ID",
+    description: "ID variante (per aggiornare record esistenti)",
+    required: false,
+  },
   { name: "CAT", description: "Categoria", required: false },
   { name: "COD_CAT", description: "Codice Categoria", required: false },
   { name: "S_CAT", description: "Sottocategoria", required: false },
@@ -71,6 +77,7 @@ const CSV_COLUMNS = [
 
 // Example row data for the CSV template
 const EXAMPLE_ROW = {
+  ID: "",
   CAT: "LEGNO",
   COD_CAT: "LG",
   S_CAT: "Pannelli",
@@ -182,9 +189,12 @@ function DialogImportCSV() {
 
       setResult(data);
 
-      if (data.imported > 0) {
+      if (data.imported > 0 || data.updated > 0) {
+        const messages = [];
+        if (data.imported > 0) messages.push(`${data.imported} nuovi`);
+        if (data.updated > 0) messages.push(`${data.updated} aggiornati`);
         toast({
-          description: `Importati ${data.imported} prodotti con successo!`,
+          description: `Prodotti inventario: ${messages.join(", ")}!`,
         });
         router.refresh();
       }
@@ -267,8 +277,9 @@ function DialogImportCSV() {
         <DialogHeader>
           <DialogTitle>Importa Inventario da CSV</DialogTitle>
           <DialogDescription>
-            Carica un file CSV con i dati dell&apos;inventario. I duplicati
-            saranno identificati tramite il codice interno (COD_INT).
+            Carica un file CSV con i dati dell&apos;inventario. Se il file
+            contiene la colonna ID con valori esistenti, i record verranno
+            aggiornati.
           </DialogDescription>
         </DialogHeader>
 
@@ -410,10 +421,10 @@ function DialogImportCSV() {
 
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
+            <br />• <strong>Per aggiornare:</strong> esporta l&apos;inventario,
+            modifica il CSV e reimporta (l&apos;ID identifica i record)
             <br />• Se NOME è vuoto, verrà generato da Sottocategoria2 + Colore
             o dal Codice Interno
-            <br />• Il TOTALE viene calcolato automaticamente (CHF_ACQUISTO ×
-            PZ)
             <br />• Se CAT o COD_CAT non esistono come categoria, verrà creata
             automaticamente
           </p>
@@ -440,8 +451,13 @@ function DialogImportCSV() {
                   <div className="text-sm mt-2 space-y-1">
                     <p>Righe totali: {result.totalRows}</p>
                     <p className="text-green-600">
-                      Importati: {result.imported}
+                      Nuovi importati: {result.imported}
                     </p>
+                    {result.updated > 0 && (
+                      <p className="text-blue-600">
+                        Aggiornati: {result.updated}
+                      </p>
+                    )}
                     <p className="text-yellow-600">Saltati: {result.skipped}</p>
                     {result.duplicates.length > 0 && (
                       <p className="text-orange-600">
