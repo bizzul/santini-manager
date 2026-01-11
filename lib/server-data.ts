@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { logger } from "@/lib/logger";
 import { cache } from "react";
@@ -130,7 +130,7 @@ export const fetchClients = cache(async (siteId: string) => {
  * Fetch suppliers for a site with last modification info
  */
 export const fetchSuppliers = cache(async (siteId: string) => {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Fetch suppliers with category relation
     const { data: suppliers, error } = await supabase
@@ -202,7 +202,7 @@ export const fetchCategories = cache(async (siteId: string) => {
  * Fetch supplier categories for a site
  */
 export const fetchSupplierCategories = cache(async (siteId: string) => {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { data, error } = await supabase
         .from("Supplier_category")
         .select("*")
@@ -247,7 +247,7 @@ export const fetchManufacturers = cache(async (siteId: string) => {
  * Fetch manufacturer categories for a site
  */
 export const fetchManufacturerCategories = cache(async (siteId: string) => {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { data, error } = await supabase
         .from("Manufacturer_category")
         .select("*")
@@ -736,7 +736,10 @@ export const fetchUsers = cache(async (siteId: string) => {
             .eq("organization_id", site.organization_id);
 
         if (orgUsersError) {
-            log.error("Error fetching user_organizations:", orgUsersError.message);
+            log.error(
+                "Error fetching user_organizations:",
+                orgUsersError.message,
+            );
         } else {
             orgAdminUserIds = orgUsers?.map((ou) => ou.user_id) || [];
         }
@@ -744,7 +747,9 @@ export const fetchUsers = cache(async (siteId: string) => {
 
     // Combine user IDs from both sources (deduplicated)
     const siteUserIds = userSites?.map((us) => us.user_id) || [];
-    const allUserIds = Array.from(new Set([...siteUserIds, ...orgAdminUserIds]));
+    const allUserIds = Array.from(
+        new Set([...siteUserIds, ...orgAdminUserIds]),
+    );
 
     if (!allUserIds.length) {
         return [];
@@ -836,9 +841,9 @@ export const fetchQualityControl = cache(async (siteId: string) => {
  * Fetch error tracking data
  */
 export const fetchErrorTracking = cache(async (siteId: string) => {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { data, error } = await supabase
-        .from("errortracking")
+        .from("Errortracking")
         .select("*")
         .eq("site_id", siteId);
 
@@ -1075,6 +1080,310 @@ export const fetchProjectsData = cache(async (siteId: string) => {
 
     return { clients, activeProducts: products, kanbans, tasks, categories };
 });
+
+// ============================================
+// DASHBOARD DATA
+// ============================================
+
+export interface DashboardStats {
+    // Offers statistics
+    offers: {
+        todo: number;
+        inProgress: number;
+        sent: number;
+        won: number;
+        lost: number;
+        totalValue: number;
+        byCategory: Array<{
+            name: string;
+            color: string;
+            count: number;
+            value: number;
+        }>;
+    };
+    // Production orders statistics
+    orders: {
+        totalProjects: number;
+        totalItems: number;
+        totalValue: number;
+        byCategory: Array<{
+            name: string;
+            color: string;
+            projects: number;
+            items: number;
+            value: number;
+        }>;
+    };
+    // HR statistics
+    hr: {
+        totalEmployees: number;
+        activeEmployees: number;
+    };
+    // Financial summary
+    financial: {
+        totalOrdersValue: number;
+        monthlyChange: number;
+    };
+}
+
+/**
+ * Fetch dashboard statistics for a site
+ */
+export const fetchDashboardData = cache(
+    async (siteId: string): Promise<DashboardStats> => {
+        const supabase = await createClient();
+
+        // Get date ranges for period calculations
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfLastMonth = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            1,
+        );
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+        // Fetch all required data in parallel
+        const [
+            tasksResult,
+            categoriesResult,
+            usersResult,
+            kanbansResult,
+            columnsResult,
+        ] = await Promise.all([
+            // All tasks (not archived)
+            supabase
+                .from("Task")
+                .select(`
+                id,
+                task_type,
+                display_mode,
+                sellPrice,
+                positions,
+                kanbanId,
+                kanbanColumnId,
+                sellProductId,
+                created_at,
+                sent_date,
+                SellProduct:sellProductId(id, name, category:category_id(id, name, color))
+            `)
+                .eq("site_id", siteId)
+                .eq("archived", false),
+            // Categories
+            supabase
+                .from("sellproduct_categories")
+                .select("*")
+                .eq("site_id", siteId),
+            // Users (for HR)
+            supabase
+                .from("user_sites")
+                .select("user_id")
+                .eq("site_id", siteId),
+            // Kanbans to identify offer kanbans
+            supabase
+                .from("Kanban")
+                .select("id, is_offer_kanban")
+                .eq("site_id", siteId),
+            // Kanban columns to determine task status
+            supabase
+                .from("KanbanColumn")
+                .select("id, kanbanId, column_type, title, position")
+                .eq("site_id", siteId),
+        ]);
+
+        const tasks = tasksResult.data || [];
+        const categories = categoriesResult.data || [];
+        const userSites = usersResult.data || [];
+        const kanbans = kanbansResult.data || [];
+        const columns = columnsResult.data || [];
+
+        // Create lookup maps
+        const offerKanbanIds = new Set(
+            kanbans.filter((k) => k.is_offer_kanban).map((k) => k.id),
+        );
+        const columnMap = new Map(columns.map((c) => [c.id, c]));
+
+        // Initialize category stats map
+        const categoryStatsMap = new Map<string, {
+            name: string;
+            color: string;
+            offerCount: number;
+            offerValue: number;
+            orderCount: number;
+            orderItems: number;
+            orderValue: number;
+        }>();
+
+        // Initialize with existing categories
+        categories.forEach((cat) => {
+            categoryStatsMap.set(cat.name, {
+                name: cat.name,
+                color: cat.color || "#3b82f6",
+                offerCount: 0,
+                offerValue: 0,
+                orderCount: 0,
+                orderItems: 0,
+                orderValue: 0,
+            });
+        });
+
+        // Add default category for tasks without category
+        if (!categoryStatsMap.has("Altro")) {
+            categoryStatsMap.set("Altro", {
+                name: "Altro",
+                color: "#6b7280",
+                offerCount: 0,
+                offerValue: 0,
+                orderCount: 0,
+                orderItems: 0,
+                orderValue: 0,
+            });
+        }
+
+        // Offer statistics
+        let offersTodo = 0;
+        let offersInProgress = 0;
+        let offersSent = 0;
+        let offersWon = 0;
+        let offersLost = 0;
+        let offersTotalValue = 0;
+
+        // Order statistics
+        let ordersTotalProjects = 0;
+        let ordersTotalItems = 0;
+        let ordersTotalValue = 0;
+
+        // Process tasks
+        tasks.forEach((task: any) => {
+            const column = columnMap.get(task.kanbanColumnId);
+            const isOffer = task.task_type === "OFFERTA" ||
+                offerKanbanIds.has(task.kanbanId);
+            const categoryName = task.SellProduct?.category?.name || "Altro";
+            const categoryColor = task.SellProduct?.category?.color ||
+                "#6b7280";
+            const sellPrice = task.sellPrice || 0;
+            const positionsCount = task.positions?.length || 1;
+
+            // Ensure category exists in map
+            if (!categoryStatsMap.has(categoryName)) {
+                categoryStatsMap.set(categoryName, {
+                    name: categoryName,
+                    color: categoryColor,
+                    offerCount: 0,
+                    offerValue: 0,
+                    orderCount: 0,
+                    orderItems: 0,
+                    orderValue: 0,
+                });
+            }
+
+            const catStats = categoryStatsMap.get(categoryName)!;
+
+            if (isOffer) {
+                // Process as offer
+                offersTotalValue += sellPrice;
+                catStats.offerCount++;
+                catStats.offerValue += sellPrice;
+
+                if (
+                    task.display_mode === "small_green" ||
+                    column?.column_type === "won"
+                ) {
+                    offersWon++;
+                } else if (
+                    task.display_mode === "small_red" ||
+                    column?.column_type === "lost"
+                ) {
+                    offersLost++;
+                } else if (task.sent_date) {
+                    offersSent++;
+                } else if (
+                    column?.position === 0 ||
+                    column?.title?.toLowerCase().includes("todo") ||
+                    column?.title?.toLowerCase().includes("da fare")
+                ) {
+                    offersTodo++;
+                } else {
+                    offersInProgress++;
+                }
+            } else {
+                // Process as production order
+                ordersTotalProjects++;
+                ordersTotalItems += positionsCount;
+                ordersTotalValue += sellPrice;
+                catStats.orderCount++;
+                catStats.orderItems += positionsCount;
+                catStats.orderValue += sellPrice;
+            }
+        });
+
+        // Get user count (HR)
+        // Count unique active users
+        const uniqueUserIds = new Set(userSites.map((us) => us.user_id));
+
+        // Also fetch actual User records to get enabled count
+        let activeEmployees = uniqueUserIds.size;
+        if (uniqueUserIds.size > 0) {
+            const { data: users } = await supabase
+                .from("User")
+                .select("id, enabled")
+                .eq("enabled", true)
+                .in("authId", Array.from(uniqueUserIds));
+            activeEmployees = users?.length || uniqueUserIds.size;
+        }
+
+        // Convert category map to arrays
+        const categoriesArray = Array.from(categoryStatsMap.values());
+
+        // Sort categories by value/count descending and filter out empty ones
+        const offersByCategory = categoriesArray
+            .filter((c) => c.offerCount > 0)
+            .map((c) => ({
+                name: c.name,
+                color: c.color,
+                count: c.offerCount,
+                value: c.offerValue,
+            }))
+            .sort((a, b) => b.value - a.value);
+
+        const ordersByCategory = categoriesArray
+            .filter((c) => c.orderCount > 0)
+            .map((c) => ({
+                name: c.name,
+                color: c.color,
+                projects: c.orderCount,
+                items: c.orderItems,
+                value: c.orderValue,
+            }))
+            .sort((a, b) => b.value - a.value);
+
+        return {
+            offers: {
+                todo: offersTodo,
+                inProgress: offersInProgress,
+                sent: offersSent,
+                won: offersWon,
+                lost: offersLost,
+                totalValue: offersTotalValue,
+                byCategory: offersByCategory,
+            },
+            orders: {
+                totalProjects: ordersTotalProjects,
+                totalItems: ordersTotalItems,
+                totalValue: ordersTotalValue,
+                byCategory: ordersByCategory,
+            },
+            hr: {
+                totalEmployees: uniqueUserIds.size,
+                activeEmployees,
+            },
+            financial: {
+                totalOrdersValue: ordersTotalValue,
+                monthlyChange: 0, // Would need historical data to calculate
+            },
+        };
+    },
+);
 
 /**
  * Fetch collaborators for a site

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 
@@ -7,12 +7,12 @@ const log = logger.scope("InventorySuppliers");
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    
+    const supabase = createServiceClient();
+
     // Check for x-site-domain header first (used by client components)
     const siteDomain = req.headers.get("x-site-domain");
     let siteId: string | null = null;
-    
+
     if (siteDomain) {
       const context = await getSiteContextFromDomain(siteDomain);
       siteId = context.siteId;
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const body = await req.json();
 
     // Check for x-site-domain header first
@@ -73,7 +73,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, code, notes, short_name, address, location, phone, email, website, contact, cap, supplier_image } = body;
+    const {
+      name,
+      code,
+      notes,
+      short_name,
+      address,
+      location,
+      phone,
+      email,
+      website,
+      contact,
+      cap,
+      supplier_image,
+    } = body;
 
     if (!name) {
       return NextResponse.json(

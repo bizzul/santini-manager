@@ -84,7 +84,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
   useEffect(() => {
     const getSuppliers = async () => {
-      const d = await fetch(`../api/inventory/suppliers/`);
+      const d = await fetch(`../api/suppliers/`);
       if (!d.ok) {
         throw new Error("Failed to fetch suppliers");
       }
@@ -358,7 +358,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                           {suppliers
                             .filter(
                               (supplier: Supplier) =>
-                                supplier.category?.toLowerCase() ===
+                                supplier.supplier_category?.name?.toLowerCase() ===
                                 form.watch("errorType")?.toLowerCase()
                             )
                             .map((supplier: Supplier) => (

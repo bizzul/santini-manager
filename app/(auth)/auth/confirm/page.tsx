@@ -3,15 +3,10 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 
 function ConfirmPageContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
@@ -43,7 +38,7 @@ function ConfirmPageContent() {
         if (!token) {
           setStatus("error");
           setMessage(
-            "No confirmation token found. Please check your invitation link."
+            "Token di conferma non trovato. Controlla il link dell'invito."
           );
           return;
         }
@@ -57,16 +52,16 @@ function ConfirmPageContent() {
 
         if (error) {
           setStatus("error");
-          setMessage(`Failed to verify email: ${error.message}`);
+          setMessage(`Verifica email fallita: ${error.message}`);
           return;
         }
 
         setStatus("success");
-        setMessage("Email confirmed successfully!");
+        setMessage("Email confermata con successo!");
       } catch (error) {
         console.error("Confirmation error:", error);
         setStatus("error");
-        setMessage("An unexpected error occurred. Please try again.");
+        setMessage("Si è verificato un errore. Riprova.");
       }
     };
 
@@ -77,63 +72,81 @@ function ConfirmPageContent() {
     switch (status) {
       case "loading":
         return (
-          <div className="text-center py-8">
-            <Loader2 className="h-12 w-12 mx-auto animate-spin text-blue-600 mb-4" />
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              Confirming your invitation...
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <Loader2 className="w-12 h-12 text-white animate-spin" />
+            </div>
+            <p className="text-white/80 text-sm">
+              Conferma del tuo invito in corso...
             </p>
           </div>
         );
 
       case "success":
         return (
-          <div className="text-center py-8">
-            <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-4" />
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              {message}
-            </p>
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-400/50 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-green-400" />
+              </div>
+            </div>
+            <p className="text-white/80 text-sm">{message}</p>
+            <Link href="/login">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Vai al Login
+              </Button>
+            </Link>
           </div>
         );
 
       case "error":
         return (
-          <div className="text-center py-8">
-            <XCircle className="h-12 w-12 mx-auto text-red-600 mb-4" />
-            <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">
-              {message}
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/auth/login")}
-            >
-              Go to Login
-            </Button>
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-400/50 flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-red-400" />
+              </div>
+            </div>
+            <p className="text-white/80 text-sm">{message}</p>
+            <Link href="/login">
+              <Button
+                variant="outline"
+                className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Vai al Login
+              </Button>
+            </Link>
           </div>
         );
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Confirming Email
+    <div className="w-full px-4">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+        {/* Logo */}
+        <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Logo"
+            width={80}
+            height={80}
+            className="drop-shadow-2xl"
+          />
+          <h1 className="text-2xl sm:text-3xl font-bold text-center text-white">
+            Conferma Email
           </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Please wait while we process your confirmation
+          <p className="text-white/70 text-sm text-center">
+            Stiamo elaborando la tua conferma
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Confirmation</CardTitle>
-            <CardDescription>
-              We&apos;re processing your email confirmation
-            </CardDescription>
-          </CardHeader>
-          <CardContent>{renderContent()}</CardContent>
-        </Card>
+        {renderContent()}
       </div>
     </div>
   );
@@ -143,21 +156,25 @@ export default function ConfirmPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-md w-full space-y-8">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Confirming Email
+        <div className="w-full px-4">
+          <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+            <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+              <Image
+                src="/logo-bianco.svg"
+                alt="Logo"
+                width={80}
+                height={80}
+                className="drop-shadow-2xl"
+              />
+              <h1 className="text-2xl sm:text-3xl font-bold text-center text-white">
+                Conferma Email
               </h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Please wait while we process your confirmation
+              <p className="text-white/70 text-sm text-center">
+                Stiamo elaborando la tua conferma
               </p>
             </div>
-            <div className="text-center py-8">
-              <Loader2 className="h-12 w-12 mx-auto animate-spin text-blue-600 mb-4" />
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                Loading...
-              </p>
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-12 h-12 text-white animate-spin" />
             </div>
           </div>
         </div>

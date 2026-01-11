@@ -1,11 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { logger } from "@/lib/logger";
+
+const log = logger.scope("SupplierDelete");
 
 export const removeItem = async (formData: any, domain?: string) => {
+  log.debug("removeItem called", { id: formData?.id, domain });
+
   const session = await getUserContext();
   let userId = null;
   let siteId = null;
@@ -18,7 +23,7 @@ export const removeItem = async (formData: any, domain?: string) => {
         siteId = siteResult.data.id;
       }
     } catch (error) {
-      console.error("Error fetching site data:", error);
+      log.error("Error fetching site data:", error);
     }
   }
 
@@ -28,7 +33,7 @@ export const removeItem = async (formData: any, domain?: string) => {
   }
 
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Build delete query with site_id filter if available
     let deleteQuery = supabase
@@ -43,7 +48,7 @@ export const removeItem = async (formData: any, domain?: string) => {
     const { error: deleteError } = await deleteQuery;
 
     if (deleteError) {
-      console.error("Error deleting supplier:", deleteError);
+      log.error("Error deleting supplier:", deleteError);
       return { message: "Errore nella cancellazione del fornitore!" };
     }
 

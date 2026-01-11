@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/supplier/edit";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
@@ -42,7 +42,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
 
   if (result.success) {
     try {
-      const supabase = await createClient();
+      const supabase = createServiceClient();
       const updateData: any = {
         description: result.data.description,
         name: result.data.name,

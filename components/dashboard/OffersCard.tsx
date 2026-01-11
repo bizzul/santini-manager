@@ -16,39 +16,28 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
 
-export default function OffersCard() {
-  const [period, setPeriod] = useState<"week" | "month" | "year">("month");
+interface CategoryData {
+  name: string;
+  color: string;
+  count: number;
+  value: number;
+}
 
-  // Dati mockup
-  const offersData = {
-    week: {
-      todo: 2,
-      inProgress: 3,
-      sent: 8,
-      won: 4,
-      lost: 5,
-      totalValue: 45000,
-    },
-    month: {
-      todo: 5,
-      inProgress: 8,
-      sent: 18,
-      won: 12,
-      lost: 8,
-      totalValue: 187000,
-    },
-    year: {
-      todo: 15,
-      inProgress: 25,
-      sent: 156,
-      won: 98,
-      lost: 72,
-      totalValue: 2340000,
-    },
-  };
+interface OffersData {
+  todo: number;
+  inProgress: number;
+  sent: number;
+  won: number;
+  lost: number;
+  totalValue: number;
+  byCategory: CategoryData[];
+}
 
-  const data = offersData[period];
+interface OffersCardProps {
+  data: OffersData;
+}
 
+export default function OffersCard({ data }: OffersCardProps) {
   const chartOptions: ApexOptions = {
     chart: {
       type: "bar",
@@ -156,6 +145,30 @@ export default function OffersCard() {
     },
   ];
 
+  // If no data, show placeholder
+  const totalOffers =
+    data.todo + data.inProgress + data.sent + data.won + data.lost;
+  if (totalOffers === 0) {
+    return (
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 col-span-2 lg:col-span-3">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <FileText className="w-6 h-6 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold">Offerte</h3>
+            <p className="text-sm text-muted-foreground">
+              Nessuna offerta attiva
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+          Nessun dato disponibile
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 col-span-2 lg:col-span-3">
       <div className="flex items-center justify-between mb-6">
@@ -168,20 +181,6 @@ export default function OffersCard() {
             <p className="text-sm text-muted-foreground">Gestione offerte</p>
           </div>
         </div>
-
-        <Select
-          value={period}
-          onValueChange={(value: "week" | "month" | "year") => setPeriod(value)}
-        >
-          <SelectTrigger className="w-[140px] bg-white/10 border-white/20 backdrop-blur-sm">
-            <SelectValue placeholder="Periodo" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="week">Settimana</SelectItem>
-            <SelectItem value="month">Mese</SelectItem>
-            <SelectItem value="year">Anno</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* ApexCharts Column Chart */}

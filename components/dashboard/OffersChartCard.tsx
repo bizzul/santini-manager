@@ -8,50 +8,80 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
 
-export default function OffersChartCard() {
-  // Dati mockup per offerte per reparto
-  const departments = [
-    {
-      name: "Arredamento",
-      color: "#3b82f6",
-      offers: 8,
-      value: 156000,
-      bgLight: "bg-blue-500/20",
-      textColor: "text-blue-500",
-    },
-    {
-      name: "Serramenti",
-      color: "#eab308",
-      offers: 5,
-      value: 89000,
-      bgLight: "bg-yellow-500/20",
-      textColor: "text-yellow-500",
-    },
-    {
-      name: "Porte",
-      color: "#f97316",
-      offers: 12,
-      value: 234000,
-      bgLight: "bg-orange-500/20",
-      textColor: "text-orange-500",
-    },
-    {
-      name: "Service",
-      color: "#22c55e",
-      offers: 3,
-      value: 45000,
-      bgLight: "bg-green-500/20",
-      textColor: "text-green-500",
-    },
-  ];
+// Default colors for categories
+const DEFAULT_COLORS = [
+  "#3b82f6", // blue
+  "#eab308", // yellow
+  "#f97316", // orange
+  "#22c55e", // green
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#f43f5e", // rose
+];
 
-  const totalOffers = departments.reduce((sum, dept) => sum + dept.offers, 0);
-  const totalValue = departments.reduce((sum, dept) => sum + dept.value, 0);
+interface CategoryData {
+  name: string;
+  color: string;
+  count: number;
+  value: number;
+}
+
+interface OffersData {
+  todo: number;
+  inProgress: number;
+  sent: number;
+  won: number;
+  lost: number;
+  totalValue: number;
+  byCategory: CategoryData[];
+}
+
+interface OffersChartCardProps {
+  data: OffersData;
+}
+
+export default function OffersChartCard({ data }: OffersChartCardProps) {
+  // Map categories with colors
+  const departments = data.byCategory.map((cat, index) => ({
+    name: cat.name,
+    color: cat.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+    offers: cat.count,
+    value: cat.value,
+  }));
+
+  const totalOffers =
+    data.todo + data.inProgress + data.sent + data.won + data.lost;
+
+  // If no data, show placeholder
+  if (departments.length === 0) {
+    return (
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden h-full flex flex-col">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <FileText className="w-6 h-6 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold">Offerte totali</h3>
+            <p className="text-sm text-muted-foreground">
+              Nessuna offerta attiva
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center flex-1 text-muted-foreground">
+          Nessun dato disponibile
+        </div>
+      </div>
+    );
+  }
+
+  // Get colors array for distributed chart
+  const chartColors = departments.map((d) => d.color);
 
   const chartOptions: ApexOptions = {
     chart: {
       type: "bar",
-      height: 280,
+      height: 350,
       animations: {
         enabled: true,
         speed: 1200,
@@ -71,9 +101,10 @@ export default function OffersChartCard() {
     },
     plotOptions: {
       bar: {
-        borderRadius: 10,
+        borderRadius: 8,
         borderRadiusApplication: "end",
         columnWidth: "60%",
+        distributed: true, // Enable different colors for each bar
         dataLabels: {
           position: "top",
         },
@@ -81,17 +112,17 @@ export default function OffersChartCard() {
     },
     dataLabels: {
       enabled: true,
-      offsetY: -25,
+      offsetY: -20,
       style: {
-        fontSize: "14px",
+        fontSize: "12px",
         fontWeight: "bold",
         colors: ["#18181b"],
       },
       background: {
         enabled: true,
         foreColor: "#ffffff",
-        borderRadius: 6,
-        padding: 6,
+        borderRadius: 4,
+        padding: 4,
         opacity: 0.95,
         borderWidth: 1,
         borderColor: "#d1d5db",
@@ -108,6 +139,8 @@ export default function OffersChartCard() {
           fontSize: "11px",
           fontWeight: 600,
         },
+        rotate: -45,
+        rotateAlways: departments.length > 4,
       },
       axisBorder: {
         show: false,
@@ -120,17 +153,8 @@ export default function OffersChartCard() {
       show: false,
     },
     fill: {
-      type: "gradient",
-      gradient: {
-        shade: "dark",
-        type: "vertical",
-        shadeIntensity: 0.3,
-        gradientToColors: departments.map((d) => d.color),
-        inverseColors: false,
-        opacityFrom: 0.95,
-        opacityTo: 0.95,
-        stops: [0, 100],
-      },
+      type: "solid",
+      opacity: 0.95,
     },
     grid: {
       show: false,
@@ -146,7 +170,7 @@ export default function OffersChartCard() {
         },
       },
     },
-    colors: departments.map((d) => d.color),
+    colors: chartColors,
   };
 
   const chartSeries = [
@@ -157,48 +181,58 @@ export default function OffersChartCard() {
   ];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden">
+    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden h-full flex flex-col">
       {/* Header */}
-      <div className="space-y-2 mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
             <h3 className="text-xl font-bold">Offerte totali</h3>
-            <div className="backdrop-blur-sm bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1 mt-1 inline-block">
-              <p className="text-xs font-semibold">
+            <div className="backdrop-blur-sm bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1.5 mt-2 inline-block">
+              <p className="text-sm font-semibold">
                 <span className="text-blue-400">{totalOffers} offerte</span>
               </p>
             </div>
           </div>
         </div>
-        <div className="text-right -mt-12">
+        <div className="text-right">
           <p className="text-xs text-muted-foreground mb-1">Valore Totale</p>
-          <p className="text-xl font-bold text-green-400">
-            CHF {(totalValue / 1000).toFixed(0)}k
+          <p className="text-2xl font-bold text-green-400">
+            CHF {(data.totalValue / 1000).toFixed(0)}k
           </p>
         </div>
       </div>
 
       {/* ApexCharts Vertical Bar Chart */}
-      <div>
+      <div className="flex-1 min-h-[300px]">
         <ReactApexChart
           options={chartOptions}
           series={chartSeries}
           type="bar"
-          height={280}
+          height="100%"
         />
       </div>
 
       {/* Value badges per department */}
       <div className="grid grid-cols-4 gap-2 mt-4">
-        {departments.map((dept, index) => (
+        {departments.slice(0, 4).map((dept, index) => (
           <div
             key={index}
-            className={`backdrop-blur-md ${dept.bgLight} border border-white/20 rounded-lg px-2 py-2 text-center`}
+            className="backdrop-blur-md border border-white/20 rounded-lg px-2 py-2 text-center"
+            style={{ backgroundColor: `${dept.color}20` }}
           >
-            <p className={`text-[10px] font-medium ${dept.textColor}`}>
+            <p
+              className="text-[10px] font-medium mb-0.5 truncate"
+              style={{ color: dept.color }}
+            >
+              {dept.name}
+            </p>
+            <p
+              className="text-xs font-bold"
+              style={{ color: dept.color }}
+            >
               CHF {(dept.value / 1000).toFixed(0)}k
             </p>
           </div>

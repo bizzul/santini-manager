@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     if (data.success) {
       // Create the error tracking record
       const { data: result, error: createError } = await supabase
-        .from("errortracking")
+        .from("Errortracking")
         .insert({
           description: data.data.description ?? "",
           error_category: data.data.errorCategory,
@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
 
       // Success
       if (result) {
-        if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
+        if (
+          body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0
+        ) {
           // Save the Cloudinary IDs of the uploaded files to the task record
           await Promise.all(
             body.fileIds.map((fileId: number) => {

@@ -2,18 +2,22 @@
 
 import { Manufacturer_category } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/manufacturerCategory/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+
+const log = logger.scope("ManufacturerCategoryEdit");
 
 export async function editItem(
   formData: Pick<Manufacturer_category, "name" | "code" | "description">,
   id: number,
 ) {
+  log.debug("editItem called", { formData, id });
+
   const data = validation.safeParse(formData);
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const userContext = await getUserContext();
   let userId = null;
 
@@ -22,7 +26,7 @@ export async function editItem(
   }
 
   if (!data.success) {
-    logger.debug("Validation failed");
+    log.warn("Validation failed:", data.error.errors);
     return { error: "Validazione elemento fallita!" };
   }
 
@@ -33,15 +37,19 @@ export async function editItem(
       description: data.data.description,
     };
 
+    log.debug("Updating manufacturer category:", { id, updateData });
+
     const { error: updateError } = await supabase
       .from("Manufacturer_category")
       .update(updateData)
       .eq("id", id);
 
     if (updateError) {
-      logger.error("Error updating manufacturer category:", updateError);
+      log.error("Error updating manufacturer category:", updateError);
       return { error: "Modifica elemento fallita!" };
     }
+
+    log.info("Manufacturer category updated successfully:", id);
 
     // Create a new Action record to track the user action
     if (userId) {
@@ -56,14 +64,14 @@ export async function editItem(
         });
 
       if (actionError) {
-        console.error("Error creating action:", actionError);
+        log.error("Error creating action:", actionError);
       }
     }
 
     revalidatePath("/manufacturer-categories");
     return { success: true };
   } catch (e) {
-    logger.error("Error updating manufacturer category:", e);
+    log.error("Error updating manufacturer category:", e);
     return { error: "Modifica elemento fallita!" };
   }
 }

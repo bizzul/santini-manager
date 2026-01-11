@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 
@@ -7,7 +7,7 @@ const log = logger.scope("SupplierCategories");
 
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createClient();
+        const supabase = createServiceClient();
 
         // Check for x-site-domain header first (used by CategorySelector)
         const siteDomain = req.headers.get("x-site-domain");
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const supabase = await createClient();
+        const supabase = createServiceClient();
 
         // Check for x-site-domain header first (used by CategorySelector)
         const siteDomain = req.headers.get("x-site-domain");

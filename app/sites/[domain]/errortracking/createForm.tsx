@@ -266,7 +266,7 @@ const CreateProductForm = ({
                           {data.suppliers
                             .filter(
                               (supplier: Supplier) =>
-                                supplier.category?.toLowerCase() ===
+                                supplier.supplier_category?.name?.toLowerCase() ===
                                 form.watch("errorType")?.toLowerCase()
                             )
                             .map((supplier: Supplier) => (

@@ -7,8 +7,8 @@ import { Product_category } from "@/types/supabase";
 export const removeItem = async (formData: Product_category) => {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("product_category")
+    const { error } = await supabase
+      .from("Product_category")
       .delete()
       .eq("id", formData.id);
 
@@ -20,11 +20,8 @@ export const removeItem = async (formData: Product_category) => {
       };
     }
 
-    if (data) {
-      return revalidatePath("/categories");
-    }
-
-    return revalidatePath("/categories");
+    revalidatePath("/categories");
+    return { success: true };
   } catch (e) {
     return { message: `Failed to delete item: ${e}` };
   }

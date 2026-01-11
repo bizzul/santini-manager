@@ -1,23 +1,23 @@
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import React from "react";
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import MobilePage from "@/components/errorTracking/mobilePage";
 
 async function getData(): Promise<any> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data: tasks, error: tasksError } = await supabase
-    .from("task")
+    .from("Task")
     .select("*")
     .order("created_at", { ascending: false });
   const { data: roles, error: rolesError } = await supabase
-    .from("roles")
+    .from("Roles")
     .select("*");
   const { data: suppliers, error: suppliersError } = await supabase
-    .from("supplier")
+    .from("Supplier")
     .select("*");
   const { data: categories, error: categoriesError } = await supabase
-    .from("product_category")
+    .from("Product_category")
     .select("*");
 
   return { tasks, roles, suppliers, categories };

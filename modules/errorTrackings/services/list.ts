@@ -9,25 +9,25 @@ import { createClient } from "../../../utils/supabase/client";
 
 export const list = async (
   pagination: any,
-  filters: any
+  filters: any,
 ): Promise<ServiceResponse> => {
   try {
     const supabase = createClient();
-    
+
     let query = supabase
-      .from("errortracking")
+      .from("Errortracking")
       .select("*, files(*), supplier(*), task(*), user(*)");
 
     if (filters.q) {
       // Use OR logic for multiple field search
       query = query.or(
-        `supplier.name.ilike.%${filters.q}%,error_category.ilike.%${filters.q}%`
+        `supplier.name.ilike.%${filters.q}%,error_category.ilike.%${filters.q}%`,
       );
     }
 
     // Get total count first
     const { count: items_total } = await supabase
-      .from("errortracking")
+      .from("Errortracking")
       .select("*", { count: "exact", head: true });
 
     // Apply pagination to main query

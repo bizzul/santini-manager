@@ -1,19 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 
 export const removeItem = async (formData: any) => {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     const { error } = await supabase
-      .from("errortracking")
+      .from("Errortracking")
       .delete()
       .eq("id", Number(formData.id));
     if (error) {
       return { message: `Failed to delete item: ${error}` };
     }
-    return revalidatePath("/errortracking");
+    revalidatePath("/errortracking");
+    return { success: true };
   } catch (e) {
     return { message: `Failed to delete item: ${e}` };
   }

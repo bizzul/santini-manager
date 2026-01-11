@@ -1,23 +1,34 @@
 import { CompleteSignupForm } from "@/components/complete-signup";
 import { Suspense } from "react";
+import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 export default function CompleteSignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Welcome to Your Organization!
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Complete your profile to access your workspace
-          </p>
-        </div>
-
-        <Suspense fallback={<div>Loading...</div>}>
-          <CompleteSignupForm />
-        </Suspense>
-      </div>
+    <div className="w-full px-4">
+      <Suspense
+        fallback={
+          <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+            <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+              <Image
+                src="/logo-bianco.svg"
+                alt="Logo"
+                width={80}
+                height={80}
+                className="drop-shadow-2xl"
+              />
+              <h1 className="text-3xl sm:text-4xl font-bold text-center text-white">
+                Caricamento...
+              </h1>
+            </div>
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            </div>
+          </div>
+        }
+      >
+        <CompleteSignupForm />
+      </Suspense>
     </div>
   );
 }

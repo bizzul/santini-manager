@@ -8,9 +8,9 @@ import { createClient } from "../../../utils/supabase/client";
 export const get = async (id: number): Promise<ServiceResponse> => {
   try {
     const supabase = createClient();
-    
+
     const { data: result, error } = await supabase
-      .from("errortracking")
+      .from("Errortracking")
       .select("*")
       .eq("id", id)
       .single();

@@ -21,7 +21,7 @@ export const POST = async (req: NextRequest) => {
 
     // Get error tracking data with related information
     const { data: errorData, error: errorError } = await supabase
-      .from("errortracking")
+      .from("Errortracking")
       .select(`
         *,
         suppliers:supplier_id(name),

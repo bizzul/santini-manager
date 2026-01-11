@@ -5,6 +5,7 @@ import { updateSiteWithUsers, deleteSite } from "../../actions";
 import { MultiSelect } from "@/components/ui/multi-select";
 import ModuleManagementModal from "@/components/module-management/ModuleManagementModal";
 import KanbanCategoryManagerModal from "@/components/site-settings/KanbanCategoryManagerModal";
+import InventoryCategoryManagerModal from "@/components/site-settings/InventoryCategoryManagerModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +17,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X, ImageIcon, Loader2, Settings, Trash2, Layers } from "lucide-react";
+import {
+  X,
+  ImageIcon,
+  Loader2,
+  Settings,
+  Trash2,
+  Layers,
+  Package,
+} from "lucide-react";
 import { toast } from "sonner";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
@@ -505,6 +514,30 @@ export default function EditSiteForm({
                 >
                   <Layers className="h-4 w-4 mr-2" />
                   Gestisci Categorie Kanban
+                </Button>
+              }
+            />
+          </div>
+
+          <div className="pt-6 border-t border-white/20">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Gestione Categorie Inventario
+            </h3>
+            <p className="text-sm text-white/70 mb-4">
+              Organizza i prodotti dell&apos;inventario in categorie. Puoi
+              creare, modificare ed eliminare le categorie.
+            </p>
+            <InventoryCategoryManagerModal
+              siteId={site.id}
+              subdomain={site.subdomain}
+              trigger={
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                >
+                  <Package className="h-4 w-4 mr-2" />
+                  Gestisci Categorie Inventario
                 </Button>
               }
             />

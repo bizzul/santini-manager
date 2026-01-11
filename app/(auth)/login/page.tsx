@@ -5,7 +5,6 @@ import { Suspense, useState, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { LogIn } from "lucide-react";
 
@@ -37,124 +36,111 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center">
-      {/* Image Background */}
-      <Image
-        src="/login-background.png"
-        alt="Login Background"
-        fill
-        className="object-cover z-0"
-        priority
-      />
-      {/* Dark overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/40 z-0" />
+    <div className="w-full px-4">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+        {/* Logo */}
+        <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Full Data Manager Logo"
+            width={80}
+            height={80}
+            className="drop-shadow-2xl"
+          />
+          <h1 className="text-3xl sm:text-4xl font-bold text-center text-white">
+            Bentornati
+          </h1>
+        </div>
 
-      <div className="relative z-20 w-full px-4 py-12">
-        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
-          {/* Logo */}
-          <div className="flex flex-col items-center justify-center mb-8 space-y-4">
-            <Image
-              src="/logo-bianco.svg"
-              alt="Full Data Manager Logo"
-              width={80}
-              height={80}
-              className="drop-shadow-2xl"
-            />
-            <h1 className="text-3xl sm:text-4xl font-bold text-center text-white">
-              Bentornati
-            </h1>
-          </div>
-
-          <Suspense
-            fallback={
-              <div className="my-2 h-10 w-full rounded-md border border-white/20 bg-white/10 backdrop-blur-sm" />
-            }
-          >
-            <form className="flex flex-col gap-4">
-              <div className="space-y-2">
-                <label
-                  htmlFor="email"
-                  className="text-sm font-medium text-white"
-                >
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="nome@esempio.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isPending}
-                  className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="password"
-                  className="text-sm font-medium text-white"
-                >
-                  Password
-                </label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isPending}
-                  className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
-                />
-              </div>
-
-              <Link
-                href="/auth/forgot-password"
-                className="text-sm text-white/70 hover:text-white transition-colors text-right"
+        <Suspense
+          fallback={
+            <div className="my-2 h-10 w-full rounded-md border border-white/20 bg-white/10 backdrop-blur-sm" />
+          }
+        >
+          <form className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <label
+                htmlFor="email"
+                className="text-sm font-medium text-white"
               >
-                Password dimenticata?
-              </Link>
+                Email
+              </label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="nome@esempio.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isPending}
+                className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+              />
+            </div>
 
-              {error && (
-                <div className="text-white text-sm text-center bg-red-500/20 border border-red-400/50 rounded-lg p-3 backdrop-blur-sm">
-                  {error}
+            <div className="space-y-2">
+              <label
+                htmlFor="password"
+                className="text-sm font-medium text-white"
+              >
+                Password
+              </label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isPending}
+                className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+              />
+            </div>
+
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-white/70 hover:text-white transition-colors text-right"
+            >
+              Password dimenticata?
+            </Link>
+
+            {error && (
+              <div className="text-white text-sm text-center bg-red-500/20 border border-red-400/50 rounded-lg p-3 backdrop-blur-sm">
+                {error}
+              </div>
+            )}
+
+            <Button
+              size="lg"
+              variant="outline"
+              className="mt-4 w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg py-6 font-semibold"
+              formAction={handleSubmit}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Accesso in corso...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <LogIn className="w-5 h-5" />
+                  Accedi
                 </div>
               )}
+            </Button>
 
-              <Button
-                size="lg"
-                variant="outline"
-                className="mt-4 w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg py-6 font-semibold"
-                formAction={handleSubmit}
-                disabled={isPending}
+            <div className="mt-4 text-center">
+              <Link
+                href="/"
+                className="text-sm text-white/70 hover:text-white transition-colors"
               >
-                {isPending ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Accesso in corso...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <LogIn className="w-5 h-5" />
-                    Accedi
-                  </div>
-                )}
-              </Button>
-
-              <div className="mt-4 text-center">
-                <Link
-                  href="/"
-                  className="text-sm text-white/70 hover:text-white transition-colors"
-                >
-                  ← Torna alla home
-                </Link>
-              </div>
-            </form>
-          </Suspense>
-        </div>
+                ← Torna alla home
+              </Link>
+            </div>
+          </form>
+        </Suspense>
       </div>
     </div>
   );

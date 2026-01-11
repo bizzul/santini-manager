@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createServiceClient } from "@/utils/supabase/server";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/errorTracking/create";
 import { logger } from "@/lib/logger";
@@ -10,11 +11,12 @@ export async function editItem(
   id: number,
   files: any,
 ) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
+  const authClient = await createClient();
   const result = validation.safeParse(formData);
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
   let userId = null;
   if (user) {
     userId = user.id;
@@ -22,7 +24,7 @@ export async function editItem(
 
   if (result.success) {
     try {
-      const updateError = await supabase.from("errortracking").update({
+      const updateError = await supabase.from("Errortracking").update({
         where: {
           id,
         },

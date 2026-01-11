@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 
@@ -7,7 +7,7 @@ const log = logger.scope("Suppliers");
 
 export async function GET(req: NextRequest) {
     try {
-        const supabase = await createClient();
+        const supabase = createServiceClient();
         const { siteId } = await getSiteContext(req);
 
         // In multi-tenant, siteId is required

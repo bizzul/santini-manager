@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/supplier/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
@@ -41,7 +41,7 @@ export async function createItem(props: any, domain?: string) {
 
   if (result.success) {
     try {
-      const supabase = await createClient();
+      const supabase = createServiceClient();
       const insertData: any = {
         description: result.data.description,
         name: result.data.name,

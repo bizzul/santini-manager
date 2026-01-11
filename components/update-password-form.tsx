@@ -3,18 +3,13 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { logger } from "@/lib/logger";
+import { KeyRound, CheckCircle, ArrowLeft } from "lucide-react";
 
 export function UpdatePasswordForm({
   className,
@@ -32,12 +27,12 @@ export function UpdatePasswordForm({
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Le password non corrispondono");
       return;
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError("La password deve essere di almeno 6 caratteri");
       return;
     }
 
@@ -49,18 +44,12 @@ export function UpdatePasswordForm({
 
       if (token) {
         // This is a password reset flow - we need to use the recovery token
-        // For password recovery in Supabase, we need to first exchange the token
-        // for a session, then update the password
-
         console.log("Attempting password recovery with token:", token);
         console.log("Token type:", typeof token);
         console.log("Token length:", token.length);
 
-        // For Supabase password recovery, we need to use the token to establish a session
-        // The correct approach is to use the recovery token with the auth API
         try {
           // First, we need to exchange the recovery token for a session
-          // This is done by calling the recovery endpoint
           const { data, error: recoveryError } = await supabase.auth.verifyOtp({
             token_hash: token,
             type: "recovery",
@@ -71,7 +60,7 @@ export function UpdatePasswordForm({
             logger.error("Error details:", recoveryError.message);
             logger.error("Error status:", recoveryError.status);
             throw new Error(
-              "Recovery link is invalid or has expired. Please request a new one."
+              "Il link di recupero non è valido o è scaduto. Richiedi un nuovo link."
             );
           }
 
@@ -90,7 +79,7 @@ export function UpdatePasswordForm({
         } catch (updateError) {
           logger.error("Password update error:", updateError);
           throw new Error(
-            "Failed to update password. The recovery link may have expired."
+            "Impossibile aggiornare la password. Il link potrebbe essere scaduto."
           );
         }
       } else {
@@ -100,7 +89,7 @@ export function UpdatePasswordForm({
         router.push("/");
       }
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : "Si è verificato un errore");
     } finally {
       setIsLoading(false);
     }
@@ -108,55 +97,110 @@ export function UpdatePasswordForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-          <CardDescription>
-            Please enter your new password below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordReset}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="password">New password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="New password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+        {/* Logo */}
+        <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Logo"
+            width={80}
+            height={80}
+            className="drop-shadow-2xl"
+          />
+          <h1 className="text-3xl sm:text-4xl font-bold text-center text-white">
+            {success ? "Password Aggiornata" : "Nuova Password"}
+          </h1>
+        </div>
+
+        {success ? (
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-400/50 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-green-400" />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="confirmPassword">Confirm password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm new password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+            </div>
+            <p className="text-white/80 text-sm">
+              La tua password è stata aggiornata con successo!
+            </p>
+            <p className="text-white/60 text-xs">
+              Verrai reindirizzato al login tra pochi secondi...
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handlePasswordReset} className="flex flex-col gap-4">
+            <p className="text-white/80 text-sm text-center mb-4">
+              Inserisci la tua nuova password.
+            </p>
+
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium text-white">
+                Nuova Password
+              </label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="text-sm font-medium text-white">
+                Conferma Password
+              </label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={isLoading}
+                className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+              />
+            </div>
+
+            {error && (
+              <div className="text-white text-sm text-center bg-red-500/20 border border-red-400/50 rounded-lg p-3 backdrop-blur-sm">
+                {error}
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              {success && (
-                <p className="text-sm text-green-600">
-                  Password updated successfully! Redirecting to login...
-                </p>
+            )}
+
+            <Button
+              type="submit"
+              size="lg"
+              variant="outline"
+              className="mt-4 w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg py-6 font-semibold"
+              disabled={isLoading || success}
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Aggiornamento in corso...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <KeyRound className="w-5 h-5" />
+                  Aggiorna Password
+                </div>
               )}
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isLoading || success}
+            </Button>
+
+            <div className="mt-4 text-center">
+              <Link
+                href="/login"
+                className="text-sm text-white/70 hover:text-white transition-colors"
               >
-                {isLoading ? "Updating..." : "Update Password"}
-              </Button>
+                ← Torna al Login
+              </Link>
             </div>
           </form>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

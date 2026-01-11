@@ -4,19 +4,14 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
 import { updateUserPassword } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { UserCheck, Loader2, XCircle, ArrowLeft } from "lucide-react";
 
 export function CompleteSignupForm({
   className,
@@ -284,19 +279,28 @@ export function CompleteSignupForm({
   if (isValidating) {
     return (
       <div className={cn("flex flex-col gap-6", className)} {...props}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Validazione Invito</CardTitle>
-            <CardDescription>
+        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+          <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+            <Image
+              src="/logo-bianco.svg"
+              alt="Logo"
+              width={80}
+              height={80}
+              className="drop-shadow-2xl"
+            />
+            <h1 className="text-2xl sm:text-3xl font-bold text-center text-white">
+              Validazione Invito
+            </h1>
+          </div>
+          <div className="text-center space-y-4">
+            <p className="text-white/70 text-sm">
               Attendi mentre validiamo il tuo invito...
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+            </p>
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -304,152 +308,195 @@ export function CompleteSignupForm({
   if (error && !userEmail && !userAuthId) {
     return (
       <div className={cn("flex flex-col gap-6", className)} {...props}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl text-red-600">
+        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+          <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+            <Image
+              src="/logo-bianco.svg"
+              alt="Logo"
+              width={80}
+              height={80}
+              className="drop-shadow-2xl"
+            />
+            <h1 className="text-2xl sm:text-3xl font-bold text-center text-white">
               Errore Invito
-            </CardTitle>
-            <CardDescription>{error}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Se ritieni che si tratti di un errore, contatta l'amministratore
-                di sistema.
-              </p>
+            </h1>
+          </div>
+
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="w-16 h-16 rounded-full bg-red-500/20 border border-red-400/50 flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-red-400" />
+              </div>
+            </div>
+            <p className="text-white/80 text-sm">{error}</p>
+            <p className="text-white/60 text-xs">
+              Se ritieni che si tratti di un errore, contatta l&apos;amministratore di sistema.
+            </p>
+            <Link href="/login">
               <Button
                 variant="outline"
-                onClick={() => (window.location.href = "/login")}
+                className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
               >
+                <ArrowLeft className="w-4 h-4 mr-2" />
                 Vai al Login
               </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Completa il tuo Profilo</CardTitle>
-          <CardDescription>
-            {organizationNames.length > 0 ? (
-              <>
-                Benvenuto in{" "}
-                <span className="font-medium text-primary">
-                  {organizationNames.join(", ")}
-                </span>
-                {userRole && (
-                  <>
-                    <br />
-                    <span className="text-sm text-muted-foreground">
-                      Ruolo assegnato:{" "}
-                      <span className="font-medium">
-                        {userRole === "user"
-                          ? "Utente"
-                          : userRole === "admin"
-                          ? "Amministratore"
-                          : userRole === "superadmin"
-                          ? "Super Amministratore"
-                          : userRole}
-                      </span>
-                    </span>
-                  </>
-                )}
-                <br />
-                Completa il tuo profilo per iniziare.
-              </>
-            ) : (
-              "Benvenuto! Completa il tuo profilo per iniziare."
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCompleteSignup}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={userEmail || ""}
-                  disabled
-                  className="bg-gray-50 dark:bg-gray-800"
-                />
-                <p className="text-xs text-gray-500">
-                  Questa è l'email con cui sei stato invitato
-                </p>
-              </div>
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+        {/* Logo */}
+        <div className="flex flex-col items-center justify-center mb-8 space-y-4">
+          <Image
+            src="/logo-bianco.svg"
+            alt="Logo"
+            width={80}
+            height={80}
+            className="drop-shadow-2xl"
+          />
+          <h1 className="text-2xl sm:text-3xl font-bold text-center text-white">
+            Completa il Profilo
+          </h1>
+          {organizationNames.length > 0 && (
+            <p className="text-white/70 text-sm text-center">
+              Benvenuto in{" "}
+              <span className="text-white font-medium">
+                {organizationNames.join(", ")}
+              </span>
+            </p>
+          )}
+          {userRole && (
+            <p className="text-white/60 text-xs">
+              Ruolo:{" "}
+              <span className="font-medium">
+                {userRole === "user"
+                  ? "Utente"
+                  : userRole === "admin"
+                  ? "Amministratore"
+                  : userRole === "superadmin"
+                  ? "Super Amministratore"
+                  : userRole}
+              </span>
+            </p>
+          )}
+        </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="firstName">Nome *</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  placeholder="Inserisci il tuo nome"
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </div>
+        <form onSubmit={handleCompleteSignup} className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium text-white">
+              Email
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={userEmail || ""}
+              disabled
+              className="bg-white/5 border-white/20 text-white/70 cursor-not-allowed"
+            />
+            <p className="text-white/50 text-xs">
+              Questa è l&apos;email con cui sei stato invitato
+            </p>
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="lastName">Cognome *</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Inserisci il tuo cognome"
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </div>
+          <div className="space-y-2">
+            <label htmlFor="firstName" className="text-sm font-medium text-white">
+              Nome *
+            </label>
+            <Input
+              id="firstName"
+              type="text"
+              placeholder="Inserisci il tuo nome"
+              required
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              disabled={isLoading}
+              className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+            />
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Inserisci la tua password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <p className="text-xs text-gray-500">
-                  La password deve essere di almeno 6 caratteri
-                </p>
-              </div>
+          <div className="space-y-2">
+            <label htmlFor="lastName" className="text-sm font-medium text-white">
+              Cognome *
+            </label>
+            <Input
+              id="lastName"
+              type="text"
+              placeholder="Inserisci il tuo cognome"
+              required
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              disabled={isLoading}
+              className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+            />
+          </div>
 
-              <div className="grid gap-2">
-                <Label htmlFor="repeatPassword">Conferma Password *</Label>
-                <Input
-                  id="repeatPassword"
-                  type="password"
-                  placeholder="Conferma la tua password"
-                  required
-                  value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
-                />
-              </div>
+          <div className="space-y-2">
+            <label htmlFor="password" className="text-sm font-medium text-white">
+              Password *
+            </label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+            />
+            <p className="text-white/50 text-xs">
+              La password deve essere di almeno 6 caratteri
+            </p>
+          </div>
 
-              {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                  <p className="text-sm text-red-600 dark:text-red-400">
-                    {error}
-                  </p>
-                </div>
-              )}
+          <div className="space-y-2">
+            <label htmlFor="repeatPassword" className="text-sm font-medium text-white">
+              Conferma Password *
+            </label>
+            <Input
+              id="repeatPassword"
+              type="password"
+              placeholder="••••••••"
+              required
+              value={repeatPassword}
+              onChange={(e) => setRepeatPassword(e.target.value)}
+              disabled={isLoading}
+              className="bg-white/10 border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 backdrop-blur-sm"
+            />
+          </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Completamento in corso..." : "Completa Profilo"}
-              </Button>
+          {error && (
+            <div className="text-white text-sm text-center bg-red-500/20 border border-red-400/50 rounded-lg p-3 backdrop-blur-sm">
+              {error}
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          )}
+
+          <Button
+            type="submit"
+            size="lg"
+            variant="outline"
+            className="mt-4 w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 text-lg py-6 font-semibold"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Completamento in corso...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <UserCheck className="w-5 h-5" />
+                Completa Profilo
+              </div>
+            )}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

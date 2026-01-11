@@ -1,16 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createServiceClient } from "@/utils/supabase/server";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/errorTracking/create";
 import { logger } from "@/lib/logger";
 
 export async function createItem(props: any) {
   const result = validation.safeParse(props.data);
-  const supabase = await createClient();
+  const supabase = createServiceClient();
+  const authClient = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
   let userId = null;
   if (user) {
     userId = user.id;
@@ -19,7 +21,7 @@ export async function createItem(props: any) {
   try {
     if (result.success) {
       const { data: createError, error: createErrorResponse } = await supabase
-        .from("errortracking")
+        .from("Errortracking")
         .insert({
           position: result.data.position,
           supplier_id: Number(result.data.supplier!),
