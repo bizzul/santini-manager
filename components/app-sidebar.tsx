@@ -377,24 +377,27 @@ const getMenuItems = (
 
   // Enhanced module filtering with better performance
   const siteSpecificItems = allSiteItems.filter((item) => {
+    // If item has sub-items, always filter them based on their moduleNames
+    if (item.items) {
+      const enabledSubItems = item.items.filter(
+        (subItem) =>
+          !subItem.moduleName || enabledModules.includes(subItem.moduleName)
+      );
+      if (enabledSubItems.length > 0) {
+        item.items = enabledSubItems;
+        // If parent has no moduleName, show it if it has enabled sub-items
+        if (!item.moduleName) return true;
+        // If parent has moduleName, also check if it's enabled
+        return enabledModules.includes(item.moduleName);
+      }
+      return false;
+    }
+
+    // Items without sub-items and without moduleName are always shown
     if (!item.moduleName) return true;
 
-    if (enabledModules.includes(item.moduleName)) {
-      // If item has sub-items, filter them too
-      if (item.items) {
-        const enabledSubItems = item.items.filter(
-          (subItem) =>
-            subItem.moduleName && enabledModules.includes(subItem.moduleName)
-        );
-        if (enabledSubItems.length > 0) {
-          item.items = enabledSubItems;
-          return true;
-        }
-        return false;
-      }
-      return true;
-    }
-    return false;
+    // Items with moduleName must be in enabledModules
+    return enabledModules.includes(item.moduleName);
   });
 
   // Add admin-only items if not on site domain

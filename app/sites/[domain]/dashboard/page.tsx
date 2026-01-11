@@ -68,12 +68,12 @@ export default async function SiteDashboardPage({
         <div className="space-y-6">
           {/* Top Cards with Production Orders and Offers */}
           <div className="grid gap-4 md:grid-cols-2">
-            <ProductionOrdersCard data={dashboardData.orders} />
             <OffersChartCard data={dashboardData.offers} />
+            <ProductionOrdersCard data={dashboardData.orders} />
           </div>
 
           {/* Offerte Card - Expanded */}
-          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
             <OffersCard data={dashboardData.offers} />
 
             {/* Saldo del conto - Valore totale ordini */}
