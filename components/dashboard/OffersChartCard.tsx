@@ -229,10 +229,7 @@ export default function OffersChartCard({ data }: OffersChartCardProps) {
             >
               {dept.name}
             </p>
-            <p
-              className="text-xs font-bold"
-              style={{ color: dept.color }}
-            >
+            <p className="text-xs font-bold" style={{ color: dept.color }}>
               CHF {(dept.value / 1000).toFixed(0)}k
             </p>
           </div>
