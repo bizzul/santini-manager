@@ -73,7 +73,8 @@ function ButtonExportCSV() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/products", {
+      // Use the inventory items API which filters by is_active = true
+      const response = await fetch("/api/inventory/items", {
         method: "GET",
         headers: {
           "x-site-domain": domain,
@@ -84,9 +85,68 @@ function ButtonExportCSV() {
         throw new Error("Errore nel recupero dei dati");
       }
 
-      const products = await response.json();
+      const items = await response.json();
 
-      if (!products || products.length === 0) {
+      if (!items || items.length === 0) {
+        toast({
+          variant: "destructive",
+          description: "Nessun prodotto da esportare",
+        });
+        return;
+      }
+
+      // Flatten items with variants into rows
+      const products: any[] = [];
+      for (const item of items) {
+        const variants = item.variants || [];
+        if (variants.length === 0) {
+          // Item without variants - export with basic info
+          products.push({
+            variant_id: null,
+            name: item.name,
+            description: item.description,
+            category: item.category?.name || null,
+            category_code: item.category?.code || null,
+            supplier: item.supplier?.name || null,
+          });
+        } else {
+          // Export each variant as a separate row
+          for (const variant of variants) {
+            const attrs = variant.attributes || {};
+            products.push({
+              variant_id: variant.id,
+              name: item.name,
+              description: item.description,
+              category: attrs.category || item.category?.name || null,
+              category_code: attrs.category_code || item.category?.code || null,
+              subcategory: attrs.subcategory || null,
+              subcategory_code: attrs.subcategory_code || null,
+              subcategory2: attrs.subcategory2 || null,
+              subcategory2_code: attrs.subcategory2_code || null,
+              color: attrs.color || null,
+              color_code: attrs.color_code || null,
+              internal_code: variant.internal_code,
+              warehouse_number: variant.warehouse_number,
+              supplier: item.supplier?.name || null,
+              supplier_code: variant.supplier_code,
+              producer: variant.producer,
+              producer_code: variant.producer_code,
+              url_tds: variant.url_tds,
+              image_url: variant.image_url,
+              width: attrs.width || null,
+              height: attrs.height || null,
+              thickness: attrs.thickness || null,
+              diameter: attrs.diameter || null,
+              unit: variant.unit?.code || attrs.legacy_unit || null,
+              quantity: variant.stock_quantity || 0,
+              unit_price: variant.purchase_unit_price,
+              sell_price: variant.sell_unit_price,
+            });
+          }
+        }
+      }
+
+      if (products.length === 0) {
         toast({
           variant: "destructive",
           description: "Nessun prodotto da esportare",

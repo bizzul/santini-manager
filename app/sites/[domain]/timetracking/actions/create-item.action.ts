@@ -62,6 +62,8 @@ export async function createItem(props: Timetracking, domain?: string) {
         employee_id: Number(result.data.userId),
         site_id: siteId,
         activity_type: activityType,
+        lunch_offsite: result.data.lunchOffsite || false,
+        lunch_location: result.data.lunchLocation || null,
       };
 
       // Add task_id only for project activities

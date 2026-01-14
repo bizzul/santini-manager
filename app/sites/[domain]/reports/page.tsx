@@ -23,6 +23,9 @@ export default async function Page({
   // Fetch reports data
   const data = await fetchReportsData(siteId);
 
+  // Check if user is admin (can see all reports)
+  const isAdmin = userContext.role !== "user";
+
   return (
     <div className="p-4 h-screen">
       <h1 className="text-2xl font-bold pb-12">
@@ -33,6 +36,8 @@ export default async function Page({
         qc={data.qualityControl}
         imb={data.packingControl}
         task={data.tasks}
+        domain={domain}
+        isAdmin={isAdmin}
       />
     </div>
   );

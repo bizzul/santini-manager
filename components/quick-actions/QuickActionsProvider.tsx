@@ -44,6 +44,7 @@ interface TimetrackingFormData {
   tasks: any[];
   users: any[];
   roles: any[];
+  internalActivities: any[];
 }
 
 interface ProductFormData {
@@ -138,10 +139,16 @@ export function QuickActionsProvider({
         tasks: data.tasks || [],
         users: data.users || [],
         roles: data.roles || [],
+        internalActivities: data.internalActivities || [],
       });
     } catch (error) {
       console.error("Error fetching timetracking data:", error);
-      setTimetrackingData({ tasks: [], users: [], roles: [] });
+      setTimetrackingData({
+        tasks: [],
+        users: [],
+        roles: [],
+        internalActivities: [],
+      });
     } finally {
       setIsLoading(false);
     }
@@ -253,6 +260,7 @@ export function QuickActionsProvider({
             data={timetrackingData.tasks}
             users={timetrackingData.users}
             roles={timetrackingData.roles}
+            internalActivities={timetrackingData.internalActivities}
           />
         );
 

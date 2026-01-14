@@ -27,12 +27,26 @@ export default async function Page({
   // Fetch timetracking data
   const data = await fetchTimetrackingData(siteId);
 
+  // Filter timetracking entries based on user role
+  // Regular users can only see their own entries
+  const isRegularUser = userContext.role === "user";
+  const filteredTimetrackings = isRegularUser
+    ? data.timetrackings.filter(
+        (entry: any) => entry.employee_id === userContext.user.id
+      )
+    : data.timetrackings;
+
   return (
     <div className="container">
-      <DialogCreate data={data.tasks} users={data.users} roles={data.roles} />
-      {data.timetrackings.length > 0 ? (
+      <DialogCreate
+        data={data.tasks}
+        users={data.users}
+        roles={data.roles}
+        internalActivities={data.internalActivities}
+      />
+      {filteredTimetrackings.length > 0 ? (
         <DataWrapper
-          data={data.timetrackings}
+          data={filteredTimetrackings}
           users={data.users}
           roles={data.roles}
           tasks={data.tasks}

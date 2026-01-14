@@ -5,22 +5,31 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
-import { Roles, Task, Timetracking, User } from "@/types/supabase";
+import { Roles, Task, User } from "@/types/supabase";
+
+export interface InternalActivity {
+  id: string;
+  code: string;
+  label: string;
+  site_id: string | null;
+  sort_order: number;
+}
 
 function DialogCreate({
   data,
   users,
   roles,
+  internalActivities,
 }: {
   data: Task[];
   users: User[];
   roles: Roles[];
+  internalActivities: InternalActivity[];
 }) {
   const [isOpen, setOpen] = useState(false);
   return (
@@ -41,6 +50,7 @@ function DialogCreate({
           data={data}
           users={users}
           roles={roles}
+          internalActivities={internalActivities}
           handleClose={() => setOpen(false)}
         />
       </DialogContent>

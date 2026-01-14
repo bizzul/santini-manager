@@ -40,26 +40,14 @@ import {
   X,
 } from "lucide-react";
 
-// Internal activity types and labels
-const INTERNAL_ACTIVITIES = [
-  "pulizie",
-  "manutenzione",
-  "logistica",
-  "inventario",
-  "formazione",
-  "riunione",
-  "altro",
-] as const;
-
-const INTERNAL_ACTIVITY_LABELS: Record<string, string> = {
-  pulizie: "Pulizie",
-  manutenzione: "Manutenzione",
-  logistica: "Logistica",
-  inventario: "Inventario",
-  formazione: "Formazione",
-  riunione: "Riunione",
-  altro: "Altro",
-};
+// Internal activity type from database
+export interface InternalActivity {
+  id: string;
+  code: string;
+  label: string;
+  site_id: string | null;
+  sort_order: number;
+}
 
 // Define types based on Supabase schema
 interface Roles {
@@ -122,6 +110,8 @@ interface TimeRow {
   userId: string;
   activityType: "project" | "internal";
   internalActivity?: string;
+  lunchOffsite: boolean;
+  lunchLocation: string;
 }
 
 const QUICK_TIMES = [
@@ -138,12 +128,19 @@ const WORK_HOURS_TARGET = 8.5; // 8h 30m
 const CreatePage = ({
   data,
   session,
+  internalActivities = [],
 }: {
   data: { roles: Roles[]; tasks: Task[]; todayEntries?: TodayEntry[] };
   session: Session;
+  internalActivities?: InternalActivity[];
 }) => {
   const rolesOptions = data.roles;
   const todayEntries = data.todayEntries || [];
+
+  // Create a lookup map for activity labels
+  const activityLabels = new Map(
+    internalActivities.map((a) => [a.code, a.label])
+  );
   const { toast } = useToast();
   const [isSaved, setIsSaved] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -239,6 +236,8 @@ const CreatePage = ({
       userId: session.user.id,
       activityType: "project",
       internalActivity: undefined,
+      lunchOffsite: false,
+      lunchLocation: "",
     }),
     [session.user.id]
   );
@@ -356,7 +355,7 @@ const CreatePage = ({
     updatedRows[index] = {
       ...updatedRows[index],
       internalActivity: value,
-      taskLabel: INTERNAL_ACTIVITY_LABELS[value] || value,
+      taskLabel: activityLabels.get(value) || value,
     };
     setRows(updatedRows);
   };
@@ -702,9 +701,9 @@ const CreatePage = ({
                           </Badge>
                           <span className="text-muted-foreground truncate">
                             {entry.activity_type === "internal"
-                              ? INTERNAL_ACTIVITY_LABELS[
+                              ? activityLabels.get(
                                   entry.internal_activity || ""
-                                ] || entry.internal_activity
+                                ) || entry.internal_activity
                               : entry.task?.client?.businessName
                               ? `${entry.task.unique_code} - ${entry.task.client.businessName}`
                               : entry.task?.unique_code || "Progetto"}
@@ -883,9 +882,12 @@ const CreatePage = ({
                           <SelectValue placeholder="Seleziona attività..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {INTERNAL_ACTIVITIES.map((activity) => (
-                            <SelectItem key={activity} value={activity}>
-                              {INTERNAL_ACTIVITY_LABELS[activity]}
+                          {internalActivities.map((activity) => (
+                            <SelectItem
+                              key={activity.code}
+                              value={activity.code}
+                            >
+                              {activity.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1019,6 +1021,49 @@ const CreatePage = ({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                {/* Lunch off-site */}
+                <div className="mt-4 p-3 rounded-lg border bg-muted/30">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id={`lunch-${index}`}
+                      checked={row.lunchOffsite}
+                      onCheckedChange={(checked) => {
+                        const updatedRows = [...rows];
+                        updatedRows[index] = {
+                          ...updatedRows[index],
+                          lunchOffsite: checked as boolean,
+                          lunchLocation: checked
+                            ? updatedRows[index].lunchLocation
+                            : "",
+                        };
+                        setRows(updatedRows);
+                      }}
+                    />
+                    <Label
+                      htmlFor={`lunch-${index}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      Pranzo fuori sede
+                    </Label>
+                  </div>
+                  {row.lunchOffsite && (
+                    <div className="mt-3">
+                      <Input
+                        placeholder="Inserisci il luogo del pranzo..."
+                        value={row.lunchLocation}
+                        onChange={(e) => {
+                          const updatedRows = [...rows];
+                          updatedRows[index] = {
+                            ...updatedRows[index],
+                            lunchLocation: e.target.value,
+                          };
+                          setRows(updatedRows);
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

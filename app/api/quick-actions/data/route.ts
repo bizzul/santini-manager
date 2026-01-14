@@ -127,10 +127,36 @@ export async function GET(req: NextRequest) {
                     index === self.findIndex((r) => r.id === role.id),
             );
 
+            // Get internal activities (site-specific and global)
+            const [siteActivitiesResult, globalActivitiesResult] = await Promise
+                .all([
+                    supabase
+                        .from("internal_activities")
+                        .select("id, code, label, site_id, sort_order")
+                        .eq("site_id", siteId)
+                        .eq("is_active", true)
+                        .order("sort_order", { ascending: true }),
+                    supabase
+                        .from("internal_activities")
+                        .select("id, code, label, site_id, sort_order")
+                        .is("site_id", null)
+                        .eq("is_active", true)
+                        .order("sort_order", { ascending: true }),
+                ]);
+
+            const siteActivities = siteActivitiesResult.data || [];
+            const globalActivities = globalActivitiesResult.data || [];
+            const allActivities = [...siteActivities, ...globalActivities]
+                .filter(
+                    (activity, index, self) =>
+                        index === self.findIndex((a) => a.id === activity.id),
+                );
+
             return NextResponse.json({
                 tasks: tasks || [],
                 users,
                 roles: allRoles,
+                internalActivities: allActivities,
             });
         }
 

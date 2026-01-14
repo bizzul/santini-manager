@@ -22,6 +22,7 @@ export interface Task {
     unique_code?: string;
     status?: string;
     name?: string;
+    luogo?: string;
     description?: string;
     kanban_id?: number;
     column_id?: number;
@@ -48,6 +49,8 @@ export interface Task {
     vernice?: boolean;
     altro?: boolean;
     stoccato?: boolean;
+    // Campo per numero pezzi
+    numero_pezzi?: number | null;
     // Nuovi campi per sistema offerte
     parent_task_id?: number;
     parentTaskId?: number; // Alternative property name
@@ -330,8 +333,15 @@ export interface Action {
 }
 
 // Activity types for time tracking
-export type TimetrackingActivityType = 'project' | 'internal';
-export type InternalActivityType = 'pulizie' | 'manutenzione' | 'logistica' | 'inventario' | 'formazione' | 'riunione' | 'altro';
+export type TimetrackingActivityType = "project" | "internal";
+export type InternalActivityType =
+    | "pulizie"
+    | "manutenzione"
+    | "logistica"
+    | "inventario"
+    | "formazione"
+    | "riunione"
+    | "altro";
 
 // Time tracking related types
 export interface Timetracking {
@@ -430,7 +440,7 @@ export interface InventoryUnit {
     id: string;
     code: string;
     name: string;
-    unit_type: 'unit' | 'weight' | 'volume' | 'length' | 'area' | 'other';
+    unit_type: "unit" | "weight" | "volume" | "length" | "area" | "other";
     base_unit_id?: string;
     multiplier?: number;
     created_at?: string;
@@ -547,7 +557,13 @@ export interface InventoryItemVariant {
 }
 
 // Stock movement types
-export type StockMovementType = 'opening' | 'in' | 'out' | 'adjust' | 'transfer_in' | 'transfer_out';
+export type StockMovementType =
+    | "opening"
+    | "in"
+    | "out"
+    | "adjust"
+    | "transfer_in"
+    | "transfer_out";
 
 // Stock movement
 export interface InventoryStockMovement {

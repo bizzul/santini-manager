@@ -32,11 +32,15 @@ function GridReports({
   imb,
   qc,
   task,
+  domain,
+  isAdmin = true,
 }: {
   suppliers: Supplier[];
   imb: PackingControl[];
   qc: QualityControl[];
   task: Task[];
+  domain: string;
+  isAdmin?: boolean;
 }) {
   const currentYear = new Date().getFullYear();
   const [loadingInventory, setLoadingInventory] = useState(false);
@@ -150,6 +154,7 @@ function GridReports({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-site-domain": domain,
         },
         body: JSON.stringify({
           data: preparedValue(value),
@@ -345,7 +350,11 @@ function GridReports({
       <Card>
         <CardHeader>
           <CardTitle>Ore</CardTitle>
-          <CardDescription>Situazione ore periodo selezionato</CardDescription>
+          <CardDescription>
+            {isAdmin
+              ? "Report ore di tutti i collaboratori"
+              : "Report delle tue ore lavorate"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <DateRangePicker

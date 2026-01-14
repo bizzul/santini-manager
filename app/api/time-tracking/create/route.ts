@@ -142,6 +142,8 @@ export async function POST(req: NextRequest) {
         use_cnc: useCNC,
         employee_id: employeeId,
         activity_type: activityType,
+        lunch_offsite: data.lunchOffsite || false,
+        lunch_location: data.lunchLocation || null,
       };
 
       // Add task_id only for project activities

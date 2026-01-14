@@ -24,42 +24,32 @@ import {
 import { SearchSelect } from "@/components/ui/search-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { createItem } from "./actions/create-item.action";
-import {
-  validation,
-  INTERNAL_ACTIVITIES,
-} from "@/validation/timeTracking/createManual";
+import { validation } from "@/validation/timeTracking/createManual";
 import { useToast } from "@/components/ui/use-toast";
 import { Roles, Task, User } from "@/types/supabase";
 import { useParams } from "next/navigation";
 import { logger } from "@/lib/logger";
 import { Briefcase, Wrench } from "lucide-react";
+import { InternalActivity } from "./dialogCreate";
 
 export interface Typology {
   name: string;
 }
-
-// Labels for internal activities
-const INTERNAL_ACTIVITY_LABELS: Record<string, string> = {
-  pulizie: "Pulizie",
-  manutenzione: "Manutenzione",
-  logistica: "Logistica",
-  inventario: "Inventario",
-  formazione: "Formazione",
-  riunione: "Riunione",
-  altro: "Altro",
-};
 
 const CreateProductForm = ({
   handleClose,
   data,
   users,
   roles,
+  internalActivities,
 }: {
   handleClose: any;
   data: Task[];
   users: User[];
   roles: Roles[];
+  internalActivities: InternalActivity[];
 }) => {
   const { toast } = useToast();
   const [userAssignedRoles, setUserAssignedRoles] = useState<Roles[]>([]);
@@ -78,11 +68,14 @@ const CreateProductForm = ({
       userId: "",
       activityType: "project",
       internalActivity: undefined,
+      lunchOffsite: false,
+      lunchLocation: "",
     },
   });
 
   // Watch activity type to show/hide fields
   const activityType = form.watch("activityType");
+  const lunchOffsite = form.watch("lunchOffsite");
 
   const typology = [
     {
@@ -397,9 +390,9 @@ const CreateProductForm = ({
                       <SelectValue placeholder="Seleziona attività..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {INTERNAL_ACTIVITIES.map((activity) => (
-                        <SelectItem key={activity} value={activity}>
-                          {INTERNAL_ACTIVITY_LABELS[activity]}
+                      {internalActivities.map((activity) => (
+                        <SelectItem key={activity.code} value={activity.code}>
+                          {activity.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -424,7 +417,9 @@ const CreateProductForm = ({
                     min="0"
                     max="24"
                     value={field.value ?? 0}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value) || 0)
+                    }
                   />
                 </FormControl>
                 <FormMessage />
@@ -460,6 +455,50 @@ const CreateProductForm = ({
             )}
           />
         </div>
+
+        {/* Lunch off-site section */}
+        <div className="space-y-3 rounded-lg border p-4">
+          <FormField
+            control={form.control}
+            name="lunchOffsite"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel className="cursor-pointer">
+                    Pranzo fuori sede
+                  </FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
+          {lunchOffsite && (
+            <FormField
+              disabled={isSubmitting}
+              control={form.control}
+              name="lunchLocation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Luogo</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Inserisci il luogo del pranzo..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
+
         <FormField
           disabled={isSubmitting}
           control={form.control}

@@ -816,8 +816,11 @@ export const fetchTimetracking = cache(async (siteId: string) => {
         return [];
     }
 
-    // Filter by site_id through task relation
-    return (data || []).filter((t) => t.task?.site_id === siteId);
+    // Filter by site_id - check both direct site_id (for internal activities)
+    // and task.site_id (for project-related entries)
+    return (data || []).filter(
+        (t) => t.site_id === siteId || t.task?.site_id === siteId,
+    );
 });
 
 /**
@@ -1053,17 +1056,40 @@ export const fetchInventoryData = cache(async (siteId: string) => {
 });
 
 /**
+ * Fetch internal activities for timetracking
+ */
+export const fetchInternalActivities = cache(async (siteId: string) => {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from("internal_activities")
+        .select("id, code, label, site_id, sort_order")
+        .eq("is_active", true)
+        .or(`site_id.is.null,site_id.eq.${siteId}`)
+        .order("sort_order", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching internal activities:", error);
+        return [];
+    }
+
+    return data || [];
+});
+
+/**
  * Fetch data for timetracking page
  */
 export const fetchTimetrackingData = cache(async (siteId: string) => {
-    const [timetrackings, tasks, users, roles] = await Promise.all([
-        fetchTimetracking(siteId),
-        fetchTasks(siteId),
-        fetchUsers(siteId),
-        fetchRoles(siteId),
-    ]);
+    const [timetrackings, tasks, users, roles, internalActivities] =
+        await Promise.all([
+            fetchTimetracking(siteId),
+            fetchTasks(siteId),
+            fetchUsers(siteId),
+            fetchRoles(siteId),
+            fetchInternalActivities(siteId),
+        ]);
 
-    return { timetrackings, tasks, users, roles };
+    return { timetrackings, tasks, users, roles, internalActivities };
 });
 
 /**

@@ -10,6 +10,7 @@ import {
   SortingState,
   ColumnFiltersState,
   getFilteredRowModel,
+  RowSelectionState,
 } from "@tanstack/react-table";
 
 import {
@@ -20,10 +21,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
+import { Trash2, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
+import { removeItem } from "./actions/delete-item.action";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -39,6 +54,14 @@ export function DataTable<TData, TValue>({
   // Filter state
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  // Row selection state
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { toast } = useToast();
+  const router = useRouter();
 
   const table = useReactTable({
     data,
@@ -50,22 +73,72 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
+    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
       globalFilter,
+      rowSelection,
     },
     enableGlobalFilter: true,
+    enableRowSelection: true,
   });
+
+  const selectedRows = table.getFilteredSelectedRowModel().rows;
+  const selectedCount = selectedRows.length;
+
+  const handleBulkDelete = async () => {
+    setIsDeleting(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const row of selectedRows) {
+      const item = row.original as any;
+      const result = await removeItem(item.item_id || item.id);
+      if (result.error) {
+        errorCount++;
+      } else {
+        successCount++;
+      }
+    }
+
+    setIsDeleting(false);
+    setDeleteDialogOpen(false);
+    setRowSelection({});
+
+    if (successCount > 0) {
+      toast({
+        description: `${successCount} elemento/i eliminato/i con successo!`,
+      });
+      router.refresh();
+    }
+
+    if (errorCount > 0) {
+      toast({
+        variant: "destructive",
+        description: `${errorCount} elemento/i non eliminato/i a causa di errori.`,
+      });
+    }
+  };
 
   return (
     <>
-      <div className="flex items-center py-4">
+      <div className="flex items-center justify-between py-4">
         <DebouncedInput
           value={globalFilter ?? ""}
           onChange={(value) => setGlobalFilter(String(value))}
           className="max-w-sm"
         />
+        {selectedCount > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Elimina ({selectedCount})
+          </Button>
+        )}
         {/* <Input
           
           value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
@@ -129,6 +202,36 @@ export function DataTable<TData, TValue>({
         {/* Pagination controls */}
         <DataTablePagination table={table} />
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Stai per eliminare {selectedCount} elemento/i. Questa azione non
+              può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Eliminazione...
+                </>
+              ) : (
+                "Elimina"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

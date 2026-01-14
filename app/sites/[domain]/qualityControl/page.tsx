@@ -31,6 +31,7 @@ export default async function Page({
           imb={[]}
           qc={data.qualityControl}
           task={data.tasks}
+          domain={domain}
         />
       ) : (
         <div className="w-full h-full text-center">

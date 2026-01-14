@@ -1,16 +1,5 @@
 import { z } from "zod";
 
-// Internal activity types
-export const INTERNAL_ACTIVITIES = [
-  "pulizie",
-  "manutenzione",
-  "logistica",
-  "inventario",
-  "formazione",
-  "riunione",
-  "altro",
-] as const;
-
 export const validation = z.array(
   z.object({
     description: z.string().optional(),
@@ -23,7 +12,11 @@ export const validation = z.array(
     userId: z.string(),
     roles: z.object({ id: z.number(), name: z.string() }).optional(), // Optional for internal activities
     activityType: z.enum(["project", "internal"]).default("project"),
-    internalActivity: z.enum(INTERNAL_ACTIVITIES).optional(),
+    // Internal activity is now dynamic from database, so we accept any string
+    internalActivity: z.string().optional(),
+    // Lunch off-site fields
+    lunchOffsite: z.boolean().default(false),
+    lunchLocation: z.string().optional(),
   }).refine(
     (data) => {
       // If activity type is 'project', task and roles must be provided
@@ -38,6 +31,17 @@ export const validation = z.array(
     },
     {
       message: "Seleziona un progetto e reparto, oppure un'attività interna",
+    },
+  ).refine(
+    (data) => {
+      // If lunch_offsite is true, lunch_location must be provided
+      if (data.lunchOffsite) {
+        return !!data.lunchLocation && data.lunchLocation.trim().length > 0;
+      }
+      return true;
+    },
+    {
+      message: "Inserisci il luogo del pranzo",
     },
   ),
 );

@@ -12,21 +12,13 @@ import {
   Task,
   User,
 } from "@/types/supabase";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClock } from "@fortawesome/free-solid-svg-icons";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 import { logger } from "@/lib/logger";
-import { BellIcon, FileEdit } from "lucide-react";
+import { FileEdit, MapPin } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
 import { useSiteId } from "@/hooks/use-site-id";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../../components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +35,6 @@ import {
 } from "../../components/ui/context-menu";
 
 import { archiveItem } from "@/app/sites/[domain]/kanban/actions/archived-item-action";
-import { Button } from "../ui/button";
 
 type Supplier = {
   id: number;
@@ -58,21 +49,6 @@ type TaskSupplier = {
   supplier: Supplier;
   deliveryDate: string | null;
 };
-
-function checkCompletionStatus(items: any) {
-  let allDone = items.length > 0;
-  let someDone = false;
-  items.forEach((item: any) => {
-    if (item.passed === "DONE") {
-      someDone = true;
-    } else {
-      allDone = false; // If any item isn't DONE, then not all are done
-    }
-  });
-  if (allDone) return "allDone";
-  if (someDone) return "someDone";
-  return "noneDone";
-}
 
 export default function Card({
   id,
@@ -98,10 +74,10 @@ export default function Card({
   const [isLocked, setIsLocked] = useState(data.locked);
   const [timeState, setTimeState] = useState("normal");
   const [clickTimeout, setClickTimeout] = useState<any | null>(null);
-  const [ferramentaCheck, setFerramentaCheck] = useState(data.ferramenta);
-  const [metalliCheck, setMetalliCheck] = useState(data.metalli);
   const [currentValue, setCurrentValue] = useState(0);
   const { toast } = useToast();
+  const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
+
   // Determina se la card deve essere small in base a display_mode
   const displayMode = data.display_mode || data.displayMode || "normal";
   const isSmallFromDisplayMode =
@@ -119,12 +95,6 @@ export default function Card({
       return false;
     }
   });
-  const [stoccatoCheck, setStoccatoCheck] = useState(data.stoccato);
-  const [stoccatoDate, setStoccatoDate] = useState(data.stoccaggiodate);
-  const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
-  const [legnoCheck, setLegnoCheck] = useState(data.legno);
-  const [verniceCheck, setVerniceCheck] = useState(data.vernice);
-  const [altroCheck, setAltroCheck] = useState(data.altro);
 
   useEffect(() => {
     // Save the isSmall value to localStorage whenever it changes
@@ -151,12 +121,10 @@ export default function Card({
   }, [isSmallInitial, isSmallFromDisplayMode]);
 
   useEffect(() => {
-    // get the time in the variable (assuming it's in the format of "hh:mm:ss")
+    // Check if delivery date is past
     if (data.deliveryDate) {
-      // get the current time
       const currentTime = new Date();
-      const targetTime = new Date(data.deliveryDate); // Change this to your variable name.
-      // compare the times
+      const targetTime = new Date(data.deliveryDate);
       if (
         currentTime.getTime() > targetTime.getTime() &&
         data.column?.identifier !== "SPEDITO"
@@ -166,7 +134,7 @@ export default function Card({
         setTimeState("normal");
       }
     }
-  }, []);
+  }, [data.deliveryDate, data.column?.identifier]);
 
   useEffect(() => {
     setCurrentValue(calculateCurrentValue(data, columnIndex));
@@ -175,13 +143,11 @@ export default function Card({
   useEffect(() => {
     const loadSuppliers = async () => {
       try {
-        // Carica i fornitori associati al task
         const taskSuppResponse = await fetch(`/api/tasks/${id}/suppliers`);
         if (!taskSuppResponse.ok) {
           throw new Error("Failed to fetch suppliers");
         }
         const taskSuppData = await taskSuppResponse.json();
-
         setTaskSuppliers(Array.isArray(taskSuppData) ? taskSuppData : []);
       } catch (error) {
         logger.error("Error loading suppliers:", error);
@@ -234,207 +200,6 @@ export default function Card({
     [showModal, isSmall, clickTimeout]
   );
 
-  async function handleFerramentaCheck(checked: boolean) {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    // Add site_id header if available
-    if (siteId) {
-      headers["x-site-id"] = siteId;
-    }
-
-    const response = await fetch("/api/kanban/tasks/ferramenta", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id,
-        ferramentaStatus: checked,
-      }),
-      headers,
-    });
-
-    if (response.status === 200) {
-      toast({
-        description: checked
-          ? `Ferramenta aggiunta correttamente.`
-          : `Ferramenta rimossa correttamente.`,
-      });
-      setFerramentaCheck(checked);
-    } else {
-      setFerramentaCheck(!checked);
-    }
-  }
-
-  async function handleMetalliCheck(checked: boolean) {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    // Add site_id header if available
-    if (siteId) {
-      headers["x-site-id"] = siteId;
-    }
-
-    const response = await fetch("/api/kanban/tasks/metalli", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id,
-        metalliStatus: checked,
-      }),
-      headers,
-    });
-
-    if (response.status === 200) {
-      toast({
-        description: checked
-          ? `Metalli aggiunti correttamente.`
-          : `Metalli rimossi correttamente.`,
-      });
-      setMetalliCheck(checked);
-    } else {
-      setMetalliCheck(!checked);
-    }
-  }
-
-  async function handleStoccatoCheck(checked: boolean) {
-    const currentDate = new Date().toISOString();
-
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    // Add site_id header if available
-    if (siteId) {
-      headers["x-site-id"] = siteId;
-    }
-
-    const response = await fetch("/api/kanban/tasks/stoccato", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id,
-        stoccatoStatus: checked,
-        stoccatoDate: checked ? currentDate : null,
-      }),
-      headers,
-    });
-
-    if (response.status === 200) {
-      toast({
-        description: checked
-          ? `Stoccato aggiunto correttamente.`
-          : `Stoccato rimosso correttamente.`,
-      });
-      setStoccatoCheck(checked);
-      setStoccatoDate(checked ? currentDate : null);
-    } else {
-      setStoccatoCheck(!checked);
-    }
-  }
-
-  async function handleLegnoCheck(checked: boolean) {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    // Add site_id header if available
-    if (siteId) {
-      headers["x-site-id"] = siteId;
-    }
-
-    const response = await fetch("/api/kanban/tasks/legno", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id,
-        legnoStatus: checked,
-      }),
-      headers,
-    });
-    if (response.status === 200) {
-      toast({
-        description: checked
-          ? `Legno aggiunto correttamente.`
-          : `Legno rimosso correttamente.`,
-      });
-      setLegnoCheck(checked);
-    } else {
-      setLegnoCheck(!checked);
-    }
-  }
-
-  async function handleVerniceCheck(checked: boolean) {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    // Add site_id header if available
-    if (siteId) {
-      headers["x-site-id"] = siteId;
-    }
-
-    const response = await fetch("/api/kanban/tasks/vernice", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id,
-        verniceStatus: checked,
-      }),
-      headers,
-    });
-    if (response.status === 200) {
-      toast({
-        description: checked
-          ? `Vernice aggiunta correttamente.`
-          : `Vernice rimossa correttamente.`,
-      });
-      setVerniceCheck(checked);
-    } else {
-      setVerniceCheck(!checked);
-    }
-  }
-
-  async function handleAltroCheck(checked: boolean) {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    // Add site_id header if available
-    if (siteId) {
-      headers["x-site-id"] = siteId;
-    }
-
-    const response = await fetch("/api/kanban/tasks/altro", {
-      method: "POST",
-      body: JSON.stringify({
-        id: id,
-        altroStatus: checked,
-      }),
-      headers,
-    });
-    if (response.status === 200) {
-      toast({
-        description: checked
-          ? `Altro aggiunto correttamente.`
-          : `Altro rimosso correttamente.`,
-      });
-      setAltroCheck(checked);
-    } else {
-      setAltroCheck(!checked);
-    }
-  }
-
-  const packingStatus = checkCompletionStatus(data.PackingControl);
-  const qualityStatus = checkCompletionStatus(data.QualityControl);
-  // Determine the final bell color based on both statuses
-  let bellColor = "black"; // default color
-  if (packingStatus === "someDone" || qualityStatus === "someDone") {
-    bellColor = "orange";
-  } else if (packingStatus === "allDone" && qualityStatus === "allDone") {
-    bellColor = "green";
-  } else if (packingStatus === "allDone" && qualityStatus === "noneDone") {
-    bellColor = "orange";
-  } else if (packingStatus === "noneDone" && qualityStatus === "allDone") {
-    bellColor = "orange";
-  }
-
   async function handleArchive(data: Task) {
     if (data.archived) {
       await archiveItem(false, data.id);
@@ -446,42 +211,73 @@ export default function Card({
     }
   }
 
-  // Determina il colore di sfondo in base a display_mode
-  const getBackgroundClass = () => {
-    // Priorità: display_mode > timeState > default
+  // Determina il colore del bordo sinistro in base allo stato
+  const getBorderColor = () => {
+    // display_mode ha priorità
     if (displayMode === "small_green") {
-      return "bg-green-600 dark:bg-green-700";
+      return "#22c55e"; // green-500
     }
     if (displayMode === "small_red") {
-      return "bg-red-600 dark:bg-red-700";
+      return "#ef4444"; // red-500
     }
-    // Logica esistente
-    if (isLocked) {
-      return timeState === "normal"
-        ? "bg-slate-500 dark:bg-slate-800"
-        : "bg-red-500 dark:bg-red-500";
+    // Ritardo
+    if (timeState === "late") {
+      return "#ef4444"; // red-500
     }
-    return timeState === "normal"
-      ? "bg-slate-500 dark:bg-slate-800"
-      : "bg-red-800 dark:bg-red-800 animate-pulse";
+    // Normale
+    return "#64748b"; // slate-500
   };
 
   // Check if task is a draft
   const isDraft = data.is_draft || data.isDraft;
 
+  // Get client display name
+  const getClientName = () => {
+    if (!data.client) return "-";
+    if (data.client.clientType === "BUSINESS") {
+      return data.client.businessName || "-";
+    }
+    const firstName = data.client.individualFirstName || "";
+    const lastName = data.client.individualLastName || "";
+    return `${firstName} ${lastName}`.trim() || "-";
+  };
+
+  // Get pieces count
+  const getPiecesDisplay = () => {
+    if (data.numero_pezzi && data.numero_pezzi > 0) {
+      return `${data.numero_pezzi} pz`;
+    }
+    if (data.positions && data.positions.length > 0) {
+      const filledPositions = data.positions.filter(
+        (p: string) => p && p.trim() !== ""
+      ).length;
+      if (filledPositions > 0) {
+        return `${filledPositions} pos.`;
+      }
+    }
+    return "-";
+  };
+
   return (
     <ContextMenu>
       <div
-        className={`w-full mb-2 p-1 shadow-md select-none overscroll-contain ${
-          data.isPreview ? "opacity-75 cursor-not-allowed" : ""
-        } ${getBackgroundClass()} ${isSmall ? " h-24" : ""} ${
-          isDraft ? "border-2 border-dashed border-amber-400 relative" : ""
-        }`}
+        className={`
+          w-full mb-2 rounded-r-xl rounded-l-sm select-none overscroll-contain
+          bg-white dark:bg-slate-900 
+          border-y border-r border-slate-200 dark:border-slate-700
+          border-l-4
+          shadow-sm hover:shadow-md transition-all duration-200
+          ${data.isPreview ? "opacity-75 cursor-not-allowed" : ""}
+          ${isDraft ? "border-2 border-dashed border-amber-400" : ""}
+        `}
         ref={data.isPreview ? undefined : setNodeRef}
         style={{
           ...dragStyle,
           opacity: isDragging ? 0.5 : 1,
           cursor: data.isPreview ? "not-allowed" : "move",
+          borderLeftColor: getBorderColor(),
+          borderLeftWidth: "4px",
+          borderLeftStyle: "solid",
         }}
         {...(data.isPreview ? {} : { ...listeners, ...attributes })}
         onContextMenu={(e) => e.preventDefault()}
@@ -496,320 +292,192 @@ export default function Card({
             </Badge>
           </div>
         )}
+
         <ContextMenuTrigger>
-          <div
-            className={`p-1 ${
-              timeState === "late"
-                ? "text-white"
-                : timeState === "normal" && "text-white"
-            }`}
-          >
-            {!isSmall ? (
-              <div className="pointer-events-none">
-                <div className=" border-b dark:border-white flex flex-row justify-between align-top items-start">
-                  <div className="flex flex-col">
-                    <p className="font-bold">{data.unique_code}</p>
-                    <span className="text-xs font-light">
-                      {data.sellProduct?.type}
+          {!isSmall ? (
+            /* ==================== CARD NORMAL (ESPANSA) ==================== */
+            <div className="p-3 text-slate-800 dark:text-slate-100">
+              {/* Header: N°, Data, Settimana */}
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2 mb-2">
+                <span className="font-bold text-sm">{data.unique_code}</span>
+                {data.deliveryDate && (
+                  <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                    <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
+                    <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                      S.{DateManager.getWeekNumber(data.deliveryDate)}
                     </span>
-                    <span className="text-xs font-medium">{data.name}</span>
                   </div>
-                  <div>
-                    <p className="text-sm">
-                      {/* <FontAwesomeIcon icon={faClock} className="pr-1" /> */}
-                      {data.deliveryDate !== null && (
-                        <span className="font-bold">
-                          {DateManager.formatEUDate(data.deliveryDate)}
-                        </span>
-                      )}
-                      {data.deliveryDate !== null && (
-                        <span className="pl-1">
-                          | {DateManager.getWeekNumber(data.deliveryDate)}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
+                )}
+              </div>
 
-                <div className="font-bold text-lg flex flex-row border-b dark:border-white mb-2">
-                  <p>
-                    {data.client?.clientType === "BUSINESS"
-                      ? data.client?.businessName || "-"
-                      : `${data.client?.individualFirstName || ""} ${
-                          data.client?.individualLastName || ""
-                        }`.trim() ||
-                        data.client?.name ||
-                        "-"}
-                  </p>
-                </div>
+              {/* Nome Cliente */}
+              <div className="font-semibold text-base mb-1 truncate">
+                {getClientName()}
+              </div>
 
-                <div className="flex flex-row gap-2">
-                  <div className="flex flex-col w-full">
-                    {/* Priorità a numero_pezzi, altrimenti mostra posizioni */}
-                    {data.numero_pezzi && data.numero_pezzi > 0 ? (
-                      <div className="flex items-center justify-center pb-2 border border-white/50 rounded">
-                        <p className="text-lg font-bold">
-                          {data.numero_pezzi} pz
-                        </p>
-                      </div>
-                    ) : (
-                      data.positions &&
-                      data.positions.length > 0 && (
-                        <div className="grid grid-rows-2 grid-cols-4  pb-2">
-                          {data.positions.map(
-                            (position: string, index: number) => (
-                              <p
-                                className="border-[0.75px] dark:border-white text-center pl-1 text-xs"
-                                key={index}
-                              >
-                                {position}
-                              </p>
-                            )
+              {/* Luogo · Nome oggetto */}
+              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mb-3">
+                {data.luogo && (
+                  <>
+                    <MapPin className="h-3 w-3" />
+                    <span>{data.luogo}</span>
+                    <span className="mx-1">·</span>
+                  </>
+                )}
+                <span className="truncate">{data.name || "-"}</span>
+              </div>
+
+              {/* Pezzi e Valore */}
+              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 mb-3">
+                <div className="text-center">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                    Pezzi
+                  </span>
+                  <span className="font-bold text-sm">
+                    {getPiecesDisplay()}
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+                <div className="text-center">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                    Valore
+                  </span>
+                  <span className="font-bold text-sm">
+                    {((data.sellPrice || 0) / 1000).toFixed(1)}K
+                  </span>
+                </div>
+              </div>
+
+              {/* Note */}
+              {data.other && (
+                <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 mb-3 line-clamp-2">
+                  {data.other}
+                </div>
+              )}
+
+              {/* Fornitori */}
+              {taskSuppliers && taskSuppliers.length > 0 && (
+                <div className="mb-3">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 block">
+                    Fornitori
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {taskSuppliers.map((ts) => {
+                      const isDeliveryToday =
+                        ts.deliveryDate &&
+                        new Date(ts.deliveryDate).toDateString() ===
+                          new Date().toDateString();
+                      const isDeliveryLate =
+                        ts.deliveryDate &&
+                        new Date(ts.deliveryDate) < new Date();
+
+                      return (
+                        <div
+                          key={ts.id}
+                          className={`
+                            text-xs px-2 py-1 rounded-md
+                            ${
+                              isDeliveryToday
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border border-green-200 dark:border-green-800"
+                                : isDeliveryLate
+                                ? "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border border-red-200 dark:border-red-800"
+                                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                            }
+                          `}
+                        >
+                          <span className="font-medium">
+                            {ts.supplier?.short_name ||
+                              ts.supplier?.name ||
+                              "?"}
+                          </span>
+                          {ts.deliveryDate && (
+                            <span className="ml-1.5 opacity-75">
+                              {new Date(ts.deliveryDate).toLocaleDateString(
+                                "it-IT",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                }
+                              )}
+                            </span>
                           )}
                         </div>
-                      )
-                    )}
-                  </div>
-                  <div className="flex flex-col w-full h-1/2">
-                    <div className="border w-full flex justify-center items-center">
-                      <p>{(currentValue / 1000).toFixed(2)} K</p>
-                      <p>{data.columnPosition}</p>
-                    </div>
-                    <div className="border-l dark:border-white border-r  border-b flex justify-center items-center">
-                      <p> {(data.sellPrice / 1000).toFixed(2)} K</p>
-                    </div>
-                    {/* Valori */}
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="flex flex-row justify-between gap-4">
-                  <div className="button-container flex flex-col gap-1 pointer-events-auto">
-                    {data.kanban?.identifier === "ARREDAMENTO" ? (
-                      <>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleLegnoCheck(!legnoCheck);
-                          }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                            legnoCheck
-                              ? " bg-green-500 text-white border-white"
-                              : ""
-                          }`}
-                        >
-                          Legno
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleVerniceCheck(!verniceCheck);
-                          }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                            verniceCheck
-                              ? " bg-green-500 text-white border-white"
-                              : ""
-                          }`}
-                        >
-                          Vernice
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleAltroCheck(!altroCheck);
-                          }}
-                          className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                            altroCheck
-                              ? " bg-green-500 text-white border-white"
-                              : ""
-                          }`}
-                        >
-                          Altro
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {data.column?.identifier === "IMBALLAGGIO" && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleStoccatoCheck(!stoccatoCheck);
-                            }}
-                            className={`text-xs px-3 py-2 border border-gray-400 bg-white text-black font-semibold rounded shadow-xs transition-colors duration-150${
-                              stoccatoCheck
-                                ? " bg-orange-500 text-white border-white"
-                                : ""
-                            }`}
-                          >
-                            Stocc.
-                            {stoccatoDate && (
-                              <span className="text-xs ml-1">
-                                {DateManager.formatEUDate(stoccatoDate)}
-                              </span>
-                            )}
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs">{data.other && data.other}</p>
-                  </div>
+              )}
 
-                  {data.PackingControl.length >= 1 ||
-                  data.QualityControl.length >= 1 ? (
-                    <div className="pointer-events-auto">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <BellIcon className={`text-${bellColor}-500`} />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <div>
-                              {data.PackingControl.length >= 1 &&
-                                data.PackingControl.map(
-                                  (item: PackingControl) => (
-                                    <p key={item.id}>Imb.{item.passed}</p>
-                                  )
-                                )}
-                              {data.QualityControl.length >= 1 &&
-                                data.QualityControl.map(
-                                  (item: QualityControl) => (
-                                    <p key={item.id}>
-                                      QC P. {item.position_nr} - {item.passed}
-                                    </p>
-                                  )
-                                )}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  ) : (
-                    ""
-                  )}
+              {/* Progress bar */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                  <div
+                    style={{ width: `${data.percentStatus || 0}%` }}
+                    className="h-full bg-green-500 rounded-full transition-all duration-300"
+                  />
                 </div>
-
-                <div className="mt-2 border-t dark:border-white pt-2">
-                  <p className="text-sm font-semibold mb-2">Fornitori</p>
-                  <div className="flex flex-wrap gap-2">
-                    {taskSuppliers &&
-                      taskSuppliers.map((ts) => {
-                        const isDeliveryToday =
-                          ts.deliveryDate &&
-                          new Date(ts.deliveryDate).toDateString() ===
-                            new Date().toDateString();
-                        const isDeliveryLate =
-                          ts.deliveryDate &&
-                          new Date(ts.deliveryDate) < new Date();
-
-                        return (
-                          <div
-                            key={ts.id}
-                            className={`text-xs px-2 py-1 rounded ${
-                              isDeliveryToday
-                                ? "bg-green-100 text-green-800 dark:bg-green-400 dark:text-green-100"
-                                : isDeliveryLate
-                                ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
-                                : "bg-gray-100 text-black dark:bg-gray-400 dark:text-black"
-                            }`}
-                          >
-                            <span className="font-medium">
-                              {ts.supplier?.short_name ||
-                                ts.supplier?.name ||
-                                "Unknown Supplier"}
-                            </span>
-                            {ts.deliveryDate && (
-                              <span className="ml-2">
-                                {new Date(ts.deliveryDate).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-
-                <div className="flex flex-row gap-2 justify-between align-middle items-end pt-4">
-                  <p className="text-xs">{data.percentStatus}%</p>
-                  <div className="w-full  rounded-full">
-                    <div
-                      style={{ width: `${data.percentStatus}%` }}
-                      className="h-2 bg-green-500 rounded-full"
-                    ></div>
-                  </div>
-                </div>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 min-w-[32px] text-right">
+                  {data.percentStatus || 0}%
+                </span>
               </div>
-            ) : (
-              <div>
-                <div className="flex flex-col justify-between h-full gap-1">
-                  {/* Riga 1: Codice + Data */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-base whitespace-nowrap">
-                      {data.unique_code}
+            </div>
+          ) : (
+            /* ==================== CARD SMALL (COMPRESSA) ==================== */
+            <div className="p-2.5 text-slate-800 dark:text-slate-100">
+              {/* Riga 1: N°, Data, Settimana */}
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-bold text-sm">{data.unique_code}</span>
+                {data.deliveryDate && (
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
+                    <span className="font-semibold">
+                      S.{DateManager.getWeekNumber(data.deliveryDate)}
                     </span>
-                    {/* Data consegna */}
-                    {data.deliveryDate !== null && (
-                      <span className="text-xs whitespace-nowrap flex items-center gap-1">
-                        <FontAwesomeIcon
-                          icon={faClock}
-                          className="text-[10px]"
-                        />
-                        {DateManager.formatEUDate(data.deliveryDate)}
-                        <span className="font-bold">
-                          | {DateManager.getWeekNumber(data.deliveryDate)}
-                        </span>
-                      </span>
-                    )}
                   </div>
+                )}
+              </div>
 
-                  {/* Riga 2: Nome cliente */}
-                  <p className="text-sm truncate">
-                    {data.client?.clientType === "BUSINESS"
-                      ? data.client?.businessName || "-"
-                      : `${data.client?.individualFirstName || ""} ${
-                          data.client?.individualLastName || ""
-                        }`.trim() || "-"}
-                  </p>
+              {/* Riga 2: Cliente · Oggetto */}
+              <div className="text-sm truncate mb-1.5 text-slate-700 dark:text-slate-300">
+                <span className="font-medium">{getClientName()}</span>
+                {data.name && (
+                  <>
+                    <span className="mx-1 text-slate-400">·</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {data.name}
+                    </span>
+                  </>
+                )}
+              </div>
 
-                  {/* Riga 3: Prezzo o progress bar */}
-                  {displayMode !== "normal" ? (
-                    <div className="flex items-center justify-between text-sm mt-auto">
-                      <span className="text-xs opacity-80">Valore:</span>
-                      <span className="font-bold">
-                        {((data.sellPrice || 0) / 1000).toFixed(2)} K
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-auto">
-                      <span className="text-xs">{data.percentStatus}%</span>
-                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                        <div
-                          style={{ width: `${data.percentStatus}%` }}
-                          className="h-2 bg-green-500 rounded-full"
-                        ></div>
-                      </div>
-                    </div>
-                  )}
+              {/* Riga 3: Pezzi, Valore, Progress */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-slate-600 dark:text-slate-400">
+                  {getPiecesDisplay()}
+                </span>
+                <span className="text-slate-400">|</span>
+                <span className="font-semibold">
+                  {((data.sellPrice || 0) / 1000).toFixed(1)}K
+                </span>
+                <div className="flex-1 flex items-center gap-1.5 ml-1">
+                  <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      style={{ width: `${data.percentStatus || 0}%` }}
+                      className="h-full bg-green-500 rounded-full"
+                    />
+                  </div>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    {data.percentStatus || 0}%
+                  </span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
             <DialogContent className="max-w-228 max-h-[90%] overflow-scroll">
               <DialogHeader>
                 <DialogTitle>Modifica {data.unique_code}</DialogTitle>
-                {/* <DialogDescription>Crea un prodotto nuovo</DialogDescription> */}
               </DialogHeader>
               <EditTaskKanban
                 handleClose={(wasDeleted?: boolean) => {
@@ -829,6 +497,7 @@ export default function Card({
             </DialogContent>
           </Dialog>
         </ContextMenuTrigger>
+
         <ContextMenuContent>
           <ContextMenuItem
             onClick={(e) => {

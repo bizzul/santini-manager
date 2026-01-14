@@ -38,7 +38,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
 
       // Determine the kanban column ID to use
       let columnIdToUse = null;
-      
+
       if (result.data.kanbanId) {
         // If kanbanColumnId is explicitly provided, use it
         if (result.data.kanbanColumnId) {
@@ -52,23 +52,30 @@ export async function editItem(formData: any, id: number, domain?: string) {
 
           if (columnError || !columnData) {
             logger.error("Error fetching specified column:", columnError);
-            return { error: true, message: "La colonna selezionata non è valida per questa kanban!" };
+            return {
+              error: true,
+              message: "La colonna selezionata non è valida per questa kanban!",
+            };
           }
 
           columnIdToUse = columnData.id;
         } else {
           // Otherwise, default to the first column
-          const { data: firstColumnData, error: firstColumnError } = await supabase
-            .from("KanbanColumn")
-            .select("*")
-            .eq("kanbanId", result.data.kanbanId)
-            .order("position")
-            .limit(1)
-            .single();
+          const { data: firstColumnData, error: firstColumnError } =
+            await supabase
+              .from("KanbanColumn")
+              .select("*")
+              .eq("kanbanId", result.data.kanbanId)
+              .order("position")
+              .limit(1)
+              .single();
 
           if (firstColumnError) {
             logger.error("Error fetching first column:", firstColumnError);
-            return { error: true, message: "Errore nel recupero della colonna!" };
+            return {
+              error: true,
+              message: "Errore nel recupero della colonna!",
+            };
           }
 
           columnIdToUse = firstColumnData.id;
@@ -108,6 +115,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
         .update({
           unique_code: result.data?.unique_code || null,
           name: result.data?.name || null,
+          luogo: result.data?.luogo || null,
           deliveryDate: result.data.deliveryDate || null,
           termine_produzione: result.data.termine_produzione || null,
           other: result.data?.other || null,

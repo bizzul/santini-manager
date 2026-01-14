@@ -267,6 +267,19 @@ export async function POST(request: NextRequest) {
             .single();
         const defaultUnitId = defaultUnit?.id;
 
+        // Get existing inventory items for reuse (to avoid duplicate name constraint)
+        const { data: existingItems } = await supabase
+            .from("inventory_items")
+            .select("id, name")
+            .eq("site_id", siteId);
+
+        const itemByName = new Map<string, string>();
+        existingItems?.forEach((item) => {
+            if (item.name) {
+                itemByName.set(item.name.toLowerCase(), item.id);
+            }
+        });
+
         const result: ImportResult = {
             success: true,
             totalRows: rows.length,
@@ -477,30 +490,40 @@ export async function POST(request: NextRequest) {
                         product.supplier,
                     );
 
-                    // Create inventory_item
-                    const { data: item, error: itemError } = await supabase
-                        .from("inventory_items")
-                        .insert({
-                            site_id: siteId,
-                            name: product.name || product.internal_code,
-                            description: product.description || null,
-                            category_id: categoryId,
-                            supplier_id: supplierId,
-                            is_stocked: true,
-                            is_consumable: true,
-                            is_active: true,
-                        })
-                        .select("id")
-                        .single();
+                    // Check if an item with this name already exists (reuse it)
+                    const itemName = product.name || product.internal_code;
+                    let itemId = itemByName.get(itemName.toLowerCase());
 
-                    if (itemError) {
-                        result.errors.push(
-                            `Riga ${
-                                i + 2
-                            }: Errore creazione item - ${itemError.message}`,
-                        );
-                        result.skipped++;
-                        continue;
+                    if (!itemId) {
+                        // Create inventory_item only if it doesn't exist
+                        const { data: item, error: itemError } = await supabase
+                            .from("inventory_items")
+                            .insert({
+                                site_id: siteId,
+                                name: itemName,
+                                description: product.description || null,
+                                category_id: categoryId,
+                                supplier_id: supplierId,
+                                is_stocked: true,
+                                is_consumable: true,
+                                is_active: true,
+                            })
+                            .select("id")
+                            .single();
+
+                        if (itemError) {
+                            result.errors.push(
+                                `Riga ${
+                                    i + 2
+                                }: Errore creazione item - ${itemError.message}`,
+                            );
+                            result.skipped++;
+                            continue;
+                        }
+
+                        itemId = item!.id!;
+                        // Add to cache for subsequent rows
+                        itemByName.set(itemName.toLowerCase(), item!.id!);
                     }
 
                     // Create inventory_item_variant
@@ -508,7 +531,7 @@ export async function POST(request: NextRequest) {
                         await supabase
                             .from("inventory_item_variants")
                             .insert({
-                                item_id: item.id,
+                                item_id: itemId,
                                 site_id: siteId,
                                 internal_code: product.internal_code || null,
                                 supplier_code: product.supplier_code || null,
@@ -529,11 +552,6 @@ export async function POST(request: NextRequest) {
                             .single();
 
                     if (variantError) {
-                        // Rollback item
-                        await supabase.from("inventory_items").delete().eq(
-                            "id",
-                            item.id,
-                        );
                         result.errors.push(
                             `Riga ${
                                 i + 2

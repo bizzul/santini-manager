@@ -74,6 +74,7 @@ type TaskSupplier = {
   supplierId: number;
   supplier: Supplier;
   deliveryDate: string | null;
+  notes: string | null;
 };
 
 const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
@@ -87,15 +88,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       clientId: undefined,
       deliveryDate: undefined,
       termine_produzione: undefined,
-      position1: "",
+      name: "",
+      luogo: "",
       other: "",
-      position2: "",
-      position3: "",
-      position4: "",
-      position5: "",
-      position6: "",
-      position7: "",
-      position8: "",
       productId: undefined,
       sellPrice: 0,
       numero_pezzi: null,
@@ -198,6 +193,8 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
           ? new Date(resource.termine_produzione)
           : undefined
       );
+      form.setValue("name", resource.name ?? "");
+      form.setValue("luogo", resource.luogo ?? "");
       form.setValue("other", resource.other ?? undefined);
       form.setValue("sellPrice", resource.sellPrice!);
       form.setValue("numero_pezzi", resource.numero_pezzi ?? null);
@@ -205,10 +202,6 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       form.setValue("unique_code", resource.unique_code!);
       form.setValue("kanbanId", resource.kanbanId);
       form.setValue("kanbanColumnId", resource.kanbanColumnId);
-      resource?.positions?.map((position: any, index: number) => {
-        //@ts-ignore
-        form.setValue(`position${index + 1}`, position);
-      });
     };
 
     const loadData = async () => {
@@ -543,93 +536,141 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
         </div>
       </div>
       <Form {...form}>
-        <form className="space-y-8" onSubmit={form.handleSubmit(onSubmit)}>
-          <FormField
-            control={form.control}
-            name="unique_code"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Codice Identificativo</FormLabel>
-                <FormControl>
-                  <Input {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            name="clientId"
-            control={form.control}
-            render={({ field }) => {
-              const clientOptions = Array.isArray(clients)
-                ? clients.map((client: Client) => ({
-                    value: client.id,
-                    label: client.businessName
-                      ? client.businessName
-                      : (client.individualFirstName ?? "N/A") +
-                        " " +
-                        (client.individualLastName ?? "N/A"),
-                  }))
-                : [];
-              return (
+        <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+          {/* Row 1: Codice Identificativo + Nome cliente */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="unique_code"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cliente</FormLabel>
+                  <FormLabel>Codice Identificativo</FormLabel>
                   <FormControl>
-                    <SearchSelect
-                      value={field.value || undefined}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                      }}
-                      disabled={isSubmitting}
-                      options={clientOptions}
-                    />
+                    <Input {...field} />
                   </FormControl>
-                  {clientOptions.length === 0 && (
-                    <div className="text-sm text-red-500 mt-1">
-                      Nessun cliente trovato. Debug: {clients.length} clienti
-                      caricati
-                    </div>
-                  )}
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
-          <FormField
-            name="productId"
-            control={form.control}
-            render={({ field }) => {
-              const productOptions = Array.isArray(products)
-                ? products.map((p: SellProduct) => ({
-                    value: p.id,
-                    label: p.name + " " + p.type,
-                  }))
-                : [];
+              )}
+            />
+            <FormField
+              name="clientId"
+              control={form.control}
+              render={({ field }) => {
+                const clientOptions = Array.isArray(clients)
+                  ? clients.map((client: Client) => ({
+                      value: client.id,
+                      label: client.businessName
+                        ? client.businessName
+                        : (client.individualFirstName ?? "N/A") +
+                          " " +
+                          (client.individualLastName ?? "N/A"),
+                    }))
+                  : [];
+                return (
+                  <FormItem>
+                    <FormLabel>Nome cliente</FormLabel>
+                    <FormControl>
+                      <SearchSelect
+                        value={field.value || undefined}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                        }}
+                        disabled={isSubmitting}
+                        options={clientOptions}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          </div>
 
-              return (
+          {/* Row 2: Nome oggetto + Luogo */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Prodotto</FormLabel>
+                  <FormLabel>Nome oggetto</FormLabel>
                   <FormControl>
-                    <SearchSelect
-                      value={field.value || undefined}
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                      }}
-                      disabled={isSubmitting}
-                      options={productOptions}
-                    />
+                    <Input {...field} />
                   </FormControl>
-                  {productOptions.length === 0 && (
-                    <div className="text-sm text-red-500 mt-1">
-                      Nessun prodotto trovato. Debug: {products.length} prodotti
-                      caricati
-                    </div>
-                  )}
                   <FormMessage />
                 </FormItem>
-              );
-            }}
-          />
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="luogo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Luogo</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          {/* Row 3: Prodotto + Numero pezzi */}
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              name="productId"
+              control={form.control}
+              render={({ field }) => {
+                const productOptions = Array.isArray(products)
+                  ? products.map((p: SellProduct) => ({
+                      value: p.id,
+                      label: p.name + " " + p.type,
+                    }))
+                  : [];
+
+                return (
+                  <FormItem>
+                    <FormLabel>Prodotto</FormLabel>
+                    <FormControl>
+                      <SearchSelect
+                        value={field.value || undefined}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                        }}
+                        disabled={isSubmitting}
+                        options={productOptions}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+            <FormField
+              name="numero_pezzi"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Numero pezzi</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="number"
+                      value={field.value ?? ""}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           {/* Date Fields Grid */}
           <div className="grid grid-cols-2 gap-4">
@@ -720,34 +761,33 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             />
           </div>
 
-          {/* Kanban Selection */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Kanban</label>
-            <Select
-              value={selectedKanbanId?.toString() || "__none__"}
-              onValueChange={(value) =>
-                setSelectedKanbanId(
-                  value && value !== "__none__" ? parseInt(value) : null
-                )
-              }
-              disabled={isSubmitting}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona una kanban" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Nessuna kanban</SelectItem>
-                {kanbans.map((kanban) => (
-                  <SelectItem key={kanban.id} value={kanban.id.toString()}>
-                    {kanban.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Row 5: Kanban + Colonna */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Kanban</label>
+              <Select
+                value={selectedKanbanId?.toString() || "__none__"}
+                onValueChange={(value) =>
+                  setSelectedKanbanId(
+                    value && value !== "__none__" ? parseInt(value) : null
+                  )
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona una kanban" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nessuna kanban</SelectItem>
+                  {kanbans.map((kanban) => (
+                    <SelectItem key={kanban.id} value={kanban.id.toString()}>
+                      {kanban.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Column Selection (only shown if kanban is selected) */}
-          {selectedKanbanId && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Colonna</label>
               <Select
@@ -757,10 +797,20 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                     value && value !== "__none__" ? parseInt(value) : null
                   )
                 }
-                disabled={isSubmitting || kanbanColumns.length === 0}
+                disabled={
+                  isSubmitting ||
+                  !selectedKanbanId ||
+                  kanbanColumns.length === 0
+                }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleziona una colonna" />
+                  <SelectValue
+                    placeholder={
+                      selectedKanbanId
+                        ? "Seleziona una colonna"
+                        : "Seleziona prima una kanban"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Nessuna colonna</SelectItem>
@@ -771,64 +821,6 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                   ))}
                 </SelectContent>
               </Select>
-              {kanbanColumns.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Nessuna colonna disponibile per questa kanban
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="flex">
-            <div className="flex-1 pr-4">
-              <div className="grid grid-rows-2 grid-cols-4 gap-2">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <FormField
-                    key={i}
-                    //@ts-ignore
-                    name={`position${i + 1}`}
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
-                        <FormControl>
-                          {/* @ts-ignore */}
-                          <Input {...field} disabled={isSubmitting} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="border-l border-border" />
-
-            <div className="pl-4 flex items-center justify-center">
-              <FormField
-                name="numero_pezzi"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem className="w-full max-w-32">
-                    <FormLabel>Numero pezzi</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        value={field.value ?? ""}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value ? Number(e.target.value) : null
-                          )
-                        }
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
           </div>
 
@@ -851,7 +843,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Valore di produzione</FormLabel>
+                <FormLabel>Valore</FormLabel>
                 <FormControl>
                   <Input {...field} type="number" />
                 </FormControl>
@@ -861,16 +853,22 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
           />
 
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Gestione Fornitori</h3>
+            {/* Headers row */}
+            <div className="grid grid-cols-[1fr_auto_auto_1fr] gap-4 items-center">
+              <h3 className="text-lg font-medium">Ordini fornitori</h3>
+              <span className="text-sm font-medium text-muted-foreground w-40 text-center"></span>
+              <span className="w-10"></span>
+              <h3 className="text-lg font-medium">Note</h3>
+            </div>
 
             <div className="space-y-2">
               {Array.isArray(taskSuppliers) &&
                 taskSuppliers.map((ts) => (
                   <div
                     key={ts.id}
-                    className="flex items-center gap-4 p-2 bg-gray-50 dark:bg-gray-800 rounded-sm"
+                    className="grid grid-cols-[1fr_auto_auto_1fr] gap-4 items-center p-2 bg-gray-50 dark:bg-gray-800 rounded-sm"
                   >
-                    <span className="font-medium w-32">
+                    <span className="font-medium">
                       {ts.supplier?.short_name ||
                         ts.supplier?.name ||
                         "Unknown Supplier"}
@@ -919,24 +917,43 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                       type="button"
                       onClick={() => handleDeleteSupplier(ts.supplierId)}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M3 6h18" />
-                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                        <line x1="10" y1="11" x2="10" y2="17" />
-                        <line x1="14" y1="11" x2="14" y2="17" />
-                      </svg>
+                      <Trash2 className="h-4 w-4" />
                     </Button>
+                    <Input
+                      type="text"
+                      placeholder="Aggiungi nota..."
+                      defaultValue={ts.notes || ""}
+                      onBlur={async (e) => {
+                        const newNotes = e.target.value;
+                        if (newNotes !== (ts.notes || "")) {
+                          const response = await fetch(
+                            `/api/tasks/${resource.id}/suppliers`,
+                            {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                supplierId: ts.supplierId,
+                                notes: newNotes,
+                              }),
+                            }
+                          );
+
+                          if (response.ok) {
+                            const updatedSupplier = await response.json();
+                            setTaskSuppliers(
+                              taskSuppliers.map((supplier) =>
+                                supplier.id === updatedSupplier.id
+                                  ? updatedSupplier
+                                  : supplier
+                              )
+                            );
+                            toast({
+                              description: "Nota aggiornata",
+                            });
+                          }
+                        }
+                      }}
+                    />
                   </div>
                 ))}
             </div>

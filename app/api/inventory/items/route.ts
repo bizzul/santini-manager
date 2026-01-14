@@ -29,27 +29,52 @@ export async function GET(req: NextRequest) {
         }
 
         // Fetch items with their variants and categories
-        const { data: items, error } = await supabase
-            .from("inventory_items")
-            .select(`
-                *,
-                category:inventory_categories(*),
-                supplier:inventory_suppliers(*),
-                variants:inventory_item_variants(
+        const [itemsResult, stockResult] = await Promise.all([
+            supabase
+                .from("inventory_items")
+                .select(`
                     *,
-                    unit:inventory_units(*)
-                )
-            `)
-            .eq("site_id", siteId)
-            .eq("is_active", true)
-            .order("name", { ascending: true });
+                    category:inventory_categories(*),
+                    supplier:inventory_suppliers(*),
+                    variants:inventory_item_variants(
+                        *,
+                        unit:inventory_units(*)
+                    )
+                `)
+                .eq("site_id", siteId)
+                .eq("is_active", true)
+                .order("name", { ascending: true }),
+            supabase
+                .from("inventory_stock")
+                .select("variant_id, quantity")
+                .eq("site_id", siteId),
+        ]);
 
-        if (error) {
-            log.error("Error fetching inventory items:", error);
+        if (itemsResult.error) {
+            log.error("Error fetching inventory items:", itemsResult.error);
             return NextResponse.json([], { status: 200 });
         }
 
-        return NextResponse.json(items || []);
+        const items = itemsResult.data || [];
+        const stock = stockResult.data || [];
+
+        // Create stock lookup map (variant_id -> total quantity)
+        const stockMap = new Map<string, number>();
+        stock.forEach((s: any) => {
+            const currentQty = stockMap.get(s.variant_id) || 0;
+            stockMap.set(s.variant_id, currentQty + (s.quantity || 0));
+        });
+
+        // Add stock quantity to each variant
+        const itemsWithStock = items.map((item: any) => ({
+            ...item,
+            variants: (item.variants || []).map((variant: any) => ({
+                ...variant,
+                stock_quantity: stockMap.get(variant.id) || 0,
+            })),
+        }));
+
+        return NextResponse.json(itemsWithStock);
     } catch (err: unknown) {
         log.error("Error in inventory items API:", err);
         return NextResponse.json([], { status: 200 });
@@ -215,7 +240,10 @@ export async function POST(req: NextRequest) {
                 });
 
             if (movementError) {
-                log.error("Error creating initial stock movement:", movementError);
+                log.error(
+                    "Error creating initial stock movement:",
+                    movementError,
+                );
                 // Continue anyway, stock can be adjusted later
             }
         }
@@ -232,4 +260,3 @@ export async function POST(req: NextRequest) {
         );
     }
 }
-

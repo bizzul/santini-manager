@@ -1,7 +1,9 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/server";
-import CreatePage from "@/components/timeTracking/create-page";
+import CreatePage, {
+  InternalActivity,
+} from "@/components/timeTracking/create-page";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 import { Clock, ArrowLeft } from "lucide-react";
@@ -46,6 +48,7 @@ export type Datas = {
   tasks: Task[];
   roles: Roles[];
   todayEntries: TodayEntry[];
+  internalActivities: InternalActivity[];
 };
 
 async function getData(siteId: string, userId: string): Promise<Datas> {
@@ -60,8 +63,22 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
 
   if (tasksError) {
     console.error("Error fetching tasks:", tasksError);
-    return { tasks: [], roles: [], todayEntries: [] };
+    return { tasks: [], roles: [], todayEntries: [], internalActivities: [] };
   }
+
+  // Fetch internal activities (global and site-specific)
+  const { data: activitiesData, error: activitiesError } = await supabase
+    .from("internal_activities")
+    .select("id, code, label, site_id, sort_order")
+    .eq("is_active", true)
+    .or(`site_id.is.null,site_id.eq.${siteId}`)
+    .order("sort_order", { ascending: true });
+
+  if (activitiesError) {
+    console.error("Error fetching internal activities:", activitiesError);
+  }
+
+  const internalActivities: InternalActivity[] = activitiesData || [];
 
   // Fetch today's timetracking entries for the current user
   // First, get the user's internal ID from their auth ID
@@ -169,7 +186,12 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
     name: role.name,
   }));
 
-  return { tasks: transformedTasks, roles: transformedRoles, todayEntries };
+  return {
+    tasks: transformedTasks,
+    roles: transformedRoles,
+    todayEntries,
+    internalActivities,
+  };
 }
 
 async function Page({ params }: { params: Promise<{ domain: string }> }) {
@@ -247,7 +269,11 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
         </div>
       </div>
 
-      <CreatePage data={data} session={session} />
+      <CreatePage
+        data={data}
+        session={session}
+        internalActivities={data.internalActivities}
+      />
     </div>
   );
 }
