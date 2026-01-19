@@ -19,7 +19,8 @@ const parseDate = (value: any) => {
 };
 
 export const validation = z.object({
-  unique_code: z.string().min(1),
+  // unique_code è opzionale: se non fornito, viene generato automaticamente dal server
+  unique_code: z.string().min(1).optional(),
   clientId: z
     .preprocess((val) => Number(val), z.number())
     .optional()

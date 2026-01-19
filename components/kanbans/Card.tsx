@@ -213,6 +213,10 @@ export default function Card({
 
   // Determina il colore del bordo sinistro in base allo stato
   const getBorderColor = () => {
+    // Bozza ha priorità - bordo arancione
+    if (isDraft) {
+      return "#f59e0b"; // amber-500
+    }
     // display_mode ha priorità
     if (displayMode === "small_green") {
       return "#22c55e"; // green-500

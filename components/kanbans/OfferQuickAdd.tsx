@@ -100,13 +100,13 @@ export default function OfferQuickAdd({
       setIsSubmitting(true);
 
       // Create task as draft with category IDs
+      // Note: the server will generate the actual unique_code to ensure uniqueness
       const response = await fetch("/api/kanban/tasks/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          unique_code: generatedCode,
           clientId: data.clientId,
           // No product selected yet - will be selected when completing the draft
           productId: null,
@@ -128,9 +128,13 @@ export default function OfferQuickAdd({
         throw new Error(errorData.message || "Errore nella creazione");
       }
 
+      // Get the actual created task with the generated code
+      const responseData = await response.json();
+      const createdCode = responseData.data?.unique_code || generatedCode;
+
       toast({
         title: "Richiesta offerta creata",
-        description: `Bozza ${generatedCode} aggiunta in TODO`,
+        description: `Bozza ${createdCode} aggiunta in TODO`,
       });
 
       onSuccess();

@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
 
       siteId = kanban.site_id;
       isOfferKanban = kanban.is_offer_kanban || false;
-      
+
       // Check if kanban belongs to an internal category
       const category = kanban.category as any;
       if (category && category.is_internal && category.internal_base_code) {
@@ -95,7 +95,11 @@ export async function GET(request: NextRequest) {
 
     // Handle internal category codes
     if (isInternalCategory && internalCategoryId && internalBaseCode) {
-      const code = await previewInternalCode(siteId, internalCategoryId, internalBaseCode);
+      const code = await previewInternalCode(
+        siteId,
+        internalCategoryId,
+        internalBaseCode,
+      );
       return NextResponse.json({
         code,
         taskType: "INTERNO",
@@ -113,44 +117,70 @@ export async function GET(request: NextRequest) {
     // e usa il maggiore dei due per garantire unicità
     const currentYear = new Date().getFullYear();
     const yearPrefix = String(currentYear).slice(-2);
-    
-    // Cerca il massimo esistente nei Task
+    const yearLong = String(currentYear);
+
+    // Helper per parsing flessibile dei codici
+    const parseTaskCode = (code: string): { type: string; sequence: number } | null => {
+      if (!code) return null;
+      
+      const codeUpper = code.toUpperCase();
+      
+      // Determina il tipo basandosi sulla presenza di suffissi
+      let codeType: string;
+      if (codeUpper.includes("OFF")) {
+        codeType = "OFFERTA";
+      } else if (codeUpper.includes("FATT")) {
+        codeType = "FATTURA";
+      } else {
+        codeType = "LAVORO";
+      }
+      
+      // Estrai tutti i numeri dal codice
+      const numbers = code.match(/\d+/g);
+      if (!numbers || numbers.length === 0) return null;
+      
+      // Trova la sequenza: è il numero che NON è l'anno
+      let sequence = 0;
+      for (const num of numbers) {
+        if (num === yearPrefix || num === yearLong) continue;
+        const parsed = parseInt(num, 10);
+        if (!isNaN(parsed) && parsed > sequence) {
+          sequence = parsed;
+        }
+      }
+      
+      if (sequence === 0) return null;
+      return { type: codeType, sequence };
+    };
+
+    // Cerca il massimo esistente nei Task (supporta qualsiasi formato)
     const { data: tasks } = await supabase
       .from("Task")
-      .select("unique_code")
+      .select("unique_code, task_type")
       .eq("site_id", siteId)
-      .like("unique_code", `${yearPrefix}-%`)
+      .or(`unique_code.like.%${yearPrefix}%,unique_code.like.%${yearLong}%`)
       .order("unique_code", { ascending: false })
-      .limit(500);
+      .limit(1000);
 
     let maxFromTasks = 0;
     if (tasks && tasks.length > 0) {
       for (const task of tasks) {
         const code = task.unique_code;
         if (!code) continue;
+
+        // Usa task_type se disponibile, altrimenti parsing
+        let taskType = task.task_type?.toUpperCase();
+        const parsed = parseTaskCode(code);
+        if (!parsed) continue;
         
-        const parts = code.split("-");
-        let codeType: string;
-        let numPart: string;
-        
-        if (parts.length === 2) {
-          codeType = "LAVORO";
-          numPart = parts[1];
-        } else if (parts.length === 3) {
-          const middle = parts[1].toUpperCase();
-          if (middle === "OFF") codeType = "OFFERTA";
-          else if (middle === "FATT") codeType = "FATTURA";
-          else continue;
-          numPart = parts[2];
-        } else {
-          continue;
+        if (!taskType) {
+          taskType = parsed.type;
         }
-        
-        if (codeType !== template.sequenceType) continue;
-        
-        const num = parseInt(numPart, 10);
-        if (!isNaN(num) && num > maxFromTasks) {
-          maxFromTasks = num;
+
+        if (taskType !== template.sequenceType) continue;
+
+        if (parsed.sequence > maxFromTasks) {
+          maxFromTasks = parsed.sequence;
         }
       }
     }
@@ -244,7 +274,7 @@ export async function POST(request: NextRequest) {
 
       siteId = kanban.site_id;
       isOfferKanban = kanban.is_offer_kanban || false;
-      
+
       // Check if kanban belongs to an internal category
       const category = kanban.category as any;
       if (category && category.is_internal && category.internal_base_code) {
@@ -280,8 +310,12 @@ export async function POST(request: NextRequest) {
     if (isInternalCategory && internalCategoryId && internalBaseCode) {
       // Import the function dynamically to avoid circular dependency
       const { generateInternalTaskCode } = await import("@/lib/code-generator");
-      const code = await generateInternalTaskCode(siteId, internalCategoryId, internalBaseCode);
-      
+      const code = await generateInternalTaskCode(
+        siteId,
+        internalCategoryId,
+        internalBaseCode,
+      );
+
       return NextResponse.json({
         code,
         taskType: "INTERNO",

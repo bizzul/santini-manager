@@ -110,54 +110,82 @@ export async function POST(req: NextRequest) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
-      // Generate unique code using atomic sequence (always incremental)
-      let uniqueCode = result.data.unique_code;
-      if (siteId) {
-        const taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
-        uniqueCode = await generateTaskCode(siteId, taskType);
-      }
-
       // Determine task type
       const taskType = body.task_type || (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
 
-      // Prepare insert data with site_id
-      const insertData: any = {
-        title: "",
-        clientId: result.data.clientId,
-        deliveryDate: result.data.deliveryDate instanceof Date 
-          ? result.data.deliveryDate.toISOString() 
-          : result.data.deliveryDate || null,
-        termine_produzione: result.data.termine_produzione instanceof Date
-          ? result.data.termine_produzione.toISOString()
-          : result.data.termine_produzione || null,
-        unique_code: uniqueCode,
-        sellProductId: result.data.productId,
-        name: result.data.name,
-        kanbanId: kanban.id,
-        kanbanColumnId: column.id,
-        sellPrice: result.data.sellPrice,
-        numero_pezzi: result.data.numero_pezzi || null,
-        other: result.data.other,
-        positions: positions,
-        // Draft and task type fields
-        is_draft: result.data.isDraft || false,
-        task_type: taskType,
-        // Category IDs for draft offers (used to filter products when completing)
-        draft_category_ids: result.data.draftCategoryIds || null,
-      };
+      // Generate unique code using atomic sequence (always incremental)
+      // Retry logic in case of duplicate key error
+      let uniqueCode = result.data.unique_code;
+      let taskCreate: any = null;
+      let taskError: any = null;
+      const maxRetries = 3;
+      let retryCount = 0;
 
-      // Add site_id if available
-      if (siteId) {
-        insertData.site_id = siteId;
+      while (retryCount < maxRetries && !taskCreate) {
+        // Generate new code if siteId exists (always regenerate to ensure uniqueness)
+        if (siteId) {
+          uniqueCode = await generateTaskCode(siteId, taskType);
+        }
+
+        // Prepare insert data with site_id
+        const insertData: any = {
+          title: "",
+          clientId: result.data.clientId,
+          deliveryDate: result.data.deliveryDate instanceof Date 
+            ? result.data.deliveryDate.toISOString() 
+            : result.data.deliveryDate || null,
+          termine_produzione: result.data.termine_produzione instanceof Date
+            ? result.data.termine_produzione.toISOString()
+            : result.data.termine_produzione || null,
+          unique_code: uniqueCode,
+          sellProductId: result.data.productId,
+          name: result.data.name,
+          kanbanId: kanban.id,
+          kanbanColumnId: column.id,
+          sellPrice: result.data.sellPrice,
+          numero_pezzi: result.data.numero_pezzi || null,
+          other: result.data.other,
+          positions: positions,
+          // Draft and task type fields
+          is_draft: result.data.isDraft || false,
+          task_type: taskType,
+          // Category IDs for draft offers (used to filter products when completing)
+          draft_category_ids: result.data.draftCategoryIds || null,
+        };
+
+        // Add site_id if available
+        if (siteId) {
+          insertData.site_id = siteId;
+        }
+
+        const { data: createdTask, error: error } = await supabase
+          .from("Task")
+          .insert(insertData)
+          .select()
+          .single();
+
+        taskError = error;
+        
+        // Check if error is a duplicate key constraint violation
+        if (error && error.code === "23505" && error.message?.includes("Task_site_unique_code_key")) {
+          // Duplicate key error - retry with a new code
+          retryCount++;
+          if (retryCount < maxRetries) {
+            // Wait a bit before retrying to avoid race conditions
+            await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+            continue;
+          }
+        } else if (error) {
+          // Other error - break and return
+          break;
+        } else {
+          // Success
+          taskCreate = createdTask;
+          break;
+        }
       }
 
-      const { data: taskCreate, error: taskError } = await supabase
-        .from("Task")
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (taskError) {
+      if (taskError && !taskCreate) {
         return NextResponse.json({
           error: true,
           message: `Errore nella creazione del task: ${taskError.message}`,

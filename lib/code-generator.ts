@@ -105,7 +105,56 @@ export async function saveCodeTemplate(
 }
 
 /**
+ * Helper per determinare il tipo di un codice task e estrarre la sequenza
+ * Supporta formati flessibili con suffissi in qualsiasi posizione
+ */
+function parseTaskCode(
+  code: string,
+  yearPrefix: string,
+): { type: string; sequence: number } | null {
+  if (!code) return null;
+
+  const codeUpper = code.toUpperCase();
+
+  // Determina il tipo basandosi sulla presenza di suffissi
+  let codeType: string;
+  if (codeUpper.includes("OFF")) {
+    codeType = "OFFERTA";
+  } else if (codeUpper.includes("FATT")) {
+    codeType = "FATTURA";
+  } else {
+    codeType = "LAVORO";
+  }
+
+  // Estrai tutti i numeri dal codice
+  const numbers = code.match(/\d+/g);
+  if (!numbers || numbers.length === 0) return null;
+
+  // Trova la sequenza: è il numero che NON è l'anno
+  // L'anno può essere in formato corto (26) o lungo (2026)
+  const yearShort = yearPrefix;
+  const yearLong = `20${yearPrefix}`;
+
+  let sequence = 0;
+  for (const num of numbers) {
+    // Salta se è l'anno
+    if (num === yearShort || num === yearLong) continue;
+
+    // Considera questo come potenziale sequenza
+    const parsed = parseInt(num, 10);
+    if (!isNaN(parsed) && parsed > sequence) {
+      sequence = parsed;
+    }
+  }
+
+  if (sequence === 0) return null;
+
+  return { type: codeType, sequence };
+}
+
+/**
  * Trova il numero di sequenza massimo esistente nei Task per un dato sito/anno/tipo
+ * Supporta qualsiasi formato di template configurato dal cliente
  */
 async function findMaxExistingSequence(
   supabase: any,
@@ -113,16 +162,18 @@ async function findMaxExistingSequence(
   sequenceType: string,
   year: number,
 ): Promise<number> {
-  const yearPrefix = String(year).slice(-2); // es: "25" per 2025
-  
-  // Query tutti i task del sito con codici che iniziano con l'anno
+  const yearPrefix = String(year).slice(-2); // es: "26" per 2026
+  const yearLong = String(year); // es: "2026"
+
+  // Query tutti i task del sito che contengono l'anno (sia formato corto che lungo)
+  // Usa OR per supportare entrambi i formati
   const { data: tasks, error } = await supabase
     .from("Task")
-    .select("unique_code")
+    .select("unique_code, task_type")
     .eq("site_id", siteId)
-    .like("unique_code", `${yearPrefix}-%`)
+    .or(`unique_code.like.%${yearPrefix}%,unique_code.like.%${yearLong}%`)
     .order("unique_code", { ascending: false })
-    .limit(500);
+    .limit(1000);
 
   if (error || !tasks || tasks.length === 0) {
     return 0;
@@ -134,45 +185,25 @@ async function findMaxExistingSequence(
     const code = task.unique_code;
     if (!code) continue;
 
-    const parts = code.split("-");
-    
-    // Determina il tipo del codice
-    // "25-001" = LAVORO (2 parti, seconda è numero)
-    // "25-OFF-001" = OFFERTA (3 parti, seconda è "OFF")
-    // "25-FATT-001" = FATTURA (3 parti, seconda è "FATT")
-    
-    let codeType: string;
-    let numPart: string;
-    
-    if (parts.length === 2) {
-      // Formato: "25-001" - potrebbe essere LAVORO
-      codeType = "LAVORO";
-      numPart = parts[1];
-    } else if (parts.length === 3) {
-      // Formato: "25-XXX-001"
-      const middle = parts[1].toUpperCase();
-      if (middle === "OFF") {
-        codeType = "OFFERTA";
-      } else if (middle === "FATT") {
-        codeType = "FATTURA";
-      } else {
-        // Formato sconosciuto, skip
-        continue;
-      }
-      numPart = parts[2];
-    } else {
-      // Formato non riconosciuto
-      continue;
+    // Prima prova a usare task_type se disponibile
+    let taskType = task.task_type?.toUpperCase();
+
+    // Parsing del codice
+    const parsed = parseTaskCode(code, yearPrefix);
+    if (!parsed) continue;
+
+    // Se task_type non è disponibile, usa il tipo determinato dal parsing
+    if (!taskType) {
+      taskType = parsed.type;
     }
-    
+
     // Solo se il tipo corrisponde
-    if (codeType !== sequenceType) {
+    if (taskType !== sequenceType) {
       continue;
     }
-    
-    const num = parseInt(numPart, 10);
-    if (!isNaN(num) && num > maxNumber) {
-      maxNumber = num;
+
+    if (parsed.sequence > maxNumber) {
+      maxNumber = parsed.sequence;
     }
   }
 
@@ -191,9 +222,6 @@ export async function getNextSequenceValue(
   const supabase = await createClient();
   const currentYear = year || new Date().getFullYear();
 
-  // Prima controlla il numero massimo esistente nei Task
-  const maxExisting = await findMaxExistingSequence(supabase, siteId, sequenceType, currentYear);
-
   // Prova a usare la funzione SQL per garantire atomicità
   const { data, error } = await supabase.rpc("get_next_sequence_value", {
     p_site_id: siteId,
@@ -202,9 +230,20 @@ export async function getNextSequenceValue(
   });
 
   if (error) {
-    logger.warn("RPC function not available, falling back to manual sequence:", error);
-    
+    logger.warn(
+      "RPC function not available, falling back to manual sequence:",
+      error,
+    );
+
     // Fallback: usa un approccio manuale se la funzione RPC non esiste
+    // Prima controlla il numero massimo esistente nei Task per evitare duplicati
+    const maxExisting = await findMaxExistingSequence(
+      supabase,
+      siteId,
+      sequenceType,
+      currentYear,
+    );
+
     const { data: existingSeq, error: seqError } = await supabase
       .from("code_sequences")
       .select("current_value")
@@ -217,42 +256,102 @@ export async function getNextSequenceValue(
       // PGRST116 = no rows found, that's ok
       // Usa il massimo esistente + 1
       logger.warn("code_sequences table not available, using max existing + 1");
-      return maxExisting + 1;
+      const nextValue = maxExisting + 1;
+
+      // Prova comunque ad aggiornare la sequenza per il futuro
+      await supabase
+        .from("code_sequences")
+        .upsert({
+          site_id: siteId,
+          sequence_type: sequenceType,
+          year: currentYear,
+          current_value: nextValue,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: "site_id,sequence_type,year",
+        });
+
+      return nextValue;
     }
 
     // Usa il massimo tra la sequenza salvata e quella esistente nei task
     const sequenceValue = existingSeq?.current_value || 0;
     const nextValue = Math.max(sequenceValue, maxExisting) + 1;
 
-    // Aggiorna o inserisci il valore
-    const { error: upsertError } = await supabase
-      .from("code_sequences")
-      .upsert({
-        site_id: siteId,
-        sequence_type: sequenceType,
-        year: currentYear,
-        current_value: nextValue,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: "site_id,sequence_type,year",
-      });
+    // Aggiorna o inserisci il valore con retry in caso di conflitto
+    let retries = 3;
+    let lastError = null;
+    while (retries > 0) {
+      const { error: upsertError } = await supabase
+        .from("code_sequences")
+        .upsert({
+          site_id: siteId,
+          sequence_type: sequenceType,
+          year: currentYear,
+          current_value: nextValue,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: "site_id,sequence_type,year",
+        });
 
-    if (upsertError) {
-      logger.warn("Failed to update sequence:", upsertError);
+      if (!upsertError) {
+        break;
+      }
+
+      lastError = upsertError;
+      retries--;
+
+      // Se c'è un conflitto, rileggi il valore corrente e ricalcola
+      if (retries > 0) {
+        const { data: updatedSeq } = await supabase
+          .from("code_sequences")
+          .select("current_value")
+          .eq("site_id", siteId)
+          .eq("sequence_type", sequenceType)
+          .eq("year", currentYear)
+          .single();
+
+        const updatedMaxExisting = await findMaxExistingSequence(
+          supabase,
+          siteId,
+          sequenceType,
+          currentYear,
+        );
+        const updatedSequenceValue = updatedSeq?.current_value || 0;
+        const updatedNextValue =
+          Math.max(updatedSequenceValue, updatedMaxExisting) + 1;
+
+        // Usa il valore aggiornato per il prossimo tentativo
+        return updatedNextValue;
+      }
+    }
+
+    if (lastError) {
+      logger.warn("Failed to update sequence after retries:", lastError);
     }
 
     return nextValue;
   }
 
   // RPC ha funzionato, ma verifica che sia maggiore del massimo esistente
+  // per evitare duplicati in caso di task creati manualmente o importati
+  const maxExisting = await findMaxExistingSequence(
+    supabase,
+    siteId,
+    sequenceType,
+    currentYear,
+  );
   const rpcValue = data as number;
+
   if (rpcValue <= maxExisting) {
     // La sequenza RPC è indietro rispetto ai task esistenti
     // Aggiorna la sequenza al valore corretto
-    logger.warn(`RPC sequence (${rpcValue}) is behind existing tasks (${maxExisting}), syncing...`);
-    
+    logger.warn(
+      `RPC sequence (${rpcValue}) is behind existing tasks (${maxExisting}), syncing...`,
+    );
+
     const correctValue = maxExisting + 1;
-    
+
     // Aggiorna la tabella code_sequences per sincronizzare
     await supabase
       .from("code_sequences")
@@ -265,7 +364,7 @@ export async function getNextSequenceValue(
       }, {
         onConflict: "site_id,sequence_type,year",
       });
-    
+
     return correctValue;
   }
 
@@ -490,7 +589,12 @@ export async function getNextInternalSequenceValue(
   const currentYear = new Date().getFullYear();
 
   // Check the maximum existing sequence in Task table
-  const maxExisting = await findMaxInternalSequence(supabase, siteId, categoryId, baseCode);
+  const maxExisting = await findMaxInternalSequence(
+    supabase,
+    siteId,
+    categoryId,
+    baseCode,
+  );
 
   // Try to get the sequence from code_sequences (with category_id)
   const { data: existingSeq, error: seqError } = await supabase
@@ -541,7 +645,11 @@ export async function generateInternalTaskCode(
   categoryId: number,
   baseCode: number,
 ): Promise<string> {
-  const sequenceValue = await getNextInternalSequenceValue(siteId, categoryId, baseCode);
+  const sequenceValue = await getNextInternalSequenceValue(
+    siteId,
+    categoryId,
+    baseCode,
+  );
   return `${baseCode}-${sequenceValue}`;
 }
 
@@ -551,7 +659,9 @@ export async function generateInternalTaskCode(
  */
 export async function getInternalCategoryInfo(
   kanbanId: string,
-): Promise<{ isInternal: boolean; categoryId?: number; baseCode?: number } | null> {
+): Promise<
+  { isInternal: boolean; categoryId?: number; baseCode?: number } | null
+> {
   const supabase = await createClient();
 
   // Get the kanban with its category
@@ -599,7 +709,12 @@ export async function previewInternalCode(
   const currentYear = new Date().getFullYear();
 
   // Check the maximum existing sequence
-  const maxExisting = await findMaxInternalSequence(supabase, siteId, categoryId, baseCode);
+  const maxExisting = await findMaxInternalSequence(
+    supabase,
+    siteId,
+    categoryId,
+    baseCode,
+  );
 
   // Get current sequence value
   const { data: existingSeq } = await supabase
