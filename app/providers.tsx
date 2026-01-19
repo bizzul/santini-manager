@@ -2,6 +2,7 @@
 
 import { ModalProvider } from "@/components/modal/provider";
 import { Providers as ThemeProviders } from "../app/Theme/providers";
+import { SessionMonitor } from "@/components/session-monitor";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
@@ -75,7 +76,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
         <ModalProvider>
-          <ThemeProviders>{children}</ThemeProviders>
+          <ThemeProviders>
+            <SessionMonitor />
+            {children}
+          </ThemeProviders>
         </ModalProvider>
       </QueryClientProvider>
     );
@@ -101,7 +105,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <ModalProvider>
-        <ThemeProviders>{children}</ThemeProviders>
+        <ThemeProviders>
+          <SessionMonitor />
+          {children}
+        </ThemeProviders>
       </ModalProvider>
     </PersistQueryClientProvider>
   );

@@ -1,18 +1,29 @@
 "use client";
 
 import { signIn, signup } from "./actions";
-import { Suspense, useState, useTransition } from "react";
+import { Suspense, useState, useTransition, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { LogIn } from "lucide-react";
+import { LogIn, UserX } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function LoginContent() {
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [deactivatedMessage, setDeactivatedMessage] = useState(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("deactivated") === "true") {
+      setDeactivatedMessage(true);
+      // Remove the param from URL without refresh
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (formData: FormData) => {
     setError(null);
@@ -105,6 +116,13 @@ export default function LoginPage() {
               Password dimenticata?
             </Link>
 
+            {deactivatedMessage && (
+              <div className="text-white text-sm text-center bg-amber-500/20 border border-amber-400/50 rounded-lg p-3 backdrop-blur-sm flex items-center gap-2 justify-center">
+                <UserX className="w-4 h-4" />
+                Il tuo account è stato disattivato. Contatta l'amministratore.
+              </div>
+            )}
+
             {error && (
               <div className="text-white text-sm text-center bg-red-500/20 border border-red-400/50 rounded-lg p-3 backdrop-blur-sm">
                 {error}
@@ -143,5 +161,21 @@ export default function LoginPage() {
         </Suspense>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full px-4">
+        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-3xl shadow-2xl p-8 sm:p-12 max-w-md mx-auto">
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

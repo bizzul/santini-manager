@@ -108,7 +108,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
         const [userResult, orgResult] = await Promise.all([
             supabase
                 .from("User")
-                .select("role")
+                .select("role, enabled")
                 .eq("authId", userToUse.id)
                 .maybeSingle(),
             supabase
@@ -126,6 +126,12 @@ async function fetchUserContext(): Promise<UserContext | null> {
 
         if (userOrgError) {
             console.error("Error fetching user organizations:", userOrgError);
+        }
+
+        // Check if user is disabled - treat as not authenticated
+        if (userData && userData.enabled === false) {
+            logger.info("User is disabled, treating as not authenticated:", userToUse.id);
+            return null;
         }
 
         // Default context for users without records

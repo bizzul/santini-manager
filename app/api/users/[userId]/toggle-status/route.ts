@@ -1,6 +1,7 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getUserContext } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 export async function POST(
     req: NextRequest,
@@ -55,6 +56,28 @@ export async function POST(
             return NextResponse.json({
                 error: `Failed to update user status: ${error.message}`,
             }, { status: 500 });
+        }
+
+        // If user is being deactivated, invalidate their session immediately
+        if (!enabled) {
+            try {
+                const serviceClient = createServiceClient();
+                // Sign out the user from all sessions
+                const { error: signOutError } = await serviceClient.auth.admin.signOut(
+                    userId,
+                    "global" // Sign out from all devices
+                );
+                
+                if (signOutError) {
+                    logger.warn("Failed to sign out deactivated user:", signOutError);
+                    // Don't fail the request, the user is still deactivated
+                } else {
+                    logger.info("Successfully signed out deactivated user:", userId);
+                }
+            } catch (signOutErr) {
+                logger.warn("Error during sign out of deactivated user:", signOutErr);
+                // Don't fail the request, the user is still deactivated
+            }
         }
 
         return NextResponse.json({
