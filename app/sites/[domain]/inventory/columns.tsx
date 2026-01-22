@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import { EditableCell } from "@/components/table/editable-cell";
+import { editItem } from "./actions/edit-item.action";
 
 // Type for the flattened inventory row (item + variant)
 export type InventoryRow = {
@@ -87,7 +89,30 @@ export type InventoryRow = {
   } | null;
 };
 
-export const columns: ColumnDef<InventoryRow>[] = [
+// Handler for inline editing inventory items
+const handleInventoryEdit = async (
+  rowData: InventoryRow,
+  field: string,
+  newValue: string | number | boolean | null
+): Promise<{ success?: boolean; error?: string }> => {
+  const formData = { [field]: newValue };
+  const itemId = rowData.item_id || rowData.id;
+  const variantId = rowData.variant_id;
+
+  try {
+    const result = await editItem(formData, itemId, variantId);
+    if (result?.error) {
+      return { error: result.error };
+    }
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || "Errore durante il salvataggio" };
+  }
+};
+
+export const createColumns = (
+  domain?: string
+): ColumnDef<InventoryRow>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -115,10 +140,15 @@ export const columns: ColumnDef<InventoryRow>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Cod. Interno" />
     ),
-    cell: ({ row }) => {
-      const code = row.original.internal_code;
-      return code || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.internal_code}
+        row={row}
+        field="internal_code"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "category",
@@ -150,25 +180,44 @@ export const columns: ColumnDef<InventoryRow>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Sottocategoria" />
     ),
-    cell: ({ row }) => {
-      const subcat = row.original.subcategory;
-      return subcat || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.subcategory}
+        row={row}
+        field="subcategory"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "subcategory2",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tipo" />
     ),
-    cell: ({ row }) => {
-      const subcat2 = row.original.subcategory2;
-      return subcat2 || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.subcategory2}
+        row={row}
+        field="subcategory2"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "name",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Nome" />
+    ),
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.name}
+        row={row}
+        field="name"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
     ),
   },
   {
@@ -176,24 +225,30 @@ export const columns: ColumnDef<InventoryRow>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Colore" />
     ),
-    cell: ({ row }) => {
-      const color = row.original.color;
-      const colorCode = row.original.color_code;
-      if (color && colorCode && color !== colorCode) {
-        return `${color} (${colorCode})`;
-      }
-      return color || colorCode || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.color}
+        row={row}
+        field="color"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "warehouse_number",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Nr. Mag." />
     ),
-    cell: ({ row }) => {
-      const wh = row.original.warehouse_number;
-      return wh || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.warehouse_number}
+        row={row}
+        field="warehouse_number"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "supplier",
@@ -220,10 +275,15 @@ export const columns: ColumnDef<InventoryRow>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Produttore" />
     ),
-    cell: ({ row }) => {
-      const producer = row.original.producer;
-      return producer || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.producer}
+        row={row}
+        field="producer"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "dimensions",
@@ -266,20 +326,34 @@ export const columns: ColumnDef<InventoryRow>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="P. Acquisto" />
     ),
-    cell: ({ row }) => {
-      const price = row.original.purchase_unit_price ?? row.original.unit_price;
-      return price != null ? `${price.toFixed(2)} CHF` : "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.purchase_unit_price ?? row.original.unit_price}
+        row={row}
+        field="purchase_unit_price"
+        type="number"
+        onSave={handleInventoryEdit}
+        suffix="CHF"
+        formatter={(v) => v?.toFixed(2)}
+      />
+    ),
   },
   {
     accessorKey: "sell_unit_price",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="P. Vendita" />
     ),
-    cell: ({ row }) => {
-      const price = row.original.sell_unit_price ?? row.original.sell_price;
-      return price != null ? `${price.toFixed(2)} CHF` : "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.sell_unit_price ?? row.original.sell_price}
+        row={row}
+        field="sell_unit_price"
+        type="number"
+        onSave={handleInventoryEdit}
+        suffix="CHF"
+        formatter={(v) => v?.toFixed(2)}
+      />
+    ),
   },
   {
     accessorKey: "total_price",
@@ -299,10 +373,15 @@ export const columns: ColumnDef<InventoryRow>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Descrizione" />
     ),
-    cell: ({ row }) => {
-      const desc = row.original.description;
-      return desc || "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.description}
+        row={row}
+        field="description"
+        type="text"
+        onSave={handleInventoryEdit}
+      />
+    ),
   },
   {
     accessorKey: "lastAction.createdAt",
@@ -394,3 +473,6 @@ export const columns: ColumnDef<InventoryRow>[] = [
     cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ];
+
+// Legacy export for backward compatibility
+export const columns = createColumns();

@@ -91,8 +91,8 @@ export async function editItem(formData: any, id: number, domain?: string) {
         }
       }
 
-      // return revalidatePath("/suppliers");
-      return resultUpdate;
+      revalidatePath("/suppliers");
+      return { success: true, data: resultUpdate };
     } catch (error: any) {
       log.error("Error updating supplier:", error);
       return {

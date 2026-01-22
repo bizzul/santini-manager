@@ -2,6 +2,7 @@ import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { logger } from "@/lib/logger";
 import { cache } from "react";
+import { AVAILABLE_MODULES, ModuleConfig } from "@/lib/module-config";
 
 const log = logger.scope("ServerData");
 
@@ -881,6 +882,50 @@ export const fetchReportsData = cache(async (siteId: string) => {
         packingControl: packingResult.data || [],
         tasks: tasksResult.data || [],
     };
+});
+
+/**
+ * Fetch enabled modules for a site
+ */
+export interface ModuleWithStatus extends ModuleConfig {
+    isEnabled: boolean;
+}
+
+export const fetchSiteModules = cache(async (siteId: string): Promise<ModuleWithStatus[]> => {
+    const supabase = await createClient();
+
+    // Get enabled modules for this site
+    const { data: siteModules, error } = await supabase
+        .from("site_modules")
+        .select("module_name, is_enabled")
+        .eq("site_id", siteId);
+
+    if (error) {
+        log.error("Error fetching site modules:", error);
+        return AVAILABLE_MODULES.map((module) => ({
+            ...module,
+            isEnabled: module.enabledByDefault,
+        }));
+    }
+
+    // Create a map of enabled modules
+    const enabledModules = new Map(
+        siteModules?.map((sm) => [sm.module_name, sm.is_enabled]) || [],
+    );
+
+    // Return all available modules with their enabled status
+    return AVAILABLE_MODULES.map((module) => ({
+        ...module,
+        isEnabled: enabledModules.get(module.name) ?? module.enabledByDefault,
+    }));
+});
+
+/**
+ * Get list of enabled module names for a site
+ */
+export const getEnabledModuleNames = cache(async (siteId: string): Promise<string[]> => {
+    const modules = await fetchSiteModules(siteId);
+    return modules.filter((m) => m.isEnabled).map((m) => m.name);
 });
 
 /**

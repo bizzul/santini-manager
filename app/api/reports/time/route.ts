@@ -194,14 +194,15 @@ export const POST = async (req: NextRequest) => {
 
     if (siteId) {
       // Get users associated with this site
+      // user_sites.user_id contains auth UUIDs, so we filter on User.authId
       const { data: siteUsers } = await supabase
         .from("user_sites")
         .select("user_id")
         .eq("site_id", siteId);
 
       if (siteUsers && siteUsers.length > 0) {
-        const userIds = siteUsers.map((su: any) => su.user_id);
-        userQuery = userQuery.in("id", userIds);
+        const userAuthIds = siteUsers.map((su: any) => su.user_id);
+        userQuery = userQuery.in("authId", userAuthIds);
       }
     }
 

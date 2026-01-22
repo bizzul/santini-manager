@@ -1,6 +1,8 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import { DataTable } from "./table";
-import { columns } from "./columns";
+import { createColumns } from "./columns";
 import { Manufacturer } from "@/types/supabase";
 
 const DataWrapper = ({
@@ -10,6 +12,8 @@ const DataWrapper = ({
   data: Manufacturer[];
   domain: string;
 }) => {
+  const columns = useMemo(() => createColumns(domain), [domain]);
+  
   return (
     <div className="container mx-auto">
       <DataTable columns={columns} data={data} domain={domain} />

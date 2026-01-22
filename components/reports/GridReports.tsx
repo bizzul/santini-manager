@@ -34,6 +34,7 @@ function GridReports({
   task,
   domain,
   isAdmin = true,
+  enabledModules = [],
 }: {
   suppliers: Supplier[];
   imb: PackingControl[];
@@ -41,7 +42,13 @@ function GridReports({
   task: Task[];
   domain: string;
   isAdmin?: boolean;
+  enabledModules?: string[];
 }) {
+  // Helper to check if a report module is enabled
+  const isReportEnabled = (moduleName: string) => {
+    if (enabledModules.length === 0) return true; // Show all if no modules passed (backwards compatibility)
+    return enabledModules.includes(moduleName);
+  };
   const currentYear = new Date().getFullYear();
   const [loadingInventory, setLoadingInventory] = useState(false);
   const lastYear = currentYear - 1;
@@ -317,174 +324,187 @@ function GridReports({
 
   return (
     <div className="flex flex-wrap gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventario</CardTitle>
-          <CardDescription>Situazione inventario attuale</CardDescription>
-        </CardHeader>
+      {isReportEnabled("report-inventory") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Inventario</CardTitle>
+            <CardDescription>Situazione inventario attuale</CardDescription>
+          </CardHeader>
 
-        <CardFooter>
-          <Button
-            disabled={loadingInventory}
-            onClick={inventoryExcel}
-            variant="default"
-          >
-            Scarica
-          </Button>
-        </CardFooter>
-      </Card>
+          <CardFooter>
+            <Button
+              disabled={loadingInventory}
+              onClick={inventoryExcel}
+              variant="default"
+            >
+              Scarica
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Progetti</CardTitle>
-          <CardDescription>Situazione progetti attuali</CardDescription>
-        </CardHeader>
+      {isReportEnabled("report-projects") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Progetti</CardTitle>
+            <CardDescription>Situazione progetti attuali</CardDescription>
+          </CardHeader>
 
-        <CardFooter>
-          <Button onClick={taskExcel} variant="default">
-            Scarica
-          </Button>
-        </CardFooter>
-      </Card>
+          <CardFooter>
+            <Button onClick={taskExcel} variant="default">
+              Scarica
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ore</CardTitle>
-          <CardDescription>
-            {isAdmin
-              ? "Report ore di tutti i collaboratori"
-              : "Report delle tue ore lavorate"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DateRangePicker
-            className="max-w-md mx-auto"
-            value={value}
-            onValueChange={setValue}
-            presets={[
-              {
-                key: "ytd",
-                label: "Anno precedente",
-                from: new Date(lastYear, 0, 1),
-                to: new Date(lastYear, 11, 31),
-              },
-              {
-                key: "half",
-                label: "Primo semestre",
-                from: new Date(currentYear, 0, 1),
-                to: new Date(currentYear, 5, 31),
-              },
-            ]}
-          />
-        </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() => timeExcel(value)}
-            disabled={value.from == undefined || value.to == undefined}
-            variant="default"
-          >
-            Scarica
-          </Button>
-        </CardFooter>
-      </Card>
+      {isReportEnabled("report-time") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ore</CardTitle>
+            <CardDescription>
+              {isAdmin
+                ? "Report ore di tutti i collaboratori"
+                : "Report delle tue ore lavorate"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DateRangePicker
+              className="max-w-md mx-auto"
+              value={value}
+              onValueChange={setValue}
+              presets={[
+                {
+                  key: "ytd",
+                  label: "Anno precedente",
+                  from: new Date(lastYear, 0, 1),
+                  to: new Date(lastYear, 11, 31),
+                },
+                {
+                  key: "half",
+                  label: "Primo semestre",
+                  from: new Date(currentYear, 0, 1),
+                  to: new Date(currentYear, 5, 31),
+                },
+              ]}
+            />
+          </CardContent>
+          <CardFooter>
+            <Button
+              onClick={() => timeExcel(value)}
+              disabled={value.from == undefined || value.to == undefined}
+              variant="default"
+            >
+              Scarica
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
-      <Card className="md:w-2/5">
-        <CardHeader>
-          <CardTitle>Errori</CardTitle>
-          <CardDescription>Errori per fornitore / data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="pb-4">
-            <Select value={supplier} onValueChange={setSupplier}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona fornitore" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti</SelectItem>
-                {suppliers.map((supplier) => (
-                  <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                    {supplier.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DateRangePicker
-            className="max-w-md"
-            value={valueError}
-            onValueChange={setValueError}
-            presets={[
-              {
-                key: "ytd",
-                label: "Anno precedente",
-                from: new Date(lastYear, 0, 1),
-                to: new Date(lastYear, 11, 31),
-              },
-              {
-                key: "half",
-                label: "Primo semestre",
-                from: new Date(currentYear, 0, 1),
-                to: new Date(currentYear, 5, 31),
-              },
-            ]}
-          />
-        </CardContent>
-        <CardFooter>
-          <Button
-            disabled={
-              valueError.from == undefined || valueError.to == undefined
-            }
-            onClick={() => errorsExcel(valueError, supplier)}
-            variant="default"
-          >
-            Scarica
-          </Button>
-        </CardFooter>
-      </Card>
+      {isReportEnabled("report-errors") && (
+        <Card className="md:w-2/5">
+          <CardHeader>
+            <CardTitle>Errori</CardTitle>
+            <CardDescription>Errori per fornitore / data</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="pb-4">
+              <Select value={supplier} onValueChange={setSupplier}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona fornitore" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti</SelectItem>
+                  {suppliers.map((supplier) => (
+                    <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                      {supplier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DateRangePicker
+              className="max-w-md"
+              value={valueError}
+              onValueChange={setValueError}
+              presets={[
+                {
+                  key: "ytd",
+                  label: "Anno precedente",
+                  from: new Date(lastYear, 0, 1),
+                  to: new Date(lastYear, 11, 31),
+                },
+                {
+                  key: "half",
+                  label: "Primo semestre",
+                  from: new Date(currentYear, 0, 1),
+                  to: new Date(currentYear, 5, 31),
+                },
+              ]}
+            />
+          </CardContent>
+          <CardFooter>
+            <Button
+              disabled={
+                valueError.from == undefined || valueError.to == undefined
+              }
+              onClick={() => errorsExcel(valueError, supplier)}
+              variant="default"
+            >
+              Scarica
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
-      <Card className="md:w-2/5">
-        <CardHeader>
-          <CardTitle>PDF Imballaggio</CardTitle>
-          <CardDescription>Imballaggio per progetto</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="pb-4">
-            <Select value={selectedTask} onValueChange={setSelectedTask}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona progetto" />
-              </SelectTrigger>
-              <SelectContent>
-                {task.map((t) => (
-                  <SelectItem key={t.id} value={t.id.toString()}>
-                    {t.unique_code}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button
-            disabled={selectedTask == undefined}
-            onClick={() => imbPDF(selectedTask)}
-            variant="default"
-          >
-            Scarica
-          </Button>
-        </CardFooter>
-      </Card>
-      <Card className="md:w-2/5">
-        <CardHeader>
-          <CardTitle>Report Imballaggio / QC</CardTitle>
-          <CardDescription>Report interno</CardDescription>
-        </CardHeader>
+      {isReportEnabled("report-imb") && (
+        <Card className="md:w-2/5">
+          <CardHeader>
+            <CardTitle>PDF Imballaggio</CardTitle>
+            <CardDescription>Imballaggio per progetto</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="pb-4">
+              <Select value={selectedTask} onValueChange={setSelectedTask}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona progetto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {task.map((t) => (
+                    <SelectItem key={t.id} value={t.id.toString()}>
+                      {t.unique_code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button
+              disabled={selectedTask == undefined}
+              onClick={() => imbPDF(selectedTask)}
+              variant="default"
+            >
+              Scarica
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
 
-        <CardFooter>
-          <Button onClick={imbQC} variant="default">
-            Scarica
-          </Button>
-        </CardFooter>
-      </Card>
+      {isReportEnabled("report-imb") && (
+        <Card className="md:w-2/5">
+          <CardHeader>
+            <CardTitle>Report Imballaggio / QC</CardTitle>
+            <CardDescription>Report interno</CardDescription>
+          </CardHeader>
+
+          <CardFooter>
+            <Button onClick={imbQC} variant="default">
+              Scarica
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
     </div>
   );
 }

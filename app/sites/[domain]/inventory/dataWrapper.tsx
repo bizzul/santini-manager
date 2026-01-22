@@ -1,8 +1,12 @@
-import React from "react";
-import { DataTable } from "./table";
-import { columns } from "./columns";
+"use client";
 
-const DataWrapper = ({ data }: { data: any }) => {
+import React, { useMemo } from "react";
+import { DataTable } from "./table";
+import { createColumns } from "./columns";
+
+const DataWrapper = ({ data, domain }: { data: any; domain?: string }) => {
+  const columns = useMemo(() => createColumns(domain), [domain]);
+  
   return (
     <div className="container mx-auto ">
       <DataTable columns={columns} data={data} />

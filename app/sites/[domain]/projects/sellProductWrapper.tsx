@@ -1,10 +1,12 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import { DataTable } from "./table";
-import { columns } from "./columns";
+import { createColumns } from "./columns";
 import { Data } from "./page";
 
-const SellProductWrapper = ({ data }: { data: Data }) => {
+const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) => {
+  const columns = useMemo(() => createColumns(domain), [domain]);
+  
   return (
     <div className="container mx-auto ">
       <DataTable 

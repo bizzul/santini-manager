@@ -39,7 +39,7 @@ export default async function Page({
       </PageHeader>
       <PageContent>
         {clients.length > 0 ? (
-          <DataWrapper data={clients} />
+          <DataWrapper data={clients} domain={domain} />
         ) : (
           <div className="w-full text-center flex flex-col justify-center items-center h-80">
             <h1 className="font-bold text-2xl">Nessun cliente registrato</h1>

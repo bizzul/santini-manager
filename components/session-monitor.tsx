@@ -46,6 +46,7 @@ export function SessionMonitor() {
             log.debug("Setting up session monitor for user:", user.id);
 
             // Subscribe to changes on the User table for this specific user
+            // Note: filter value must be properly formatted for UUID columns
             const channel = supabase
                 .channel(channelName)
                 .on(
@@ -54,7 +55,7 @@ export function SessionMonitor() {
                         event: "UPDATE",
                         schema: "public",
                         table: "User",
-                        filter: `authId=eq.${user.id}`,
+                        filter: `"authId"=eq.${user.id}`,
                     },
                     async (payload: any) => {
                         log.debug("User record updated:", payload);
@@ -71,11 +72,14 @@ export function SessionMonitor() {
                         }
                     }
                 )
-                .subscribe((status: string) => {
+                .subscribe((status: string, err?: Error) => {
                     if (status === "SUBSCRIBED") {
-                        log.info("Session monitor active for user:", user.id);
+                        log.debug("Session monitor active for user:", user.id);
                     } else if (status === "CHANNEL_ERROR") {
-                        log.error("Session monitor subscription error");
+                        // This is not critical - session monitoring is optional
+                        log.warn("Session monitor subscription failed:", err?.message || "Check RLS policies on User table");
+                    } else if (status === "TIMED_OUT") {
+                        log.warn("Session monitor subscription timed out");
                     }
                 });
 

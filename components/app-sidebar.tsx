@@ -163,6 +163,7 @@ type MenuItem = {
   items?: MenuItem[];
   customComponent?: React.ReactNode;
   moduleName?: string;
+  alternativeModules?: string[]; // Alternative module names that also enable this menu
   id?: string | number; // Add unique identifier for kanban items
   lucideIcon?: string; // Lucide icon name for kanban categories
   color?: string; // Color for category icons
@@ -341,8 +342,44 @@ const getMenuItems = (
       icon: "faSquarePollVertical",
       href: `${basePath}/reports`,
       alert: false,
-      moduleName: "reports",
+      // Show Reports menu if any report module is enabled (no main module, just alternatives)
+      alternativeModules: ["report-time", "report-inventory", "report-projects", "report-errors", "report-imb"],
       items: [
+        {
+          label: "Report Ore",
+          icon: "faClock",
+          href: `${basePath}/reports`,
+          alert: false,
+          moduleName: "report-time",
+        },
+        {
+          label: "Report Inventario",
+          icon: "faWarehouse",
+          href: `${basePath}/reports`,
+          alert: false,
+          moduleName: "report-inventory",
+        },
+        {
+          label: "Report Progetti",
+          icon: "faTable",
+          href: `${basePath}/reports`,
+          alert: false,
+          moduleName: "report-projects",
+        },
+        {
+          label: "Report Errori",
+          icon: "faExclamation",
+          href: `${basePath}/reports`,
+          alert: false,
+          moduleName: "report-errors",
+        },
+        {
+          label: "Report Imballaggio",
+          icon: "faBox",
+          href: `${basePath}/reports`,
+          alert: false,
+          moduleName: "report-imb",
+        },
         {
           label: "Quality Control",
           icon: "faCheckSquare",
@@ -377,27 +414,49 @@ const getMenuItems = (
 
   // Enhanced module filtering with better performance
   const siteSpecificItems = allSiteItems.filter((item) => {
+    // Helper to check if a module or any of its alternatives is enabled
+    const isModuleOrAlternativeEnabled = (moduleName?: string, alternativeModules?: string[]) => {
+      if (moduleName && enabledModules.includes(moduleName)) return true;
+      if (alternativeModules) {
+        return alternativeModules.some(alt => enabledModules.includes(alt));
+      }
+      return false;
+    };
+    
     // If item has sub-items, always filter them based on their moduleNames
     if (item.items) {
       const enabledSubItems = item.items.filter(
         (subItem) =>
           !subItem.moduleName || enabledModules.includes(subItem.moduleName)
       );
+      
+      // Check if parent module or any alternative is enabled
+      const parentModuleEnabled = isModuleOrAlternativeEnabled(item.moduleName, item.alternativeModules);
+      
       if (enabledSubItems.length > 0) {
         item.items = enabledSubItems;
-        // If parent has no moduleName, show it if it has enabled sub-items
-        if (!item.moduleName) return true;
-        // If parent has moduleName, also check if it's enabled
-        return enabledModules.includes(item.moduleName);
+        // If parent has no moduleName and no alternatives, show it if it has enabled sub-items
+        if (!item.moduleName && !item.alternativeModules) return true;
+        // If parent has moduleName or alternatives, check if any is enabled
+        return parentModuleEnabled;
       }
+      
+      // If no sub-items are enabled but the parent module itself is enabled,
+      // show the menu without sub-items (will link directly to parent href)
+      if (parentModuleEnabled && item.href) {
+        // Remove items array so it renders as a simple link
+        delete item.items;
+        return true;
+      }
+      
       return false;
     }
 
     // Items without sub-items and without moduleName are always shown
     if (!item.moduleName) return true;
 
-    // Items with moduleName must be in enabledModules
-    return enabledModules.includes(item.moduleName);
+    // Items with moduleName must be in enabledModules (or alternatives)
+    return isModuleOrAlternativeEnabled(item.moduleName, item.alternativeModules);
   });
 
   // Add admin-only items if not on site domain

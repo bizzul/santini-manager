@@ -1,8 +1,12 @@
-import React from "react";
+"use client";
+
+import React, { useMemo } from "react";
 import { DataTable } from "./table";
-import { columns } from "./columns";
+import { createColumns } from "./columns";
 
 const DataWrapper = ({ data, domain }: { data: any[]; domain: string }) => {
+  const columns = useMemo(() => createColumns(domain), [domain]);
+  
   return <DataTable columns={columns} data={data} domain={domain} />;
 };
 
