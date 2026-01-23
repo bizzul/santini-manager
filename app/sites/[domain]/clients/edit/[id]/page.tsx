@@ -3,10 +3,11 @@ import { Product } from "@/types/supabase";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import MobilePage from "@/components/inventory/MobilePage";
+import { requireServerSiteContext } from "@/lib/server-data";
 
 type DataResult = Product | { error: { message: string } };
 
-async function getData(id: number): Promise<DataResult> {
+async function getData(id: number, siteId: string): Promise<DataResult> {
   try {
     // Fetch data from your API here.
     const supabase = await createClient();
@@ -14,6 +15,7 @@ async function getData(id: number): Promise<DataResult> {
       .from("product")
       .select("*")
       .eq("inventoryId", Number(id))
+      .eq("site_id", siteId)
       .single();
 
     if (error || !product) {
@@ -27,10 +29,8 @@ async function getData(id: number): Promise<DataResult> {
   }
 }
 
-async function Page({ params }: { params: Promise<{ id: number }> }) {
-  const { id } = await params;
-  //get initial data
-  const data = await getData(id);
+async function Page({ params }: { params: Promise<{ id: number; domain: string }> }) {
+  const { id, domain } = await params;
 
   const userContext = await getUserContext();
 
@@ -39,6 +39,13 @@ async function Page({ params }: { params: Promise<{ id: number }> }) {
     // For example, you might redirect to the login page:
     return redirect("/login");
   }
+
+  // Get site context (required for multi-tenant)
+  const siteContext = await requireServerSiteContext(domain);
+  const { siteId } = siteContext;
+
+  //get initial data filtered by siteId
+  const data = await getData(id, siteId);
 
   // Now it's safe to use session.user
   const { user } = userContext.user;

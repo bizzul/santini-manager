@@ -17,9 +17,19 @@ type ErrorTrackingRow = {
   description?: string;
   user?: {
     given_name?: string;
+    family_name?: string;
   };
   supplier?: {
     name?: string;
+  };
+  task?: {
+    unique_code?: string;
+    title?: string;
+    Client?: {
+      businessName?: string;
+      individualFirstName?: string;
+      individualLastName?: string;
+    };
   };
   files?: any[];
   [key: string]: any;
@@ -80,10 +90,41 @@ export const createColumns = (): ColumnDef<ErrorTrackingRow>[] => {
       enableHiding: false,
     },
     {
+      accessorKey: "task.unique_code",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Progetto" />
+      ),
+      cell: ({ row }) => {
+        const { task } = row.original;
+        if (!task?.unique_code) return "-";
+        
+        // Get client name
+        const clientName = task.Client?.businessName ||
+          (task.Client?.individualFirstName && task.Client?.individualLastName
+            ? `${task.Client.individualFirstName} ${task.Client.individualLastName}`
+            : null);
+        
+        if (clientName) {
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium">{task.unique_code}</span>
+              <span className="text-xs text-muted-foreground">{clientName}</span>
+            </div>
+          );
+        }
+        return task.unique_code;
+      },
+    },
+    {
       accessorKey: "user.given_name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Creato da" />
       ),
+      cell: ({ row }) => {
+        const { user } = row.original;
+        if (!user) return "-";
+        return `${user.given_name || ""} ${user.family_name || ""}`.trim() || "-";
+      },
     },
     {
       accessorKey: "created_at",

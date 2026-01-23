@@ -106,8 +106,12 @@ export async function createItem(props: any, domain?: string) {
         );
       }
 
-      const { data: defaultSuppliers, error: defaultSuppliersError } =
-        await supabase.from("Supplier").select("*");
+      // Fetch only suppliers for this site
+      let suppliersQuery = supabase.from("Supplier").select("*");
+      if (siteId) {
+        suppliersQuery = suppliersQuery.eq("site_id", siteId);
+      }
+      const { data: defaultSuppliers, error: defaultSuppliersError } = await suppliersQuery;
 
       // Crea le relazioni TaskSupplier per ogni fornitore trovato
       if (defaultSuppliers && defaultSuppliers.length > 0) {

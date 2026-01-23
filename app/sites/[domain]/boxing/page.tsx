@@ -10,7 +10,11 @@ async function getPackingControl(siteId: string) {
 
   const { data, error } = await supabase
     .from("PackingControl")
-    .select("*")
+    .select(`
+      *,
+      task:taskId(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
+      user:userId(id, given_name, family_name)
+    `)
     .eq("site_id", siteId);
 
   if (error) {

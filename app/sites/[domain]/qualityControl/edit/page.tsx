@@ -3,12 +3,14 @@ import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import MobilePage from "@/components/qualityControl/mobilePage";
 import { createClient } from "@/utils/server";
+import { requireServerSiteContext } from "@/lib/server-data";
+
 interface Data {
   quality: any[];
 }
 
 export const revalidate = 10;
-async function getSellProducts(): Promise<Data> {
+async function getSellProducts(siteId: string): Promise<Data> {
   // Fetch data from your API here.
   // Fetch all the products
 
@@ -23,6 +25,7 @@ async function getSellProducts(): Promise<Data> {
     user:user(*)
   `
     )
+    .eq("site_id", siteId)
     .eq("task.archived", false)
     .eq("task.column.identifier", "SPEDITO")
     .order("task.unique_code", { ascending: true });
@@ -35,9 +38,12 @@ async function getSellProducts(): Promise<Data> {
   return { quality: qualityControl };
 }
 
-async function Page() {
-  //get initial data
-  const data = await getSellProducts();
+async function Page({
+  params,
+}: {
+  params: Promise<{ domain: string }>;
+}) {
+  const { domain } = await params;
 
   const session = await getUserContext();
   const returnLink = `/api/auth/login?returnTo=${encodeURIComponent(
@@ -48,6 +54,14 @@ async function Page() {
     // For example, you might redirect to the login page:
     return redirect(returnLink);
   }
+
+  // Get site context (required for multi-tenant)
+  const siteContext = await requireServerSiteContext(domain);
+  const { siteId } = siteContext;
+
+  //get initial data filtered by siteId
+  const data = await getSellProducts(siteId);
+
   // Now it's safe to use session.user
   const { user } = session;
 

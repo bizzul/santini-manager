@@ -3,14 +3,16 @@ import { createClient } from "@/utils/server";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { requireServerSiteContext } from "@/lib/server-data";
 
-async function getData(id: number): Promise<any | any> {
+async function getData(id: number, siteId: string): Promise<any | any> {
   // Fetch data from your API here.
   const supabase = await createClient();
   const { data: task, error: taskError } = await supabase
     .from("task")
     .select("*")
     .eq("id", id)
+    .eq("site_id", siteId)
     .single();
   if (taskError) {
     logger.error("Error fetching task:", taskError);
@@ -20,6 +22,7 @@ async function getData(id: number): Promise<any | any> {
     .from("client")
     .select("*")
     .eq("id", task.clientId)
+    .eq("site_id", siteId)
     .single();
   if (clientError) {
     console.error("Error fetching client:", clientError);
@@ -31,21 +34,22 @@ async function getData(id: number): Promise<any | any> {
 export default async function Page({
   params,
 }: {
-  params: Promise<{ id: number }>;
+  params: Promise<{ id: number; domain: string }>;
 }) {
-  const { id } = await params;
-  //get initial data
-  const data = await getData(id);
+  const { id, domain } = await params;
 
   const session = await getUserContext();
 
   if (!session || !session.user || !session.user.id) {
-    // Handle the absence of a session. Redirect or return an error.
-    // For example, you might redirect to the login page:
     return redirect("/login");
   }
-  // Now it's safe to use session.user
-  const { user } = session.user;
+
+  // Get site context (required for multi-tenant)
+  const siteContext = await requireServerSiteContext(domain);
+  const { siteId } = siteContext;
+
+  //get initial data filtered by siteId
+  const data = await getData(id, siteId);
   // console.log(data);
   const update = new Date(data.updated_at);
   const created = new Date(data.created_at);

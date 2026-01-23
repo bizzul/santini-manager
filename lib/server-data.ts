@@ -798,30 +798,52 @@ export const fetchRoles = cache(async (siteId: string) => {
 
 /**
  * Fetch timetracking data with relations
+ * Filters at database level for both direct site_id (internal activities)
+ * and task.site_id (project-related entries)
  */
 export const fetchTimetracking = cache(async (siteId: string) => {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    // First, get task IDs for this site to include timetracking entries linked to them
+    const { data: siteTasks, error: tasksError } = await supabase
+        .from("Task")
+        .select("id")
+        .eq("site_id", siteId);
+
+    if (tasksError) {
+        log.error("Error fetching site tasks for timetracking:", tasksError);
+    }
+
+    const siteTaskIds = (siteTasks || []).map(t => t.id);
+
+    // Build query with proper site filtering
+    // Include client info via task for project name display
+    let query = supabase
         .from("Timetracking")
         .select(`
             *,
-            task:task_id(*, site_id),
+            task:task_id(*, site_id, Client:clientId(businessName, individualFirstName, individualLastName)),
             user:employee_id(id, given_name, family_name, email),
             roles:_RolesToTimetracking(role:Roles(id, name))
         `)
         .order("created_at", { ascending: false });
+
+    // Filter: either direct site_id match OR task is from this site
+    if (siteTaskIds.length > 0) {
+        query = query.or(`site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`);
+    } else {
+        // If no tasks, only filter by direct site_id
+        query = query.eq("site_id", siteId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         log.error("Error fetching timetracking:", error);
         return [];
     }
 
-    // Filter by site_id - check both direct site_id (for internal activities)
-    // and task.site_id (for project-related entries)
-    return (data || []).filter(
-        (t) => t.site_id === siteId || t.task?.site_id === siteId,
-    );
+    return data || [];
 });
 
 /**
@@ -842,14 +864,20 @@ export const fetchQualityControl = cache(async (siteId: string) => {
 });
 
 /**
- * Fetch error tracking data
+ * Fetch error tracking data with task and user relations
  */
 export const fetchErrorTracking = cache(async (siteId: string) => {
     const supabase = createServiceClient();
     const { data, error } = await supabase
         .from("Errortracking")
-        .select("*")
-        .eq("site_id", siteId);
+        .select(`
+            *,
+            task:task_id(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
+            user:user_id(id, given_name, family_name),
+            supplier:supplier_id(name)
+        `)
+        .eq("site_id", siteId)
+        .order("created_at", { ascending: false });
 
     if (error) {
         log.error("Error fetching error tracking:", error);
@@ -860,6 +888,7 @@ export const fetchErrorTracking = cache(async (siteId: string) => {
 
 /**
  * Fetch data for reports page
+ * Includes task relations with client info for project name display
  */
 export const fetchReportsData = cache(async (siteId: string) => {
     const supabase = await createClient();
@@ -867,11 +896,25 @@ export const fetchReportsData = cache(async (siteId: string) => {
     const [suppliersResult, qcResult, packingResult, tasksResult] =
         await Promise.all([
             supabase.from("Supplier").select("*").eq("site_id", siteId),
-            supabase.from("QualityControl").select("*").eq("site_id", siteId),
-            supabase.from("PackingControl").select("*").eq("site_id", siteId),
+            supabase
+                .from("QualityControl")
+                .select(`
+                    *,
+                    task:taskId(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
+                    user:userId(id, given_name, family_name)
+                `)
+                .eq("site_id", siteId),
+            supabase
+                .from("PackingControl")
+                .select(`
+                    *,
+                    task:taskId(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
+                    user:userId(id, given_name, family_name)
+                `)
+                .eq("site_id", siteId),
             supabase
                 .from("Task")
-                .select("*, column:kanbanColumnId(*)")
+                .select("*, column:kanbanColumnId(*), Client:clientId(businessName, individualFirstName, individualLastName)")
                 .eq("site_id", siteId)
                 .eq("archived", false),
         ]);

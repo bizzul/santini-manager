@@ -22,6 +22,12 @@ type TimetrackingRow = Timetracking & {
   }>;
   task?: {
     unique_code?: string;
+    title?: string;
+    Client?: {
+      businessName?: string;
+      individualFirstName?: string;
+      individualLastName?: string;
+    };
   };
 };
 
@@ -185,6 +191,26 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Progetto" />
       ),
+      cell: ({ row }) => {
+        const { task } = row.original;
+        if (!task?.unique_code) return "-";
+        
+        // Get client name
+        const clientName = task.Client?.businessName ||
+          (task.Client?.individualFirstName && task.Client?.individualLastName
+            ? `${task.Client.individualFirstName} ${task.Client.individualLastName}`
+            : null);
+        
+        if (clientName) {
+          return (
+            <div className="flex flex-col">
+              <span className="font-medium">{task.unique_code}</span>
+              <span className="text-xs text-muted-foreground">{clientName}</span>
+            </div>
+          );
+        }
+        return task.unique_code;
+      },
     },
     {
       accessorKey: "description",
