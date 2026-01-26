@@ -1,7 +1,7 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
-import { requireServerSiteContext, fetchSellProducts } from "@/lib/server-data";
+import { requireServerSiteContext, fetchSellProducts, fetchSellProductCategories } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
@@ -26,6 +26,7 @@ export default async function Page({
 
   // Fetch data
   const products = await fetchSellProducts(siteId);
+  const categories = await fetchSellProductCategories(siteId);
 
   return (
     <PageLayout>
@@ -39,7 +40,7 @@ export default async function Page({
       </PageHeader>
       <PageContent>
         {products.length > 0 ? (
-          <SellProductWrapper data={products} domain={domain} siteId={siteId} />
+          <SellProductWrapper data={products} domain={domain} siteId={siteId} categories={categories} />
         ) : (
           <div className="w-full text-center flex flex-col justify-center items-center h-80">
             <h1 className="font-bold text-2xl">Nessun articolo registrato!</h1>

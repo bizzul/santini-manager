@@ -230,6 +230,13 @@ const getMenuItems = (
           alert: false,
           moduleName: "calendar",
         },
+        {
+          label: "Service",
+          icon: "faCalendarDays",
+          href: `${basePath}/calendar-service`,
+          alert: false,
+          moduleName: "calendar",
+        },
       ],
     },
     {
@@ -836,7 +843,6 @@ export function AppSidebar() {
     const core = menuItems.filter((item) => item.label === "Dashboard");
     const projects = menuItems.filter((item) => item.label === "Kanban");
     const calendars = menuItems.filter((item) => item.label === "Calendari");
-    const time = menuItems.filter((item) => item.label === "Ore");
     const contacts = menuItems.filter((item) => item.label === "Contatti");
     const warehouse = menuItems.filter((item) => item.label === "Magazzino");
     const products = menuItems.filter((item) => item.label === "Articoli");
@@ -856,6 +862,8 @@ export function AppSidebar() {
           "Articoli",
           "Progetti",
           "Categorie",
+          "Errori",
+          "Reports",
         ].includes(item.label)
     );
 
@@ -863,7 +871,6 @@ export function AppSidebar() {
       core,
       projects,
       calendars,
-      time,
       contacts,
       warehouse,
       products,
@@ -1402,7 +1409,6 @@ export function AppSidebar() {
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {groupedMenuItems.calendars.map(renderMenuItem)}
-                      {groupedMenuItems.time.map(renderMenuItem)}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
@@ -1486,6 +1492,49 @@ export function AppSidebar() {
       <SidebarFooter>
         {/* Footer loads progressively - theme switcher always visible */}
         <div className="flex flex-col gap-2">
+          {/* Quick access icons for Ore, Errori, Reports */}
+          {domain && (
+            <div className="flex justify-around items-center px-2 py-2 border-b border-border">
+              {enabledModules.some((m) => m.name === "timetracking") && (
+                <Link
+                  href={`${basePath}/timetracking`}
+                  title="Ore"
+                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                >
+                  <FontAwesomeIcon
+                    icon={faClock}
+                    className="w-5 h-5 text-muted-foreground hover:text-foreground"
+                  />
+                </Link>
+              )}
+              {enabledModules.some((m) => m.name === "errortracking") && (
+                <Link
+                  href={`${basePath}/errortracking`}
+                  title="Errori"
+                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                >
+                  <FontAwesomeIcon
+                    icon={faExclamation}
+                    className="w-5 h-5 text-muted-foreground hover:text-foreground"
+                  />
+                </Link>
+              )}
+              {enabledModules.some((m) =>
+                ["report-time", "report-inventory", "report-projects", "report-errors", "report-imb"].includes(m.name)
+              ) && (
+                <Link
+                  href={`${basePath}/reports`}
+                  title="Reports"
+                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                >
+                  <FontAwesomeIcon
+                    icon={faSquarePollVertical}
+                    className="w-5 h-5 text-muted-foreground hover:text-foreground"
+                  />
+                </Link>
+              )}
+            </div>
+          )}
           <ThemeSwitcher />
           {userContext ? (
             <UserSection user={userContext} domain={domain ?? undefined} />

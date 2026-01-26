@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
           site_id, 
           is_offer_kanban,
           category_id,
-          category:KanbanCategory(
+          category:KanbanCategory!category_id(
             id,
             is_internal,
             internal_base_code
@@ -61,8 +61,11 @@ export async function GET(request: NextRequest) {
       siteId = kanban.site_id;
       isOfferKanban = kanban.is_offer_kanban || false;
 
+      // Normalize category (Supabase may return array for joins)
+      const rawCategory = kanban.category as any;
+      const category = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
+      
       // Check if kanban belongs to an internal category
-      const category = kanban.category as any;
       if (category && category.is_internal && category.internal_base_code) {
         isInternalCategory = true;
         internalCategoryId = category.id;
@@ -256,7 +259,7 @@ export async function POST(request: NextRequest) {
           site_id, 
           is_offer_kanban,
           category_id,
-          category:KanbanCategory(
+          category:KanbanCategory!category_id(
             id,
             is_internal,
             internal_base_code
@@ -275,12 +278,15 @@ export async function POST(request: NextRequest) {
       siteId = kanban.site_id;
       isOfferKanban = kanban.is_offer_kanban || false;
 
+      // Normalize category (Supabase may return array for joins)
+      const rawCategory2 = kanban.category as any;
+      const category2 = Array.isArray(rawCategory2) ? rawCategory2[0] : rawCategory2;
+      
       // Check if kanban belongs to an internal category
-      const category = kanban.category as any;
-      if (category && category.is_internal && category.internal_base_code) {
+      if (category2 && category2.is_internal && category2.internal_base_code) {
         isInternalCategory = true;
-        internalCategoryId = category.id;
-        internalBaseCode = category.internal_base_code;
+        internalCategoryId = category2.id;
+        internalBaseCode = category2.internal_base_code;
         taskType = "INTERNO";
       } else if (!overrideTaskType) {
         taskType = isOfferKanban ? "OFFERTA" : "LAVORO";

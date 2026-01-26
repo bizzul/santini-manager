@@ -81,7 +81,6 @@ export const List: FC<Props> = ({
             <th className="p-2">Creato da</th>
             <th className="p-2">Reparto</th>
             <th className="p-2">Ore</th>
-            <th className="p-2">Minuti</th>
             <th className="p-2">Inizio</th>
             <th className="p-2">Fine</th>
             <th className="p-2">Totale</th>
@@ -156,8 +155,7 @@ export const List: FC<Props> = ({
                       ))}
                     </ul>
                   </td>
-                  <td className="border p-2 h-14">{i.hours}</td>
-                  <td className="border p-2 h-14">{i.minutes}</td>
+                  <td className="border p-2 h-14">{i.hours}h {i.minutes}m</td>
                   <td className="border p-2 h-14">{startString}</td>
                   <td className="border p-2 h-14">{endString}</td>
                   <td className="border p-2 h-14">{`${hours} ore e ${minutes} minuti`}</td>

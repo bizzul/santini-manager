@@ -15,7 +15,7 @@ import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import OfferQuickAdd from "./OfferQuickAdd";
 import DraftCompletionWizard from "./DraftCompletionWizard";
-import { Plus, FileEdit } from "lucide-react";
+import { Plus, FileEdit, X, RotateCcw } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
@@ -890,15 +890,26 @@ function KanbanBoard({
       <div className="flex flex-col h-full overflow-hidden">
         {kanban && (
           <div className="shrink-0 w-full pt-4 pb-2 px-8">
-            <h1
-              className="text-2xl font-bold mb-4 p-4 rounded-lg"
+            <div
+              className="text-2xl font-bold mb-4 p-4 rounded-lg flex items-center gap-3 shadow-md"
               style={{
                 backgroundColor: kanban.color || "#1e293b",
                 color: getContrastColor(kanban.color || "#1e293b"),
               }}
             >
-              {kanban.title.toUpperCase()}
-            </h1>
+              {(() => {
+                const IconComponent = getKanbanIcon(kanban.icon);
+                return (
+                  <IconComponent
+                    className="h-6 w-6 shrink-0"
+                    style={{
+                      color: getContrastColor(kanban.color || "#1e293b"),
+                    }}
+                  />
+                );
+              })()}
+              <span>{kanban.title.toUpperCase()}</span>
+            </div>
             <div className="flex justify-between items-center gap-4 max-w-[1000px]">
               <div
                 className={`flex justify-start gap-2 ${
@@ -906,19 +917,30 @@ function KanbanBoard({
                 } transition-all duration-300`}
               >
                 <button
-                  className="cursor-pointer hover:underline transition-all duration-300 text-xs border p-2"
+                  className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md"
                   onClick={closeAllTabs}
+                  title={
+                    areAllTabsClosed
+                      ? "Apri tutte le tab"
+                      : "Chiudi tutte le tab"
+                  }
                 >
-                  {areAllTabsClosed
-                    ? "Apri tutte le tab"
-                    : " Chiudi tutte le tab"}
+                  <X className="h-4 w-4 transition-transform group-hover:scale-110" />
+                  <span>
+                    {areAllTabsClosed
+                      ? "Apri tutte le tab"
+                      : "Chiudi tutte le tab"}
+                  </span>
                 </button>
 
                 <button
-                  className="cursor-pointer hover:underline transition-all duration-300 text-xs border p-2 "
+                  className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={undoLastMove}
+                  disabled={!lastAction}
+                  title="Annulla ultima azione"
                 >
-                  Annulla ultima azione
+                  <RotateCcw className="h-4 w-4 transition-transform group-hover:rotate-180" />
+                  <span>Annulla ultima azione</span>
                 </button>
               </div>
 

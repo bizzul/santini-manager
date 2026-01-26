@@ -2,10 +2,12 @@ import {
   requireServerSiteContext,
   fetchDashboardData,
 } from "@/lib/server-data";
-import { DollarSign, Users } from "lucide-react";
-import OffersCard from "@/components/dashboard/OffersCard";
-import ProductionOrdersCard from "@/components/dashboard/ProductionOrdersCard";
-import OffersChartCard from "@/components/dashboard/OffersChartCard";
+import DashboardTabs from "@/components/dashboard/DashboardTabs";
+import KPICards from "@/components/dashboard/KPICards";
+import PipelineChart from "@/components/dashboard/PipelineChart";
+import DepartmentWorkloadChart from "@/components/dashboard/DepartmentWorkloadChart";
+import AggregatedKanbanStatus from "@/components/dashboard/AggregatedKanbanStatus";
+import LatestNotifications from "@/components/dashboard/LatestNotifications";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export async function generateMetadata({
@@ -34,15 +36,6 @@ export async function generateMetadata({
   }
 }
 
-function formatCurrency(value: number): string {
-  if (value >= 1000000) {
-    return `CHF ${(value / 1000000).toFixed(1)}M`;
-  } else if (value >= 1000) {
-    return `CHF ${(value / 1000).toFixed(0)}k`;
-  }
-  return `CHF ${value.toFixed(0)}`;
-}
-
 export default async function SiteDashboardPage({
   params,
 }: {
@@ -56,65 +49,32 @@ export default async function SiteDashboardPage({
 
   return (
     <PageLayout>
+      <DashboardTabs />
       <PageHeader>
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Home</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Dashboard - Overview
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Stato generale – aggiornamento odierno
+            Panoramica generale dell&apos;azienda e KPI principali
           </p>
         </div>
       </PageHeader>
       <PageContent>
         <div className="space-y-6">
-          {/* Top Cards with Production Orders and Offers */}
+          {/* KPI Cards */}
+          <KPICards data={dashboardData} />
+
+          {/* Charts Row */}
           <div className="grid gap-4 md:grid-cols-2">
-            <OffersChartCard data={dashboardData.offers} />
-            <ProductionOrdersCard data={dashboardData.orders} />
+            <PipelineChart data={dashboardData} />
+            <DepartmentWorkloadChart data={dashboardData} />
           </div>
 
-          {/* Offerte Card - Expanded */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-            <OffersCard data={dashboardData.offers} />
-
-            {/* Saldo del conto - Valore totale ordini */}
-            {/* <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-blue-500" />
-                </div>
-                {dashboardData.orders.totalValue > 0 && (
-                  <span className="text-green-500 text-xs font-medium bg-green-500/10 px-2 py-1 rounded">
-                    Attivo
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground font-medium mb-2">
-                Valore Ordini
-              </p>
-              <h3 className="text-2xl font-bold">
-                {formatCurrency(dashboardData.orders.totalValue)}
-              </h3>
-            </div> */}
-
-            {/* HR */}
-            {/* <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-green-500" />
-                </div>
-                {dashboardData.hr.activeEmployees === dashboardData.hr.totalEmployees && dashboardData.hr.totalEmployees > 0 && (
-                  <span className="text-green-500 text-xs font-medium bg-green-500/10 px-2 py-1 rounded">
-                    Tutti attivi
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground font-medium mb-2">
-                Collaboratori
-              </p>
-              <h3 className="text-2xl font-bold">
-                {dashboardData.hr.activeEmployees} / {dashboardData.hr.totalEmployees}
-              </h3>
-            </div> */}
+          {/* Status and Notifications Row */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <AggregatedKanbanStatus data={dashboardData} />
+            <LatestNotifications siteId={siteContext.siteId} />
           </div>
         </div>
       </PageContent>

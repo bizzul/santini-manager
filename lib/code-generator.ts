@@ -670,7 +670,7 @@ export async function getInternalCategoryInfo(
     .select(`
       id,
       category_id,
-      category:KanbanCategory(
+      category:KanbanCategory!category_id(
         id,
         is_internal,
         internal_base_code
@@ -684,8 +684,11 @@ export async function getInternalCategoryInfo(
     return null;
   }
 
+  // Normalize category (Supabase may return array for joins)
+  const rawCategory = kanban.category as any;
+  const category = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
+  
   // Check if the category is internal
-  const category = kanban.category as any;
   if (!category || !category.is_internal) {
     return { isInternal: false };
   }

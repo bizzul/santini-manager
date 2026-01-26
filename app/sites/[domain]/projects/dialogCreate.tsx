@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import CreateProductForm from "./createForm";
 import { Data } from "./page";
+import { Plus } from "lucide-react";
 
 type Props = {
   data: Data;
@@ -20,13 +21,12 @@ type Props = {
 function DialogCreate({ data }: Props) {
   const [isOpen, setOpen] = useState(false);
   return (
-    <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <div className="container flex justify-end pt-12 overflow-hidden pointer-events-none ">
-          <Button className="pointer-events-auto" onClick={() => setOpen(true)}>
-            Aggiungi progetto
-          </Button>
-        </div>
+        <Button onClick={() => setOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Aggiungi progetto
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
         <DialogHeader>

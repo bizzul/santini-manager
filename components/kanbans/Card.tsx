@@ -300,180 +300,182 @@ export default function Card({
         <ContextMenuTrigger>
           {!isSmall ? (
             /* ==================== CARD NORMAL (ESPANSA) ==================== */
-            <div className="p-3 text-slate-800 dark:text-slate-100">
-              {/* Header: N°, Data, Settimana */}
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2 mb-2">
-                <span className="font-bold text-sm">{data.unique_code}</span>
-                {data.deliveryDate && (
-                  <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
-                    <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
-                    <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                      S.{DateManager.getWeekNumber(data.deliveryDate)}
+            <div className="relative text-slate-800 dark:text-slate-100 pb-2">
+              <div className="px-2.5 pt-2.5 pb-1.5">
+                {/* Header: N°, Data, Settimana */}
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
+                  <span className="font-bold text-sm">{data.unique_code}</span>
+                  {data.deliveryDate && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                      <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
+                      <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                        S.{DateManager.getWeekNumber(data.deliveryDate)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Nome Cliente */}
+                <div className="font-semibold text-base mb-1 truncate">
+                  {getClientName()}
+                </div>
+
+                {/* Luogo · Nome oggetto */}
+                <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                  {data.luogo && (
+                    <>
+                      <MapPin className="h-3 w-3" />
+                      <span>{data.luogo}</span>
+                      <span className="mx-1">·</span>
+                    </>
+                  )}
+                  <span className="truncate">{data.name || "-"}</span>
+                </div>
+
+                {/* Pezzi e Valore */}
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2">
+                  <div className="text-center">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                      Pezzi
                     </span>
+                    <span className="font-bold text-sm">
+                      {getPiecesDisplay()}
+                    </span>
+                  </div>
+                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                  <div className="text-center">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                      Valore
+                    </span>
+                    <span className="font-bold text-sm">
+                      {((data.sellPrice || 0) / 1000).toFixed(1)}K
+                    </span>
+                  </div>
+                </div>
+
+                {/* Note */}
+                {data.other && (
+                  <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2 line-clamp-2">
+                    {data.other}
+                  </div>
+                )}
+
+                {/* Fornitori */}
+                {taskSuppliers && taskSuppliers.length > 0 && (
+                  <div className="mb-2">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+                      Fornitori
+                    </span>
+                    <div className="flex flex-wrap gap-1">
+                      {taskSuppliers.map((ts) => {
+                        const isDeliveryToday =
+                          ts.deliveryDate &&
+                          new Date(ts.deliveryDate).toDateString() ===
+                            new Date().toDateString();
+                        const isDeliveryLate =
+                          ts.deliveryDate &&
+                          new Date(ts.deliveryDate) < new Date();
+
+                        return (
+                          <div
+                            key={ts.id}
+                            className={`
+                              text-xs px-1.5 py-0.5 rounded-md
+                              ${
+                                isDeliveryToday
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border border-green-200 dark:border-green-800"
+                                  : isDeliveryLate
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border border-red-200 dark:border-red-800"
+                                  : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                              }
+                            `}
+                          >
+                            <span className="font-medium">
+                              {ts.supplier?.short_name ||
+                                ts.supplier?.name ||
+                                "?"}
+                            </span>
+                            {ts.deliveryDate && (
+                              <span className="ml-1 opacity-75">
+                                {new Date(ts.deliveryDate).toLocaleDateString(
+                                  "it-IT",
+                                  {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                  }
+                                )}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Nome Cliente */}
-              <div className="font-semibold text-base mb-1 truncate">
-                {getClientName()}
+              {/* Progress bar integrata nella base */}
+              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-br-xl overflow-hidden">
+                <div
+                  style={{ width: `${data.percentStatus || 0}%` }}
+                  className="h-full bg-green-500 transition-all duration-300"
+                />
               </div>
-
-              {/* Luogo · Nome oggetto */}
-              <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mb-3">
-                {data.luogo && (
-                  <>
-                    <MapPin className="h-3 w-3" />
-                    <span>{data.luogo}</span>
-                    <span className="mx-1">·</span>
-                  </>
-                )}
-                <span className="truncate">{data.name || "-"}</span>
+              <div className="absolute bottom-0 right-2 text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-normal">
+                {data.percentStatus || 0}%
               </div>
+            </div>
+          ) : (
+            /* ==================== CARD SMALL (COMPRESSA) ==================== */
+            <div className="relative text-slate-800 dark:text-slate-100 pb-1.5">
+              <div className="px-2 pt-2 pb-1">
+                {/* Riga 1: N°, Data, Settimana */}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-sm">{data.unique_code}</span>
+                  {data.deliveryDate && (
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                      <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
+                      <span className="font-semibold">
+                        S.{DateManager.getWeekNumber(data.deliveryDate)}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-              {/* Pezzi e Valore */}
-              <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 mb-3">
-                <div className="text-center">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
-                    Pezzi
-                  </span>
-                  <span className="font-bold text-sm">
+                {/* Riga 2: Cliente · Oggetto */}
+                <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
+                  <span className="font-medium">{getClientName()}</span>
+                  {data.name && (
+                    <>
+                      <span className="mx-1 text-slate-400">·</span>
+                      <span className="text-slate-500 dark:text-slate-400">
+                        {data.name}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                {/* Riga 3: Pezzi, Valore */}
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-slate-600 dark:text-slate-400">
                     {getPiecesDisplay()}
                   </span>
-                </div>
-                <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-                <div className="text-center">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 block">
-                    Valore
-                  </span>
-                  <span className="font-bold text-sm">
+                  <span className="text-slate-400">|</span>
+                  <span className="font-semibold">
                     {((data.sellPrice || 0) / 1000).toFixed(1)}K
                   </span>
                 </div>
               </div>
 
-              {/* Note */}
-              {data.other && (
-                <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-3 py-2 mb-3 line-clamp-2">
-                  {data.other}
-                </div>
-              )}
-
-              {/* Fornitori */}
-              {taskSuppliers && taskSuppliers.length > 0 && (
-                <div className="mb-3">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 block">
-                    Fornitori
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {taskSuppliers.map((ts) => {
-                      const isDeliveryToday =
-                        ts.deliveryDate &&
-                        new Date(ts.deliveryDate).toDateString() ===
-                          new Date().toDateString();
-                      const isDeliveryLate =
-                        ts.deliveryDate &&
-                        new Date(ts.deliveryDate) < new Date();
-
-                      return (
-                        <div
-                          key={ts.id}
-                          className={`
-                            text-xs px-2 py-1 rounded-md
-                            ${
-                              isDeliveryToday
-                                ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border border-green-200 dark:border-green-800"
-                                : isDeliveryLate
-                                ? "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border border-red-200 dark:border-red-800"
-                                : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
-                            }
-                          `}
-                        >
-                          <span className="font-medium">
-                            {ts.supplier?.short_name ||
-                              ts.supplier?.name ||
-                              "?"}
-                          </span>
-                          {ts.deliveryDate && (
-                            <span className="ml-1.5 opacity-75">
-                              {new Date(ts.deliveryDate).toLocaleDateString(
-                                "it-IT",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                }
-                              )}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Progress bar */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
-                  <div
-                    style={{ width: `${data.percentStatus || 0}%` }}
-                    className="h-full bg-green-500 rounded-full transition-all duration-300"
-                  />
-                </div>
-                <span className="text-xs font-medium text-slate-600 dark:text-slate-400 min-w-[32px] text-right">
-                  {data.percentStatus || 0}%
-                </span>
+              {/* Progress bar integrata nella base */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-700 rounded-br-xl overflow-hidden">
+                <div
+                  style={{ width: `${data.percentStatus || 0}%` }}
+                  className="h-full bg-green-500 transition-all duration-300"
+                />
               </div>
-            </div>
-          ) : (
-            /* ==================== CARD SMALL (COMPRESSA) ==================== */
-            <div className="p-2.5 text-slate-800 dark:text-slate-100">
-              {/* Riga 1: N°, Data, Settimana */}
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-bold text-sm">{data.unique_code}</span>
-                {data.deliveryDate && (
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
-                    <span className="font-semibold">
-                      S.{DateManager.getWeekNumber(data.deliveryDate)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Riga 2: Cliente · Oggetto */}
-              <div className="text-sm truncate mb-1.5 text-slate-700 dark:text-slate-300">
-                <span className="font-medium">{getClientName()}</span>
-                {data.name && (
-                  <>
-                    <span className="mx-1 text-slate-400">·</span>
-                    <span className="text-slate-500 dark:text-slate-400">
-                      {data.name}
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Riga 3: Pezzi, Valore, Progress */}
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-slate-600 dark:text-slate-400">
-                  {getPiecesDisplay()}
-                </span>
-                <span className="text-slate-400">|</span>
-                <span className="font-semibold">
-                  {((data.sellPrice || 0) / 1000).toFixed(1)}K
-                </span>
-                <div className="flex-1 flex items-center gap-1.5 ml-1">
-                  <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      style={{ width: `${data.percentStatus || 0}%` }}
-                      className="h-full bg-green-500 rounded-full"
-                    />
-                  </div>
-                  <span className="text-slate-500 dark:text-slate-400">
-                    {data.percentStatus || 0}%
-                  </span>
-                </div>
+              <div className="absolute bottom-0 right-1.5 text-[9px] font-medium text-slate-600 dark:text-slate-400 leading-none">
+                {data.percentStatus || 0}%
               </div>
             </div>
           )}

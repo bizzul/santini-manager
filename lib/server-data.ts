@@ -688,7 +688,7 @@ export const fetchTasksWithRelations = cache(async (siteId: string) => {
             *,
             Kanban!kanbanId (id, title),
             KanbanColumn!kanbanColumnId (id, title),
-            Client!clientId (businessName, individualFirstName, individualLastName),
+            Client!clientId (businessName, individualFirstName, individualLastName, zipCode, address),
             SellProduct!sellProductId (name, type, category_id, category:sellproduct_categories(id, name, color)),
             Action (id, createdAt, User (picture, authId, given_name))
         `)
@@ -1238,6 +1238,45 @@ export interface DashboardStats {
         totalOrdersValue: number;
         monthlyChange: number;
     };
+    // Active offers KPI
+    activeOffers: {
+        count: number;
+        totalValue: number;
+        changePercent: number;
+    };
+    // Production orders KPI
+    productionOrders: {
+        total: number;
+        delayed: number;
+        delayedChange: number;
+    };
+    // Open invoices KPI
+    openInvoices: {
+        totalValue: number;
+        expiredCount: number;
+        changePercent: number;
+    };
+    // AVOR workload KPI
+    avorWorkload: {
+        percentage: number;
+        status: string;
+    };
+    // Pipeline data for 6 months chart
+    pipelineData: Array<{
+        month: string;
+        value: number;
+    }>;
+    // Department workload data
+    departmentWorkload: Array<{
+        department: string;
+        count: number;
+    }>;
+    // Aggregated kanban status
+    kanbanStatus: Array<{
+        department: string;
+        status: string;
+        count: number;
+    }>;
 }
 
 /**
@@ -1257,6 +1296,10 @@ export const fetchDashboardData = cache(
         );
         const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+        // Calculate date ranges for historical data (6 months)
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(now.getMonth() - 6);
+
         // Fetch all required data in parallel
         const [
             tasksResult,
@@ -1264,8 +1307,9 @@ export const fetchDashboardData = cache(
             usersResult,
             kanbansResult,
             columnsResult,
+            historicalTasksResult,
         ] = await Promise.all([
-            // All tasks (not archived)
+            // All tasks (not archived) - include deliveryDate for delayed orders
             supabase
                 .from("Task")
                 .select(`
@@ -1279,6 +1323,7 @@ export const fetchDashboardData = cache(
                 sellProductId,
                 created_at,
                 sent_date,
+                deliveryDate,
                 SellProduct:sellProductId(id, name, category:category_id(id, name, color))
             `)
                 .eq("site_id", siteId)
@@ -1293,16 +1338,29 @@ export const fetchDashboardData = cache(
                 .from("user_sites")
                 .select("user_id")
                 .eq("site_id", siteId),
-            // Kanbans to identify offer kanbans
+            // Kanbans with name/title for department identification
             supabase
                 .from("Kanban")
-                .select("id, is_offer_kanban")
+                .select("id, is_offer_kanban, name, title, identifier")
                 .eq("site_id", siteId),
             // Kanban columns to determine task status
             supabase
                 .from("KanbanColumn")
                 .select("id, kanbanId, column_type, title, position")
                 .eq("site_id", siteId),
+            // Historical tasks for pipeline chart (last 6 months)
+            supabase
+                .from("Task")
+                .select(`
+                id,
+                task_type,
+                sellPrice,
+                created_at,
+                kanbanId
+            `)
+                .eq("site_id", siteId)
+                .eq("archived", false)
+                .gte("created_at", sixMonthsAgo.toISOString()),
         ]);
 
         const tasks = tasksResult.data || [];
@@ -1310,12 +1368,38 @@ export const fetchDashboardData = cache(
         const userSites = usersResult.data || [];
         const kanbans = kanbansResult.data || [];
         const columns = columnsResult.data || [];
+        const historicalTasks = historicalTasksResult.data || [];
 
         // Create lookup maps
         const offerKanbanIds = new Set(
             kanbans.filter((k) => k.is_offer_kanban).map((k) => k.id),
         );
         const columnMap = new Map(columns.map((c) => [c.id, c]));
+        const kanbanMap = new Map(kanbans.map((k) => [k.id, k]));
+        
+        // Map kanban names to departments
+        const getDepartmentName = (kanbanId: number | null): string => {
+            if (!kanbanId) return "Altro";
+            const kanban = kanbanMap.get(kanbanId);
+            if (!kanban) return "Altro";
+            
+            // Check if it's an offer kanban first
+            if (kanban.is_offer_kanban) return "Vendita";
+            
+            const name = (kanban.name || kanban.title || kanban.identifier || "").toLowerCase();
+            
+            // Map common kanban names to department names (more comprehensive matching)
+            if (name.includes("avor") || name.includes("ufficio") || name.includes("ufficio tecnico")) return "AVOR";
+            if (name.includes("vendita") || name.includes("offerta") || name.includes("commerciale")) return "Vendita";
+            if (name.includes("produzione") || name.includes("prod") || name.includes("officina") || name.includes("lavorazione")) return "Prod.";
+            if (name.includes("fattura") || name.includes("fatturazione") || name.includes("billing")) return "Fatturazione";
+            if (name.includes("install") || name.includes("montaggio") || name.includes("cantiere")) return "Install.";
+            if (name.includes("service") || name.includes("assistenza") || name.includes("manutenzione")) return "Service";
+            
+            // If no match, return the original name capitalized, or "Altro"
+            const originalName = kanban.name || kanban.title || kanban.identifier || "";
+            return originalName ? originalName.charAt(0).toUpperCase() + originalName.slice(1) : "Altro";
+        };
 
         // Initialize category stats map
         const categoryStatsMap = new Map<string, {
@@ -1471,6 +1555,190 @@ export const fetchDashboardData = cache(
             }))
             .sort((a, b) => b.value - a.value);
 
+        // Calculate Active Offers KPI (todo + inProgress, excluding won/lost)
+        const activeOffersTasks = tasks.filter((task: any) => {
+            const isOffer = task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+            if (!isOffer) return false;
+            const column = columnMap.get(task.kanbanColumnId);
+            const isWon = task.display_mode === "small_green" || column?.column_type === "won";
+            const isLost = task.display_mode === "small_red" || column?.column_type === "lost";
+            return !isWon && !isLost;
+        });
+        
+        const activeOffersCount = activeOffersTasks.length;
+        const activeOffersValue = activeOffersTasks.reduce((sum: number, task: any) => sum + (task.sellPrice || 0), 0);
+        
+        // Calculate offer change percent (value comparison: current month vs last month)
+        const currentMonthOffersValue = tasks
+            .filter((task: any) => {
+                const isOffer = task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+                if (!isOffer) return false;
+                const taskDate = new Date(task.created_at);
+                return taskDate >= startOfMonth;
+            })
+            .reduce((sum: number, task: any) => sum + (task.sellPrice || 0), 0);
+        
+        const lastMonthOffersValue = tasks
+            .filter((task: any) => {
+                const isOffer = task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+                if (!isOffer) return false;
+                const taskDate = new Date(task.created_at);
+                return taskDate >= startOfLastMonth && taskDate <= endOfLastMonth;
+            })
+            .reduce((sum: number, task: any) => sum + (task.sellPrice || 0), 0);
+        
+        const offerChangePercent = lastMonthOffersValue > 0 
+            ? ((currentMonthOffersValue - lastMonthOffersValue) / lastMonthOffersValue) * 100 
+            : 0;
+
+        // Calculate Production Orders KPI (delayed orders)
+        const delayedOrders = tasks.filter((task: any) => {
+            const isOffer = task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+            if (isOffer) return false;
+            if (!task.deliveryDate) return false;
+            const deliveryDate = new Date(task.deliveryDate);
+            return deliveryDate < now;
+        }).length;
+        
+        // Calculate delayed change (simplified - compare with last month)
+        const lastMonthDelayed = tasks.filter((task: any) => {
+            const isOffer = task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+            if (isOffer) return false;
+            if (!task.deliveryDate) return false;
+            const deliveryDate = new Date(task.deliveryDate);
+            const taskCreated = new Date(task.created_at);
+            return deliveryDate < endOfLastMonth && taskCreated <= endOfLastMonth;
+        }).length;
+        
+        const delayedChange = lastMonthDelayed > 0 
+            ? delayedOrders - lastMonthDelayed 
+            : 0;
+
+        // Calculate Open Invoices KPI
+        const invoiceTasks = tasks.filter((task: any) => task.task_type === "FATTURA");
+        const openInvoicesValue = invoiceTasks.reduce((sum: number, task: any) => sum + (task.sellPrice || 0), 0);
+        
+        // Find expired invoices (deliveryDate < today for invoices)
+        const expiredInvoices = invoiceTasks.filter((task: any) => {
+            if (!task.deliveryDate) return false;
+            const deliveryDate = new Date(task.deliveryDate);
+            return deliveryDate < now;
+        }).length;
+        
+        // Calculate invoice change percent (value comparison)
+        const currentMonthInvoicesValue = invoiceTasks
+            .filter((task: any) => {
+                const taskDate = new Date(task.created_at);
+                return taskDate >= startOfMonth;
+            })
+            .reduce((sum: number, task: any) => sum + (task.sellPrice || 0), 0);
+        
+        const lastMonthInvoicesValue = invoiceTasks
+            .filter((task: any) => {
+                const taskDate = new Date(task.created_at);
+                return taskDate >= startOfLastMonth && taskDate <= endOfLastMonth;
+            })
+            .reduce((sum: number, task: any) => sum + (task.sellPrice || 0), 0);
+        
+        const invoiceChangePercent = lastMonthInvoicesValue > 0 
+            ? ((currentMonthInvoicesValue - lastMonthInvoicesValue) / lastMonthInvoicesValue) * 100 
+            : 0;
+
+        // Calculate AVOR Workload
+        const avorKanbanIds = Array.from(kanbanMap.values())
+            .filter((k) => {
+                const name = (k.name || k.title || k.identifier || "").toLowerCase();
+                return name.includes("avor") || name.includes("ufficio");
+            })
+            .map((k) => k.id);
+        
+        const avorTasks = tasks.filter((task: any) => avorKanbanIds.includes(task.kanbanId));
+        const totalTasks = tasks.length;
+        const avorPercentage = totalTasks > 0 ? (avorTasks.length / totalTasks) * 100 : 0;
+        const avorStatus = avorPercentage >= 80 ? "Saturazione team" : avorPercentage >= 60 ? "Carico elevato" : "Carico normale";
+
+        // Calculate Pipeline Data (6 months)
+        const pipelineDataMap = new Map<string, number>();
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        
+        // Initialize last 6 months
+        for (let i = 5; i >= 0; i--) {
+            const date = new Date(now);
+            date.setMonth(now.getMonth() - i);
+            const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear().toString().slice(-2)}`;
+            pipelineDataMap.set(monthKey, 0);
+        }
+        
+        // Aggregate historical offer values by month
+        historicalTasks.forEach((task: any) => {
+            const isOffer = task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+            if (!isOffer) return;
+            
+            const taskDate = new Date(task.created_at);
+            const monthKey = `${monthNames[taskDate.getMonth()]} ${taskDate.getFullYear().toString().slice(-2)}`;
+            
+            if (pipelineDataMap.has(monthKey)) {
+                pipelineDataMap.set(monthKey, pipelineDataMap.get(monthKey)! + (task.sellPrice || 0));
+            }
+        });
+        
+        const pipelineData = Array.from(pipelineDataMap.entries()).map(([month, value]) => ({
+            month,
+            value,
+        }));
+
+        // Calculate Department Workload
+        const departmentWorkloadMap = new Map<string, number>();
+        tasks.forEach((task: any) => {
+            const department = getDepartmentName(task.kanbanId);
+            departmentWorkloadMap.set(department, (departmentWorkloadMap.get(department) || 0) + 1);
+        });
+        
+        const departmentWorkload = Array.from(departmentWorkloadMap.entries())
+            .map(([department, count]) => ({ department, count }))
+            .sort((a, b) => b.count - a.count);
+
+        // Calculate Aggregated Kanban Status
+        const kanbanStatusMap = new Map<string, { status: string; count: number }>();
+        
+        // Map columns to status names
+        const getStatusName = (column: any): string => {
+            if (!column) return "Sconosciuto";
+            const title = column.title?.toLowerCase() || "";
+            if (title.includes("trattativa") || title.includes("negoziazione")) return "In trattativa";
+            if (title.includes("lavorazione") || title.includes("lavoro")) return "In lavorazione";
+            if (title.includes("corso") || title.includes("produzione")) return "In corso";
+            if (title.includes("emettere") || title.includes("fattura")) return "Da emettere";
+            if (title.includes("completato") || title.includes("finito")) return "Completato";
+            return column.title || "Sconosciuto";
+        };
+        
+        tasks.forEach((task: any) => {
+            const department = getDepartmentName(task.kanbanId);
+            const column = columnMap.get(task.kanbanColumnId);
+            const status = getStatusName(column);
+            const key = `${department}-${status}`;
+            
+            kanbanStatusMap.set(key, {
+                status,
+                count: (kanbanStatusMap.get(key)?.count || 0) + 1,
+            });
+        });
+        
+        // Group by department and get the most common status
+        const departmentStatusMap = new Map<string, { status: string; count: number }>();
+        kanbanStatusMap.forEach((value, key) => {
+            const department = key.split("-")[0];
+            const existing = departmentStatusMap.get(department);
+            if (!existing || value.count > existing.count) {
+                departmentStatusMap.set(department, value);
+            }
+        });
+        
+        const kanbanStatus = Array.from(departmentStatusMap.entries())
+            .map(([department, { status, count }]) => ({ department, status, count }))
+            .filter((item) => ["Vendita", "AVOR", "Produzione", "Fatturazione"].includes(item.department));
+
         return {
             offers: {
                 todo: offersTodo,
@@ -1495,6 +1763,28 @@ export const fetchDashboardData = cache(
                 totalOrdersValue: ordersTotalValue,
                 monthlyChange: 0, // Would need historical data to calculate
             },
+            activeOffers: {
+                count: activeOffersCount,
+                totalValue: activeOffersValue,
+                changePercent: offerChangePercent,
+            },
+            productionOrders: {
+                total: ordersTotalProjects,
+                delayed: delayedOrders,
+                delayedChange: delayedChange,
+            },
+            openInvoices: {
+                totalValue: openInvoicesValue,
+                expiredCount: expiredInvoices,
+                changePercent: invoiceChangePercent,
+            },
+            avorWorkload: {
+                percentage: avorPercentage,
+                status: avorStatus,
+            },
+            pipelineData,
+            departmentWorkload,
+            kanbanStatus,
         };
     },
 );

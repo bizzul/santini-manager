@@ -243,13 +243,6 @@ export function DataTable<TData, TValue>({
         )}
       </div>
 
-      {/* Selection info */}
-      {selectedCount > 0 && (
-        <div className="text-sm text-muted-foreground mb-2">
-          {selectedCount} di {table.getFilteredRowModel().rows.length} righe
-          selezionate
-        </div>
-      )}
       <div className="rounded-md border" role="table" aria-label="Dati tabella">
         <Table>
           <TableHeader>

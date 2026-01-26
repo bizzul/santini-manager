@@ -2,7 +2,8 @@ import { createClient } from "../../../../../utils/supabase/server";
 import { validation } from "../../../../../validation/task/create"; //? <--- The validation schema
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
-import { generateTaskCode } from "../../../../../lib/code-generator";
+import { generateTaskCode, generateInternalTaskCode } from "../../../../../lib/code-generator";
+import { createProjectFolders } from "../../../../../lib/project-folders";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,13 +43,34 @@ export async function POST(req: NextRequest) {
       // Check if a specific kanbanId was provided
       const providedKanbanId = body.kanbanId || result.data.kanbanId;
       
-      let kanban: { id: number; is_offer_kanban: boolean; site_id: string | null } | null = null;
+      let kanban: { 
+        id: number; 
+        is_offer_kanban: boolean; 
+        site_id: string | null;
+        category_id?: number | null;
+        category?: { id: number; is_internal: boolean; internal_base_code: number | null } | null;
+      } | null = null;
+      
+      // Track internal category info
+      let isInternalCategory = false;
+      let internalCategoryId: number | null = null;
+      let internalBaseCode: number | null = null;
       
       if (providedKanbanId) {
-        // Use the provided kanbanId
+        // Use the provided kanbanId - include category info
         const { data: kanbanData, error: kanbanError } = await supabase
           .from("Kanban")
-          .select("id, is_offer_kanban, site_id")
+          .select(`
+            id, 
+            is_offer_kanban, 
+            site_id,
+            category_id,
+            category:KanbanCategory!category_id(
+              id,
+              is_internal,
+              internal_base_code
+            )
+          `)
           .eq("id", providedKanbanId)
           .single();
 
@@ -58,7 +80,25 @@ export async function POST(req: NextRequest) {
             message: `Kanban non trovato con ID ${providedKanbanId}: ${kanbanError?.message || "Non trovato"}`,
           }, { status: 404 });
         }
-        kanban = kanbanData;
+        
+        // Normalize category (Supabase may return array for joins)
+        const rawCategory = kanbanData.category as any;
+        const normalizedCategory = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
+        
+        kanban = {
+          id: kanbanData.id,
+          is_offer_kanban: kanbanData.is_offer_kanban,
+          site_id: kanbanData.site_id,
+          category_id: kanbanData.category_id,
+          category: normalizedCategory || null,
+        };
+        
+        // Check if kanban belongs to an internal category
+        if (normalizedCategory && normalizedCategory.is_internal && normalizedCategory.internal_base_code) {
+          isInternalCategory = true;
+          internalCategoryId = normalizedCategory.id;
+          internalBaseCode = normalizedCategory.internal_base_code;
+        }
       } else {
         // Fallback: Get default PRODUCTION kanban (filter by site_id if available)
         let kanbanQuery = supabase
@@ -110,8 +150,13 @@ export async function POST(req: NextRequest) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
-      // Determine task type
-      const taskType = body.task_type || (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
+      // Determine task type - internal categories use "INTERNO"
+      let taskType: string;
+      if (isInternalCategory) {
+        taskType = "INTERNO";
+      } else {
+        taskType = body.task_type || (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
+      }
 
       // Generate unique code using atomic sequence (always incremental)
       // Retry logic in case of duplicate key error
@@ -124,7 +169,12 @@ export async function POST(req: NextRequest) {
       while (retryCount < maxRetries && !taskCreate) {
         // Generate new code if siteId exists (always regenerate to ensure uniqueness)
         if (siteId) {
-          uniqueCode = await generateTaskCode(siteId, taskType);
+          // Use internal code generator for internal categories
+          if (isInternalCategory && internalCategoryId && internalBaseCode) {
+            uniqueCode = await generateInternalTaskCode(siteId, internalCategoryId, internalBaseCode);
+          } else {
+            uniqueCode = await generateTaskCode(siteId, taskType);
+          }
         }
 
         // Prepare insert data with site_id
@@ -166,8 +216,8 @@ export async function POST(req: NextRequest) {
 
         taskError = error;
         
-        // Check if error is a duplicate key constraint violation
-        if (error && error.code === "23505" && error.message?.includes("Task_site_unique_code_key")) {
+        // Check if error is a duplicate key constraint violation (case-insensitive check)
+        if (error && error.code === "23505" && error.message?.toLowerCase().includes("task_site_unique_code_key")) {
           // Duplicate key error - retry with a new code
           retryCount++;
           if (retryCount < maxRetries) {
@@ -194,6 +244,31 @@ export async function POST(req: NextRequest) {
 
       // Success
       if (taskCreate) {
+        // Create project folders automatically
+        if (siteId && uniqueCode) {
+          try {
+            const folders = await createProjectFolders(
+              taskCreate.id,
+              uniqueCode,
+              siteId
+            );
+            
+            // Update task with folder URLs if they were created successfully
+            if (folders.cloudFolderUrl || folders.projectFilesUrl) {
+              await supabase
+                .from("Task")
+                .update({
+                  cloud_folder_url: folders.cloudFolderUrl,
+                  project_files_url: folders.projectFilesUrl,
+                })
+                .eq("id", taskCreate.id);
+            }
+          } catch (folderError) {
+            console.error("Error creating project folders:", folderError);
+            // Don't fail the task creation if folder creation fails
+          }
+        }
+
         if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
           // Save the Cloudinary IDs of the uploaded files to the task record
           await Promise.all(

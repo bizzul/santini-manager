@@ -191,27 +191,29 @@ export const createColumns = (
       size: 40,
     },
     {
+      accessorKey: "internal_code",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Cod. Interno" />
+      ),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.internal_code || ""}
+          row={row}
+          field="internal_code"
+          type="text"
+          onSave={handleProductEdit}
+        />
+      ),
+      size: 120,
+    },
+    {
       id: "category",
       accessorFn: (row) => row.category?.name || "-",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Categoria" />
       ),
       cell: ({ row }) => <span>{row.original.category?.name || "-"}</span>,
-    },
-    {
-      accessorKey: "name",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Nome" />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.name}
-          row={row}
-          field="name"
-          type="text"
-          onSave={handleProductEdit}
-        />
-      ),
+      size: 130,
     },
     {
       accessorKey: "type",
@@ -220,174 +222,91 @@ export const createColumns = (
       ),
       cell: ({ row }) => (
         <EditableCell
-          value={row.original.type}
+          value={row.original.type || ""}
           row={row}
           field="type"
           type="text"
           onSave={handleProductEdit}
         />
       ),
+      size: 140,
     },
     {
-      accessorKey: "description",
+      accessorKey: "type",
+      id: "product_type",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Descrizione" />
+        <DataTableColumnHeader column={column} title="Tipo" />
       ),
       cell: ({ row }) => (
         <EditableCell
-          value={row.original.description}
+          value={row.original.type || ""}
           row={row}
-          field="description"
+          field="type"
           type="text"
           onSave={handleProductEdit}
-          className="max-w-[300px]"
         />
       ),
+      size: 150,
     },
     {
-      accessorKey: "price_list",
+      accessorKey: "name",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Listino Prezzi" />
+        <DataTableColumnHeader column={column} title="Nome" />
       ),
       cell: ({ row }) => (
         <EditableCell
-          value={row.original.price_list}
+          value={row.original.name || ""}
           row={row}
-          field="price_list"
-          type="checkbox"
+          field="name"
+          type="text"
           onSave={handleProductEdit}
         />
       ),
+      size: 200,
+    },
+    {
+      accessorKey: "color",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Colore" />
+      ),
+      cell: ({ row }) => {
+        // Color field doesn't exist in SellProduct yet, showing placeholder
+        return <span className="text-muted-foreground">-</span>;
+      },
       size: 100,
     },
     {
-      accessorKey: "image_url",
+      accessorKey: "warehouse_number",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Immagine" />
+        <DataTableColumnHeader column={column} title="Nr. Mag." />
       ),
       cell: ({ row }) => {
-        const imageUrl = row.original.image_url;
-        if (!imageUrl) return <span className="text-muted-foreground">-</span>;
-        return (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => window.open(imageUrl, "_blank")}
-          >
-            <Image className="h-4 w-4" />
-          </Button>
-        );
+        // Warehouse number field doesn't exist in SellProduct yet, showing placeholder
+        return <span className="text-muted-foreground">-</span>;
       },
-      size: 80,
+      size: 100,
     },
     {
-      accessorKey: "doc_url",
+      accessorKey: "supplier",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="DOC" />
+        <DataTableColumnHeader column={column} title="Fornitore" />
       ),
       cell: ({ row }) => {
-        const docUrl = row.original.doc_url;
-        if (!docUrl) return <span className="text-muted-foreground">-</span>;
-        return (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => window.open(docUrl, "_blank")}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        );
+        // Supplier field doesn't exist in SellProduct yet, showing placeholder
+        return <span className="text-muted-foreground">-</span>;
       },
-      size: 80,
+      size: 150,
     },
     {
-      accessorKey: "active",
+      accessorKey: "manufacturer",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Attivo" />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.active}
-          row={row}
-          field="active"
-          type="checkbox"
-          onSave={handleProductEdit}
-        />
-      ),
-      size: 80,
-    },
-    {
-      accessorKey: "lastAction.createdAt",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Ultima modifica" />
+        <DataTableColumnHeader column={column} title="Produttore" />
       ),
       cell: ({ row }) => {
-        const lastAction = row.original.lastAction;
-        if (!lastAction?.createdAt) return "-";
-
-        const date = new Date(lastAction.createdAt);
-        const timeAgo = formatDistanceToNow(date, {
-          addSuffix: true,
-          locale: it,
-        });
-        const fullDate = date.toLocaleDateString("it-IT", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-sm text-muted-foreground cursor-help">
-                  {timeAgo}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{fullDate}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
+        // Manufacturer field doesn't exist in SellProduct yet, showing placeholder
+        return <span className="text-muted-foreground">-</span>;
       },
-    },
-    {
-      accessorKey: "lastAction.User",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Modificato da" />
-      ),
-      cell: ({ row }) => {
-        const lastAction = row.original.lastAction;
-        const user = lastAction?.User;
-
-        if (!user) return "-";
-
-        const displayName =
-          user.given_name && user.family_name
-            ? `${user.given_name} ${user.family_name}`
-            : user.given_name || "Utente";
-
-        // Generate initials from name
-        const initials =
-          user.initials ||
-          (user.given_name && user.family_name
-            ? `${user.given_name.charAt(0)}${user.family_name.charAt(0)}`
-            : user.given_name?.charAt(0) || "U");
-
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-xs font-medium text-primary">{initials}</span>
-            </div>
-            <span className="text-sm truncate">{displayName}</span>
-          </div>
-        );
-      },
+      size: 150,
     },
     {
       id: "actions",

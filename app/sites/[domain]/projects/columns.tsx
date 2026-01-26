@@ -14,20 +14,45 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
+import { 
+  StickyNote, 
+  Folder, 
+  FileText, 
+  MapPin, 
+  Settings, 
+  File,
+  ExternalLink 
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// Helper function to extract CAP from address string
+function extractCAP(text: string | null | undefined): number | null {
+  if (!text) return null;
+  // Try to find a 4-5 digit number (Swiss CAP format)
+  const capMatch = text.match(/\b\d{4,5}\b/);
+  return capMatch ? parseInt(capMatch[0], 10) : null;
+}
 
 // Project row type
 type ProjectRow = {
   id: number;
   unique_code?: string | null;
+  title?: string | null;
+  name?: string | null;
   other?: string | null;
+  luogo?: string | null;
   sellPrice?: number | null;
   deliveryDate?: string | Date | null;
   archived?: boolean;
   updated_at?: string;
+  cloud_folder_url?: string | null;
+  project_files_url?: string | null;
   Client?: {
     businessName?: string | null;
     individualFirstName?: string | null;
     individualLastName?: string | null;
+    zipCode?: number | null;
+    address?: string | null;
   } | null;
   SellProduct?: {
     name?: string | null;
@@ -76,6 +101,27 @@ const createProjectEditHandler = (domain?: string) => {
   };
 };
 
+// Helper to find all scrollable ancestors and save their scroll positions
+const saveScrollPositions = (
+  element: HTMLElement | null
+): Array<{ el: HTMLElement; scrollTop: number }> => {
+  const positions: Array<{ el: HTMLElement; scrollTop: number }> = [];
+  let current = element;
+  while (current) {
+    const { overflow, overflowY } = window.getComputedStyle(current);
+    if (
+      overflow === "auto" ||
+      overflow === "scroll" ||
+      overflowY === "auto" ||
+      overflowY === "scroll"
+    ) {
+      positions.push({ el: current, scrollTop: current.scrollTop });
+    }
+    current = current.parentElement;
+  }
+  return positions;
+};
+
 export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
   const handleProjectEdit = createProjectEditHandler(domain);
 
@@ -83,21 +129,67 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
     {
       id: "select",
       header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Seleziona tutti"
-        />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const scrollPositions = saveScrollPositions(
+              e.currentTarget as HTMLElement
+            );
+            const windowScrollY = window.scrollY;
+
+            table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected());
+
+            requestAnimationFrame(() => {
+              scrollPositions.forEach(({ el, scrollTop }) => {
+                el.scrollTop = scrollTop;
+              });
+              window.scrollTo({ top: windowScrollY, behavior: "instant" });
+            });
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={() => {}}
+            aria-label="Seleziona tutti"
+            tabIndex={-1}
+          />
+        </div>
       ),
       cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Seleziona riga"
-        />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const scrollPositions = saveScrollPositions(
+              e.currentTarget as HTMLElement
+            );
+            const windowScrollY = window.scrollY;
+
+            row.toggleSelected(!row.getIsSelected());
+
+            requestAnimationFrame(() => {
+              scrollPositions.forEach(({ el, scrollTop }) => {
+                el.scrollTop = scrollTop;
+              });
+              window.scrollTo({ top: windowScrollY, behavior: "instant" });
+            });
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={() => {}}
+            aria-label="Seleziona riga"
+            tabIndex={-1}
+          />
+        </div>
       ),
       enableSorting: false,
       enableHiding: false,
@@ -142,6 +234,25 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         return (
           <span className="truncate block" title={clientName}>
             {clientName}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "nome_oggetto",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Nome oggetto" />
+      ),
+      size: 180,
+      minSize: 100,
+      maxSize: 400,
+      enableResizing: true,
+      cell: ({ row }) => {
+        const rowData = row.original;
+        const nomeOggetto = rowData.title || rowData.name || "-";
+        return (
+          <span className="truncate block" title={nomeOggetto}>
+            {nomeOggetto}
           </span>
         );
       },
@@ -207,23 +318,237 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       },
     },
     {
-      accessorKey: "other",
+      accessorKey: "luogo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Note" />
+        <DataTableColumnHeader column={column} title="Luogo" />
       ),
-      size: 150,
-      minSize: 80,
-      maxSize: 500,
+      size: 80,
+      minSize: 60,
+      maxSize: 120,
       enableResizing: true,
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.other}
-          row={row}
-          field="other"
-          type="text"
-          onSave={handleProjectEdit}
-        />
+      cell: ({ row }) => {
+        const rowData = row.original;
+        // Extract CAP from Client zipCode or from luogo field
+        const cap = rowData.Client?.zipCode || 
+                   (rowData.luogo ? extractCAP(rowData.luogo) : null);
+        return (
+          <span className="truncate block" title={cap?.toString() || "-"}>
+            {cap || "-"}
+          </span>
+        );
+      },
+    },
+    {
+      id: "notes_icon",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <StickyNote className="h-4 w-4" />
+        </div>
       ),
+      size: 50,
+      minSize: 40,
+      maxSize: 60,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const hasNotes = !!row.original.other && row.original.other.trim() !== "";
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            {hasNotes ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <StickyNote className="h-4 w-4 text-primary" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">{row.original.other}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "cloud_folder",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <Folder className="h-4 w-4" />
+        </div>
+      ),
+      size: 50,
+      minSize: 40,
+      maxSize: 60,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const folderUrl = row.original.cloud_folder_url;
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            {folderUrl ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => window.open(folderUrl, "_blank")}
+              >
+                <Folder className="h-4 w-4 text-primary" />
+              </Button>
+            ) : (
+              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "reports",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <FileText className="h-4 w-4" />
+        </div>
+      ),
+      size: 50,
+      minSize: 40,
+      maxSize: 60,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const projectId = row.original.id;
+        const currentDomain = domain || window.location.pathname.split('/')[2];
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      // Navigate to reports page for this project
+                      window.location.href = `/sites/${currentDomain}/projects/${projectId}/reports`;
+                    }}
+                  >
+                    <FileText className="h-4 w-4 text-primary" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Rapporti, bollettini, protocolli di collaudo</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        );
+      },
+    },
+    {
+      id: "google_maps",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <MapPin className="h-4 w-4" />
+        </div>
+      ),
+      size: 50,
+      minSize: 40,
+      maxSize: 60,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const address = row.original.Client?.address || row.original.luogo;
+        const googleMapsUrl = address 
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+          : null;
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            {googleMapsUrl ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => window.open(googleMapsUrl, "_blank")}
+              >
+                <MapPin className="h-4 w-4 text-primary" />
+              </Button>
+            ) : (
+              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      id: "consuntivo",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <Settings className="h-4 w-4" />
+        </div>
+      ),
+      size: 50,
+      minSize: 40,
+      maxSize: 60,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const projectId = row.original.id;
+        const currentDomain = domain || window.location.pathname.split('/')[2];
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      // Navigate to project dashboard/consuntivo
+                      window.location.href = `/sites/${currentDomain}/projects/${projectId}/consuntivo`;
+                    }}
+                  >
+                    <Settings className="h-4 w-4 text-primary" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Dashboard consuntivo progetto</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        );
+      },
+    },
+    {
+      id: "project_files",
+      header: () => (
+        <div className="flex items-center justify-center w-full">
+          <File className="h-4 w-4" />
+        </div>
+      ),
+      size: 50,
+      minSize: 40,
+      maxSize: 60,
+      enableResizing: false,
+      cell: ({ row }) => {
+        const filesUrl = row.original.project_files_url;
+        const projectId = row.original.id;
+        return (
+          <div className="flex items-center justify-center w-full h-full">
+            {filesUrl ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={() => window.open(filesUrl, "_blank")}
+              >
+                <File className="h-4 w-4 text-primary" />
+              </Button>
+            ) : (
+              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
+            )}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "deliveryDate",

@@ -6,6 +6,7 @@ import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 import { generateTaskCode } from "@/lib/code-generator";
+import { createProjectFolders } from "@/lib/project-folders";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -120,6 +121,35 @@ export async function createItem(props: any, domain?: string) {
           message:
             `Errore nella creazione del task: ${taskCreateError.message}`,
         };
+      }
+
+      // Create project folders automatically
+      let cloudFolderUrl = null;
+      let projectFilesUrl = null;
+      if (taskCreate && siteId && uniqueCode) {
+        try {
+          const folders = await createProjectFolders(
+            taskCreate.id,
+            uniqueCode,
+            siteId
+          );
+          cloudFolderUrl = folders.cloudFolderUrl;
+          projectFilesUrl = folders.projectFilesUrl;
+
+          // Update task with folder URLs if they were created successfully
+          if (cloudFolderUrl || projectFilesUrl) {
+            await supabase
+              .from("Task")
+              .update({
+                cloud_folder_url: cloudFolderUrl,
+                project_files_url: projectFilesUrl,
+              })
+              .eq("id", taskCreate.id);
+          }
+        } catch (folderError) {
+          console.error("Error creating project folders:", folderError);
+          // Don't fail the task creation if folder creation fails
+        }
       }
 
       // Create a new Action record to track the user action

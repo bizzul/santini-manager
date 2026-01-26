@@ -60,6 +60,27 @@ const createTimetrackingEditHandler = (domain?: string) => {
   };
 };
 
+// Helper to find all scrollable ancestors and save their scroll positions
+const saveScrollPositions = (
+  element: HTMLElement | null
+): Array<{ el: HTMLElement; scrollTop: number }> => {
+  const positions: Array<{ el: HTMLElement; scrollTop: number }> = [];
+  let current = element;
+  while (current) {
+    const { overflow, overflowY } = window.getComputedStyle(current);
+    if (
+      overflow === "auto" ||
+      overflow === "scroll" ||
+      overflowY === "auto" ||
+      overflowY === "scroll"
+    ) {
+      positions.push({ el: current, scrollTop: current.scrollTop });
+    }
+    current = current.parentElement;
+  }
+  return positions;
+};
+
 export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => {
   const handleTimetrackingEdit = createTimetrackingEditHandler(domain);
 
@@ -67,21 +88,67 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
     {
       id: "select",
       header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Seleziona tutti"
-        />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const scrollPositions = saveScrollPositions(
+              e.currentTarget as HTMLElement
+            );
+            const windowScrollY = window.scrollY;
+
+            table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected());
+
+            requestAnimationFrame(() => {
+              scrollPositions.forEach(({ el, scrollTop }) => {
+                el.scrollTop = scrollTop;
+              });
+              window.scrollTo({ top: windowScrollY, behavior: "instant" });
+            });
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={() => {}}
+            aria-label="Seleziona tutti"
+            tabIndex={-1}
+          />
+        </div>
       ),
       cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Seleziona riga"
-        />
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+
+            const scrollPositions = saveScrollPositions(
+              e.currentTarget as HTMLElement
+            );
+            const windowScrollY = window.scrollY;
+
+            row.toggleSelected(!row.getIsSelected());
+
+            requestAnimationFrame(() => {
+              scrollPositions.forEach(({ el, scrollTop }) => {
+                el.scrollTop = scrollTop;
+              });
+              window.scrollTo({ top: windowScrollY, behavior: "instant" });
+            });
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={() => {}}
+            aria-label="Seleziona riga"
+            tabIndex={-1}
+          />
+        </div>
       ),
       enableSorting: false,
       enableHiding: false,
@@ -132,30 +199,32 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Ore" />
       ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.hours}
-          row={row}
-          field="hours"
-          type="number"
-          onSave={handleTimetrackingEdit}
-        />
-      ),
-    },
-    {
-      accessorKey: "minutes",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Minuti" />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.minutes}
-          row={row}
-          field="minutes"
-          type="number"
-          onSave={handleTimetrackingEdit}
-        />
-      ),
+      cell: ({ row }) => {
+        const hours = row.original.hours || 0;
+        const minutes = row.original.minutes || 0;
+        return (
+          <div className="flex items-center gap-0.5">
+            <EditableCell
+              value={hours}
+              row={row}
+              field="hours"
+              type="number"
+              onSave={handleTimetrackingEdit}
+              className="w-6 text-center"
+            />
+            <span className="text-muted-foreground text-xs">h</span>
+            <EditableCell
+              value={minutes}
+              row={row}
+              field="minutes"
+              type="number"
+              onSave={handleTimetrackingEdit}
+              className="w-6 text-center"
+            />
+            <span className="text-muted-foreground text-xs">m</span>
+          </div>
+        );
+      },
     },
     {
       accessorKey: "totalTime",

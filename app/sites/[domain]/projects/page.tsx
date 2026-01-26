@@ -4,6 +4,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext, fetchProjectsData } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import SellProductWrapper from "./sellProductWrapper";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 import { Client, SellProduct, Kanban, SellProductCategory } from "@/types/supabase";
 
 // Type for data returned by fetchProjectsData
@@ -35,16 +36,26 @@ export default async function Page({
   const data = await fetchProjectsData(siteId);
 
   return (
-    <div className="container">
-      <DialogCreate data={data} />
-      {data.tasks?.length > 0 ? (
-        <SellProductWrapper data={data} />
-      ) : (
-        <div className="w-full h-full text-center">
-          <h1 className="font-bold text-2xl">Nessun progetto registrato!</h1>
-          <p>Premi (Aggiungi progetto) per aggiungere il tuo primo progetto!</p>
+    <PageLayout>
+      <PageHeader>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold">Gestione Progetti</h1>
+          <p className="text-sm text-muted-foreground">
+            Gestione operativa progetti, stato avanzamento e documentazione
+          </p>
         </div>
-      )}
-    </div>
+        <DialogCreate data={data} />
+      </PageHeader>
+      <PageContent>
+        {data.tasks?.length > 0 ? (
+          <SellProductWrapper data={data} domain={domain} />
+        ) : (
+          <div className="w-full text-center flex flex-col justify-center items-center h-80">
+            <h1 className="font-bold text-2xl">Nessun progetto registrato!</h1>
+            <p>Premi (Aggiungi progetto) per aggiungere il tuo primo progetto!</p>
+          </div>
+        )}
+      </PageContent>
+    </PageLayout>
   );
 }

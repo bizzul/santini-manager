@@ -69,6 +69,9 @@ export interface Task {
     // Category IDs selected during draft creation (for filtering products when completing)
     draft_category_ids?: number[];
     draftCategoryIds?: number[]; // Alternative property name
+    // Project folder URLs
+    cloud_folder_url?: string | null;
+    project_files_url?: string | null;
 }
 
 // Client related types
