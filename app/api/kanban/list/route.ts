@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
-    // Extract domain from query parameters first, then fallback to headers
+    // Extract site context from headers or query parameters
     const { searchParams } = new URL(req.url);
     const domainFromQuery = searchParams.get("domain");
-    const domainFromHeader = req.headers.get("host");
-    const domain = domainFromQuery || domainFromHeader;
+    const siteIdFromHeader = req.headers.get("x-site-id");
 
-    const kanbans = await getKanbans(domain || undefined);
+    // Build options for getKanbans - prioritize siteId from header, then domain from query
+    const kanbans = await getKanbans({
+      siteId: siteIdFromHeader || undefined,
+      domain: domainFromQuery || undefined,
+    });
 
     const response = NextResponse.json(kanbans);
 

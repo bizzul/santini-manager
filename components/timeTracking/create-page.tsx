@@ -23,6 +23,7 @@ import { SearchSelect } from "../ui/search-select";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { logger } from "@/lib/logger";
 import {
   Clock,
@@ -38,7 +39,9 @@ import {
   AlertCircle,
   Wrench,
   X,
+  List,
 } from "lucide-react";
+import { MyHoursList } from "./my-hours-list";
 
 // Internal activity type from database
 export interface InternalActivity {
@@ -81,6 +84,11 @@ interface TodayEntry {
     name?: string;
   }[];
   created_at: string;
+}
+
+// Extended type for all user entries (includes additional fields)
+interface AllUserEntry extends TodayEntry {
+  description_type?: string;
 }
 
 interface Session {
@@ -129,11 +137,14 @@ const CreatePage = ({
   data,
   session,
   internalActivities = [],
+  allUserEntries = [],
 }: {
   data: { roles: Roles[]; tasks: Task[]; todayEntries?: TodayEntry[] };
   session: Session;
   internalActivities?: InternalActivity[];
+  allUserEntries?: AllUserEntry[];
 }) => {
+  const [activeTab, setActiveTab] = useState("create");
   const rolesOptions = data.roles;
   const todayEntries = data.todayEntries || [];
 
@@ -565,11 +576,47 @@ const CreatePage = ({
     }
   };
 
+  // Handle delete from MyHoursList
+  const handleDeleteEntries = async (ids: number[]) => {
+    const response = await fetch("/api/time-tracking/delete", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Errore durante l'eliminazione");
+    }
+
+    // Reload page to refresh data
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen pb-24">
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Progress Summary Card */}
-        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+      {/* Tabs Navigation */}
+      <div className="max-w-4xl mx-auto px-4 pt-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="create" className="gap-2">
+              <Plus className="h-4 w-4" />
+              Registra ore
+            </TabsTrigger>
+            <TabsTrigger value="my-hours" className="gap-2">
+              <List className="h-4 w-4" />
+              Le mie ore
+              {allUserEntries.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {allUserEntries.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Create Tab Content */}
+          <TabsContent value="create" className="mt-4 space-y-6">
+            {/* Progress Summary Card */}
+            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1079,9 +1126,21 @@ const CreatePage = ({
           <Plus className="h-5 w-5 mr-2" />
           Aggiungi registrazione
         </Button>
-      </div>
+      </TabsContent>
 
-      {/* Fixed Bottom Action Bar */}
+      {/* My Hours Tab Content */}
+      <TabsContent value="my-hours" className="mt-4">
+        <MyHoursList
+          entries={allUserEntries}
+          internalActivities={internalActivities}
+          onDelete={handleDeleteEntries}
+        />
+      </TabsContent>
+    </Tabs>
+  </div>
+
+      {/* Fixed Bottom Action Bar - Only show on create tab */}
+      {activeTab === "create" && (
       <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t p-4 z-50">
         <div className="max-w-4xl mx-auto flex gap-3">
           <Button
@@ -1112,6 +1171,7 @@ const CreatePage = ({
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 };

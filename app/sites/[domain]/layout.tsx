@@ -125,22 +125,15 @@ export default async function SiteLayout({
 }) {
   try {
     const { domain } = await params;
-    console.log("[SiteLayout] Loading site for domain:", domain);
 
     const response = await getSiteData(domain);
 
     if (!response?.data) {
-      console.log("[SiteLayout] Site data not found for domain:", domain);
       logger.debug("Site data not found for domain:", domain);
       notFound();
     }
 
     const data = response.data;
-    console.log("[SiteLayout] Site data loaded:", {
-      siteId: data.id,
-      name: data.name,
-      org: data.organization_id,
-    });
 
     // Optional: Redirect to custom domain if it exists
     if (
@@ -152,35 +145,20 @@ export default async function SiteLayout({
     }
 
     // Add authentication check
-    console.log("[SiteLayout] Fetching user context...");
     const userContext = await getUserContext();
     if (!userContext) {
-      console.log("[SiteLayout] User context not found, redirecting to login");
       redirect("/login");
     }
-    console.log("[SiteLayout] User context loaded:", {
-      userId: userContext.userId,
-      role: userContext.role,
-      orgIds: userContext.organizationIds,
-      canAccessAll: userContext.canAccessAllOrganizations,
-    });
 
     // Check if user has access to this site
     // OPTIMIZED: Pass organization_id directly to avoid extra query
-    console.log("[SiteLayout] Checking site access...");
     const hasAccess = await checkSiteAccess(
       data.id,
       data.organization_id,
       userContext
     );
-    console.log("[SiteLayout] Site access check result:", hasAccess);
 
     if (!hasAccess) {
-      console.log("[SiteLayout] Access DENIED:", {
-        siteName: data.name,
-        siteOrg: data.organization_id,
-        userOrgs: userContext.organizationIds,
-      });
       logger.debug(
         "User does not have access to site:",
         data.name,
@@ -191,7 +169,6 @@ export default async function SiteLayout({
       );
       redirect("/sites/select?error=no_access");
     }
-    console.log("[SiteLayout] Access GRANTED, rendering site");
 
     const isImpersonating = userContext?.isImpersonating;
     const impersonatedUser = userContext?.impersonatedUser;

@@ -44,10 +44,16 @@ interface TodayEntry {
   created_at: string;
 }
 
+// Type for all user entries (extended from TodayEntry)
+interface AllUserEntry extends TodayEntry {
+  description_type?: string;
+}
+
 export type Datas = {
   tasks: Task[];
   roles: Roles[];
   todayEntries: TodayEntry[];
+  allUserEntries: AllUserEntry[];
   internalActivities: InternalActivity[];
 };
 
@@ -63,7 +69,7 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
 
   if (tasksError) {
     console.error("Error fetching tasks:", tasksError);
-    return { tasks: [], roles: [], todayEntries: [], internalActivities: [] };
+    return { tasks: [], roles: [], todayEntries: [], allUserEntries: [], internalActivities: [] };
   }
 
   // Fetch internal activities (global and site-specific)
@@ -119,6 +125,7 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
   }
 
   let todayEntries: TodayEntry[] = [];
+  let allUserEntries: AllUserEntry[] = [];
 
   if (!userError && userData) {
     // Get start and end of today (in UTC)
@@ -134,6 +141,10 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       today.getDate() + 1
     );
 
+    // Get task IDs for this site for filtering
+    const siteTaskIds = (tasks || []).map((t: any) => t.id);
+
+    // Fetch today's entries
     const { data: timetrackingData, error: timetrackingError } = await supabase
       .from("Timetracking")
       .select(
@@ -171,6 +182,55 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
         roles: entry.roles?.map((r: any) => r.role) || [],
       }));
     }
+
+    // Fetch ALL entries for the user (for "Le mie ore" tab)
+    // Build query with proper site filtering
+    let allEntriesQuery = supabase
+      .from("Timetracking")
+      .select(
+        `
+        id,
+        hours,
+        minutes,
+        totalTime,
+        description,
+        description_type,
+        activity_type,
+        internal_activity,
+        created_at,
+        task:task_id(unique_code, client:Client(businessName)),
+        roles:_RolesToTimetracking(role:Roles(id, name))
+      `
+      )
+      .eq("employee_id", userData.id)
+      .order("created_at", { ascending: false });
+
+    // Filter by site (either direct site_id match OR task is from this site)
+    if (siteTaskIds.length > 0) {
+      allEntriesQuery = allEntriesQuery.or(`site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`);
+    } else {
+      allEntriesQuery = allEntriesQuery.eq("site_id", siteId);
+    }
+
+    const { data: allEntriesData, error: allEntriesError } = await allEntriesQuery;
+
+    if (allEntriesError) {
+      console.error("Error fetching all user timetracking:", allEntriesError);
+    } else {
+      allUserEntries = (allEntriesData || []).map((entry: any) => ({
+        id: entry.id,
+        hours: entry.hours,
+        minutes: entry.minutes,
+        totalTime: entry.totalTime,
+        description: entry.description,
+        description_type: entry.description_type,
+        activity_type: entry.activity_type,
+        internal_activity: entry.internal_activity,
+        created_at: entry.created_at,
+        task: entry.task,
+        roles: entry.roles?.map((r: any) => r.role) || [],
+      }));
+    }
   }
 
   const transformedTasks: Task[] = (tasks || []).map((task: any) => ({
@@ -190,6 +250,7 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
     tasks: transformedTasks,
     roles: transformedRoles,
     todayEntries,
+    allUserEntries,
     internalActivities,
   };
 }
@@ -273,6 +334,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
         data={data}
         session={session}
         internalActivities={data.internalActivities}
+        allUserEntries={data.allUserEntries}
       />
     </div>
   );

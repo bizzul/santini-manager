@@ -3,20 +3,43 @@
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 
-export async function getKanbans(domain?: string) {
+interface GetKanbansOptions {
+  domain?: string;
+  siteId?: string;
+}
+
+export async function getKanbans(options?: string | GetKanbansOptions) {
   try {
     const supabase = await createClient();
-    let siteId = null;
+    let siteId: string | null = null;
 
-    // Get site information
-    if (domain) {
-      try {
-        const siteResult = await getSiteData(domain);
-        if (siteResult?.data) {
-          siteId = siteResult.data.id;
+    // Handle both legacy string parameter (domain) and new options object
+    if (typeof options === "string") {
+      // Legacy: options is domain string
+      const domain = options;
+      if (domain) {
+        try {
+          const siteResult = await getSiteData(domain);
+          if (siteResult?.data) {
+            siteId = siteResult.data.id;
+          }
+        } catch (error) {
+          console.error("Error fetching site data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching site data:", error);
+      }
+    } else if (options) {
+      // New: options is an object with domain and/or siteId
+      if (options.siteId) {
+        siteId = options.siteId;
+      } else if (options.domain) {
+        try {
+          const siteResult = await getSiteData(options.domain);
+          if (siteResult?.data) {
+            siteId = siteResult.data.id;
+          }
+        } catch (error) {
+          console.error("Error fetching site data:", error);
+        }
       }
     }
 

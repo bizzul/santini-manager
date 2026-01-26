@@ -79,7 +79,7 @@ type TaskSupplier = {
 
 const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const { toast } = useToast();
-  const { siteId } = useSiteId(domain);
+  const { siteId, error: siteIdError } = useSiteId(domain);
   const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<z.infer<typeof validation>>({
@@ -128,6 +128,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
   useEffect(() => {
     if (!resource) return;
+    // Wait for siteId to be loaded before fetching data
+    // If domain is provided, wait until siteId is loaded (not null) or there's an error
+    if (domain && !siteId && !siteIdError) return;
 
     setIsLoading(true);
 
@@ -169,7 +172,12 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     const getKanbans = async () => {
       try {
-        const response = await fetch(`/api/kanban/list`, {
+        // Build URL with domain as fallback when siteId is not available
+        const url = new URL(`/api/kanban/list`, window.location.origin);
+        if (domain) {
+          url.searchParams.set("domain", domain);
+        }
+        const response = await fetch(url.toString(), {
           headers: getHeaders(),
         });
         if (!response.ok) throw new Error("Failed to fetch kanbans");
@@ -215,7 +223,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     };
 
     loadData();
-  }, [resource, form.setValue, siteId]);
+  }, [resource, form.setValue, siteId, siteIdError, domain]);
 
   // Load columns when kanban changes
   useEffect(() => {

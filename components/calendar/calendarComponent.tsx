@@ -97,6 +97,14 @@ function renderEventContent(eventInfo: any) {
 const MONTH_NAMES = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", 
                      "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
 
+// Calendar type names for display
+const CALENDAR_TYPE_NAMES: Record<CalendarType, string> = {
+  "production": "Calendario Produzione",
+  "installation": "Calendario Posa",
+  "service": "Calendario Service",
+  "all": "Calendario Produzione",
+};
+
 // Fix and format calendar title
 function fixCalendarTitle(text: string): string {
   if (!text.trim()) return text;
@@ -411,8 +419,9 @@ export default function CalendarComponent({
         }
       `}</style>
       {/* Custom title - controlled by React state to avoid FullCalendar issues */}
-      <div className="calendar-custom-title text-2xl font-semibold mb-6 text-center">
-        {displayTitle}
+      <div className="calendar-custom-title mb-6 text-center">
+        <h1 className="text-2xl font-bold mb-1">{CALENDAR_TYPE_NAMES[calendarType]}</h1>
+        <p className="text-lg text-muted-foreground">{displayTitle}</p>
       </div>
       <FC 
         ref={calendarRef}

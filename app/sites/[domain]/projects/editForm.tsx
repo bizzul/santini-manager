@@ -87,7 +87,7 @@ const EditForm = ({ handleClose, data }: Props) => {
   useEffect(() => {
     const getKanbans = async () => {
       try {
-        const response = await fetch(`/api/kanban/list`);
+        const response = await fetch(`/api/kanban/list?domain=${encodeURIComponent(domain)}`);
         if (!response.ok) {
           throw new Error("Failed to fetch kanbans");
         }
@@ -102,7 +102,7 @@ const EditForm = ({ handleClose, data }: Props) => {
     };
 
     getKanbans();
-  }, []);
+  }, [domain]);
 
   // Load columns when kanban changes
   useEffect(() => {

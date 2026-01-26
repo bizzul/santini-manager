@@ -38,12 +38,6 @@ export async function getSiteData(domain: string) {
             .eq("subdomain", subdomain)
             .single();
 
-          console.log(
-            "[getSiteData] Query result:",
-            result.data ? "Found" : "Not found",
-            result.error?.message,
-          );
-
           // If site is found, return it for caching
           if (result.data) {
             return result;
@@ -72,11 +66,6 @@ export async function getSiteData(domain: string) {
       _error?: boolean;
     } | null;
     if (resultWithMarkers?._notFound || resultWithMarkers?._error) {
-      console.log(
-        "[getSiteData] Cached result was empty, trying fresh query for:",
-        subdomain,
-      );
-
       try {
         const supabase = createServiceClient();
         const freshResult = await supabase
@@ -85,23 +74,12 @@ export async function getSiteData(domain: string) {
           .eq("subdomain", subdomain)
           .single();
 
-        console.log(
-          "[getSiteData] Fresh query result:",
-          freshResult.data ? "Found" : "Not found",
-          freshResult.error?.message,
-        );
-
         // If found on fresh query, revalidate the cache tag so next request uses the new data
         if (freshResult.data) {
-          console.log(
-            "[getSiteData] Site found on fresh query, revalidating cache tag:",
-            `${subdomain}-metadata`,
-          );
           try {
             revalidateTag(`${subdomain}-metadata`);
           } catch (e) {
             // revalidateTag might fail in some contexts, that's ok
-            console.log("[getSiteData] Could not revalidate tag:", e);
           }
           return freshResult;
         }
@@ -109,7 +87,6 @@ export async function getSiteData(domain: string) {
         // Still not found after fresh query
         return freshResult;
       } catch (error) {
-        console.error("[getSiteData] Fresh query error:", error);
         logger.error("Error in getSiteData fresh query:", error);
         return null;
       }
@@ -117,7 +94,6 @@ export async function getSiteData(domain: string) {
 
     return cachedResult;
   } catch (error) {
-    console.error("[getSiteData] Error:", error);
     logger.error("Error in getSiteData:", error);
     return null;
   }

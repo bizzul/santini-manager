@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
-import { generateTaskCode } from "@/lib/code-generator";
+import { generateTaskCode, generateInternalTaskCode } from "@/lib/code-generator";
 import { createProjectFolders } from "@/lib/project-folders";
 
 export async function createItem(props: any, domain?: string) {
@@ -58,10 +58,19 @@ export async function createItem(props: any, domain?: string) {
         };
       }
 
-      // Get kanban info to determine task type
+      // Get kanban info to determine task type, including category for internal codes
       const { data: kanban } = await supabase
         .from("Kanban")
-        .select("is_offer_kanban, site_id")
+        .select(`
+          is_offer_kanban, 
+          site_id,
+          category_id,
+          category:KanbanCategory!category_id(
+            id,
+            is_internal,
+            internal_base_code
+          )
+        `)
         .eq("id", result.data.kanbanId)
         .single();
 
@@ -69,6 +78,10 @@ export async function createItem(props: any, domain?: string) {
       if (!siteId && kanban?.site_id) {
         siteId = kanban.site_id;
       }
+
+      // Normalize category (Supabase may return array for joins)
+      const rawCategory = kanban?.category as any;
+      const category = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
 
       // if a position is not provided, it defaults to an empty string
       const positions = Array.from(
@@ -79,9 +92,16 @@ export async function createItem(props: any, domain?: string) {
 
       // Generate unique code using atomic sequence (always incremental)
       let uniqueCode = result.data.unique_code;
+      let taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
+      
       if (siteId) {
-        const taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
-        uniqueCode = await generateTaskCode(siteId, taskType);
+        // Check if kanban belongs to an internal category (e.g., service with code 5000)
+        if (category && category.is_internal && category.internal_base_code) {
+          uniqueCode = await generateInternalTaskCode(siteId, category.id, category.internal_base_code);
+          taskType = "INTERNO";
+        } else {
+          uniqueCode = await generateTaskCode(siteId, taskType);
+        }
       }
 
       const insertData: any = {
@@ -100,8 +120,8 @@ export async function createItem(props: any, domain?: string) {
         positions: positions,
         // Link to parent offer if provided
         parent_task_id: result.data.parentTaskId || null,
-        // Set task type based on kanban type
-        task_type: kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO",
+        // Set task type based on kanban type or internal category
+        task_type: taskType,
       };
 
       if (siteId) {

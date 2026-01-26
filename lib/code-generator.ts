@@ -181,6 +181,7 @@ async function findMaxExistingSequence(
 
   // Estrai il numero massimo dai codici esistenti, filtrando per tipo
   let maxNumber = 0;
+
   for (const task of tasks) {
     const code = task.unique_code;
     if (!code) continue;
@@ -190,7 +191,9 @@ async function findMaxExistingSequence(
 
     // Parsing del codice
     const parsed = parseTaskCode(code, yearPrefix);
-    if (!parsed) continue;
+    if (!parsed) {
+      continue;
+    }
 
     // Se task_type non è disponibile, usa il tipo determinato dal parsing
     if (!taskType) {
@@ -542,12 +545,16 @@ async function findMaxInternalSequence(
   categoryId: number,
   baseCode: number,
 ): Promise<number> {
-  // Query all tasks from kanbans in this category with internal codes
+  // Convert baseCode to string for consistent pattern matching
+  const baseCodeStr = String(baseCode);
+  const pattern = `${baseCodeStr}-%`;
+
+  // Query all tasks from this site with internal codes matching the pattern
   const { data: tasks, error } = await supabase
     .from("Task")
-    .select("unique_code, kanban_id")
+    .select("unique_code")
     .eq("site_id", siteId)
-    .like("unique_code", `${baseCode}-%`)
+    .like("unique_code", pattern)
     .order("unique_code", { ascending: false })
     .limit(500);
 
@@ -561,7 +568,7 @@ async function findMaxInternalSequence(
     const code = task.unique_code;
     if (!code) continue;
 
-    // Format: "1000-1", "1000-2", etc.
+    // Format: "5000-1", "5000-2", etc.
     const parts = code.split("-");
     if (parts.length !== 2) continue;
 
@@ -588,7 +595,7 @@ export async function getNextInternalSequenceValue(
   const supabase = await createClient();
   const currentYear = new Date().getFullYear();
 
-  // Check the maximum existing sequence in Task table
+  // Check the maximum existing sequence in Task table - this is the source of truth
   const maxExisting = await findMaxInternalSequence(
     supabase,
     siteId,
@@ -599,7 +606,7 @@ export async function getNextInternalSequenceValue(
   // Try to get the sequence from code_sequences (with category_id)
   const { data: existingSeq, error: seqError } = await supabase
     .from("code_sequences")
-    .select("current_value")
+    .select("id, current_value")
     .eq("site_id", siteId)
     .eq("sequence_type", "INTERNO")
     .eq("year", currentYear)
@@ -607,30 +614,49 @@ export async function getNextInternalSequenceValue(
     .single();
 
   if (seqError && seqError.code !== "PGRST116") {
-    // PGRST116 = no rows found, that's ok
-    logger.warn("Error fetching internal sequence:", seqError);
+    // PGRST116 = no rows found, that's ok - we'll create it
   }
 
   // Use the maximum between saved sequence and existing tasks
   const sequenceValue = existingSeq?.current_value || 0;
   const nextValue = Math.max(sequenceValue, maxExisting) + 1;
 
-  // Update or insert the sequence value
-  const { error: upsertError } = await supabase
-    .from("code_sequences")
-    .upsert({
-      site_id: siteId,
-      sequence_type: "INTERNO",
-      year: currentYear,
-      category_id: categoryId,
-      current_value: nextValue,
-      updated_at: new Date().toISOString(),
-    }, {
-      onConflict: "site_id,sequence_type,year,category_id",
-    });
+  // Update or insert the sequence value using explicit SELECT/UPDATE/INSERT
+  // to avoid issues with COALESCE-based unique index
+  if (existingSeq?.id) {
+    // Update existing record
+    const { error: updateError } = await supabase
+      .from("code_sequences")
+      .update({
+        current_value: nextValue,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existingSeq.id);
 
-  if (upsertError) {
-    logger.warn("Failed to update internal sequence:", upsertError);
+    if (updateError) {
+      logger.warn("Failed to update internal sequence:", updateError);
+    }
+  } else {
+    // Insert new record
+    const { error: insertError } = await supabase
+      .from("code_sequences")
+      .insert({
+        site_id: siteId,
+        sequence_type: "INTERNO",
+        year: currentYear,
+        category_id: categoryId,
+        current_value: nextValue,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (insertError) {
+      // If insert fails (maybe race condition), that's ok - we still have the correct value
+      // from findMaxInternalSequence
+      logger.warn(
+        "Failed to insert internal sequence (may be race condition):",
+        insertError,
+      );
+    }
   }
 
   return nextValue;
@@ -687,7 +713,7 @@ export async function getInternalCategoryInfo(
   // Normalize category (Supabase may return array for joins)
   const rawCategory = kanban.category as any;
   const category = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
-  
+
   // Check if the category is internal
   if (!category || !category.is_internal) {
     return { isInternal: false };

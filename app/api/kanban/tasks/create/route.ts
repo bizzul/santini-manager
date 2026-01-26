@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
           retryCount++;
           if (retryCount < maxRetries) {
             // Wait a bit before retrying to avoid race conditions
-            await new Promise(resolve => setTimeout(resolve, 100 * retryCount));
+            await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
             continue;
           }
         } else if (error) {
