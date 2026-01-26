@@ -665,7 +665,7 @@ export const fetchTasks = cache(async (siteId: string) => {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from("Task")
-        .select("*, client:Client!clientId(businessName)")
+        .select("*, Client(businessName, individualFirstName, individualLastName)")
         .eq("site_id", siteId)
         .eq("archived", false)
         .order("unique_code", { ascending: true });

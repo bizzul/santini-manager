@@ -24,20 +24,22 @@ export async function editItem(
 
   if (result.success) {
     try {
-      const updateError = await supabase.from("Errortracking").update({
-        where: {
-          id,
-        },
-        data: {
-          position: result.data.position,
-          supplier_id: Number(result.data.supplier),
-          description: result.data.description,
+      const { error: updateError } = await supabase
+        .from("Errortracking")
+        .update({
+          supplier_id: result.data.supplier ? Number(result.data.supplier) : null,
+          description: result.data.description ?? "",
           error_category: result.data.errorCategory,
-          error_type: result.data.errorType,
-          task_id: Number(result.data.task),
-          employee_id: Number(result.data.user),
-        },
-      });
+          error_type: result.data.errorType ?? "",
+          task_id: result.data.task ? Number(result.data.task) : undefined,
+          employee_id: result.data.user ? Number(result.data.user) : undefined,
+        })
+        .eq("id", id);
+
+      if (updateError) {
+        logger.error("Error updating errortracking:", updateError);
+        return { error: updateError.message };
+      }
 
       // Link new uploaded files to this errortracking record
       if (files?.length > 0) {
@@ -48,15 +50,19 @@ export async function editItem(
       }
 
       // Create a new Action record to track the user action
-      const action = await supabase.from("action").insert({
-        data: {
+      if (userId) {
+        const { error: actionError } = await supabase.from("Action").insert({
           type: "errorTracking_update",
           data: {
             errorTrackingId: id,
           },
           user_id: userId,
-        },
-      });
+        });
+
+        if (actionError) {
+          logger.error("Error creating action record:", actionError);
+        }
+      }
 
       return revalidatePath("/errortracking");
     } catch (e) {

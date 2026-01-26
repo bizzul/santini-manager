@@ -9,7 +9,7 @@ async function getData(siteId: string): Promise<any> {
   const supabase = createServiceClient();
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
-    .select("*")
+    .select("id, unique_code, title, Client(businessName, individualFirstName, individualLastName)")
     .eq("site_id", siteId)
     .order("created_at", { ascending: false });
   const { data: roles, error: rolesError } = await supabase
@@ -18,7 +18,7 @@ async function getData(siteId: string): Promise<any> {
     .or(`site_id.eq.${siteId},site_id.is.null`);
   const { data: suppliers, error: suppliersError } = await supabase
     .from("Supplier")
-    .select("*")
+    .select("*, supplier_category:Product_category(name)")
     .eq("site_id", siteId);
   const { data: categories, error: categoriesError } = await supabase
     .from("Product_category")

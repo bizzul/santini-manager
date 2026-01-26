@@ -23,11 +23,10 @@ export async function createItem(props: any) {
       const { data: createError, error: createErrorResponse } = await supabase
         .from("Errortracking")
         .insert({
-          position: result.data.position,
-          supplier_id: Number(result.data.supplier!),
+          supplier_id: result.data.supplier ? Number(result.data.supplier) : null,
           description: result.data.description ?? "",
           error_category: result.data.errorCategory,
-          error_type: result.data.errorType!,
+          error_type: result.data.errorType ?? "",
           task_id: Number(result.data.task),
           user_id: Number(result.data.user),
         })

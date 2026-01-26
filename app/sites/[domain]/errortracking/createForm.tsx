@@ -12,7 +12,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
@@ -31,6 +31,21 @@ import {
   UploadedFile,
   UploadedFilesList,
 } from "@/components/ui/file-upload";
+
+// Helper function to get project display label
+const getProjectLabel = (task: any): string => {
+  const clientName = task.Client?.businessName ||
+    (task.Client?.individualFirstName && task.Client?.individualLastName
+      ? `${task.Client.individualFirstName} ${task.Client.individualLastName}`
+      : null);
+  
+  if (clientName) {
+    return `${task.unique_code} - ${clientName}`;
+  }
+  return task.title
+    ? `${task.unique_code} - ${task.title}`
+    : task.unique_code || "";
+};
 
 const CreateProductForm = ({
   handleClose,
@@ -47,7 +62,6 @@ const CreateProductForm = ({
       user: "",
       description: "",
       errorType: "",
-      position: "",
       supplier: "",
       task: "",
     },
@@ -164,27 +178,17 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Progetto</FormLabel>
                   <FormControl>
-                    <Select
-                      {...field}
-                      onValueChange={(value) => {
-                        // This ensures that the selected value updates the react-hook-form state
-                        field.onChange(value);
-                      }}
+                    <SearchSelect
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
                       disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {data.tasks.map((t: Task) => (
-                          <SelectItem key={t.id} value={t.id.toString()}>
-                            {t.unique_code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={data.tasks.map((t: any) => ({
+                        value: t.id.toString(),
+                        label: getProjectLabel(t),
+                      }))}
+                      placeholder="Cerca progetto..."
+                    />
                   </FormControl>
-                  {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -287,23 +291,6 @@ const CreateProductForm = ({
               />
             </div>
           )}
-
-          <div className="grid grid-cols-1 gap-6">
-            <FormField
-              name="position"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Posizione</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                  {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
         </div>
         <FormField
           name="description"

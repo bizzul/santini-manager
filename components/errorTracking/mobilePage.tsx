@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { SearchSelect } from "../ui/search-select";
 import { Textarea } from "../ui/textarea";
 
 import {
@@ -31,13 +32,18 @@ import {
   FormMessage,
 } from "../../components/ui/form";
 import { z } from "zod";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
 // Define types based on Supabase schema
 interface Task {
   id: number;
   unique_code?: string;
+  title?: string;
+  Client?: {
+    businessName?: string;
+    individualFirstName?: string;
+    individualLastName?: string;
+  };
 }
 
 interface Roles {
@@ -48,7 +54,9 @@ interface Roles {
 interface Supplier {
   id: number;
   name: string;
-  category?: string;
+  supplier_category?: {
+    name?: string;
+  };
 }
 
 interface Product_category {
@@ -62,6 +70,21 @@ interface Session {
     given_name?: string;
   };
 }
+
+// Helper function to get project display label
+const getProjectLabel = (task: Task): string => {
+  const clientName = task.Client?.businessName ||
+    (task.Client?.individualFirstName && task.Client?.individualLastName
+      ? `${task.Client.individualFirstName} ${task.Client.individualLastName}`
+      : null);
+  
+  if (clientName) {
+    return `${task.unique_code} - ${clientName}`;
+  }
+  return task.title
+    ? `${task.unique_code} - ${task.title}`
+    : task.unique_code || "";
+};
 
 function MobilePage({
   session,
@@ -82,7 +105,6 @@ function MobilePage({
       user: session.user.sub,
       description: "",
       errorType: "",
-      position: "",
       supplier: "",
       task: "",
     },
@@ -155,376 +177,321 @@ function MobilePage({
   logger.debug(errors);
 
   return (
-    <div>
-      <div className="flex justify-center w-auto h-auto flex-col items-center  ">
-        <div className="py-4 md:w-1/2 w-full  md:px-0 px-10">
-          <h2 className="md:text-3xl  text-sm font-extrabold ">
-            Step {step} di 3
-          </h2>
-          <p className="mt-4 text-lg ">Form per la segnalazione errori</p>
-          {error && (
-            <div className="px-6 pt-5">
-              <div className="w-full p-4 rounded-sm bg-red-500  flex-row items-middle">
-                <FontAwesomeIcon icon={faWarning} className="mr-2" />
-                {error}
-              </div>
-            </div>
-          )}
-        </div>
-        {step === 1 && (
-          <Form {...form}>
-            <form
-              className="space-y-4 "
-              // onSubmit={form.handleSubmit(() => setStep(2))}
-            >
-              <div className="shadow sm:rounded-md sm:overflow-hidden">
-                <div className="grid grid-cols-1 gap-6">
-                  <FormField
-                    name="errorCategory"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel> Categoria errore</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isSubmitting}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona categoria" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="fornitore">Fornitore</SelectItem>
-                            <SelectItem value="reparto">Reparto</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-6 z-20">
-                  <FormField
-                    name="task"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Progetto</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isSubmitting}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona progetto" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {data.tasks.map((t: Task) => (
-                              <SelectItem key={t.id} value={t.id.toString()}>
-                                {t.unique_code}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 z-20">
-                  <FormField
-                    name="errorType"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel> Tipo errore</FormLabel>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isSubmitting}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleziona tipo errore" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {form.watch("errorCategory") === "fornitore"
-                              ? data.categories.map(
-                                  (category: Product_category) => (
-                                    <SelectItem
-                                      key={category.id}
-                                      value={category.name.toLowerCase()}
-                                    >
-                                      {category.name}
-                                    </SelectItem>
-                                  )
-                                )
-                              : data.roles.map((role) => (
-                                  <SelectItem
-                                    key={role.id}
-                                    value={role.id.toString()}
-                                  >
-                                    {role.name}
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                        {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {form.watch("errorCategory") === "reparto" ? (
-                  ""
-                ) : (
-                  <div className="grid grid-cols-1 gap-6">
-                    <FormField
-                      name="supplier"
-                      control={form.control}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fornitore</FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            disabled={isSubmitting}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona fornitore" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {data.suppliers
-                                .filter(
-                                  (supplier: Supplier) =>
-                                    supplier.category?.toLowerCase() ===
-                                    form.watch("errorType")?.toLowerCase()
-                                )
-                                .map((supplier: Supplier) => (
-                                  <SelectItem
-                                    key={supplier.id}
-                                    value={supplier.id.toString()}
-                                  >
-                                    {supplier.name}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                          {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-6">
-                  <FormField
-                    name="position"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Posizione</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-              <div className="px-4 py-3  text-right sm:px-6 ">
-                <Button
-                  type="button"
-                  onClick={onNextStep}
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Prossimo
-                </Button>
-              </div>
-            </form>
-          </Form>
-        )}
-
-        {step === 2 && (
-          <Form {...form}>
-            <form
-              // onSubmit={form.handleSubmit(() => setStep(3))}
-              className="md:w-1/2 w-full px-6   h-screen "
-            >
-              <div className=" sm:rounded-md sm:overflow-hidden  ">
-                <div className="px-4 py-5  space-y-6 sm:p-6">
-                  <FormField
-                    name="description"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrizione</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} />
-                        </FormControl>
-                        {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-1 gap-6">
-                    <div className="col-span-3 sm:col-span-2">
-                      <label className="block text-sm font-medium mb-2">
-                        Foto
-                      </label>
-                      <FileUpload
-                        onUploadComplete={handleUploadComplete}
-                        onError={handleUploadError}
-                        accept="image/*"
-                        multiple
-                      />
-                      <UploadedFilesList files={uploadedFiles} />
-                    </div>
-                  </div>
-                </div>
-                <div className="px-4 py-3  text-right sm:px-6">
-                  <Button
-                    type="button"
-                    className="inline-flex justify-center py-2 px-4 border  bg-transparent shadow-xs text-sm font-medium rounded-md   focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    onClick={() => setStep(1)}
-                  >
-                    Precedente
-                  </Button>
-                  <Button
-                    onClick={onNextStep}
-                    type="button"
-                    className="ml-4 inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md  bg-indigo-600 hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    Prossimo
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </Form>
-        )}
-        {step === 3 && (
-          <div className="md:h-screen h-auto my-8 ">
-            <h2 className="text-2xl font-bold leading-7 sm:text-3xl sm:truncate">
-              Verifica i dati immessi
-            </h2>
-            <div className="mt-6   px-4 py-5 sm:rounded-lg sm:p-6">
-              <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 ">
-                <div className="sm:col-span-1">
-                  <dt className="text-sm font-medium text-gray-500">
-                    Categoria errore
-                  </dt>
-                  <dd className="mt-1 text-sm ">
-                    {form.watch("errorCategory")}
-                  </dd>
-                </div>
-
-                <div className="sm:col-span-1">
-                  <dt className="text-sm font-medium ">Progetto</dt>
-                  <dd className="mt-1 text-sm ">
-                    {data.tasks.find(
-                      (task: Task) => task.id.toString() === form.watch("task")
-                    )?.unique_code || "Sconosciuto"}
-                  </dd>
-                </div>
-
-                <div className="sm:col-span-1">
-                  <dt className="text-sm font-medium ">Utente</dt>
-                  <dd className="mt-1 text-sm ">{session.user.given_name}</dd>
-                </div>
-
-                <div className="sm:col-span-1">
-                  <dt className="text-sm font-medium ">Tipo Errore</dt>
-                  <dd className="mt-1 text-sm ">
-                    {data.categories.find(
-                      (category: Product_category) =>
-                        category.id.toString() == form.watch("errorType")
-                    )?.name || form.watch("errorType")}
-                  </dd>
-                </div>
-                {form.watch("errorCategory") === "fornitore" && (
-                  <div className="sm:col-span-1">
-                    <dt className="text-sm font-medium ">Fornitore</dt>
-                    <dd className="mt-1 text-sm ">
-                      {data.suppliers.find(
-                        (supplier: Supplier) =>
-                          supplier.id.toString() == form.watch("supplier")
-                      )?.name || "Sconosciuto"}
-                    </dd>
-                  </div>
-                )}
-
-                <div className="sm:col-span-1">
-                  <dt className="text-sm font-medium ">Nr. Posizione</dt>
-                  <dd className="mt-1 text-sm ">{form.watch("position")}</dd>
-                </div>
-                <div className="sm:col-span-2">
-                  <dt className="text-sm font-medium ">Descrizione</dt>
-                  <dd className="mt-1 text-sm ">{form.watch("description")}</dd>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <dt className="text-sm font-medium ">Foto</dt>
-                  <dd className="mt-1 text-sm flex flex-wrap gap-2">
-                    {uploadedFiles.map((photo) => (
-                      <Image
-                        key={photo.id}
-                        src={photo.url}
-                        alt={photo.name}
-                        width={150}
-                        height={150}
-                        className="rounded-md"
-                      />
-                    ))}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-            <div className="mt-6  px-4 py-5 sm:px-6 sm:flex sm:flex-row-reverse ">
-              <button
-                type="submit"
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-xs px-4 py-2 bg-indigo-600 text-base font-medium  hover:bg-indigo-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                onClick={form.handleSubmit(onSubmit)}
-              >
-                Conferma e concludi
-              </button>
-              <button
-                type="button"
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 bg-transparent shadow-xs px-4 py-2  text-base font-medium  hover: focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                onClick={() => setStep(2)}
-              >
-                Indietro
-              </button>
-            </div>
+    <div className="container max-w-2xl mx-auto px-4 py-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold">
+          Segnalazione Errori - Step {step} di 3
+        </h2>
+        <p className="mt-2 text-muted-foreground">
+          Compila il form per segnalare un errore
+        </p>
+        {error && (
+          <div className="mt-4 p-4 rounded-md bg-destructive/15 text-destructive flex items-center">
+            <FontAwesomeIcon icon={faWarning} className="mr-2" />
+            {error}
           </div>
-        )}
-
-        {step === 4 && (
-          <div>
-            <h2 className="text-2xl font-bold leading-7  sm:text-3xl sm:truncate">
-              Errore inviato correttamente!
-            </h2>
-          </div>
-        )}
-
-        {loading && (
-          <div className="absolute top-0 left-0 w-screen h-screen bg-black/50"></div>
         )}
       </div>
+
+      {step === 1 && (
+        <Form {...form}>
+          <form className="space-y-4">
+            <FormField
+              name="errorCategory"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoria errore</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona categoria" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="fornitore">Fornitore</SelectItem>
+                      <SelectItem value="reparto">Reparto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              name="task"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Progetto</FormLabel>
+                  <FormControl>
+                    <SearchSelect
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
+                      disabled={isSubmitting}
+                      options={data.tasks.map((t: Task) => ({
+                        value: t.id.toString(),
+                        label: getProjectLabel(t),
+                      }))}
+                      placeholder="Cerca progetto..."
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              name="errorType"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tipo errore</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona tipo errore" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {form.watch("errorCategory") === "fornitore"
+                        ? data.categories.map((category: Product_category) => (
+                            <SelectItem
+                              key={category.id}
+                              value={category.name.toLowerCase()}
+                            >
+                              {category.name}
+                            </SelectItem>
+                          ))
+                        : data.roles.map((role) => (
+                            <SelectItem
+                              key={role.id}
+                              value={role.id.toString()}
+                            >
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {form.watch("errorCategory") !== "reparto" && (
+              <FormField
+                name="supplier"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fornitore</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={isSubmitting}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona fornitore" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {data.suppliers
+                          .filter(
+                            (supplier: Supplier) =>
+                              supplier.supplier_category?.name?.toLowerCase() ===
+                              form.watch("errorType")?.toLowerCase()
+                          )
+                          .map((supplier: Supplier) => (
+                            <SelectItem
+                              key={supplier.id}
+                              value={supplier.id.toString()}
+                            >
+                              {supplier.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div className="flex justify-end pt-4">
+              <Button type="button" onClick={onNextStep}>
+                Prossimo
+              </Button>
+            </div>
+          </form>
+        </Form>
+      )}
+
+      {step === 2 && (
+        <Form {...form}>
+          <form className="space-y-4">
+            <FormField
+              name="description"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrizione</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} rows={4} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Foto</label>
+              <FileUpload
+                onUploadComplete={handleUploadComplete}
+                onError={handleUploadError}
+                accept="image/*"
+                multiple
+              />
+              <UploadedFilesList files={uploadedFiles} />
+            </div>
+
+            <div className="flex justify-between pt-4">
+              <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                Indietro
+              </Button>
+              <Button type="button" onClick={onNextStep}>
+                Prossimo
+              </Button>
+            </div>
+          </form>
+        </Form>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold">Verifica i dati immessi</h3>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border rounded-lg">
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">
+                Categoria errore
+              </dt>
+              <dd className="mt-1">{form.watch("errorCategory")}</dd>
+            </div>
+
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">
+                Progetto
+              </dt>
+              <dd className="mt-1">
+                {(() => {
+                  const task = data.tasks.find(
+                    (t: Task) => t.id.toString() === form.watch("task")
+                  );
+                  return task ? getProjectLabel(task) : "Sconosciuto";
+                })()}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">
+                Utente
+              </dt>
+              <dd className="mt-1">{session.user.given_name}</dd>
+            </div>
+
+            <div>
+              <dt className="text-sm font-medium text-muted-foreground">
+                Tipo Errore
+              </dt>
+              <dd className="mt-1">
+                {data.categories.find(
+                  (category: Product_category) =>
+                    category.id.toString() == form.watch("errorType")
+                )?.name || form.watch("errorType")}
+              </dd>
+            </div>
+
+            {form.watch("errorCategory") === "fornitore" && (
+              <div>
+                <dt className="text-sm font-medium text-muted-foreground">
+                  Fornitore
+                </dt>
+                <dd className="mt-1">
+                  {data.suppliers.find(
+                    (supplier: Supplier) =>
+                      supplier.id.toString() == form.watch("supplier")
+                  )?.name || "Sconosciuto"}
+                </dd>
+              </div>
+            )}
+
+            <div className="sm:col-span-2">
+              <dt className="text-sm font-medium text-muted-foreground">
+                Descrizione
+              </dt>
+              <dd className="mt-1">{form.watch("description") || "-"}</dd>
+            </div>
+
+            {uploadedFiles.length > 0 && (
+              <div className="sm:col-span-2">
+                <dt className="text-sm font-medium text-muted-foreground mb-2">
+                  Foto
+                </dt>
+                <dd className="flex flex-wrap gap-2">
+                  {uploadedFiles.map((photo) => (
+                    <Image
+                      key={photo.id}
+                      src={photo.url}
+                      alt={photo.name}
+                      width={100}
+                      height={100}
+                      className="rounded-md object-cover"
+                    />
+                  ))}
+                </dd>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between pt-4">
+            <Button type="button" variant="outline" onClick={() => setStep(2)}>
+              Indietro
+            </Button>
+            <Button
+              type="button"
+              onClick={form.handleSubmit(onSubmit)}
+              disabled={loading}
+            >
+              {loading ? "Invio in corso..." : "Conferma e concludi"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="text-center py-12">
+          <h2 className="text-2xl font-bold text-green-600">
+            Errore segnalato correttamente!
+          </h2>
+        </div>
+      )}
+
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background p-4 rounded-lg">
+            <p>Invio in corso...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

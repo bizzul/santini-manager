@@ -13,7 +13,6 @@ type ErrorTrackingRow = {
   created_at?: Date;
   error_type?: string;
   error_category?: string;
-  position?: string;
   description?: string;
   user?: {
     given_name?: string;
@@ -44,7 +43,6 @@ const createErrorTrackingEditHandler = () => {
     newValue: string | number | boolean | null
   ): Promise<{ success?: boolean; error?: string }> => {
     const formData = {
-      position: rowData.position,
       description: rowData.description,
       errorCategory: rowData.error_category,
       errorType: rowData.error_type,
@@ -172,21 +170,6 @@ export const createColumns = (): ColumnDef<ErrorTrackingRow>[] => {
       accessorKey: "supplier.name",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Fornitore" />
-      ),
-    },
-    {
-      accessorKey: "position",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Posizione" />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.position}
-          row={row}
-          field="position"
-          type="text"
-          onSave={handleErrorTrackingEdit}
-        />
       ),
     },
     {

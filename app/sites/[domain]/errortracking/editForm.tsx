@@ -7,13 +7,11 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { validation } from "@/validation/errorTracking/create";
@@ -34,12 +32,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import {
   FileUpload,
   UploadedFile,
   UploadedFilesList,
 } from "@/components/ui/file-upload";
 import Image from "next/image";
+
+// Extended Task type for edit form that includes client data
+interface TaskWithClient extends Task {
+  Client?: {
+    businessName?: string;
+    individualFirstName?: string;
+    individualLastName?: string;
+  };
+}
+
+// Helper function to get project display label
+const getProjectLabel = (task: TaskWithClient): string => {
+  const clientName = task.Client?.businessName ||
+    (task.Client?.individualFirstName && task.Client?.individualLastName
+      ? `${task.Client.individualFirstName} ${task.Client.individualLastName}`
+      : null);
+  
+  if (clientName) {
+    return `${task.unique_code} - ${clientName}`;
+  }
+  return task.title
+    ? `${task.unique_code} - ${task.title}`
+    : task.unique_code || "";
+};
 
 type Props = {
   handleClose: any;
@@ -55,7 +78,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
       user: "",
       description: "",
       errorType: "",
-      position: "",
       supplier: "",
       task: "",
     },
@@ -67,7 +89,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   const [categories, setCategories] = useState<Product_category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [roles, setRoles] = useState<Roles[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<TaskWithClient[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
@@ -125,13 +147,12 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     const getTasks = async () => {
       try {
-        const response = await fetch(`../api/tasks/`);
+        const response = await fetch(`../api/tasks/?include=client`);
         if (!response.ok) {
-          throw new Error("Failed to fetch categories");
+          throw new Error("Failed to fetch tasks");
         }
-        const roles = await response.json();
-        setTasks(roles);
-        // setValue("productCategoryId", categories[0].id);
+        const tasksData = await response.json();
+        setTasks(tasksData);
       } catch (error) {
         console.error(error);
         // Handle the error state appropriately
@@ -156,7 +177,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
     setValue("errorCategory", data.error_category);
     setValue("description", data.description);
     setValue("errorType", data.error_type);
-    setValue("position", data.position.toString());
     setValue("supplier", data.supplier_id?.toString());
     setValue("task", data.task_id?.toString());
     setValue("user", data.employee_id?.toString());
@@ -258,27 +278,17 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <FormItem>
                   <FormLabel>Progetto</FormLabel>
                   <FormControl>
-                    <Select
-                      {...field}
-                      onValueChange={(value) => {
-                        // This ensures that the selected value updates the react-hook-form state
-                        field.onChange(value);
-                      }}
+                    <SearchSelect
+                      value={field.value || ""}
+                      onValueChange={field.onChange}
                       disabled={isSubmitting}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tasks.map((t: Task) => (
-                          <SelectItem key={t.id} value={t.id.toString()}>
-                            {t.unique_code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={tasks.map((t: TaskWithClient) => ({
+                        value: t.id.toString(),
+                        label: getProjectLabel(t),
+                      }))}
+                      placeholder="Cerca progetto..."
+                    />
                   </FormControl>
-                  {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
@@ -379,23 +389,6 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               />
             </div>
           )}
-
-          <div className="grid grid-cols-1 gap-6">
-            <FormField
-              name="position"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Posizione</FormLabel>
-                  <FormControl>
-                    <Input type="number" {...field} />
-                  </FormControl>
-                  {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
         </div>
         <FormField
           name="description"

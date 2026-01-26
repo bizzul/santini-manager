@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
           error_category: data.data.errorCategory,
           error_type: data.data.errorType ?? "",
           supplier_id: data.data.supplier ? Number(data.data.supplier) : null,
-          position: data.data.position,
           task_id: Number(data.data.task),
           user_id: user.id,
         })
