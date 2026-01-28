@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -27,9 +27,16 @@ import { ProjectPreviewCard } from "./ProjectPreviewCard";
 import type { ExtractedProject } from "@/validation/voice-input/extracted-project";
 import { useToast } from "@/hooks/use-toast";
 import { createBatchProjects } from "@/app/sites/[domain]/projects/actions/create-batch.action";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
 type DialogStep = "record" | "extract" | "review" | "create" | "success";
+type SpeechProvider = "web-speech" | "whisper";
+
+interface SiteAiSettings {
+    speechProvider: SpeechProvider;
+    hasAiApiKey: boolean;
+    hasWhisperApiKey: boolean;
+}
 
 interface VoiceInputDialogProps {
     open: boolean;
@@ -52,24 +59,157 @@ export function VoiceInputDialog({
     const [isCreating, setIsCreating] = useState(false);
     const [extractError, setExtractError] = useState<string | null>(null);
     const [createdCount, setCreatedCount] = useState(0);
+    
+    // Site AI settings
+    const [siteSettings, setSiteSettings] = useState<SiteAiSettings | null>(null);
+    const [settingsLoading, setSettingsLoading] = useState(false);
+    
+    // Whisper recording state
+    const [whisperRecording, setWhisperRecording] = useState(false);
+    const [whisperTranscript, setWhisperTranscript] = useState("");
+    const [whisperError, setWhisperError] = useState<Error | null>(null);
+    const [whisperProcessing, setWhisperProcessing] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
 
     const { toast } = useToast();
     const router = useRouter();
+    const params = useParams();
+    const domain = params?.domain as string;
+
+    // Fetch site AI settings
+    useEffect(() => {
+        if (open && domain) {
+            setSettingsLoading(true);
+            fetch(`/api/sites/${domain}/ai-settings`)
+                .then((res) => res.json())
+                .then((data) => {
+                    setSiteSettings({
+                        speechProvider: data.speechProvider || "web-speech",
+                        hasAiApiKey: data.hasAiApiKey || false,
+                        hasWhisperApiKey: data.hasWhisperApiKey || false,
+                    });
+                })
+                .catch((err) => {
+                    console.error("Error fetching AI settings:", err);
+                    // Default to web-speech
+                    setSiteSettings({
+                        speechProvider: "web-speech",
+                        hasAiApiKey: false,
+                        hasWhisperApiKey: false,
+                    });
+                })
+                .finally(() => setSettingsLoading(false));
+        }
+    }, [open, domain]);
+
+    // Determine which provider to use
+    const useWhisper = siteSettings?.speechProvider === "whisper" && 
+        (siteSettings?.hasWhisperApiKey || siteSettings?.hasAiApiKey);
 
     const {
-        transcript,
-        fullTranscript,
-        isRecording,
-        isSupported,
-        error: speechError,
-        start: startRecording,
-        stop: stopRecording,
-        clear: clearTranscript,
+        transcript: webTranscript,
+        fullTranscript: webFullTranscript,
+        isRecording: webIsRecording,
+        isSupported: webIsSupported,
+        error: webSpeechError,
+        start: webStartRecording,
+        stop: webStopRecording,
+        clear: webClearTranscript,
     } = useSpeechToText({
         language: "it-IT",
         continuous: true,
         interimResults: true,
     });
+
+    // Unified state based on provider
+    const transcript = useWhisper ? "" : webTranscript;
+    const fullTranscript = useWhisper ? whisperTranscript : webFullTranscript;
+    const isRecording = useWhisper ? whisperRecording : webIsRecording;
+    const isSupported = useWhisper ? true : webIsSupported; // Whisper uses MediaRecorder which is widely supported
+    const speechError = useWhisper ? whisperError : webSpeechError;
+
+    // Whisper recording functions
+    const startWhisperRecording = useCallback(async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioChunksRef.current = [];
+            
+            const mediaRecorder = new MediaRecorder(stream, {
+                mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
+            });
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = async () => {
+                setWhisperProcessing(true);
+                try {
+                    const audioBlob = new Blob(audioChunksRef.current, { 
+                        type: mediaRecorder.mimeType 
+                    });
+                    
+                    const formData = new FormData();
+                    formData.append("audio", audioBlob, "audio.webm");
+                    formData.append("siteId", siteId);
+                    formData.append("language", "it");
+                    
+                    const response = await fetch("/api/voice-input/transcribe", {
+                        method: "POST",
+                        body: formData,
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(data.error || data.message || "Errore trascrizione");
+                    }
+                    
+                    if (data.transcript) {
+                        setWhisperTranscript((prev) => 
+                            prev ? `${prev} ${data.transcript}` : data.transcript
+                        );
+                    }
+                } catch (err) {
+                    setWhisperError(
+                        err instanceof Error ? err : new Error("Errore durante la trascrizione")
+                    );
+                } finally {
+                    setWhisperProcessing(false);
+                }
+            };
+            
+            mediaRecorderRef.current = mediaRecorder;
+            mediaRecorder.start();
+            setWhisperRecording(true);
+            setWhisperError(null);
+        } catch (err) {
+            setWhisperError(
+                new Error("Permesso microfono negato. Consenti l'accesso al microfono.")
+            );
+        }
+    }, [siteId]);
+
+    const stopWhisperRecording = useCallback(() => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+        }
+        setWhisperRecording(false);
+    }, []);
+
+    const clearWhisperTranscript = useCallback(() => {
+        setWhisperTranscript("");
+        setWhisperError(null);
+    }, []);
+
+    // Unified recording controls
+    const startRecording = useWhisper ? startWhisperRecording : webStartRecording;
+    const stopRecording = useWhisper ? stopWhisperRecording : webStopRecording;
+    const clearTranscript = useWhisper ? clearWhisperTranscript : webClearTranscript;
 
     // Reset state when dialog opens/closes
     const handleOpenChange = useCallback(
@@ -84,14 +224,19 @@ export function VoiceInputDialog({
                 setIsCreating(false);
                 setExtractError(null);
                 setCreatedCount(0);
-                clearTranscript();
-                if (isRecording) {
-                    stopRecording();
+                // Reset both providers
+                webClearTranscript();
+                clearWhisperTranscript();
+                if (webIsRecording) {
+                    webStopRecording();
+                }
+                if (whisperRecording) {
+                    stopWhisperRecording();
                 }
             }
             onOpenChange(newOpen);
         },
-        [clearTranscript, isRecording, onOpenChange, stopRecording]
+        [webClearTranscript, clearWhisperTranscript, webIsRecording, whisperRecording, onOpenChange, webStopRecording, stopWhisperRecording]
     );
 
     // Extract projects from transcript
@@ -218,7 +363,9 @@ export function VoiceInputDialog({
     const renderRecordStep = () => (
         <>
             <div className="flex flex-col items-center gap-4 py-6">
-                {!isSupported ? (
+                {settingsLoading ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                ) : !isSupported ? (
                     <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription>
@@ -228,20 +375,30 @@ export function VoiceInputDialog({
                     </Alert>
                 ) : (
                     <>
+                        {/* Provider indicator */}
+                        <Badge variant="secondary" className="mb-2">
+                            {useWhisper ? "Whisper (OpenAI)" : "Web Speech API"}
+                        </Badge>
+
                         <Button
                             size="lg"
                             variant={isRecording ? "destructive" : "default"}
                             className="h-20 w-20 rounded-full"
                             onClick={isRecording ? stopRecording : startRecording}
+                            disabled={whisperProcessing}
                         >
-                            {isRecording ? (
+                            {whisperProcessing ? (
+                                <Loader2 className="h-8 w-8 animate-spin" />
+                            ) : isRecording ? (
                                 <MicOff className="h-8 w-8" />
                             ) : (
                                 <Mic className="h-8 w-8" />
                             )}
                         </Button>
                         <p className="text-sm text-muted-foreground">
-                            {isRecording
+                            {whisperProcessing
+                                ? "Trascrizione in corso..."
+                                : isRecording
                                 ? "Clicca per fermare la registrazione"
                                 : "Clicca per iniziare a dettare i progetti"}
                         </p>
@@ -249,6 +406,13 @@ export function VoiceInputDialog({
                         {isRecording && (
                             <Badge variant="outline" className="animate-pulse">
                                 Registrazione in corso...
+                            </Badge>
+                        )}
+
+                        {whisperProcessing && (
+                            <Badge variant="outline">
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                Elaborazione audio...
                             </Badge>
                         )}
 
@@ -264,6 +428,14 @@ export function VoiceInputDialog({
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertDescription>{extractError}</AlertDescription>
                             </Alert>
+                        )}
+
+                        {/* Hint for Whisper users */}
+                        {useWhisper && !isRecording && !fullTranscript && (
+                            <p className="text-xs text-muted-foreground text-center max-w-sm">
+                                Con Whisper la trascrizione avviene dopo aver fermato la registrazione.
+                                Puoi registrare più volte per aggiungere testo.
+                            </p>
                         )}
                     </>
                 )}
@@ -293,7 +465,7 @@ export function VoiceInputDialog({
                 </Button>
                 <Button
                     onClick={handleExtract}
-                    disabled={!fullTranscript.trim() || isRecording}
+                    disabled={!fullTranscript.trim() || isRecording || whisperProcessing}
                 >
                     <Sparkles className="mr-2 h-4 w-4" />
                     Estrai progetti
