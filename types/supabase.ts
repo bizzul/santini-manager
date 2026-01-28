@@ -278,6 +278,9 @@ export interface Kanban {
     isProductionKanban?: boolean; // Alternative property name
     target_invoice_kanban_id?: number;
     targetInvoiceKanbanId?: number; // Alternative property name
+    // Opzione per colorare le card in base alla categoria prodotto
+    show_category_colors?: boolean;
+    showCategoryColors?: boolean; // Alternative property name
     created_at?: string;
     updated_at?: string;
 }

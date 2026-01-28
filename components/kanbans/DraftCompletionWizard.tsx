@@ -50,6 +50,8 @@ import {
 // Validation schema for completing a draft
 const completionSchema = z.object({
   unique_code: z.string().min(1, "Codice obbligatorio"),
+  name: z.string().optional(),
+  luogo: z.string().optional(),
   clientId: z.number({
     required_error: "Seleziona un cliente",
   }),
@@ -141,6 +143,8 @@ export default function DraftCompletionWizard({
     resolver: zodResolver(completionSchema),
     defaultValues: {
       unique_code: "",
+      name: "",
+      luogo: "",
       clientId: undefined,
       productId: undefined,
       deliveryDate: null,
@@ -163,6 +167,8 @@ export default function DraftCompletionWizard({
     if (task && open) {
       form.reset({
         unique_code: task.unique_code || "",
+        name: task.name || "",
+        luogo: task.luogo || "",
         clientId: task.clientId || task.client_id,
         productId: task.sellProductId || task.sell_product_id,
         deliveryDate: task.deliveryDate ? new Date(task.deliveryDate) : null,
@@ -227,6 +233,8 @@ export default function DraftCompletionWizard({
         },
         body: JSON.stringify({
           unique_code: data.unique_code,
+          name: data.name || null,
+          luogo: data.luogo || null,
           clientId: data.clientId,
           sellProductId: data.productId,
           deliveryDate: data.deliveryDate?.toISOString() || null,
@@ -350,6 +358,44 @@ export default function DraftCompletionWizard({
                         />
                       </Button>
                     </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Nome Oggetto */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome Oggetto</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Nome identificativo dell'offerta..."
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Luogo */}
+            <FormField
+              control={form.control}
+              name="luogo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Luogo</FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="Luogo di installazione/consegna..."
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

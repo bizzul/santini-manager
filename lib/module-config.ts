@@ -190,6 +190,15 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         enabledByDefault: true,
         category: "management",
     },
+    {
+        name: "voice-input",
+        label: "Input Vocale",
+        description: "Crea progetti tramite dettatura vocale con AI",
+        icon: "faMicrophone",
+        href: "",
+        enabledByDefault: false,
+        category: "tools",
+    },
 ];
 
 export const getModuleByName = (name: string): ModuleConfig | undefined => {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -15,10 +15,54 @@ import {
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 import { logger } from "@/lib/logger";
-import { FileEdit, MapPin } from "lucide-react";
+import { 
+  FileEdit, 
+  MapPin, 
+  Sofa, 
+  DoorOpen, 
+  LayoutGrid, 
+  Wrench, 
+  Package,
+  Tag,
+  LucideIcon
+} from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
 import { useSiteId } from "@/hooks/use-site-id";
+
+// Mappatura icone categoria (fallback per categorie senza icona custom)
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  "arredamento": Sofa,
+  "porte": DoorOpen,
+  "serramenti": LayoutGrid,
+  "accessori": Wrench,
+};
+
+// Icona di default per categorie non mappate
+const DEFAULT_CATEGORY_ICON = Tag;
+
+// Funzione per ottenere l'icona della categoria
+const getCategoryIcon = (categoryName?: string | null): LucideIcon => {
+  if (!categoryName) return DEFAULT_CATEGORY_ICON;
+  const normalizedName = categoryName.toLowerCase().trim();
+  return CATEGORY_ICONS[normalizedName] || DEFAULT_CATEGORY_ICON;
+};
+
+// Funzione per generare colori derivati da un colore base
+const getDerivedColors = (baseColor: string | null | undefined) => {
+  if (!baseColor) {
+    return {
+      color: "#6B7280",        // Grigio default
+      bgColor: "#F3F4F6",
+      textColor: "#374151",
+    };
+  }
+  return {
+    color: baseColor,
+    bgColor: `${baseColor}20`,  // 20% opacity
+    textColor: baseColor,
+  };
+};
 import {
   Dialog,
   DialogContent,
@@ -80,45 +124,60 @@ export default function Card({
 
   // Determina se la card deve essere small in base a display_mode
   const displayMode = data.display_mode || data.displayMode || "normal";
-  const isSmallFromDisplayMode =
+  // Cards con display_mode small (offerte vinte/perse) suggeriscono small ma non forzano
+  const suggestsSmallFromDisplayMode =
     displayMode === "small_green" || displayMode === "small_red";
+  
+  // SPEDITO column suggerisce small di default
+  const isInSpeditoColumn = data.column?.identifier === "SPEDITO";
 
-  const [isSmall, setIsSmall] = useState(() => {
-    // Se display_mode forza small, usa quello
-    if (isSmallFromDisplayMode) return true;
-    // Altrimenti load from localStorage
+  // Funzione per determinare lo stato di default (da localStorage o suggerimenti)
+  const getDefaultSmallState = () => {
+    // Prova a caricare da localStorage
     try {
       const saved = localStorage.getItem(`isSmall-${id}`);
-      return saved ? JSON.parse(saved) : false;
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
     } catch (error) {
       logger.warn("Error parsing localStorage value for isSmall:", error);
-      return false;
     }
+    // Default: small se display_mode lo suggerisce o se in SPEDITO
+    return suggestsSmallFromDisplayMode || isInSpeditoColumn;
+  };
+
+  // Determina lo stato iniziale di isSmall
+  // isSmallInitial: null = usa localStorage/default, true = chiudi tutte, false = apri tutte
+  const [isSmall, setIsSmall] = useState(() => {
+    // Se isSmallInitial è null o undefined, usa localStorage/defaults
+    if (isSmallInitial === null || isSmallInitial === undefined) {
+      return getDefaultSmallState();
+    }
+    // Altrimenti usa il valore passato dal toggle globale
+    return isSmallInitial;
   });
 
+  // Sync con il comando globale "Chiudi tutte le tab" / "Apri tutte le tab"
   useEffect(() => {
-    // Save the isSmall value to localStorage whenever it changes
-    localStorage.setItem(`isSmall-${id}`, JSON.stringify(isSmall));
-  }, [isSmall, id]);
-
-  useEffect(() => {
-    // Se display_mode forza small, mantieni small
-    if (isSmallFromDisplayMode) {
-      setIsSmall(true);
-      return;
-    }
-
+    // isSmallInitial: null = non attivato (ignora), true = chiudi tutte, false = apri tutte
     if (isSmallInitial === true) {
       setIsSmall(true);
-    } else if (
-      isSmallInitial === false &&
-      data.column?.identifier !== "SPEDITO"
-    ) {
+    } else if (isSmallInitial === false) {
+      // "Apri tutte" - apre anche le card in SPEDITO e quelle con display_mode small
       setIsSmall(false);
-    } else if (data.column?.identifier === "SPEDITO") {
-      setIsSmall(true);
     }
-  }, [isSmallInitial, isSmallFromDisplayMode]);
+    // Se isSmallInitial è null, non fare nulla (mantieni stato corrente)
+  }, [isSmallInitial]);
+
+  // Salva lo stato locale solo quando l'utente fa doppio click (toggle manuale)
+  // NON salvare quando cambia a causa del toggle globale
+  const saveToLocalStorage = (value: boolean) => {
+    try {
+      localStorage.setItem(`isSmall-${id}`, JSON.stringify(value));
+    } catch (error) {
+      logger.warn("Error saving to localStorage:", error);
+    }
+  };
 
   useEffect(() => {
     // Check if delivery date is past
@@ -183,10 +242,15 @@ export default function Card({
       }
 
       if (clickTimeout) {
+        // Double click - toggle small/expanded state
         clearTimeout(clickTimeout);
         setClickTimeout(null);
-        setIsSmall(!isSmall);
+        const newValue = !isSmall;
+        setIsSmall(newValue);
+        // Save to localStorage only on manual toggle (double click)
+        saveToLocalStorage(newValue);
       } else {
+        // Single click - open modal after delay
         setClickTimeout(
           setTimeout(() => {
             if (!showModal) {
@@ -211,6 +275,40 @@ export default function Card({
     }
   }
 
+  // Check if category colors are enabled for this kanban
+  const showCategoryColors = data.kanban?.show_category_colors || data.kanban?.showCategoryColors || false;
+
+  // Get product category info
+  const productCategory = useMemo(() => {
+    const sellProduct = data.sellProduct || data.sell_product;
+    if (!sellProduct) return null;
+    
+    // Category can be nested or direct
+    const category = sellProduct.category;
+    if (!category) return null;
+    
+    // Handle array (Supabase join can return array)
+    const categoryData = Array.isArray(category) ? category[0] : category;
+    return categoryData || null;
+  }, [data.sellProduct, data.sell_product]);
+
+  // Get category icon (from mapping based on name)
+  const CategoryIcon = useMemo(() => {
+    return getCategoryIcon(productCategory?.name);
+  }, [productCategory?.name]);
+
+  // Get derived colors from database color
+  const categoryColors = useMemo(() => {
+    return getDerivedColors(productCategory?.color);
+  }, [productCategory?.color]);
+
+  // Get product display name
+  const getProductDisplay = () => {
+    const sellProduct = data.sellProduct || data.sell_product;
+    if (!sellProduct) return null;
+    return sellProduct.name || sellProduct.type || null;
+  };
+
   // Determina il colore del bordo sinistro in base allo stato
   const getBorderColor = () => {
     // Bozza ha priorità - bordo arancione
@@ -227,6 +325,10 @@ export default function Card({
     // Ritardo
     if (timeState === "late") {
       return "#ef4444"; // red-500
+    }
+    // Usa il colore della categoria prodotto solo se abilitato nelle impostazioni kanban
+    if (showCategoryColors && productCategory?.color) {
+      return productCategory.color;
     }
     // Normale
     return "#64748b"; // slate-500
@@ -314,6 +416,36 @@ export default function Card({
                     </div>
                   )}
                 </div>
+
+                {/* Badge Categoria Prodotto - Solo se abilitato nelle impostazioni Kanban */}
+                {showCategoryColors && (productCategory || getProductDisplay()) && (
+                  <div 
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md mb-2 -mx-0.5"
+                    style={{ 
+                      backgroundColor: categoryColors.bgColor,
+                      borderLeft: `3px solid ${categoryColors.color}`
+                    }}
+                  >
+                    <CategoryIcon 
+                      className="h-4 w-4 shrink-0" 
+                      style={{ color: categoryColors.color }}
+                    />
+                    <span 
+                      className="font-semibold text-sm truncate"
+                      style={{ color: categoryColors.textColor }}
+                    >
+                      {productCategory?.name || getProductDisplay() || "Prodotto"}
+                    </span>
+                    {productCategory && getProductDisplay() && productCategory.name !== getProductDisplay() && (
+                      <span 
+                        className="text-xs opacity-75 truncate"
+                        style={{ color: categoryColors.textColor }}
+                      >
+                        · {getProductDisplay()}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Nome Cliente */}
                 <div className="font-semibold text-base mb-1 truncate">
@@ -429,9 +561,18 @@ export default function Card({
             /* ==================== CARD SMALL (COMPRESSA) ==================== */
             <div className="relative text-slate-800 dark:text-slate-100 pb-1.5">
               <div className="px-2 pt-2 pb-1">
-                {/* Riga 1: N°, Data, Settimana */}
+                {/* Riga 1: N° + Icona Categoria (se abilitata), Data, Settimana */}
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-sm">{data.unique_code}</span>
+                  <div className="flex items-center gap-1.5">
+                    {/* Icona categoria prodotto - solo se abilitato */}
+                    {showCategoryColors && productCategory && (
+                      <CategoryIcon 
+                        className="h-3.5 w-3.5 shrink-0" 
+                        style={{ color: categoryColors.color }}
+                      />
+                    )}
+                    <span className="font-bold text-sm">{data.unique_code}</span>
+                  </div>
                   {data.deliveryDate && (
                     <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                       <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
@@ -442,7 +583,20 @@ export default function Card({
                   )}
                 </div>
 
-                {/* Riga 2: Cliente · Oggetto */}
+                {/* Riga 2: Categoria Prodotto - solo se abilitato nelle impostazioni Kanban */}
+                {showCategoryColors && (productCategory || getProductDisplay()) && (
+                  <div 
+                    className="text-xs font-medium truncate mb-1 px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                    style={{ 
+                      backgroundColor: `${categoryColors.color}15`,
+                      color: categoryColors.textColor
+                    }}
+                  >
+                    {productCategory?.name || getProductDisplay()}
+                  </div>
+                )}
+
+                {/* Riga 3: Cliente · Oggetto */}
                 <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
                   <span className="font-medium">{getClientName()}</span>
                   {data.name && (
@@ -455,7 +609,7 @@ export default function Card({
                   )}
                 </div>
 
-                {/* Riga 3: Pezzi, Valore */}
+                {/* Riga 4: Pezzi, Valore */}
                 <div className="flex items-center gap-1.5 text-xs">
                   <span className="text-slate-600 dark:text-slate-400">
                     {getPiecesDisplay()}

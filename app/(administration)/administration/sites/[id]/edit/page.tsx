@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import EditSiteForm from "./EditSiteForm";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
-import { ArrowLeft, Globe } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe } from "lucide-react";
 import Image from "next/image";
 
 export default async function EditSitePage({
@@ -53,15 +53,26 @@ export default async function EditSitePage({
             height={60}
             className="drop-shadow-2xl"
           />
-          <Link href={`/administration/sites/${site.id}`}>
-            <Button
-              variant="ghost"
-              className="text-white hover:bg-white/20 transition-all duration-300"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Site Details
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href={`/administration/sites/${site.id}`}>
+              <Button
+                variant="ghost"
+                className="text-white hover:bg-white/20 transition-all duration-300"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Site Details
+              </Button>
+            </Link>
+            <Link href={`/sites/${site.subdomain}`}>
+              <Button
+                variant="outline"
+                className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Vai al sito
+              </Button>
+            </Link>
+          </div>
           <h1 className="text-4xl font-bold text-center text-white">
             Edit Site {site.name}
           </h1>

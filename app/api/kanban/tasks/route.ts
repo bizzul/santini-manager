@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 
       // Clients and SellProducts with direct site filter
       supabase.from("Client").select("*").eq("site_id", siteId),
-      supabase.from("SellProduct").select("*").eq("site_id", siteId),
+      supabase.from("SellProduct").select("*, category:sellproduct_categories(id, name, color)").eq("site_id", siteId),
 
       // Files, QC, Packing filtered by task IDs
       taskIds.length > 0

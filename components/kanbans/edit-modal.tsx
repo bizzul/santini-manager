@@ -3,21 +3,22 @@ import {
   faSave,
   faWarning,
   faTasks,
+  faPhone,
+  faMapMarkerAlt,
+  faInfoCircle,
+  faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { FC, useState } from "react";
+import { FC, useState, useMemo } from "react";
 import { Modal } from "../../package/components/modal";
 import { useForm } from "react-hook-form";
-import { Task } from "@/types/supabase";
-import QRCode from "qrcode.react";
-import QCode from "qrcode";
+import { Task, Client } from "@/types/supabase";
 import NextImage from "next/image";
-import { logger } from "@/lib/logger";
 import { DateManager } from "../../package/utils/dates/date-manager";
 type Props = {
   open: boolean;
   setOpen: any;
-  resource: Task;
+  resource: Task & { client?: Client; luogo?: string };
   setOpenModal: any;
   setIsLocked: any;
   history: any;
@@ -31,6 +32,31 @@ export const EditModal: FC<Props> = ({
   setIsLocked,
   history,
 }) => {
+  // Get contact phone - prefer mobile, fallback to landline
+  const contactPhone = useMemo(() => {
+    const client = resource?.client;
+    if (!client) return null;
+    return (client as any).mobilePhone || (client as any).phone || (client as any).landlinePhone || null;
+  }, [resource?.client]);
+
+  // Check if construction site address (luogo) is different from client address
+  const hasDifferentSiteAddress = useMemo(() => {
+    const luogo = resource?.luogo;
+    const clientAddress = (resource?.client as any)?.address;
+    if (!luogo || !clientAddress) return false;
+    const normalizedLuogo = luogo.toLowerCase().trim();
+    const normalizedClientAddr = clientAddress.toLowerCase().trim();
+    return normalizedLuogo !== normalizedClientAddr && normalizedLuogo !== "";
+  }, [resource?.luogo, resource?.client]);
+
+  // Get client display name
+  const clientName = useMemo(() => {
+    const client = resource?.client;
+    if (!client) return null;
+    return (client as any).businessName || 
+      `${(client as any).individualFirstName || ''} ${(client as any).individualLastName || ''}`.trim() ||
+      'Cliente';
+  }, [resource?.client]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -77,42 +103,6 @@ export const EditModal: FC<Props> = ({
       });
   };
 
-  function printQRCode(data: string) {
-    // Generate the QR code image
-    const canvas = document.createElement("canvas");
-    QCode.toCanvas(canvas, data, { width: 400 }, (error) => {
-      if (error) {
-        logger.error(error);
-        return;
-      }
-
-      // Create a new window and add the QR code image to it
-      const printWindow = window.open(
-        "",
-        "Print Window",
-        "height=400,width=400"
-      );
-      if (printWindow) {
-        const img = new Image();
-        img.src = canvas.toDataURL();
-        img.onload = () => {
-          printWindow.document.write(`<img src="${img.src}"/>`);
-
-          // Wait for the image to finish rendering
-          setTimeout(() => {
-            // Print the new window
-            printWindow.print();
-
-            // Close the new window
-            printWindow.close();
-          }, 1000);
-        };
-      }
-    });
-  }
-
-  // console.log(history);
-
   const filteredHistory = history.filter(
     (action: any) => action.taskId === resource.id
   );
@@ -154,18 +144,66 @@ export const EditModal: FC<Props> = ({
               )}
 
               <div className="flex flex-row justify-between">
-                <div>
-                  <QRCode
-                    value={`${process.env.NEXT_PUBLIC_URL}/progetti/${resource.unique_code}`}
-                    size={128}
-                    fgColor="#000000"
-                    onClick={() =>
-                      printQRCode(
-                        `${process.env.NEXT_PUBLIC_URL}/progetti/${resource.unique_code}`
-                      )
-                    }
-                  />
+                {/* Project Contact Info Panel - Replaces QR Code */}
+                <div className="w-48 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border space-y-3">
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+                    <FontAwesomeIcon icon={faInfoCircle} className="text-gray-400" />
+                    Info Cantiere
+                  </h4>
+                  
+                  {/* Contact Phone */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FontAwesomeIcon icon={faPhone} className="text-gray-400 w-4" />
+                      <span>Telefono</span>
+                    </div>
+                    {contactPhone ? (
+                      <a 
+                        href={`tel:${contactPhone}`}
+                        className="text-sm text-blue-600 hover:underline ml-6 block"
+                      >
+                        {contactPhone}
+                      </a>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic ml-6 block">
+                        Non disponibile
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Construction Site Address */}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 w-4" />
+                      <span>Cantiere</span>
+                    </div>
+                    {hasDifferentSiteAddress ? (
+                      <span className="text-sm ml-6 block">
+                        {resource.luogo}
+                      </span>
+                    ) : resource.luogo ? (
+                      <span className="text-sm text-gray-400 ml-6 block">
+                        Come cliente
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic ml-6 block">
+                        Non specificato
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Client Name for reference */}
+                  {clientName && (
+                    <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+                      <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                        <FontAwesomeIcon icon={faUser} className="w-3" />
+                        <span>{clientName}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* History Section */}
                 <div className="w-72">
                   {filteredHistory.length > 0 ? (
                     <ol className="relative border-l border-gray-200 dark:border-gray-700">

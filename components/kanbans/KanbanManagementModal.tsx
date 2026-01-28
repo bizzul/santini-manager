@@ -130,6 +130,10 @@ export default function KanbanManagementModal({
   const [targetInvoiceKanbanId, setTargetInvoiceKanbanId] = useState<
     number | null
   >(kanban?.target_invoice_kanban_id || null);
+  // Opzione per mostrare colori categoria prodotto sulle card
+  const [showCategoryColors, setShowCategoryColors] = useState(
+    kanban?.show_category_colors || false
+  );
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -183,6 +187,8 @@ export default function KanbanManagementModal({
       setIsWorkKanban(kanban?.is_work_kanban || false);
       setIsProductionKanban(kanban?.is_production_kanban || false);
       setTargetInvoiceKanbanId(kanban?.target_invoice_kanban_id || null);
+      // Reset category colors option
+      setShowCategoryColors(kanban?.show_category_colors || false);
 
       if (kanban?.columns) {
         const sortedColumns = kanban.columns.sort(
@@ -251,6 +257,8 @@ export default function KanbanManagementModal({
         target_invoice_kanban_id: isProductionKanban
           ? targetInvoiceKanbanId
           : null,
+        // Opzione colori categoria prodotto
+        show_category_colors: showCategoryColors,
         columns: columns.map((col, index) => ({
           ...col,
           position: index + 1,
@@ -644,6 +652,28 @@ export default function KanbanManagementModal({
                   </Select>
                 </div>
               )}
+            </div>
+
+            {/* Opzione colori categoria prodotto */}
+            <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="showCategoryColors"
+                  checked={showCategoryColors}
+                  onChange={(e) => setShowCategoryColors(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label
+                  htmlFor="showCategoryColors"
+                  className="cursor-pointer text-sm"
+                >
+                  Mostra colori categoria prodotto
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-6">
+                Colora le card in base al colore della categoria del prodotto associato (configurato in Prodotti → Categorie)
+              </p>
             </div>
           </div>
 

@@ -117,7 +117,7 @@ export async function PATCH(
     
     // List of allowed fields to update
     const allowedFields = [
-      'unique_code', 'title', 'name', 'description',
+      'unique_code', 'title', 'name', 'luogo', 'description',
       'clientId', 'sellProductId', 'sellPrice',
       'deliveryDate', 'termine_produzione',
       'other', 'positions', 'numero_pezzi',

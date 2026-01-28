@@ -75,11 +75,19 @@ export async function GET(request: NextRequest) {
         taskType = isOfferKanban ? "OFFERTA" : "LAVORO";
       }
     } else if (domain) {
-      // Ottieni siteId dal domain
+      // Ottieni siteId dal domain/subdomain
+      // Normalize domain: remove port and root domain if present
+      const domainWithoutPort = domain.split(":")[0];
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost";
+      const isFullDomain = domainWithoutPort.endsWith(`.${rootDomain}`);
+      const subdomain = isFullDomain
+        ? domainWithoutPort.replace(`.${rootDomain}`, "")
+        : domainWithoutPort;
+
       const { data: site, error: siteError } = await supabase
-        .from("Site")
+        .from("sites")
         .select("id")
-        .eq("domain", domain)
+        .eq("subdomain", subdomain)
         .single();
 
       if (siteError || !site) {
@@ -292,10 +300,18 @@ export async function POST(request: NextRequest) {
         taskType = isOfferKanban ? "OFFERTA" : "LAVORO";
       }
     } else if (domain) {
+      // Normalize domain: remove port and root domain if present
+      const domainWithoutPort = domain.split(":")[0];
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "localhost";
+      const isFullDomain = domainWithoutPort.endsWith(`.${rootDomain}`);
+      const subdomain = isFullDomain
+        ? domainWithoutPort.replace(`.${rootDomain}`, "")
+        : domainWithoutPort;
+
       const { data: site, error: siteError } = await supabase
-        .from("Site")
+        .from("sites")
         .select("id")
-        .eq("domain", domain)
+        .eq("subdomain", subdomain)
         .single();
 
       if (siteError || !site) {

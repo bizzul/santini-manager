@@ -2,7 +2,7 @@ import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext, fetchProjectsData } from "@/lib/server-data";
-import DialogCreate from "./dialogCreate";
+import { ProjectsHeader } from "./ProjectsHeader";
 import SellProductWrapper from "./sellProductWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 import { Client, SellProduct, Kanban, SellProductCategory } from "@/types/supabase";
@@ -44,7 +44,7 @@ export default async function Page({
             Gestione operativa progetti, stato avanzamento e documentazione
           </p>
         </div>
-        <DialogCreate data={data} />
+        <ProjectsHeader data={data} domain={domain} siteId={siteId} />
       </PageHeader>
       <PageContent>
         {data.tasks?.length > 0 ? (

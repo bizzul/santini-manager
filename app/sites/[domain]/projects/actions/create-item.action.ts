@@ -41,21 +41,43 @@ export async function createItem(props: any, domain?: string) {
 
       const supabase = await createClient();
 
-      // Get the first column of the selected kanban (order by position to get the first one)
-      const { data: firstColumn, error: columnError } = await supabase
-        .from("KanbanColumn")
-        .select("*")
-        .eq("kanbanId", result.data.kanbanId)
-        .order("position", { ascending: true })
-        .limit(1)
-        .single();
+      // Get the target column - either the specified one or the first column of the kanban
+      let targetColumnId = result.data.kanbanColumnId;
+      
+      if (targetColumnId) {
+        // Verify the column belongs to the selected kanban
+        const { data: specifiedColumn, error: columnCheckError } = await supabase
+          .from("KanbanColumn")
+          .select("*")
+          .eq("id", targetColumnId)
+          .eq("kanbanId", result.data.kanbanId)
+          .single();
+        
+        if (columnCheckError || !specifiedColumn) {
+          // Fall back to first column if specified column is invalid
+          console.warn("Specified column not found or doesn't belong to kanban, falling back to first column");
+          targetColumnId = null;
+        }
+      }
+      
+      // If no valid column specified, get the first column
+      if (!targetColumnId) {
+        const { data: firstColumn, error: columnError } = await supabase
+          .from("KanbanColumn")
+          .select("*")
+          .eq("kanbanId", result.data.kanbanId)
+          .order("position", { ascending: true })
+          .limit(1)
+          .single();
 
-      if (columnError || !firstColumn) {
-        console.error("Column error:", columnError);
-        return {
-          error: true,
-          message: `Kanban non valido: nessuna colonna trovata! (${columnError?.message || "Nessuna colonna"})`,
-        };
+        if (columnError || !firstColumn) {
+          console.error("Column error:", columnError);
+          return {
+            error: true,
+            message: `Kanban non valido: nessuna colonna trovata! (${columnError?.message || "Nessuna colonna"})`,
+          };
+        }
+        targetColumnId = firstColumn.id;
       }
 
       // Get kanban info to determine task type, including category for internal codes
@@ -107,13 +129,14 @@ export async function createItem(props: any, domain?: string) {
       const insertData: any = {
         title: "",
         name: result.data.name,
+        luogo: result.data.luogo || null,
         clientId: result.data.clientId!,
         deliveryDate: result.data.deliveryDate ? result.data.deliveryDate.toISOString() : null,
         termine_produzione: result.data.termine_produzione ? result.data.termine_produzione.toISOString() : null,
         unique_code: uniqueCode,
         sellProductId: result.data.productId!,
         kanbanId: result.data.kanbanId,
-        kanbanColumnId: firstColumn.id,
+        kanbanColumnId: targetColumnId,
         sellPrice: result.data.sellPrice,
         numero_pezzi: result.data.numero_pezzi,
         other: result.data.other,

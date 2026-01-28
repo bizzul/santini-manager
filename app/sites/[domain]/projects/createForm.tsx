@@ -25,12 +25,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Loader2, RefreshCw, Link } from "lucide-react";
+import { CalendarIcon, Loader2, RefreshCw, Link, Columns } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
-import { Client, SellProduct, Task, Kanban } from "@/types/supabase";
+import { Client, SellProduct, Task, Kanban, KanbanColumn } from "@/types/supabase";
 import { useParams } from "next/navigation";
 
 // Flexible data type that accepts both page.tsx format and KanbanBoard format
@@ -55,6 +55,8 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
   const [isLoadingCode, setIsLoadingCode] = useState(false);
   const [taskType, setTaskType] = useState<string>("LAVORO");
   const [isOfferKanban, setIsOfferKanban] = useState(false);
+  const [kanbanColumns, setKanbanColumns] = useState<KanbanColumn[]>([]);
+  const [isLoadingColumns, setIsLoadingColumns] = useState(false);
   const params = useParams();
   const domain = params?.domain as string;
 
@@ -119,23 +121,50 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
     [selectedKanbanId, kanbanId, domain, form]
   );
 
+  // Fetch columns for a kanban
+  const fetchColumns = useCallback(
+    async (targetKanbanId: number) => {
+      setIsLoadingColumns(true);
+      try {
+        const res = await fetch(`/api/kanban/${targetKanbanId}/columns`);
+        if (res.ok) {
+          const columnsData = await res.json();
+          setKanbanColumns(columnsData);
+          // Reset column selection when kanban changes
+          form.setValue("kanbanColumnId", null);
+        } else {
+          setKanbanColumns([]);
+        }
+      } catch (error) {
+        console.error("Error fetching columns:", error);
+        setKanbanColumns([]);
+      } finally {
+        setIsLoadingColumns(false);
+      }
+    },
+    [form]
+  );
+
   // Generate code on mount
   useEffect(() => {
     if (kanbanId) {
       // If kanbanId prop is provided, generate code for that kanban
       generateCode(kanbanId);
+      // Also fetch columns for the kanban
+      fetchColumns(kanbanId);
     } else if (domain && !selectedKanbanId) {
       // If no kanbanId prop but domain is available, generate code using domain
       generateCode();
     }
   }, [kanbanId, domain]);
 
-  // Generate code when kanban selection changes
+  // Generate code and fetch columns when kanban selection changes
   useEffect(() => {
     if (selectedKanbanId && !kanbanId) {
       generateCode(selectedKanbanId);
+      fetchColumns(selectedKanbanId);
     }
-  }, [selectedKanbanId, kanbanId]);
+  }, [selectedKanbanId, kanbanId, fetchColumns]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (
     formData
@@ -257,6 +286,41 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       })) || []
                     }
                     emptyMessage="Nessun kanban trovato."
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Column selector - show when kanban is selected and columns are available */}
+        {kanbanColumns.length > 0 && (
+          <FormField
+            name="kanbanColumnId"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-center gap-2">
+                  <FormLabel>Colonna</FormLabel>
+                  <Badge variant="outline" className="text-xs">
+                    <Columns className="h-3 w-3 mr-1" />
+                    Opzionale
+                  </Badge>
+                </div>
+                <FormControl>
+                  <SearchSelect
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value ? Number(value) : null)}
+                    placeholder="Seleziona colonna (default: prima colonna)..."
+                    disabled={isSubmitting || isLoadingColumns}
+                    options={kanbanColumns
+                      .sort((a, b) => (a.position || 0) - (b.position || 0))
+                      .map((column: KanbanColumn) => ({
+                        value: column.id,
+                        label: column.title || column.identifier || "Senza nome",
+                      }))}
+                    emptyMessage="Nessuna colonna trovata."
                   />
                 </FormControl>
                 <FormMessage />

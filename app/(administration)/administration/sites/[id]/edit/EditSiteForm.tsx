@@ -25,9 +25,11 @@ import {
   Trash2,
   Layers,
   Package,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
+import AiSettingsModal from "@/components/site-settings/AiSettingsModal";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
 import { logger } from "@/lib/logger";
 
@@ -490,6 +492,30 @@ export default function EditSiteForm({
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Gestisci Codici e Offerte
+                </Button>
+              }
+            />
+          </div>
+
+          <div className="pt-6 border-t border-white/20">
+            <h3 className="text-lg font-medium text-white mb-4">
+              Impostazioni AI & Voice
+            </h3>
+            <p className="text-sm text-white/70 mb-4">
+              Configura il provider AI (OpenAI, Anthropic) e le impostazioni per
+              l&apos;input vocale. Ogni sito può avere le proprie API key.
+            </p>
+            <AiSettingsModal
+              siteId={site.id}
+              subdomain={site.subdomain}
+              trigger={
+                <Button
+                  variant="outline"
+                  type="button"
+                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                >
+                  <Bot className="h-4 w-4 mr-2" />
+                  Gestisci AI & Voice
                 </Button>
               }
             />

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -20,8 +20,6 @@ import { validation } from "../../validation/task/create";
 import { useToast } from "../../components/ui/use-toast";
 import { Client, SellProduct } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
-import QRCode from "qrcode.react";
-import * as QCode from "qrcode";
 import {
   Select,
   SelectContent,
@@ -30,7 +28,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Button } from "../ui/button";
-import { Plus, CalendarIcon, Trash2, User } from "lucide-react";
+import { Plus, CalendarIcon, Trash2, User, Phone, MapPin, Info } from "lucide-react";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
   AlertDialog,
@@ -310,43 +308,31 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     }
   };
 
-  function printQRCode(data: string) {
-    // Generate the QR code image
-    const canvas = document.createElement("canvas");
-    QCode.toCanvas(canvas, data, { width: 400 }, (error) => {
-      if (error) {
-        logger.error("QR Code error:", error);
-        return;
-      }
-
-      // Create a new window and add the QR code image to it
-      const printWindow = window.open(
-        "",
-        "Print Window",
-        "height=400,width=400"
-      );
-      if (printWindow) {
-        const img = document.createElement("img");
-        img.src = canvas.toDataURL();
-        img.onload = () => {
-          printWindow.document.write(`<img src="${img.src}"/>`);
-
-          // Wait for the image to finish rendering
-          setTimeout(() => {
-            // Print the new window
-            printWindow.print();
-
-            // Close the new window
-            printWindow.close();
-          }, 1000);
-        };
-      }
-    });
-  }
-
   const filteredHistory = history.filter(
     (action: any) => action.taskId === resource.id
   );
+
+  // Get the selected client for contact info display
+  const selectedClient = useMemo(() => {
+    const clientId = form.watch("clientId") || resource?.clientId;
+    return clients.find((c: Client) => c.id === clientId) || null;
+  }, [clients, form.watch("clientId"), resource?.clientId]);
+
+  // Get contact phone - prefer mobile, fallback to landline
+  const contactPhone = useMemo(() => {
+    if (!selectedClient) return null;
+    return selectedClient.mobilePhone || selectedClient.phone || selectedClient.landlinePhone || null;
+  }, [selectedClient]);
+
+  // Check if construction site address (luogo) is different from client address
+  const currentLuogo = form.watch("luogo") || resource?.luogo;
+  const hasDifferentSiteAddress = useMemo(() => {
+    if (!currentLuogo || !selectedClient?.address) return false;
+    // Compare normalized addresses (lowercase, trimmed)
+    const normalizedLuogo = currentLuogo.toLowerCase().trim();
+    const normalizedClientAddr = selectedClient.address.toLowerCase().trim();
+    return normalizedLuogo !== normalizedClientAddr && normalizedLuogo !== "";
+  }, [currentLuogo, selectedClient?.address]);
 
   const handleAddSupplier = async (e: React.MouseEvent) => {
     // Aggiungi questo per prevenire il comportamento di default del form
@@ -438,20 +424,71 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
   return (
     <div className="flex flex-row-reverse flex-nowrap gap-8 w-full justify-between">
-      <div className="flex flex-col gap-8">
-        {resource?.unique_code && (
-          <QRCode
-            value={`${process.env.NEXT_PUBLIC_URL}/progetti/${resource.unique_code}`}
-            size={128}
-            fgColor="#000000"
-            onClick={() =>
-              printQRCode(
-                `${process.env.NEXT_PUBLIC_URL}/progetti/${resource.unique_code}`
-              )
-            }
-          />
-        )}
+      <div className="flex flex-col gap-6">
+        {/* Project Contact Info Panel - Replaces QR Code */}
+        <div className="w-48 p-4 bg-muted/50 rounded-lg border space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            Info Cantiere
+          </h4>
+          
+          {/* Contact Phone */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>Telefono</span>
+            </div>
+            {contactPhone ? (
+              <a 
+                href={`tel:${contactPhone}`}
+                className="text-sm text-primary hover:underline ml-6 block"
+              >
+                {contactPhone}
+              </a>
+            ) : (
+              <span className="text-sm text-muted-foreground italic ml-6 block">
+                Non disponibile
+              </span>
+            )}
+          </div>
 
+          {/* Construction Site Address */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>Cantiere</span>
+            </div>
+            {hasDifferentSiteAddress ? (
+              <span className="text-sm ml-6 block">
+                {currentLuogo}
+              </span>
+            ) : currentLuogo ? (
+              <span className="text-sm text-muted-foreground ml-6 block">
+                Come cliente
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground italic ml-6 block">
+                Non specificato
+              </span>
+            )}
+          </div>
+
+          {/* Client Name for reference */}
+          {selectedClient && (
+            <div className="pt-2 border-t">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <User className="h-3 w-3" />
+                <span>
+                  {selectedClient.businessName || 
+                   `${selectedClient.individualFirstName || ''} ${selectedClient.individualLastName || ''}`.trim() ||
+                   'Cliente'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* History Section */}
         <div className="">
           {filteredHistory.length > 0 ? (
             <ol className="relative border-l border-gray-200 dark:border-gray-700">

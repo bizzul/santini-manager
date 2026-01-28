@@ -62,6 +62,7 @@ const Column = ({
   kanban,
   domain,
   isOfferKanban,
+  isWorkKanban,
   onMiniCardClick,
   onTaskCreated,
   onTaskDeleted,
@@ -160,6 +161,9 @@ const Column = ({
   // TODO column is used for quick add of draft offers
   const isTodoColumn = column.position === 1 && isOfferKanban;
 
+  // Check if this is the To-do column (first column) in a work kanban
+  const isWorkKanbanTodoColumn = isWorkKanban && column.position === 1;
+
   // Sort function based on column type
   const sortCards = (cardsToSort: any[]) => {
     return [...cardsToSort].sort((a: any, b: any) => {
@@ -174,6 +178,20 @@ const Column = ({
 
         // Oldest first (ascending order)
         return new Date(sentA).getTime() - new Date(sentB).getTime();
+      }
+
+      // For To-do column in work kanban (Avor): sort by termine_produzione
+      if (isWorkKanbanTodoColumn) {
+        const prodA = a.termine_produzione || a.termineProduzione;
+        const prodB = b.termine_produzione || b.termineProduzione;
+
+        // Cards without termine_produzione go to the end
+        if (!prodA && !prodB) return 0;
+        if (!prodA) return 1;
+        if (!prodB) return -1;
+
+        // Earliest deadline first (ascending order)
+        return new Date(prodA).getTime() - new Date(prodB).getTime();
       }
 
       // Default sorting logic
@@ -486,6 +504,10 @@ function KanbanBoard({
   const isOfferKanban =
     kanban?.is_offer_kanban || kanban?.isOfferKanban || false;
 
+  // Check if this is a work kanban (Avor)
+  const isWorkKanban =
+    kanban?.is_work_kanban || kanban?.isWorkKanban || false;
+
   // Handler for mini card click in offer kanban
   const handleMiniCardClick = useCallback((task: Task) => {
     setSelectedOfferTask(task);
@@ -566,13 +588,19 @@ function KanbanBoard({
 
       const responseData = await response.json();
 
-      // Update the card with server response data
+      // Update the card with ALL server response data to ensure persistence
+      // This is critical for maintaining data consistency after moves
       const finalTasks = updatedTasks.map((card) => {
-        if (card.id === id) {
+        if (card.id === id && responseData.data) {
+          // Merge all server response data with local card data
+          // Server data takes precedence for persisted fields
           return {
             ...card,
-            percentStatus:
-              responseData.data?.percentStatus || card.percentStatus,
+            ...responseData.data,
+            // Ensure column object is properly set
+            column: responseData.data.kanban_columns || card.column,
+            // Keep the kanbanColumnId in sync
+            kanbanColumnId: responseData.data.kanbanColumnId || column,
           };
         }
         return card;
@@ -666,11 +694,23 @@ function KanbanBoard({
     }
   };
 
-  const [areAllTabsClosed, setAreAllTabsClosed] = useState<boolean>(false);
+  // null = non ancora attivato (usa default/localStorage)
+  // true = "Chiudi tutte le tab" attivo
+  // false = "Apri tutte le tab" attivo
+  const [areAllTabsClosed, setAreAllTabsClosed] = useState<boolean | null>(null);
 
   const closeAllTabs = () => {
-    setAreAllTabsClosed(!areAllTabsClosed);
+    // Toggle: null -> true -> false -> true -> false...
+    if (areAllTabsClosed === null || areAllTabsClosed === false) {
+      setAreAllTabsClosed(true);
+    } else {
+      setAreAllTabsClosed(false);
+    }
   };
+
+  // Determina il testo del pulsante
+  const isTabsToggleActive = areAllTabsClosed !== null;
+  const showOpenAllText = areAllTabsClosed === true;
 
   // REMOVED: Duplicate polling system - using the optimized checkForUpdates system instead
 
@@ -920,14 +960,14 @@ function KanbanBoard({
                   className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md"
                   onClick={closeAllTabs}
                   title={
-                    areAllTabsClosed
+                    showOpenAllText
                       ? "Apri tutte le tab"
                       : "Chiudi tutte le tab"
                   }
                 >
                   <X className="h-4 w-4 transition-transform group-hover:scale-110" />
                   <span>
-                    {areAllTabsClosed
+                    {showOpenAllText
                       ? "Apri tutte le tab"
                       : "Chiudi tutte le tab"}
                   </span>
@@ -1017,6 +1057,7 @@ function KanbanBoard({
                       kanban={kanban}
                       domain={domain}
                       isOfferKanban={isOfferKanban}
+                      isWorkKanban={isWorkKanban}
                       onMiniCardClick={handleMiniCardClick}
                       onTaskCreated={refetchTasks}
                       onTaskDeleted={refetchTasks}

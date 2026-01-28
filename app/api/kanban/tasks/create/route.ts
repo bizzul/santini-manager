@@ -190,6 +190,7 @@ export async function POST(req: NextRequest) {
           unique_code: uniqueCode,
           sellProductId: result.data.productId,
           name: result.data.name,
+          luogo: result.data.luogo || null,
           kanbanId: kanban.id,
           kanbanColumnId: column.id,
           sellPrice: result.data.sellPrice,

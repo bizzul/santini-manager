@@ -5,7 +5,7 @@ import { DeleteSiteButton } from "./DeleteSiteButton";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { ArrowLeft, Globe, Settings, Users } from "lucide-react";
+import { ArrowLeft, ExternalLink, Globe, Settings, Users } from "lucide-react";
 import Image from "next/image";
 
 export default async function SiteDetailsPage({
@@ -81,6 +81,15 @@ export default async function SiteDetailsPage({
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Sites
+              </Button>
+            </Link>
+            <Link href={`/sites/${site.subdomain}`}>
+              <Button
+                variant="outline"
+                className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Vai al sito
               </Button>
             </Link>
             {role === "superadmin" && (

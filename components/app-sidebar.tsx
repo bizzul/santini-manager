@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useUserContext } from "@/hooks/use-user-context";
 import { UserContext } from "@/lib/auth-utils";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { NavUser } from "./nav-user";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { logger } from "@/lib/logger";
@@ -499,6 +499,7 @@ const UserSection = memo(function UserSection({
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
   // Initialize collapsed menus from localStorage (with Kanban collapsed by default)
@@ -802,14 +803,23 @@ export function AppSidebar() {
     openCreateModal,
   ]);
 
-  // Optimized utility functions
+  // Optimized utility functions - Include query params for proper Kanban selection
   const isActive = useCallback(
     (href: string) => {
-      const [path] = href.split("?");
-      const [currentPath] = pathname.split("?");
-      return pathname === href || currentPath === path;
+      const [hrefPath, hrefQuery] = href.split("?");
+      const currentPath = pathname;
+      const currentQuery = searchParams.toString();
+      
+      // If href has query params, compare full URL (path + query)
+      if (hrefQuery) {
+        const currentFullUrl = currentQuery ? `${currentPath}?${currentQuery}` : currentPath;
+        return currentFullUrl === href;
+      }
+      
+      // For hrefs without query params, just compare the path
+      return currentPath === hrefPath;
     },
-    [pathname]
+    [pathname, searchParams]
   );
 
   const toggleMenu = useCallback((label: string) => {

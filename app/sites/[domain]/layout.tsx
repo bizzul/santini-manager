@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getSiteData } from "@/lib/fetchers";
 import { Metadata } from "next";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -216,6 +217,17 @@ export default async function SiteLayout({
       </KanbanModalProvider>
     );
   } catch (error) {
+    // Re-throw redirect/notFound errors so Next.js can handle them properly
+    // notFound() throws an error with digest starting with "NEXT_NOT_FOUND"
+    const isNotFoundError = error instanceof Error && 
+      'digest' in error && 
+      typeof error.digest === 'string' && 
+      error.digest.startsWith('NEXT_NOT_FOUND');
+    
+    if (isRedirectError(error) || isNotFoundError) {
+      throw error;
+    }
+    
     logger.error("Error in site layout:", error);
     // Log more details for debugging
     console.error("Site layout error details:", {
