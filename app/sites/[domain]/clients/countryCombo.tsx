@@ -32,9 +32,20 @@ export function CountryCombo({ field }: { field: any }) {
           aria-expanded={open}
           className="w-full h-10 justify-between"
         >
-          {field.value
-            ? countries.find((country) => country.code === field.value)?.label
-            : "Seleziona una nazione..."}
+          {field.value ? (
+            <span className="flex items-center gap-2">
+              <Image
+                src={`https://flagcdn.com/w20/${field.value.toLowerCase()}.png`}
+                alt={field.value}
+                width={20}
+                height={15}
+                className="w-auto h-auto"
+              />
+              {countries.find((country) => country.code === field.value)?.label}
+            </span>
+          ) : (
+            "Seleziona una nazione..."
+          )}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>

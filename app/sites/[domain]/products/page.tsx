@@ -31,7 +31,7 @@ export default async function Page({
   return (
     <PageLayout>
       <PageHeader>
-        <h1 className="text-2xl font-bold">Articoli</h1>
+        <h1 className="text-2xl font-bold">Prodotti in vendita</h1>
         <div className="flex gap-2">
           <ButtonExportCSV />
           <DialogImportCSV />

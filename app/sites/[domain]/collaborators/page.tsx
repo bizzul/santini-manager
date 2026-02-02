@@ -29,6 +29,9 @@ export default async function Page({
   // Check if user is admin for this site
   const isAdmin = await checkIsAdmin(siteId);
 
+  // Get current user's role for permission checks
+  const currentUserRole = userContext.role;
+
   // Fetch collaborators
   const collaborators = await fetchCollaborators(siteId);
 
@@ -51,6 +54,7 @@ export default async function Page({
             domain={domain}
             siteId={siteId}
             isAdmin={isAdmin}
+            currentUserRole={currentUserRole}
           />
         ) : (
           <div className="w-full h-80 text-center flex flex-col justify-center items-center gap-4">

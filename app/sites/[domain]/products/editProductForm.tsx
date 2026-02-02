@@ -38,6 +38,7 @@ import { SellProduct, SellProductCategory } from "@/types/supabase";
 import { editSellProductAction } from "./actions/edit-item.action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
+import { DocumentUpload } from "@/components/ui/document-upload";
 
 type Props = {
   handleClose: any;
@@ -370,11 +371,26 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
           name="doc_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL Documenti</FormLabel>
+              <FormLabel>Scheda Tecnica</FormLabel>
               <FormControl>
-                <Input placeholder="https://..." {...field} />
+                <DocumentUpload
+                  siteId={siteId || ""}
+                  folder="sell-products"
+                  currentUrl={field.value || undefined}
+                  onUploadComplete={(url) => field.onChange(url)}
+                  onRemove={() => field.onChange("")}
+                  onError={(error) => {
+                    toast({
+                      variant: "destructive",
+                      description: error,
+                    });
+                  }}
+                  disabled={!siteId}
+                />
               </FormControl>
-              <FormDescription>Link alla cartella documenti</FormDescription>
+              <FormDescription>
+                Carica la scheda tecnica del prodotto (PDF)
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}

@@ -14,14 +14,14 @@ import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
-import { 
-  StickyNote, 
-  Folder, 
-  FileText, 
-  MapPin, 
-  Settings, 
+import {
+  StickyNote,
+  Folder,
+  FileText,
+  MapPin,
+  Settings,
   File,
-  ExternalLink 
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -53,6 +53,7 @@ type ProjectRow = {
     individualLastName?: string | null;
     zipCode?: number | null;
     address?: string | null;
+    city?: string | null;
   } | null;
   SellProduct?: {
     name?: string | null;
@@ -320,7 +321,7 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
     {
       accessorKey: "luogo",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Luogo" />
+        <DataTableColumnHeader column={column} title="CAP" />
       ),
       size: 80,
       minSize: 60,
@@ -329,8 +330,9 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       cell: ({ row }) => {
         const rowData = row.original;
         // Extract CAP from Client zipCode or from luogo field
-        const cap = rowData.Client?.zipCode || 
-                   (rowData.luogo ? extractCAP(rowData.luogo) : null);
+        const cap =
+          rowData.Client?.zipCode ||
+          (rowData.luogo ? extractCAP(rowData.luogo) : null);
         return (
           <span className="truncate block" title={cap?.toString() || "-"}>
             {cap || "-"}
@@ -350,7 +352,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       maxSize: 60,
       enableResizing: false,
       cell: ({ row }) => {
-        const hasNotes = !!row.original.other && row.original.other.trim() !== "";
+        const hasNotes =
+          !!row.original.other && row.original.other.trim() !== "";
         return (
           <div className="flex items-center justify-center w-full h-full">
             {hasNotes ? (
@@ -417,7 +420,7 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: false,
       cell: ({ row }) => {
         const projectId = row.original.id;
-        const currentDomain = domain || window.location.pathname.split('/')[2];
+        const currentDomain = domain || window.location.pathname.split("/")[2];
         return (
           <div className="flex items-center justify-center w-full h-full">
             <TooltipProvider>
@@ -457,8 +460,10 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: false,
       cell: ({ row }) => {
         const address = row.original.Client?.address || row.original.luogo;
-        const googleMapsUrl = address 
-          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+        const googleMapsUrl = address
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+              address
+            )}`
           : null;
         return (
           <div className="flex items-center justify-center w-full h-full">
@@ -491,7 +496,7 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: false,
       cell: ({ row }) => {
         const projectId = row.original.id;
-        const currentDomain = domain || window.location.pathname.split('/')[2];
+        const currentDomain = domain || window.location.pathname.split("/")[2];
         return (
           <div className="flex items-center justify-center w-full h-full">
             <TooltipProvider>
@@ -620,7 +625,10 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       cell: ({ row }) => {
         const { archived } = row.original;
         return (
-          <Badge variant={archived ? "secondary" : "outline"} className="text-xs">
+          <Badge
+            variant={archived ? "secondary" : "outline"}
+            className="text-xs"
+          >
             {archived ? "Sì" : "No"}
           </Badge>
         );
@@ -637,7 +645,9 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: true,
       cell: ({ row }) => {
         const actions = row.original.Action || [];
-        const updateDate = row.original.updated_at ? new Date(row.original.updated_at) : null;
+        const updateDate = row.original.updated_at
+          ? new Date(row.original.updated_at)
+          : null;
 
         if (!Array.isArray(actions) || actions.length === 0) {
           return "-";

@@ -5,6 +5,7 @@ import { createServiceClient } from "@/utils/supabase/server";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/errorTracking/create";
 import { logger } from "@/lib/logger";
+import { getUserContext } from "@/lib/auth-utils";
 
 export async function createItem(props: any) {
   const result = validation.safeParse(props.data);
@@ -17,18 +18,26 @@ export async function createItem(props: any) {
   if (user) {
     userId = user.id;
   }
-  // console.log("result", result.error);
+
+  // Get the current user's database ID
+  const userContext = await getUserContext();
+  if (!userContext) {
+    return { error: true, message: "Utente non autenticato!" };
+  }
+
   try {
     if (result.success) {
       const { data: createError, error: createErrorResponse } = await supabase
         .from("Errortracking")
         .insert({
-          supplier_id: result.data.supplier ? Number(result.data.supplier) : null,
+          supplier_id: result.data.supplier
+            ? Number(result.data.supplier)
+            : null,
           description: result.data.description ?? "",
           error_category: result.data.errorCategory,
           error_type: result.data.errorType ?? "",
           task_id: Number(result.data.task),
-          user_id: Number(result.data.user),
+          user_id: userContext.userId,
         })
         .select()
         .single();

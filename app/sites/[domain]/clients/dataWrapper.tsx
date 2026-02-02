@@ -7,10 +7,8 @@ import { Client } from "@/types/supabase";
 
 const DataWrapper = ({ data, domain }: { data: Client[]; domain: string }) => {
   const columns = useMemo(() => createColumns(domain), [domain]);
-  
-  return (
-    <DataTable columns={columns} data={data} />
-  );
+
+  return <DataTable columns={columns} data={data} domain={domain} />;
 };
 
 export default DataWrapper;

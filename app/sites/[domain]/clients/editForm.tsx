@@ -38,6 +38,7 @@ const EditClientForm = ({ handleClose, data }: Props) => {
 
       // Main address
       address: data.address || "",
+      addressSecondary: data.addressSecondary || "",
       city: data.city || "",
       countryCode: data.countryCode || "CH",
       zipCode: data.zipCode || undefined,

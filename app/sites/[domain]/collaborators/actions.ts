@@ -442,3 +442,124 @@ export async function checkIsAdmin(siteId: string) {
     const { isAdmin } = await checkAdminAccess(siteId);
     return isAdmin;
 }
+
+/**
+ * Get the current user's role for permission checks
+ */
+export async function getCurrentUserRole(): Promise<string | null> {
+    const userContext = await getUserContext();
+    return userContext?.role || null;
+}
+
+/**
+ * Update a collaborator's system role (user, admin, superadmin)
+ * Only admin and superadmin can change roles
+ * Admins can only set user/admin roles
+ * Superadmins can set any role
+ */
+export async function updateCollaboratorSystemRole(
+    siteId: string,
+    userId: string, // This is the authId
+    newRole: string,
+    domain: string,
+) {
+    const supabase = await createClient();
+    const userContext = await getUserContext();
+
+    if (!userContext?.user) {
+        return {
+            success: false,
+            error: "Non autenticato",
+        };
+    }
+
+    const currentUserRole = userContext.role;
+
+    // Only admin and superadmin can change roles
+    if (currentUserRole !== "admin" && currentUserRole !== "superadmin") {
+        return {
+            success: false,
+            error: "Non autorizzato a modificare i ruoli di sistema",
+        };
+    }
+
+    // Validate the new role
+    const validRoles = ["user", "admin", "superadmin"];
+    if (!validRoles.includes(newRole)) {
+        return {
+            success: false,
+            error: "Ruolo non valido",
+        };
+    }
+
+    // Admins cannot set superadmin role
+    if (currentUserRole === "admin" && newRole === "superadmin") {
+        return {
+            success: false,
+            error: "Solo i superadmin possono assegnare il ruolo superadmin",
+        };
+    }
+
+    // Get the target user's current role
+    const { data: targetUser, error: userError } = await supabase
+        .from("User")
+        .select("role")
+        .eq("authId", userId)
+        .single();
+
+    if (userError || !targetUser) {
+        return {
+            success: false,
+            error: "Utente non trovato",
+        };
+    }
+
+    // Admins cannot modify superadmin users
+    if (currentUserRole === "admin" && targetUser.role === "superadmin") {
+        return {
+            success: false,
+            error: "Non puoi modificare il ruolo di un superadmin",
+        };
+    }
+
+    // Prevent users from demoting themselves if they're the only superadmin
+    if (
+        userId === userContext.user.id &&
+        targetUser.role === "superadmin" &&
+        newRole !== "superadmin"
+    ) {
+        // Check if there are other superadmins
+        const { data: otherSuperadmins, error: countError } = await supabase
+            .from("User")
+            .select("id")
+            .eq("role", "superadmin")
+            .neq("authId", userId);
+
+        if (countError || !otherSuperadmins || otherSuperadmins.length === 0) {
+            return {
+                success: false,
+                error:
+                    "Non puoi rimuovere il tuo ruolo superadmin se sei l'unico superadmin",
+            };
+        }
+    }
+
+    // Update the role
+    const { error: updateError } = await supabase
+        .from("User")
+        .update({ role: newRole })
+        .eq("authId", userId);
+
+    if (updateError) {
+        return {
+            success: false,
+            error: `Errore nell'aggiornamento: ${updateError.message}`,
+        };
+    }
+
+    revalidatePath(`/sites/${domain}/collaborators`);
+    return {
+        success: true,
+        message: "Ruolo di sistema aggiornato con successo",
+    };
+}

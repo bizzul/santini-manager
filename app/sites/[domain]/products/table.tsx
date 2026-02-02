@@ -22,18 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { useState, useMemo, useCallback } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { Button } from "@/components/ui/button";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2, Search, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { batchDeleteProducts } from "./actions/delete-item.action";
 import { useRouter } from "next/navigation";
@@ -49,7 +44,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SellProductWithAction } from "./columns";
 import { SellProductCategory } from "@/types/supabase";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
@@ -75,24 +69,63 @@ export function DataTable<TData extends { id: number }, TValue>({
   // Delete state
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  // Category filter state
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  // Category filter state - now supports multiple selections
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
   // Column sizing state
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
-  
+
   const { toast } = useToast();
   const router = useRouter();
 
-  // Filter data by category
+  // Filter data by selected categories
   const filteredData = useMemo(() => {
-    if (selectedCategory === "all") {
+    if (allCategoriesSelected) {
       return data;
+    }
+    if (selectedCategories.length === 0) {
+      return [];
     }
     return data.filter((row: any) => {
       const categoryId = row.category_id;
-      return categoryId?.toString() === selectedCategory;
+      return categoryId && selectedCategories.includes(categoryId);
     });
-  }, [data, selectedCategory]);
+  }, [data, selectedCategories, allCategoriesSelected]);
+
+  const handleCategoryToggle = (categoryId: number) => {
+    setAllCategoriesSelected(false);
+    setSelectedCategories((prev) => {
+      if (prev.includes(categoryId)) {
+        const newSelection = prev.filter((id) => id !== categoryId);
+        // If no categories selected, select all
+        if (newSelection.length === 0) {
+          setAllCategoriesSelected(true);
+          return [];
+        }
+        return newSelection;
+      }
+      return [...prev, categoryId];
+    });
+  };
+
+  const handleSelectAllCategories = (checked: boolean) => {
+    setAllCategoriesSelected(checked);
+    if (checked) {
+      setSelectedCategories([]);
+    } else {
+      setSelectedCategories(categories.map((cat) => cat.id));
+    }
+  };
+
+  const isSomeSelected =
+    selectedCategories.length > 0 && !allCategoriesSelected;
+
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setGlobalFilter("");
+    setAllCategoriesSelected(true);
+    setSelectedCategories([]);
+  }, []);
 
   const table = useReactTable({
     data: filteredData,
@@ -124,12 +157,12 @@ export function DataTable<TData extends { id: number }, TValue>({
 
   const handleBatchDelete = async () => {
     if (selectedCount === 0) return;
-    
+
     setIsDeleting(true);
     try {
       const ids = selectedRows.map((row) => row.original.id);
       const result = await batchDeleteProducts(ids, domain);
-      
+
       if (result.success) {
         toast({
           description: `${result.deleted} prodotti eliminati con successo!`,
@@ -155,76 +188,100 @@ export function DataTable<TData extends { id: number }, TValue>({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4 py-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <DebouncedInput
-            value={globalFilter ?? ""}
-            onChange={(value) => setGlobalFilter(String(value))}
-            className="max-w-sm"
-            placeholder="Cerca prodotti..."
-          />
-          
-          {categories.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Categoria:</span>
-              <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Tutte le categorie" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    <span className="flex items-center gap-2">
-                      Tutte le categorie
-                    </span>
-                  </SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      <span className="flex items-center gap-2">
-                        {category.color && (
-                          <span 
-                            className="w-3 h-3 rounded-full shrink-0" 
-                            style={{ backgroundColor: category.color }}
-                          />
-                        )}
-                        {category.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedCategory !== "all" && (
-                <Badge variant="secondary" className="gap-1">
-                  {categories.find(c => c.id.toString() === selectedCategory)?.name}
-                  <button
-                    onClick={() => setSelectedCategory("all")}
-                    className="ml-1 hover:text-destructive"
+      {/* Filter and Search Bar - Contained in rounded border */}
+      <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
+        {/* Category Filter Row */}
+        {categories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <span className="text-sm font-medium">Categoria:</span>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="all-categories"
+                  checked={
+                    isSomeSelected ? "indeterminate" : allCategoriesSelected
+                  }
+                  onCheckedChange={handleSelectAllCategories}
+                />
+                <Label
+                  htmlFor="all-categories"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Tutte le categorie
+                </Label>
+              </div>
+              {categories.map((category) => {
+                const isSelected = selectedCategories.includes(category.id);
+                return (
+                  <div
+                    key={category.id}
+                    className="flex items-center space-x-2"
                   >
-                    ×
-                  </button>
-                </Badge>
-              )}
+                    <Checkbox
+                      id={`category-${category.id}`}
+                      checked={isSelected}
+                      onCheckedChange={() => handleCategoryToggle(category.id)}
+                    />
+                    <Label
+                      htmlFor={`category-${category.id}`}
+                      className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                    >
+                      {category.color && (
+                        <span
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: category.color }}
+                        />
+                      )}
+                      {category.name}
+                    </Label>
+                  </div>
+                );
+              })}
             </div>
+          </div>
+        )}
+
+        {/* Search Row with Clear Button */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-1">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <DebouncedInput
+                value={globalFilter ?? ""}
+                onChange={(value) => setGlobalFilter(String(value))}
+                className="pl-9"
+                placeholder="Cerca prodotti..."
+              />
+            </div>
+            {(globalFilter || !allCategoriesSelected) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearAllFilters}
+                className="h-9 gap-1"
+              >
+                <X className="h-4 w-4" />
+                Cancella filtri
+              </Button>
+            )}
+          </div>
+
+          {selectedCount > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Elimina {selectedCount} selezionati
+            </Button>
           )}
         </div>
-        
-        {selectedCount > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowDeleteDialog(true)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
-            Elimina {selectedCount} selezionati
-          </Button>
-        )}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -232,7 +289,8 @@ export function DataTable<TData extends { id: number }, TValue>({
           <AlertDialogHeader>
             <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
             <AlertDialogDescription>
-              Stai per eliminare {selectedCount} prodotti. Questa azione è irreversibile.
+              Stai per eliminare {selectedCount} prodotti. Questa azione è
+              irreversibile.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -254,14 +312,14 @@ export function DataTable<TData extends { id: number }, TValue>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-lg border bg-card overflow-hidden shadow-sm overflow-x-auto">
         <Table style={{ width: table.getCenterTotalSize() }}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead 
+                    <TableHead
                       key={header.id}
                       style={{
                         width: header.getSize(),
@@ -284,7 +342,8 @@ export function DataTable<TData extends { id: number }, TValue>({
                           className={cn(
                             "absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none",
                             "opacity-0 group-hover:opacity-100 hover:bg-primary/50",
-                            header.column.getIsResizing() && "bg-primary opacity-100"
+                            header.column.getIsResizing() &&
+                              "bg-primary opacity-100"
                           )}
                         />
                       )}
@@ -302,7 +361,7 @@ export function DataTable<TData extends { id: number }, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell 
+                    <TableCell
                       key={cell.id}
                       style={{
                         width: cell.column.getSize(),

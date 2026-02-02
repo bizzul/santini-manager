@@ -31,7 +31,7 @@ export default async function Page({
     <div className="container">
       <DialogCreate data={data} />
       {data.inventory.length > 0 ? (
-        <DataWrapper data={data.inventory} />
+        <DataWrapper data={data.inventory} categories={data.categories} />
       ) : (
         <div className="w-full h-full text-center">
           <h1 className="font-bold text-2xl">Nessun prodotto registrato!</h1>

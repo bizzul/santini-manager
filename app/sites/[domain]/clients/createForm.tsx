@@ -42,6 +42,7 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
 
       // Main address
       address: "",
+      addressSecondary: "",
       city: "",
       countryCode: "CH",
       zipCode: undefined,
@@ -99,19 +100,14 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
         />
 
         {/* Submit button */}
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full"
-          variant="outline"
-        >
+        <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? (
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Salvataggio in corso...</span>
             </div>
           ) : (
-            "Salva"
+            "Salva Cliente"
           )}
         </Button>
       </form>

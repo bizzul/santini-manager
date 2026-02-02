@@ -4,7 +4,7 @@ import { SellProduct } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
-import { Image, ExternalLink } from "lucide-react";
+import { Image, ExternalLink, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -105,7 +105,9 @@ export const createColumns = (
               );
               const windowScrollY = window.scrollY;
 
-              table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected());
+              table.toggleAllPageRowsSelected(
+                !table.getIsAllPageRowsSelected()
+              );
 
               requestAnimationFrame(() => {
                 scrollPositions.forEach(({ el, scrollTop }) => {
@@ -193,7 +195,7 @@ export const createColumns = (
     {
       accessorKey: "internal_code",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Cod. Interno" />
+        <DataTableColumnHeader column={column} title="Cod." />
       ),
       cell: ({ row }) => (
         <EditableCell
@@ -204,7 +206,7 @@ export const createColumns = (
           onSave={handleProductEdit}
         />
       ),
-      size: 120,
+      size: 40,
     },
     {
       id: "category",
@@ -278,7 +280,7 @@ export const createColumns = (
     {
       accessorKey: "warehouse_number",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Nr. Mag." />
+        <DataTableColumnHeader column={column} title="Mag." />
       ),
       cell: ({ row }) => {
         // Warehouse number field doesn't exist in SellProduct yet, showing placeholder
@@ -298,15 +300,36 @@ export const createColumns = (
       size: 150,
     },
     {
-      accessorKey: "manufacturer",
+      accessorKey: "doc_url",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Produttore" />
+        <DataTableColumnHeader column={column} title="Scheda" />
       ),
       cell: ({ row }) => {
-        // Manufacturer field doesn't exist in SellProduct yet, showing placeholder
-        return <span className="text-muted-foreground">-</span>;
+        const docUrl = row.original.doc_url;
+        if (!docUrl) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => window.open(docUrl, "_blank")}
+                >
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Visualizza scheda tecnica</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
       },
-      size: 150,
+      size: 120,
     },
     {
       id: "actions",

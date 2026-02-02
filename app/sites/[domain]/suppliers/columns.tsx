@@ -292,10 +292,16 @@ export const createColumns = (
       },
     },
     {
+      id: "actions",
+      header: "Azioni",
+      cell: ({ row }) => <DataTableRowActions row={row} />,
+    },
+    {
       accessorKey: "lastAction.createdAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Ultima modifica" />
+        <DataTableColumnHeader column={column} title="Modifica" />
       ),
+      size: 100,
       cell: ({ row }) => {
         const lastAction = row.original.lastAction;
         if (!lastAction?.createdAt) return "-";
@@ -317,7 +323,7 @@ export const createColumns = (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-sm text-muted-foreground cursor-help">
+                <span className="text-xs text-muted-foreground cursor-help whitespace-nowrap">
                   {timeAgo}
                 </span>
               </TooltipTrigger>
@@ -332,8 +338,9 @@ export const createColumns = (
     {
       accessorKey: "lastAction.User",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Modificato da" />
+        <DataTableColumnHeader column={column} title="Da" />
       ),
+      size: 60,
       cell: ({ row }) => {
         const lastAction = row.original.lastAction;
         const user = lastAction?.User;
@@ -353,19 +360,22 @@ export const createColumns = (
             : user.given_name?.charAt(0) || "U");
 
         return (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <span className="text-xs font-medium text-primary">{initials}</span>
-            </div>
-            <span className="text-sm truncate">{displayName}</span>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 cursor-help">
+                  <span className="text-xs font-medium text-primary">
+                    {initials}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{displayName}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       },
-    },
-    {
-      id: "actions",
-      header: "Azioni",
-      cell: ({ row }) => <DataTableRowActions row={row} />,
     },
   ];
 };

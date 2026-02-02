@@ -22,10 +22,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { useState, useMemo, useCallback } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2, Search, X } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { removeItem } from "./actions/delete-item.action";
@@ -39,15 +41,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { InventoryCategory } from "@/types/supabase";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  categories?: InventoryCategory[];
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  categories = [],
 }: DataTableProps<TData, TValue>) {
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -59,12 +64,29 @@ export function DataTable<TData, TValue>({
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Category filter state - supports multiple selections
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
 
   const { toast } = useToast();
   const router = useRouter();
 
+  // Filter data by selected categories
+  const filteredData = useMemo(() => {
+    if (allCategoriesSelected) {
+      return data;
+    }
+    if (selectedCategories.length === 0) {
+      return [];
+    }
+    return data.filter((row: any) => {
+      const categoryId = row.category?.id || row.category_id;
+      return categoryId && selectedCategories.includes(categoryId);
+    });
+  }, [data, selectedCategories, allCategoriesSelected]);
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -83,6 +105,41 @@ export function DataTable<TData, TValue>({
     enableGlobalFilter: true,
     enableRowSelection: true,
   });
+
+  const handleCategoryToggle = (categoryId: string) => {
+    setAllCategoriesSelected(false);
+    setSelectedCategories((prev) => {
+      if (prev.includes(categoryId)) {
+        const newSelection = prev.filter((id) => id !== categoryId);
+        // If no categories selected, select all
+        if (newSelection.length === 0) {
+          setAllCategoriesSelected(true);
+          return [];
+        }
+        return newSelection;
+      }
+      return [...prev, categoryId];
+    });
+  };
+
+  const handleSelectAllCategories = (checked: boolean) => {
+    setAllCategoriesSelected(checked);
+    if (checked) {
+      setSelectedCategories([]);
+    } else {
+      setSelectedCategories(categories.map((cat) => cat.id));
+    }
+  };
+
+  const isSomeSelected =
+    selectedCategories.length > 0 && !allCategoriesSelected;
+
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setGlobalFilter("");
+    setAllCategoriesSelected(true);
+    setSelectedCategories([]);
+  }, []);
 
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const selectedCount = selectedRows.length;
@@ -123,82 +180,147 @@ export function DataTable<TData, TValue>({
 
   return (
     <>
-      <div className="flex items-center justify-between py-4">
-        <DebouncedInput
-          value={globalFilter ?? ""}
-          onChange={(value) => setGlobalFilter(String(value))}
-          className="max-w-sm"
-        />
-        {selectedCount > 0 && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Elimina ({selectedCount})
-          </Button>
-        )}
-        {/* <Input
-          
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
-          }
-          className="max-w-sm"
-        /> */}
-      </div>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+      {/* Filter and Search Bar - Contained in rounded border */}
+      <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
+        {/* Category Filter Row */}
+        {categories.length > 0 && (
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <span className="text-sm font-medium">Categoria:</span>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="all-categories"
+                  checked={
+                    isSomeSelected ? "indeterminate" : allCategoriesSelected
+                  }
+                  onCheckedChange={handleSelectAllCategories}
+                />
+                <Label
+                  htmlFor="all-categories"
+                  className="text-sm font-normal cursor-pointer"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
+                  Tutte le categorie
+                </Label>
+              </div>
+              {categories.map((category) => {
+                const isSelected = selectedCategories.includes(category.id);
+                return (
+                  <div
+                    key={category.id}
+                    className="flex items-center space-x-2"
+                  >
+                    <Checkbox
+                      id={`category-${category.id}`}
+                      checked={isSelected}
+                      onCheckedChange={() => handleCategoryToggle(category.id)}
+                    />
+                    <Label
+                      htmlFor={`category-${category.id}`}
+                      className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                    >
+                      {category.code && (
+                        <span className="text-muted-foreground">
+                          [{category.code}]
+                        </span>
                       )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  Nessun risultato.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                      {category.name}
+                    </Label>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Search Row with Clear Button and Bulk Delete */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <DebouncedInput
+              value={globalFilter ?? ""}
+              onChange={(value) => setGlobalFilter(String(value))}
+              className="pl-9"
+              placeholder="Cerca per codice, nome, fornitore..."
+            />
+          </div>
+          {(globalFilter || !allCategoriesSelected) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAllFilters}
+              className="h-9 gap-1"
+            >
+              <X className="h-4 w-4" />
+              Cancella filtri
+            </Button>
+          )}
+          {selectedCount > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Elimina ({selectedCount})
+            </Button>
+          )}
+        </div>
       </div>
-      <div className="pt-8">
+
+      {/* Table Container - Contained in rounded border */}
+      <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    Nessun risultato.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+      <div className="pt-4">
         {/* Pagination controls */}
         <DataTablePagination table={table} />
       </div>

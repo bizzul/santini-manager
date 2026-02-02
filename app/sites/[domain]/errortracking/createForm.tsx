@@ -25,7 +25,7 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
-import { Product_category, Supplier, Task, User } from "@/types/supabase";
+import { Product_category, Supplier } from "@/types/supabase";
 import {
   FileUpload,
   UploadedFile,
@@ -34,11 +34,12 @@ import {
 
 // Helper function to get project display label
 const getProjectLabel = (task: any): string => {
-  const clientName = task.Client?.businessName ||
+  const clientName =
+    task.Client?.businessName ||
     (task.Client?.individualFirstName && task.Client?.individualLastName
       ? `${task.Client.individualFirstName} ${task.Client.individualLastName}`
       : null);
-  
+
   if (clientName) {
     return `${task.unique_code} - ${clientName}`;
   }
@@ -59,7 +60,6 @@ const CreateProductForm = ({
     resolver: zodResolver(validation),
     defaultValues: {
       errorCategory: "fornitore",
-      user: "",
       description: "",
       errorType: "",
       supplier: "",
@@ -105,53 +105,23 @@ const CreateProductForm = ({
 
   return (
     <Form {...form}>
-      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="shadow sm:rounded-md sm:overflow-hidden z-10">
-          <FormField
-            name="user"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Utente del report</FormLabel>
-                <FormControl>
-                  <Select
-                    {...field}
-                    onValueChange={(value) => {
-                      // This ensures that the selected value updates the react-hook-form state
-                      field.onChange(value);
-                    }}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {data.users.map((user: User) => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.given_name + " " + user.family_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </FormControl>
-                {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        {/* Prima riga: Categoria errore e Progetto */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormField
             name="errorCategory"
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <FormLabel> Categoria errore</FormLabel>
+                <FormLabel>Categoria errore</FormLabel>
                 <FormControl>
                   <Select
                     {...field}
                     onValueChange={(value) => {
-                      // This ensures that the selected value updates the react-hook-form state
                       field.onChange(value);
+                      // Reset dependent fields when category changes
+                      form.setValue("errorType", "");
+                      form.setValue("supplier", "");
                     }}
                     disabled={isSubmitting}
                   >
@@ -164,134 +134,124 @@ const CreateProductForm = ({
                     </SelectContent>
                   </Select>
                 </FormControl>
-                {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <div className="grid grid-cols-1 gap-6 ">
-            <FormField
-              name="task"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Progetto</FormLabel>
-                  <FormControl>
-                    <SearchSelect
-                      value={field.value || ""}
-                      onValueChange={field.onChange}
-                      disabled={isSubmitting}
-                      options={data.tasks.map((t: any) => ({
-                        value: t.id.toString(),
-                        label: getProjectLabel(t),
-                      }))}
-                      placeholder="Cerca progetto..."
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+          <FormField
+            name="task"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Progetto</FormLabel>
+                <FormControl>
+                  <SearchSelect
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                    options={data.tasks.map((t: any) => ({
+                      value: t.id.toString(),
+                      label: getProjectLabel(t),
+                    }))}
+                    placeholder="Cerca progetto..."
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-          <div className="grid grid-cols-1 gap-6">
+        {/* Seconda riga: Tipo errore e Fornitore (se categoria = fornitore) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            name="errorType"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo errore</FormLabel>
+                <FormControl>
+                  <Select
+                    {...field}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Reset supplier when error type changes
+                      form.setValue("supplier", "");
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona tipo..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {form.watch("errorCategory") === "fornitore"
+                        ? data.categories.map((category: Product_category) => (
+                            <SelectItem
+                              key={category.id}
+                              value={category.name?.toLowerCase() || ""}
+                            >
+                              {category.name || "Unnamed"}
+                            </SelectItem>
+                          ))
+                        : data.roles.map((role: any) => (
+                            <SelectItem
+                              key={role.id}
+                              value={role.id.toString()}
+                            >
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {form.watch("errorCategory") === "fornitore" && (
             <FormField
-              name="errorType"
+              name="supplier"
               control={form.control}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel> Tipo errore</FormLabel>
+                  <FormLabel>Fornitore</FormLabel>
                   <FormControl>
                     <Select
                       {...field}
-                      onValueChange={(value) => {
-                        // This ensures that the selected value updates the react-hook-form state
-                        field.onChange(value);
-                      }}
-                      disabled={isSubmitting}
+                      onValueChange={field.onChange}
+                      disabled={isSubmitting || !form.watch("errorType")}
                     >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Seleziona fornitore..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {form.watch("errorCategory") === "fornitore"
-                          ? data.categories.map(
-                              (category: Product_category) => (
-                                <SelectItem
-                                  key={category.id}
-                                  value={category.name?.toLowerCase() || ""}
-                                >
-                                  {category.name || "Unnamed"}
-                                </SelectItem>
-                              )
-                            )
-                          : data.roles.map((role: any) => (
-                              <SelectItem
-                                key={role.id}
-                                value={role.id.toString()}
-                              >
-                                {role.name}
-                              </SelectItem>
-                            ))}
+                        {data.suppliers
+                          .filter(
+                            (supplier: Supplier) =>
+                              supplier.supplier_category?.name?.toLowerCase() ===
+                              form.watch("errorType")?.toLowerCase()
+                          )
+                          .map((supplier: Supplier) => (
+                            <SelectItem
+                              key={supplier.id}
+                              value={supplier.id.toString()}
+                            >
+                              {supplier.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </FormControl>
-                  {/* <FormDescription>Categoria del prodotto</FormDescription> */}
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
-
-          {form.watch("errorCategory") === "reparto" ? (
-            ""
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              <FormField
-                name="supplier"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Fornitore</FormLabel>
-                    <FormControl>
-                      <Select
-                        {...field}
-                        onValueChange={(value) => {
-                          // This ensures that the selected value updates the react-hook-form state
-                          field.onChange(value);
-                        }}
-                        disabled={isSubmitting}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {data.suppliers
-                            .filter(
-                              (supplier: Supplier) =>
-                                supplier.supplier_category?.name?.toLowerCase() ===
-                                form.watch("errorType")?.toLowerCase()
-                            )
-                            .map((supplier: Supplier) => (
-                              <SelectItem
-                                key={supplier.id}
-                                value={supplier.id.toString()}
-                              >
-                                {supplier.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    {/* <FormDescription>Categoria del prodotto</FormDescription> */}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
           )}
         </div>
+
+        {/* Descrizione */}
         <FormField
           name="description"
           control={form.control}
@@ -299,32 +259,38 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <Textarea
+                  {...field}
+                  rows={3}
+                  placeholder="Descrivi l'errore..."
+                />
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="grid grid-cols-1 gap-6">
-          <div className="col-span-3 sm:col-span-2">
-            <label className="block text-sm font-medium mb-2">Foto</label>
-            <FileUpload
-              onUploadComplete={handleUploadComplete}
-              onError={handleUploadError}
-              accept="image/*"
-              multiple
-            />
-            <UploadedFilesList files={uploadedFiles} />
-          </div>
+        {/* Foto */}
+        <div>
+          <label className="block text-sm font-medium mb-2">Foto</label>
+          <FileUpload
+            onUploadComplete={handleUploadComplete}
+            onError={handleUploadError}
+            accept="image/*"
+            bucket="files"
+            multiple
+          />
+          <UploadedFilesList files={uploadedFiles} />
         </div>
 
-        <Button type="submit" disabled={isSubmitting}>
-          {" "}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full sm:w-auto"
+        >
           {isSubmitting && (
             <span className="spinner-border spinner-border-sm mr-1"></span>
-          )}{" "}
+          )}
           Salva
         </Button>
       </form>

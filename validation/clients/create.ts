@@ -9,6 +9,7 @@ export const validation = z.object({
   individualFirstName: z.string().optional(),
   individualLastName: z.string().optional(),
   address: z.string().min(1, { message: "Indirizzo principale richiesto" }),
+  addressSecondary: z.string().optional(),
   city: z.string().min(1, { message: "Città richiesta" }),
   clientType: z.string().optional(),
   countryCode: z.string().min(1, { message: "Paese richiesto" }),

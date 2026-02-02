@@ -71,6 +71,7 @@ export async function createItem(props: any, domain?: string) {
         clientType: result.data.clientType,
         individualLastName: result.data?.individualLastName,
         address: result.data?.address,
+        addressSecondary: result.data?.addressSecondary,
         city: result.data?.city,
         countryCode: result.data?.countryCode,
         email: result.data?.email,

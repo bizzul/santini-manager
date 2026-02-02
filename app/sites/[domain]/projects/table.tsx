@@ -8,8 +8,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   SortingState,
-  ColumnFiltersState,
-  getFilteredRowModel,
   ColumnSizingState,
 } from "@tanstack/react-table";
 
@@ -23,32 +21,19 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { cn } from "@/lib/utils";
 import { SellProductCategory } from "@/types/supabase";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   categories?: SellProductCategory[];
 }
-
-// Update the getNestedValue function to handle missing properties more safely
-const getNestedValue = (obj: any, path: string) => {
-  try {
-    return path.split(".").reduce((acc, part) => {
-      // Return empty string if acc is null/undefined or property doesn't exist
-      if (!acc || !(part in acc)) return "";
-      return acc[part];
-    }, obj);
-  } catch (error) {
-    // Return empty string in case of any errors
-    return "";
-  }
-};
 
 export function DataTable<TData, TValue>({
   columns,
@@ -57,8 +42,7 @@ export function DataTable<TData, TValue>({
 }: DataTableProps<TData, TValue>) {
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
-  // Filter state
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  // Global filter state
   const [globalFilter, setGlobalFilter] = useState("");
   // Column sizing state
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
@@ -66,21 +50,59 @@ export function DataTable<TData, TValue>({
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
 
-  // Filter data by selected categories
+  // Filter data by selected categories and global filter
   const filteredData = useMemo(() => {
-    // If "Tutte le categorie" is selected (allCategoriesSelected), show all data
-    if (allCategoriesSelected) {
-      return data;
+    let filtered = data;
+
+    // Category filter
+    if (!allCategoriesSelected) {
+      if (selectedCategories.length === 0) {
+        return [];
+      }
+      filtered = filtered.filter((row: any) => {
+        const categoryId = row.SellProduct?.category_id;
+        return categoryId && selectedCategories.includes(categoryId);
+      });
     }
-    // Otherwise filter by selected categories
-    if (selectedCategories.length === 0) {
-      return [];
+
+    // Global filter (searches in: codice, cliente, nome oggetto, CAP)
+    if (globalFilter.trim()) {
+      const search = globalFilter.toLowerCase().trim();
+      filtered = filtered.filter((row: any) => {
+        // Codice
+        const uniqueCode = row.unique_code?.toLowerCase() || "";
+
+        // Cliente
+        const businessName = row.Client?.businessName?.toLowerCase() || "";
+        const firstName = row.Client?.individualFirstName?.toLowerCase() || "";
+        const lastName = row.Client?.individualLastName?.toLowerCase() || "";
+        const fullName = `${firstName} ${lastName}`.trim();
+
+        // Nome oggetto
+        const title = row.title?.toLowerCase() || "";
+        const name = row.name?.toLowerCase() || "";
+
+        // CAP
+        const zipCode = row.Client?.zipCode?.toString() || "";
+        const luogo = row.luogo || "";
+        const capFromLuogo = luogo.match(/\b\d{4,5}\b/)?.[0] || "";
+
+        return (
+          uniqueCode.includes(search) ||
+          businessName.includes(search) ||
+          fullName.includes(search) ||
+          firstName.includes(search) ||
+          lastName.includes(search) ||
+          title.includes(search) ||
+          name.includes(search) ||
+          zipCode.includes(search) ||
+          capFromLuogo.includes(search)
+        );
+      });
     }
-    return data.filter((row: any) => {
-      const categoryId = row.SellProduct?.category_id;
-      return categoryId && selectedCategories.includes(categoryId);
-    });
-  }, [data, selectedCategories, allCategoriesSelected]);
+
+    return filtered;
+  }, [data, selectedCategories, allCategoriesSelected, globalFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -89,25 +111,12 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
     onColumnSizingChange: setColumnSizing,
     columnResizeMode: "onChange",
     enableColumnResizing: true,
     state: {
       sorting,
-      columnFilters,
-      globalFilter,
       columnSizing,
-    },
-    enableGlobalFilter: true,
-    globalFilterFn: (row, columnId, filterValue) => {
-      const value = getNestedValue(row.original, columnId);
-      return value
-        ?.toString()
-        .toLowerCase()
-        .includes(filterValue.toLowerCase());
     },
   });
 
@@ -136,7 +145,15 @@ export function DataTable<TData, TValue>({
     }
   };
 
-  const isSomeSelected = selectedCategories.length > 0 && !allCategoriesSelected;
+  const isSomeSelected =
+    selectedCategories.length > 0 && !allCategoriesSelected;
+
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setGlobalFilter("");
+    setAllCategoriesSelected(true);
+    setSelectedCategories([]);
+  }, []);
 
   return (
     <>
@@ -144,12 +161,14 @@ export function DataTable<TData, TValue>({
       <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
         {/* Category Filter Row */}
         <div className="flex flex-wrap items-center gap-4 mb-4">
-          <span className="text-sm font-medium">Filtra per:</span>
+          <span className="text-sm font-medium">Categoria:</span>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="all-categories"
-                checked={isSomeSelected ? "indeterminate" : allCategoriesSelected}
+                checked={
+                  isSomeSelected ? "indeterminate" : allCategoriesSelected
+                }
                 onCheckedChange={handleSelectAllCategories}
               />
               <Label
@@ -185,8 +204,8 @@ export function DataTable<TData, TValue>({
             })}
           </div>
         </div>
-        
-        {/* Search Row */}
+
+        {/* Search Row with Clear Button */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -194,9 +213,20 @@ export function DataTable<TData, TValue>({
               value={globalFilter ?? ""}
               onChange={(value) => setGlobalFilter(String(value))}
               className="pl-9"
-              placeholder="Cerca progetto..."
+              placeholder="Cerca per codice, cliente, oggetto, CAP..."
             />
           </div>
+          {(globalFilter || !allCategoriesSelected) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearAllFilters}
+              className="h-9 gap-1"
+            >
+              <X className="h-4 w-4" />
+              Cancella filtri
+            </Button>
+          )}
         </div>
       </div>
 
@@ -209,7 +239,7 @@ export function DataTable<TData, TValue>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead 
+                      <TableHead
                         key={header.id}
                         style={{
                           width: header.getSize(),
@@ -232,7 +262,8 @@ export function DataTable<TData, TValue>({
                             className={cn(
                               "absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none",
                               "opacity-0 group-hover:opacity-100 hover:bg-primary/50",
-                              header.column.getIsResizing() && "bg-primary opacity-100"
+                              header.column.getIsResizing() &&
+                                "bg-primary opacity-100"
                             )}
                           />
                         )}
@@ -250,7 +281,7 @@ export function DataTable<TData, TValue>({
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell 
+                      <TableCell
                         key={cell.id}
                         style={{
                           width: cell.column.getSize(),

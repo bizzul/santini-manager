@@ -85,6 +85,7 @@ export interface Client {
     clientLanguage?: string;
     code?: string;
     address?: string;
+    addressSecondary?: string;
     city?: string;
     countryCode?: string;
     zipCode?: number;

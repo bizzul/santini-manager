@@ -30,10 +30,12 @@ import {
   Power,
   PowerOff,
   Briefcase,
+  Shield,
 } from "lucide-react";
 import { Collaborator } from "./columns";
 import { EditCollaboratorDialog } from "./edit-collaborator-dialog";
 import { RoleManagementDialog } from "./role-management-dialog";
+import { SystemRoleDialog } from "./system-role-dialog";
 import {
   removeCollaboratorFromSite,
   sendPasswordResetEmail,
@@ -45,6 +47,7 @@ interface CollaboratorActionsProps {
   siteId: string;
   domain: string;
   isAdmin: boolean;
+  currentUserRole?: string;
 }
 
 export function CollaboratorActions({
@@ -52,9 +55,11 @@ export function CollaboratorActions({
   siteId,
   domain,
   isAdmin,
+  currentUserRole,
 }: CollaboratorActionsProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isRolesOpen, setIsRolesOpen] = useState(false);
+  const [isSystemRoleOpen, setIsSystemRoleOpen] = useState(false);
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [isToggleStatusOpen, setIsToggleStatusOpen] = useState(false);
@@ -63,6 +68,10 @@ export function CollaboratorActions({
 
   // Non mostrare azioni per admin dell'organizzazione (non possono essere rimossi dal sito)
   const isOrgAdmin = collaborator.is_org_admin;
+
+  // Check if current user can change system roles (only admin and superadmin)
+  const canChangeSystemRole =
+    currentUserRole === "admin" || currentUserRole === "superadmin";
 
   if (!isAdmin) {
     return null;
@@ -184,6 +193,12 @@ export function CollaboratorActions({
             <Briefcase className="h-4 w-4 mr-2" />
             Gestione Ruoli
           </DropdownMenuItem>
+          {canChangeSystemRole && (
+            <DropdownMenuItem onClick={() => setIsSystemRoleOpen(true)}>
+              <Shield className="h-4 w-4 mr-2" />
+              Ruolo di Sistema
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setIsPasswordResetOpen(true)}>
             <Key className="h-4 w-4 mr-2" />
             Reset Password
@@ -233,6 +248,18 @@ export function CollaboratorActions({
         isOpen={isRolesOpen}
         onClose={() => setIsRolesOpen(false)}
       />
+
+      {/* System Role Dialog - Only for admin/superadmin */}
+      {canChangeSystemRole && (
+        <SystemRoleDialog
+          collaborator={collaborator}
+          siteId={siteId}
+          domain={domain}
+          currentUserRole={currentUserRole || "user"}
+          isOpen={isSystemRoleOpen}
+          onClose={() => setIsSystemRoleOpen(false)}
+        />
+      )}
 
       {/* Remove Confirmation Dialog */}
       <AlertDialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>

@@ -72,6 +72,7 @@ export async function editItem(props: Client, id: number, domain: string) {
           clientType: result.data.clientType,
           individualLastName: result.data?.individualLastName,
           address: result.data?.address,
+          addressSecondary: result.data?.addressSecondary,
           city: result.data?.city,
           countryCode: result.data?.countryCode,
           email: result.data?.email,
@@ -87,7 +88,10 @@ export async function editItem(props: Client, id: number, domain: string) {
 
       if (updateError) {
         console.error("Error updating client:", updateError);
-        return { message: "Errore nell'aggiornamento del cliente!", error: updateError.message };
+        return {
+          message: "Errore nell'aggiornamento del cliente!",
+          error: updateError.message,
+        };
       }
 
       // Create a new Action record to track the user action
@@ -115,7 +119,10 @@ export async function editItem(props: Client, id: number, domain: string) {
     } catch (error: any) {
       console.error("Error updating client:", error);
       // Make sure to return a plain object
-      return { message: "Aggiornamento elemento fallito!", error: error.message };
+      return {
+        message: "Aggiornamento elemento fallito!",
+        error: error.message,
+      };
     }
   } else {
     return { message: "Validazione elemento fallita!" };

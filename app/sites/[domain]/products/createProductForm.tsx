@@ -37,6 +37,7 @@ import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Plus, Loader2 } from "lucide-react";
 import { SellProductCategory } from "@/types/supabase";
+import { DocumentUpload } from "@/components/ui/document-upload";
 
 type Props = {
   handleClose: any;
@@ -327,12 +328,24 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
           name="doc_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL Documenti</FormLabel>
+              <FormLabel>Scheda Tecnica</FormLabel>
               <FormControl>
-                <Input placeholder="https://..." {...field} />
+                <DocumentUpload
+                  siteId={siteId}
+                  folder="sell-products"
+                  currentUrl={field.value || undefined}
+                  onUploadComplete={(url) => field.onChange(url)}
+                  onRemove={() => field.onChange("")}
+                  onError={(error) => {
+                    toast({
+                      variant: "destructive",
+                      description: error,
+                    });
+                  }}
+                />
               </FormControl>
               <FormDescription>
-                Link alla cartella documenti del prodotto
+                Carica la scheda tecnica del prodotto (PDF)
               </FormDescription>
               <FormMessage />
             </FormItem>
