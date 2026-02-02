@@ -34,18 +34,13 @@ export async function generateMetadata({
   }
 }
 
-export const revalidate = 0; // Disable caching for debugging
-
 export default async function VenditaDashboardPage({
   params,
 }: {
   params: Promise<{ domain: string }>;
 }) {
   const { domain } = await params;
-  console.log("[Vendita Page] Domain:", domain);
-
   const siteContext = await requireServerSiteContext(domain);
-  console.log("[Vendita Page] Site context siteId:", siteContext.siteId);
 
   // Fetch real dashboard data
   const dashboardData = await fetchVenditaDashboardData(siteContext.siteId);

@@ -1946,8 +1946,6 @@ export interface VenditaDashboardStats {
 
 export const fetchVenditaDashboardData = cache(
     async (siteId: string): Promise<VenditaDashboardStats> => {
-        console.log("[Vendita Dashboard] Fetching data for siteId:", siteId);
-
         const supabase = await createClient();
 
         const now = new Date();
@@ -2027,51 +2025,10 @@ export const fetchVenditaDashboardData = cache(
                 .gte("created_at", sixMonthsAgo.toISOString()),
         ]);
 
-        // Check for errors
-        if (kanbansResult.error) {
-            console.error(
-                "[Vendita Dashboard] Kanbans query error:",
-                kanbansResult.error,
-            );
-        }
-        if (tasksResult.error) {
-            console.error(
-                "[Vendita Dashboard] Tasks query error:",
-                tasksResult.error,
-            );
-        }
-        if (columnsResult.error) {
-            console.error(
-                "[Vendita Dashboard] Columns query error:",
-                columnsResult.error,
-            );
-        }
-        if (kanbanCategoriesResult.error) {
-            console.error(
-                "[Vendita Dashboard] Categories query error:",
-                kanbanCategoriesResult.error,
-            );
-        }
-
         const tasks = tasksResult.data || [];
         const columns = columnsResult.data || [];
         const kanbanCategories = kanbanCategoriesResult.data || [];
         const historicalTasks = historicalTasksResult.data || [];
-
-        // Debug logging
-        console.log("[Vendita Dashboard] Tasks count:", tasks.length);
-        console.log("[Vendita Dashboard] Kanbans count:", kanbans.length);
-        console.log(
-            "[Vendita Dashboard] Offer kanbans:",
-            kanbans.filter((k) => k.is_offer_kanban).map((k) => ({
-                id: k.id,
-                title: k.title,
-            })),
-        );
-        console.log(
-            "[Vendita Dashboard] Task types:",
-            Array.from(new Set(tasks.map((t: any) => t.task_type))),
-        );
 
         // Create lookup maps
         const offerKanbanIds = new Set(
@@ -2089,17 +2046,6 @@ export const fetchVenditaDashboardData = cache(
                 task.task_type === "OFFERTA" ||
                 offerKanbanIds.has(task.kanbanId),
         );
-
-        console.log("[Vendita Dashboard] Offers found:", offers.length);
-        if (offers.length > 0) {
-            console.log("[Vendita Dashboard] Sample offer:", {
-                id: offers[0].id,
-                task_type: offers[0].task_type,
-                kanbanId: offers[0].kanbanId,
-                display_mode: offers[0].display_mode,
-                sellPrice: offers[0].sellPrice,
-            });
-        }
 
         // Initialize status counters
         const offerStatus = {
@@ -2410,6 +2356,365 @@ export const fetchVenditaDashboardData = cache(
                 },
             },
             alerts: limitedAlerts,
+        };
+    },
+);
+
+// ============================================
+// AVOR DASHBOARD DATA
+// ============================================
+
+export interface AvorColumnStatus {
+    columnId: number;
+    columnName: string;
+    count: number;
+    delayed: number;
+    position: number;
+}
+
+export interface AvorWorkloadData {
+    category: string;
+    color: string;
+    columns: Array<{
+        columnName: string;
+        count: number;
+    }>;
+}
+
+export interface AvorWeeklyTrend {
+    week: string;
+    columns: Array<{
+        columnName: string;
+        count: number;
+    }>;
+}
+
+export interface AvorAlert {
+    id: number;
+    message: string;
+    type: "delayed" | "stale" | "missing_data";
+    priority: "high" | "medium" | "low";
+    taskCode?: string;
+    daysOverdue?: number;
+    daysSinceUpdate?: number;
+}
+
+export interface AvorDashboardStats {
+    // Status per column
+    columnStatus: AvorColumnStatus[];
+    // Workload by category and column
+    workloadData: AvorWorkloadData[];
+    // Column names for charts
+    columnNames: string[];
+    // Weekly trend data
+    weeklyTrend: AvorWeeklyTrend[];
+    // Alerts and criticalities
+    alerts: AvorAlert[];
+    // AVOR Kanban ID for filtering
+    avorKanbanId: number | null;
+}
+
+export const fetchAvorDashboardData = cache(
+    async (siteId: string): Promise<AvorDashboardStats> => {
+        const supabase = await createClient();
+
+        const now = new Date();
+        const fourWeeksAgo = new Date(now);
+        fourWeeksAgo.setDate(now.getDate() - 28);
+
+        // First find AVOR kanban(s) - by is_work_kanban flag or name pattern
+        const kanbansResult = await supabase
+            .from("Kanban")
+            .select("id, title, identifier, is_work_kanban, color")
+            .eq("site_id", siteId);
+
+        const allKanbans = kanbansResult.data || [];
+
+        // Find AVOR kanban - prefer is_work_kanban flag, fallback to name matching
+        const avorKanbans = allKanbans.filter((k) => {
+            if (k.is_work_kanban) return true;
+            const name = (k.title || k.identifier || "").toLowerCase();
+            return name.includes("avor") || name.includes("ufficio");
+        });
+
+        if (avorKanbans.length === 0) {
+            // No AVOR kanban found
+            return {
+                columnStatus: [],
+                workloadData: [],
+                columnNames: [],
+                weeklyTrend: [],
+                alerts: [],
+                avorKanbanId: null,
+            };
+        }
+
+        const avorKanban = avorKanbans[0]; // Use first AVOR kanban
+        const avorKanbanId = avorKanban.id;
+
+        // Fetch columns for this kanban and tasks
+        const [columnsResult, tasksResult, categoriesResult] = await Promise
+            .all(
+                [
+                    supabase
+                        .from("KanbanColumn")
+                        .select("id, title, identifier, position")
+                        .eq("kanbanId", avorKanbanId)
+                        .order("position", { ascending: true }),
+                    supabase
+                        .from("Task")
+                        .select(
+                            `
+                    id,
+                    unique_code,
+                    name,
+                    kanbanId,
+                    kanbanColumnId,
+                    deliveryDate,
+                    created_at,
+                    updated_at,
+                    archived,
+                    SellProduct:sellProductId(id, name, category:category_id(id, name, color))
+                `,
+                        )
+                        .eq("kanbanId", avorKanbanId)
+                        .eq("archived", false),
+                    supabase
+                        .from("sellproduct_categories")
+                        .select("id, name, color")
+                        .eq("site_id", siteId),
+                ],
+            );
+
+        const columns = columnsResult.data || [];
+        const tasks = tasksResult.data || [];
+        const categories = categoriesResult.data || [];
+
+        // Create column map
+        const columnMap = new Map(columns.map((c) => [c.id, c]));
+        const columnNames = columns.map((c) =>
+            c.title || c.identifier || `Col ${c.position}`
+        );
+
+        // 1. Calculate column status (KPI cards)
+        const columnStatus: AvorColumnStatus[] = columns.map((col) => {
+            const columnTasks = tasks.filter(
+                (t: any) => t.kanbanColumnId === col.id,
+            );
+            const delayed = columnTasks.filter((t: any) => {
+                if (!t.deliveryDate) return false;
+                return new Date(t.deliveryDate) < now;
+            }).length;
+
+            return {
+                columnId: col.id,
+                columnName: col.title || col.identifier ||
+                    `Col ${col.position}`,
+                count: columnTasks.length,
+                delayed,
+                position: col.position,
+            };
+        });
+
+        // 2. Calculate workload by category and column
+        const categoryWorkloadMap = new Map<
+            string,
+            { color: string; columns: Map<string, number> }
+        >();
+
+        // Initialize with existing categories
+        categories.forEach((cat) => {
+            const colMap = new Map<string, number>();
+            columnNames.forEach((name) => colMap.set(name, 0));
+            categoryWorkloadMap.set(cat.name, {
+                color: cat.color || "#6b7280",
+                columns: colMap,
+            });
+        });
+
+        // Add "Senza Categoria" default
+        if (!categoryWorkloadMap.has("Senza Categoria")) {
+            const colMap = new Map<string, number>();
+            columnNames.forEach((name) => colMap.set(name, 0));
+            categoryWorkloadMap.set("Senza Categoria", {
+                color: "#6b7280",
+                columns: colMap,
+            });
+        }
+
+        // Count tasks per category per column
+        tasks.forEach((task: any) => {
+            const column = columnMap.get(task.kanbanColumnId);
+            if (!column) return;
+
+            const columnName = column.title || column.identifier ||
+                `Col ${column.position}`;
+            const categoryName = task.SellProduct?.category?.name ||
+                "Senza Categoria";
+            const categoryColor = task.SellProduct?.category?.color ||
+                "#6b7280";
+
+            if (!categoryWorkloadMap.has(categoryName)) {
+                const colMap = new Map<string, number>();
+                columnNames.forEach((name) => colMap.set(name, 0));
+                categoryWorkloadMap.set(categoryName, {
+                    color: categoryColor,
+                    columns: colMap,
+                });
+            }
+
+            const catData = categoryWorkloadMap.get(categoryName)!;
+            catData.columns.set(
+                columnName,
+                (catData.columns.get(columnName) || 0) + 1,
+            );
+        });
+
+        // Convert to array format
+        const workloadData: AvorWorkloadData[] = Array.from(
+            categoryWorkloadMap.entries(),
+        )
+            .filter(([_, data]) => {
+                // Only include categories with at least one task
+                return Array.from(data.columns.values()).some((v) => v > 0);
+            })
+            .map(([category, data]) => ({
+                category,
+                color: data.color,
+                columns: columnNames.map((name) => ({
+                    columnName: name,
+                    count: data.columns.get(name) || 0,
+                })),
+            }))
+            .sort((a, b) => {
+                const totalA = a.columns.reduce((sum, c) => sum + c.count, 0);
+                const totalB = b.columns.reduce((sum, c) => sum + c.count, 0);
+                return totalB - totalA;
+            });
+
+        // 3. Calculate weekly trend (last 4 weeks)
+        const weeklyTrend: AvorWeeklyTrend[] = [];
+        for (let i = 3; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - i * 7 - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+
+            const weekLabel = `Sett. ${4 - i}`;
+
+            // Count tasks per column for this week (based on created_at)
+            const weekColumns = columnNames.map((colName) => {
+                const column = columns.find(
+                    (c) =>
+                        (c.title || c.identifier || `Col ${c.position}`) ===
+                            colName,
+                );
+                if (!column) return { columnName: colName, count: 0 };
+
+                const count = tasks.filter((t: any) => {
+                    if (t.kanbanColumnId !== column.id) return false;
+                    const createdAt = new Date(t.created_at);
+                    return createdAt >= weekStart && createdAt < weekEnd;
+                }).length;
+
+                return { columnName: colName, count };
+            });
+
+            weeklyTrend.push({
+                week: weekLabel,
+                columns: weekColumns,
+            });
+        }
+
+        // 4. Generate alerts
+        const alerts: AvorAlert[] = [];
+
+        // Delayed tasks
+        tasks.forEach((task: any) => {
+            if (!task.deliveryDate) return;
+            const deliveryDate = new Date(task.deliveryDate);
+            if (deliveryDate >= now) return;
+
+            const daysOverdue = Math.floor(
+                (now.getTime() - deliveryDate.getTime()) /
+                    (1000 * 60 * 60 * 24),
+            );
+
+            alerts.push({
+                id: task.id,
+                message: `Pratica #${
+                    task.unique_code || task.id
+                } in ritardo di ${daysOverdue} giorni`,
+                type: "delayed",
+                priority: daysOverdue > 7 ? "high" : "medium",
+                taskCode: task.unique_code || String(task.id),
+                daysOverdue,
+            });
+        });
+
+        // Stale tasks (no update in 14+ days)
+        tasks.forEach((task: any) => {
+            if (!task.updated_at) return;
+            const updatedAt = new Date(task.updated_at);
+            const daysSinceUpdate = Math.floor(
+                (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24),
+            );
+
+            if (daysSinceUpdate >= 14) {
+                // Avoid duplicates with delayed
+                const isAlreadyDelayed = alerts.some(
+                    (a) => a.id === task.id && a.type === "delayed",
+                );
+                if (!isAlreadyDelayed) {
+                    alerts.push({
+                        id: task.id,
+                        message: `Pratica #${
+                            task.unique_code || task.id
+                        } ferma da ${daysSinceUpdate} giorni`,
+                        type: "stale",
+                        priority: daysSinceUpdate > 30 ? "high" : "medium",
+                        taskCode: task.unique_code || String(task.id),
+                        daysSinceUpdate,
+                    });
+                }
+            }
+        });
+
+        // Missing category
+        tasks.forEach((task: any) => {
+            if (!task.SellProduct?.category) {
+                // Check if not already in alerts
+                const exists = alerts.some((a) => a.id === task.id);
+                if (!exists) {
+                    alerts.push({
+                        id: task.id,
+                        message: `Pratica #${
+                            task.unique_code || task.id
+                        } senza categoria articoli`,
+                        type: "missing_data",
+                        priority: "low",
+                        taskCode: task.unique_code || String(task.id),
+                    });
+                }
+            }
+        });
+
+        // Sort by priority and limit to 10
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        alerts.sort((a, b) =>
+            priorityOrder[a.priority] - priorityOrder[b.priority]
+        );
+        const limitedAlerts = alerts.slice(0, 10);
+
+        return {
+            columnStatus,
+            workloadData,
+            columnNames,
+            weeklyTrend,
+            alerts: limitedAlerts,
+            avorKanbanId,
         };
     },
 );
