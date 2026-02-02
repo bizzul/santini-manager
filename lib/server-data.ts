@@ -2719,6 +2719,452 @@ export const fetchAvorDashboardData = cache(
     },
 );
 
+// ============================================
+// PRODUZIONE DASHBOARD DATA
+// ============================================
+
+export interface ProduzioneRepartoData {
+    reparto: string;
+    aperti: number;
+    ritardo: number;
+}
+
+export interface ProduzioneWeeklyData {
+    week: string;
+    columns: Array<{
+        columnName: string;
+        count: number;
+    }>;
+}
+
+export interface ProduzioneDashboardStats {
+    repartoData: ProduzioneRepartoData[];
+    weeklyTrend: ProduzioneWeeklyData[];
+    columnNames: string[];
+    productionKanbanId: number | null;
+}
+
+export const fetchProduzioneDashboardData = cache(
+    async (siteId: string): Promise<ProduzioneDashboardStats> => {
+        const supabase = await createClient();
+
+        const now = new Date();
+
+        // Find Production kanban(s)
+        const kanbansResult = await supabase
+            .from("Kanban")
+            .select(
+                "id, title, identifier, is_production_kanban, color, category_id",
+            )
+            .eq("site_id", siteId);
+
+        const allKanbans = kanbansResult.data || [];
+
+        // Find Production kanban - prefer flag, fallback to name matching
+        const productionKanbans = allKanbans.filter((k) => {
+            if (k.is_production_kanban) return true;
+            const name = (k.title || k.identifier || "").toLowerCase();
+            return (
+                name.includes("produzione") ||
+                name.includes("prod") ||
+                name.includes("officina") ||
+                name.includes("lavorazione")
+            );
+        });
+
+        if (productionKanbans.length === 0) {
+            return {
+                repartoData: [],
+                weeklyTrend: [],
+                columnNames: [],
+                productionKanbanId: null,
+            };
+        }
+
+        const productionKanban = productionKanbans[0];
+        const productionKanbanId = productionKanban.id;
+
+        // Fetch columns and tasks
+        const [columnsResult, tasksResult] = await Promise.all([
+            supabase
+                .from("KanbanColumn")
+                .select("id, title, identifier, position")
+                .eq("kanbanId", productionKanbanId)
+                .order("position", { ascending: true }),
+            supabase
+                .from("Task")
+                .select(
+                    `
+                    id,
+                    unique_code,
+                    name,
+                    kanbanId,
+                    kanbanColumnId,
+                    deliveryDate,
+                    created_at,
+                    updated_at,
+                    archived
+                `,
+                )
+                .eq("kanbanId", productionKanbanId)
+                .eq("archived", false),
+        ]);
+
+        const columns = columnsResult.data || [];
+        const tasks = tasksResult.data || [];
+
+        const columnMap = new Map(columns.map((c) => [c.id, c]));
+        const columnNames = columns.map(
+            (c) => c.title || c.identifier || `Col ${c.position}`,
+        );
+
+        // 1. Carico per reparto (colonne = reparti/stazioni)
+        const repartoData: ProduzioneRepartoData[] = columns.map((col) => {
+            const columnTasks = tasks.filter(
+                (t: any) => t.kanbanColumnId === col.id,
+            );
+            const ritardo = columnTasks.filter((t: any) => {
+                if (!t.deliveryDate) return false;
+                return new Date(t.deliveryDate) < now;
+            }).length;
+
+            return {
+                reparto: col.title || col.identifier || `Col ${col.position}`,
+                aperti: columnTasks.length,
+                ritardo,
+            };
+        });
+
+        // 2. Andamento settimanale (last 4 weeks)
+        const weeklyTrend: ProduzioneWeeklyData[] = [];
+        for (let i = 3; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - i * 7 - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+
+            const weekLabel = `Sett. ${4 - i}`;
+
+            const weekColumns = columnNames.map((colName) => {
+                const column = columns.find(
+                    (c) =>
+                        (c.title || c.identifier || `Col ${c.position}`) ===
+                            colName,
+                );
+                if (!column) return { columnName: colName, count: 0 };
+
+                const count = tasks.filter((t: any) => {
+                    if (t.kanbanColumnId !== column.id) return false;
+                    const createdAt = new Date(t.created_at);
+                    return createdAt >= weekStart && createdAt < weekEnd;
+                }).length;
+
+                return { columnName: colName, count };
+            });
+
+            weeklyTrend.push({
+                week: weekLabel,
+                columns: weekColumns,
+            });
+        }
+
+        return {
+            repartoData,
+            weeklyTrend,
+            columnNames,
+            productionKanbanId,
+        };
+    },
+);
+
+// ============================================
+// FATTURAZIONE DASHBOARD DATA
+// ============================================
+
+export interface FatturazioneAgingData {
+    bucket: string;
+    amount: number;
+    count: number;
+}
+
+export interface FatturazioneWeeklyData {
+    week: string;
+    incassi: number;
+    emesso: number;
+}
+
+export interface FatturazioneDashboardStats {
+    agingData: FatturazioneAgingData[];
+    weeklyTrend: FatturazioneWeeklyData[];
+    invoiceKanbanId: number | null;
+}
+
+export const fetchFatturazioneDashboardData = cache(
+    async (siteId: string): Promise<FatturazioneDashboardStats> => {
+        const supabase = await createClient();
+
+        const now = new Date();
+
+        // Fetch invoice tasks (task_type = 'FATTURA' or from invoice kanban)
+        const kanbansResult = await supabase
+            .from("Kanban")
+            .select("id, title, identifier, is_invoice_kanban")
+            .eq("site_id", siteId);
+
+        const allKanbans = kanbansResult.data || [];
+
+        // Find invoice kanban
+        const invoiceKanbans = allKanbans.filter((k) => {
+            if (k.is_invoice_kanban) return true;
+            const name = (k.title || k.identifier || "").toLowerCase();
+            return (
+                name.includes("fattura") ||
+                name.includes("invoice") ||
+                name.includes("fatturazione")
+            );
+        });
+
+        const invoiceKanban = invoiceKanbans[0];
+        const invoiceKanbanId = invoiceKanban?.id || null;
+
+        // Fetch invoice tasks
+        const tasksResult = await supabase
+            .from("Task")
+            .select(
+                `
+                id,
+                unique_code,
+                task_type,
+                sellPrice,
+                deliveryDate,
+                created_at,
+                updated_at,
+                archived,
+                kanbanId,
+                display_mode
+            `,
+            )
+            .eq("site_id", siteId)
+            .eq("archived", false);
+
+        const allTasks = tasksResult.data || [];
+
+        // Filter invoice tasks
+        const invoiceKanbanIds = new Set(invoiceKanbans.map((k) => k.id));
+        const invoices = allTasks.filter(
+            (task: any) =>
+                task.task_type === "FATTURA" ||
+                invoiceKanbanIds.has(task.kanbanId),
+        );
+
+        // Separate open vs paid invoices (paid = display_mode green or archived)
+        const openInvoices = invoices.filter(
+            (inv: any) => inv.display_mode !== "small_green" && !inv.archived,
+        );
+
+        // 1. Aging fatture (buckets: 0-30, 31-60, 61-90, 90+)
+        const agingBuckets = [
+            { bucket: "0-30", min: 0, max: 30, amount: 0, count: 0 },
+            { bucket: "31-60", min: 31, max: 60, amount: 0, count: 0 },
+            { bucket: "61-90", min: 61, max: 90, amount: 0, count: 0 },
+            { bucket: "90+", min: 91, max: Infinity, amount: 0, count: 0 },
+        ];
+
+        openInvoices.forEach((inv: any) => {
+            if (!inv.deliveryDate) return;
+            const dueDate = new Date(inv.deliveryDate);
+            const daysOverdue = Math.max(
+                0,
+                Math.floor(
+                    (now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24),
+                ),
+            );
+
+            const bucket = agingBuckets.find(
+                (b) => daysOverdue >= b.min && daysOverdue <= b.max,
+            );
+            if (bucket) {
+                bucket.amount += inv.sellPrice || 0;
+                bucket.count += 1;
+            }
+        });
+
+        const agingData: FatturazioneAgingData[] = agingBuckets.map((b) => ({
+            bucket: b.bucket,
+            amount: b.amount,
+            count: b.count,
+        }));
+
+        // 2. Incassi per settimana (last 4 weeks)
+        // Using paid invoices (display_mode = small_green) created_at or updated_at
+        const paidInvoices = invoices.filter(
+            (inv: any) => inv.display_mode === "small_green",
+        );
+
+        const weeklyTrend: FatturazioneWeeklyData[] = [];
+        for (let i = 3; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - i * 7 - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+
+            const weekLabel = `Sett. ${4 - i}`;
+
+            // Incassi: paid invoices in this week
+            const incassi = paidInvoices
+                .filter((inv: any) => {
+                    const paidDate = new Date(inv.updated_at || inv.created_at);
+                    return paidDate >= weekStart && paidDate < weekEnd;
+                })
+                .reduce(
+                    (sum: number, inv: any) => sum + (inv.sellPrice || 0),
+                    0,
+                );
+
+            // Emesso: all invoices created this week
+            const emesso = invoices
+                .filter((inv: any) => {
+                    const createdAt = new Date(inv.created_at);
+                    return createdAt >= weekStart && createdAt < weekEnd;
+                })
+                .reduce(
+                    (sum: number, inv: any) => sum + (inv.sellPrice || 0),
+                    0,
+                );
+
+            weeklyTrend.push({
+                week: weekLabel,
+                incassi,
+                emesso,
+            });
+        }
+
+        return {
+            agingData,
+            weeklyTrend,
+            invoiceKanbanId,
+        };
+    },
+);
+
+// ============================================
+// LAVORI INTERNI DASHBOARD DATA
+// ============================================
+
+export interface InterniCategoriaData {
+    categoria: string;
+    ore: number;
+}
+
+export interface InterniWeeklyData {
+    week: string;
+    oreInterne: number;
+}
+
+export interface InterniDashboardStats {
+    categoriaData: InterniCategoriaData[];
+    weeklyTrend: InterniWeeklyData[];
+}
+
+export const fetchInterniDashboardData = cache(
+    async (siteId: string): Promise<InterniDashboardStats> => {
+        const supabase = await createClient();
+
+        const now = new Date();
+        const fourWeeksAgo = new Date(now);
+        fourWeeksAgo.setDate(now.getDate() - 28);
+
+        // Fetch internal time tracking entries
+        const [timetrackingResult, activitiesResult] = await Promise.all([
+            supabase
+                .from("Timetracking")
+                .select(
+                    `
+                    id,
+                    hours,
+                    minutes,
+                    totalTime,
+                    activity_type,
+                    internal_activity,
+                    created_at
+                `,
+                )
+                .eq("site_id", siteId)
+                .eq("activity_type", "internal")
+                .gte("created_at", fourWeeksAgo.toISOString()),
+            supabase
+                .from("internal_activities")
+                .select("id, code, label")
+                .or(`site_id.eq.${siteId},site_id.is.null`),
+        ]);
+
+        const timeEntries = timetrackingResult.data || [];
+        const activities = activitiesResult.data || [];
+
+        // Create activity label map
+        const activityMap = new Map(activities.map((a) => [a.code, a.label]));
+
+        // 1. Ore per categoria
+        const categoryHours = new Map<string, number>();
+
+        timeEntries.forEach((entry: any) => {
+            const code = entry.internal_activity || "altro";
+            const label = activityMap.get(code) || code;
+            const hours = entry.totalTime ||
+                entry.hours + (entry.minutes || 0) / 60;
+
+            categoryHours.set(label, (categoryHours.get(label) || 0) + hours);
+        });
+
+        const categoriaData: InterniCategoriaData[] = Array.from(
+            categoryHours.entries(),
+        )
+            .map(([categoria, ore]) => ({
+                categoria,
+                ore: Math.round(ore * 10) / 10,
+            }))
+            .sort((a, b) => b.ore - a.ore);
+
+        // 2. Trend settimanale (last 4 weeks)
+        const weeklyTrend: InterniWeeklyData[] = [];
+        for (let i = 3; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - i * 7 - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+
+            const weekLabel = `Sett. ${4 - i}`;
+
+            const oreInterne = timeEntries
+                .filter((entry: any) => {
+                    const createdAt = new Date(entry.created_at);
+                    return createdAt >= weekStart && createdAt < weekEnd;
+                })
+                .reduce((sum: number, entry: any) => {
+                    const hours = entry.totalTime ||
+                        entry.hours + (entry.minutes || 0) / 60;
+                    return sum + hours;
+                }, 0);
+
+            weeklyTrend.push({
+                week: weekLabel,
+                oreInterne: Math.round(oreInterne * 10) / 10,
+            });
+        }
+
+        return {
+            categoriaData,
+            weeklyTrend,
+        };
+    },
+);
+
 /**
  * Fetch collaborators for a site
  * Returns:
