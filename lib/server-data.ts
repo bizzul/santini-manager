@@ -3458,3 +3458,555 @@ export const fetchCollaborators = cache(async (siteId: string) => {
     log.info("Collaborators after filter (authId):", collaborators.length);
     return collaborators;
 });
+
+// ============================================
+// INVENTORY DASHBOARD DATA
+// ============================================
+
+export interface InventoryDashboardAlert {
+    id: string;
+    variantId?: string;
+    message: string;
+    type: "negative_qty" | "missing_cost" | "missing_category" | "low_stock";
+    priority: "high" | "medium" | "low";
+    itemName?: string;
+    categoryName?: string;
+}
+
+export interface InventoryDashboardStats {
+    // KPI data
+    totalInventoryValue: number;
+    availableValue: number;
+    activeItemsCount: number;
+    lowStockCount: number;
+    // Value by category
+    valueByCategory: Array<{
+        category: string;
+        categoryId?: string;
+        value: number;
+    }>;
+    // Value trend (weekly)
+    valueTrend: Array<{
+        week: string;
+        value: number;
+        movementCount: number;
+    }>;
+    // Top items by value
+    topItems: Array<{
+        id: string;
+        variantId: string;
+        name: string;
+        category: string;
+        categoryId?: string;
+        quantity: number;
+        unitCost: number;
+        totalValue: number;
+        lastUpdate: string;
+    }>;
+    // Alerts
+    alerts: InventoryDashboardAlert[];
+}
+
+export const fetchInventoryDashboardData = cache(
+    async (siteId: string): Promise<InventoryDashboardStats> => {
+        const supabase = await createClient();
+
+        // Fetch all inventory data in parallel
+        const [itemsResult, stockResult, movementsResult, categoriesResult] =
+            await Promise.all([
+                supabase
+                    .from("inventory_items")
+                    .select(
+                        `
+                    *,
+                    category:inventory_categories(*),
+                    variants:inventory_item_variants(
+                        *,
+                        unit:inventory_units(*)
+                    )
+                `,
+                    )
+                    .eq("site_id", siteId)
+                    .eq("is_active", true),
+                supabase
+                    .from("inventory_stock")
+                    .select("*")
+                    .eq("site_id", siteId),
+                supabase
+                    .from("inventory_stock_movements")
+                    .select("*")
+                    .eq("site_id", siteId)
+                    .order("occurred_at", { ascending: false }),
+                supabase
+                    .from("inventory_categories")
+                    .select("*")
+                    .eq("site_id", siteId),
+            ]);
+
+        const items = itemsResult.data || [];
+        const stock = stockResult.data || [];
+        const movements = movementsResult.data || [];
+        const categories = categoriesResult.data || [];
+
+        // Create stock lookup map (variant_id -> total quantity)
+        const stockMap = new Map<string, number>();
+        stock.forEach((s: any) => {
+            const currentQty = stockMap.get(s.variant_id) || 0;
+            stockMap.set(s.variant_id, currentQty + (s.quantity || 0));
+        });
+
+        // Create category lookup
+        const categoryMap = new Map<string, any>();
+        categories.forEach((cat: any) => {
+            categoryMap.set(cat.id, cat);
+        });
+
+        // Flatten items with variants and calculate values
+        const inventoryItems: any[] = [];
+        const alerts: InventoryDashboardAlert[] = [];
+        let totalInventoryValue = 0;
+        let activeItemsCount = 0;
+        let lowStockCount = 0;
+        const valueByCategoryMap = new Map<
+            string,
+            { value: number; categoryId?: string }
+        >();
+
+        items.forEach((item: any) => {
+            const variants = item.variants || [];
+            const categoryName = item.category?.name || "Senza categoria";
+            const categoryId = item.category?.id;
+
+            variants.forEach((variant: any) => {
+                const quantity = stockMap.get(variant.id) || 0;
+                const unitCost = variant.purchase_unit_price || 0;
+                const itemValue = quantity * unitCost;
+
+                inventoryItems.push({
+                    id: item.id,
+                    variantId: variant.id,
+                    name: item.name,
+                    category: categoryName,
+                    categoryId,
+                    quantity,
+                    unitCost,
+                    totalValue: itemValue,
+                    lastUpdate: variant.updated_at || item.updated_at || "",
+                });
+
+                totalInventoryValue += itemValue;
+                if (quantity > 0) {
+                    activeItemsCount++;
+                }
+
+                // Accumulate value by category
+                const catValue = valueByCategoryMap.get(categoryName) || {
+                    value: 0,
+                    categoryId,
+                };
+                catValue.value += itemValue;
+                valueByCategoryMap.set(categoryName, catValue);
+
+                // Check for alerts
+                if (quantity < 0) {
+                    alerts.push({
+                        id: `neg-${variant.id}`,
+                        variantId: variant.id,
+                        message:
+                            `"${item.name}" ha quantità negativa (${quantity})`,
+                        type: "negative_qty",
+                        priority: "high",
+                        itemName: item.name,
+                        categoryName,
+                    });
+                }
+
+                if (!unitCost || unitCost === 0) {
+                    alerts.push({
+                        id: `cost-${variant.id}`,
+                        variantId: variant.id,
+                        message: `"${item.name}" non ha costo unitario`,
+                        type: "missing_cost",
+                        priority: "medium",
+                        itemName: item.name,
+                        categoryName,
+                    });
+                }
+
+                if (!item.category_id) {
+                    alerts.push({
+                        id: `cat-${item.id}`,
+                        variantId: variant.id,
+                        message: `"${item.name}" non ha categoria assegnata`,
+                        type: "missing_category",
+                        priority: "low",
+                        itemName: item.name,
+                    });
+                }
+
+                // TODO: Check for low stock when min_qty field is available
+                // if (variant.min_qty && quantity < variant.min_qty) {
+                //     lowStockCount++;
+                //     alerts.push({
+                //         id: `low-${variant.id}`,
+                //         variantId: variant.id,
+                //         message: `"${item.name}" sotto scorta minima (${quantity}/${variant.min_qty})`,
+                //         type: "low_stock",
+                //         priority: "high",
+                //         itemName: item.name,
+                //         categoryName,
+                //     });
+                // }
+            });
+        });
+
+        // Convert category values to array and sort
+        const valueByCategory = Array.from(valueByCategoryMap.entries())
+            .map(([category, data]) => ({
+                category,
+                categoryId: data.categoryId,
+                value: data.value,
+            }))
+            .sort((a, b) => b.value - a.value);
+
+        // Calculate weekly value trend from movements
+        const now = new Date();
+        const weeklyTrendMap = new Map<
+            string,
+            { value: number; movementCount: number }
+        >();
+
+        // Initialize last 8 weeks
+        for (let i = 7; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - i * 7);
+            const weekKey = `W${weekStart.toISOString().slice(0, 10)}`;
+            weeklyTrendMap.set(weekKey, { value: 0, movementCount: 0 });
+        }
+
+        // Count movements per week
+        movements.forEach((m: any) => {
+            const mDate = new Date(m.occurred_at);
+            const weeksDiff = Math.floor(
+                (now.getTime() - mDate.getTime()) / (7 * 24 * 60 * 60 * 1000),
+            );
+            if (weeksDiff >= 0 && weeksDiff < 8) {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - weeksDiff * 7);
+                const weekKey = `W${weekStart.toISOString().slice(0, 10)}`;
+                const current = weeklyTrendMap.get(weekKey) || {
+                    value: 0,
+                    movementCount: 0,
+                };
+                current.movementCount++;
+                weeklyTrendMap.set(weekKey, current);
+            }
+        });
+
+        const valueTrend = Array.from(weeklyTrendMap.entries()).map(
+            ([week, data]) => ({
+                week: week.replace("W", "Sett. ").slice(0, 15),
+                value: totalInventoryValue, // Simplified: shows current value for all weeks
+                movementCount: data.movementCount,
+            }),
+        );
+
+        // Sort top items by value and take top 30
+        const topItems = inventoryItems
+            .sort((a, b) => b.totalValue - a.totalValue)
+            .slice(0, 30);
+
+        // Limit alerts to 10
+        const limitedAlerts = alerts.slice(0, 10);
+
+        return {
+            totalInventoryValue,
+            availableValue: totalInventoryValue, // No reserved qty implemented yet
+            activeItemsCount,
+            lowStockCount,
+            valueByCategory,
+            valueTrend,
+            topItems,
+            alerts: limitedAlerts,
+        };
+    },
+);
+
+// ============================================
+// PRODUCTS DASHBOARD DATA
+// ============================================
+
+export interface ProductsDashboardAlert {
+    id: number | string;
+    message: string;
+    type: "missing_price" | "missing_category" | "missing_production_qty";
+    priority: "high" | "medium" | "low";
+    productName?: string;
+}
+
+export interface ProductsDashboardStats {
+    // Resale products KPIs
+    resale: {
+        availableProducts: number;
+        activeCategories: number;
+        productsWithoutCategory: number;
+        productsByCategory: Array<{
+            category: string;
+            categoryId?: number;
+            count: number;
+            color?: string;
+        }>;
+        products: Array<{
+            id: number;
+            name: string;
+            category: string;
+            categoryId?: number;
+            sku?: string;
+            active: boolean;
+        }>;
+    };
+    // Production (factory) KPIs
+    production: {
+        totalElementsProduced: number;
+        avgElementsPerWeek: number;
+        elementsByWeek: Array<{
+            week: string;
+            elements: number;
+        }>;
+        elementsByCategory: Array<{
+            category: string;
+            categoryId?: number;
+            elements: number;
+            color?: string;
+        }>;
+    };
+    // Alerts
+    alerts: ProductsDashboardAlert[];
+}
+
+export const fetchProductsDashboardData = cache(
+    async (siteId: string): Promise<ProductsDashboardStats> => {
+        const supabase = await createClient();
+
+        // Fetch sell products and production tasks in parallel
+        const [productsResult, categoriesResult, tasksResult] = await Promise
+            .all([
+                supabase
+                    .from("SellProduct")
+                    .select("*, category:category_id(id, name, color)")
+                    .eq("site_id", siteId),
+                supabase
+                    .from("sellproduct_categories")
+                    .select("*")
+                    .eq("site_id", siteId),
+                supabase
+                    .from("Task")
+                    .select(
+                        `
+                    id,
+                    name,
+                    numero_pezzi,
+                    created_at,
+                    updated_at,
+                    archived,
+                    task_type,
+                    SellProduct:sellProductId(id, name, category:category_id(id, name, color))
+                `,
+                    )
+                    .eq("site_id", siteId)
+                    .eq("archived", false),
+            ]);
+
+        const products = productsResult.data || [];
+        const categories = categoriesResult.data || [];
+        const tasks = tasksResult.data || [];
+        const alerts: ProductsDashboardAlert[] = [];
+
+        // ============================================
+        // RESALE PRODUCTS ANALYSIS
+        // ============================================
+
+        // Filter active resale products
+        const activeProducts = products.filter((p: any) => p.active === true);
+        const productsWithoutCategory = activeProducts.filter(
+            (p: any) => !p.category_id,
+        );
+
+        // Count products by category
+        const productsByCategoryMap = new Map<
+            string,
+            { count: number; categoryId?: number; color?: string }
+        >();
+
+        activeProducts.forEach((product: any) => {
+            const categoryName = product.category?.name || "Senza categoria";
+            const categoryId = product.category?.id;
+            const categoryColor = product.category?.color;
+
+            const current = productsByCategoryMap.get(categoryName) || {
+                count: 0,
+                categoryId,
+                color: categoryColor,
+            };
+            current.count++;
+            productsByCategoryMap.set(categoryName, current);
+        });
+
+        const productsByCategory = Array.from(productsByCategoryMap.entries())
+            .map(([category, data]) => ({
+                category,
+                categoryId: data.categoryId,
+                count: data.count,
+                color: data.color,
+            }))
+            .sort((a, b) => b.count - a.count);
+
+        // Get unique active categories count
+        const activeCategoryIds = new Set(
+            activeProducts
+                .filter((p: any) => p.category_id)
+                .map((p: any) => p.category_id),
+        );
+
+        // Map products for table
+        const resaleProducts = activeProducts.map((p: any) => ({
+            id: p.id,
+            name: p.name || "",
+            category: p.category?.name || "Senza categoria",
+            categoryId: p.category?.id,
+            sku: p.internal_code || "",
+            active: p.active === true,
+        }));
+
+        // ============================================
+        // PRODUCTION ANALYSIS
+        // ============================================
+
+        // Filter production tasks (LAVORO type or with numero_pezzi)
+        const productionTasks = tasks.filter(
+            (t: any) => t.task_type === "LAVORO" || t.numero_pezzi,
+        );
+
+        // Calculate total elements produced
+        let totalElementsProduced = 0;
+        const elementsByWeekMap = new Map<string, number>();
+        const elementsByCategoryMap = new Map<
+            string,
+            { elements: number; categoryId?: number; color?: string }
+        >();
+
+        // Initialize last 8 weeks
+        const now = new Date();
+        for (let i = 7; i >= 0; i--) {
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - i * 7);
+            const weekKey = `W${weekStart.toISOString().slice(0, 10)}`;
+            elementsByWeekMap.set(weekKey, 0);
+        }
+
+        productionTasks.forEach((task: any) => {
+            const elements = task.numero_pezzi || 1; // Default to 1 if not set
+            totalElementsProduced += elements;
+
+            // Group by week
+            const taskDate = new Date(task.created_at || task.updated_at);
+            const weeksDiff = Math.floor(
+                (now.getTime() - taskDate.getTime()) /
+                    (7 * 24 * 60 * 60 * 1000),
+            );
+            if (weeksDiff >= 0 && weeksDiff < 8) {
+                const weekStart = new Date(now);
+                weekStart.setDate(now.getDate() - weeksDiff * 7);
+                const weekKey = `W${weekStart.toISOString().slice(0, 10)}`;
+                const current = elementsByWeekMap.get(weekKey) || 0;
+                elementsByWeekMap.set(weekKey, current + elements);
+            }
+
+            // Group by category
+            const categoryName = task.SellProduct?.category?.name ||
+                "Senza categoria";
+            const categoryId = task.SellProduct?.category?.id;
+            const categoryColor = task.SellProduct?.category?.color;
+
+            const catData = elementsByCategoryMap.get(categoryName) || {
+                elements: 0,
+                categoryId,
+                color: categoryColor,
+            };
+            catData.elements += elements;
+            elementsByCategoryMap.set(categoryName, catData);
+
+            // Check for missing production qty alert
+            if (!task.numero_pezzi) {
+                alerts.push({
+                    id: task.id,
+                    message: `Commessa "${
+                        task.name || task.id
+                    }" senza numero pezzi specificato`,
+                    type: "missing_production_qty",
+                    priority: "low",
+                    productName: task.name,
+                });
+            }
+        });
+
+        const elementsByWeek = Array.from(elementsByWeekMap.entries()).map(
+            ([week, elements]) => ({
+                week: week.replace("W", "Sett. ").slice(0, 15),
+                elements,
+            }),
+        );
+
+        const elementsByCategory = Array.from(elementsByCategoryMap.entries())
+            .map(([category, data]) => ({
+                category,
+                categoryId: data.categoryId,
+                elements: data.elements,
+                color: data.color,
+            }))
+            .sort((a, b) => b.elements - a.elements);
+
+        // Calculate average elements per week
+        const weeksWithProduction = elementsByWeek.filter(
+            (w) => w.elements > 0,
+        ).length;
+        const avgElementsPerWeek = weeksWithProduction > 0
+            ? Math.round(totalElementsProduced / weeksWithProduction)
+            : 0;
+
+        // ============================================
+        // ALERTS
+        // ============================================
+
+        // Products without category
+        productsWithoutCategory.forEach((p: any) => {
+            alerts.push({
+                id: p.id,
+                message: `Prodotto "${p.name}" senza categoria`,
+                type: "missing_category",
+                priority: "medium",
+                productName: p.name,
+            });
+        });
+
+        // Limit alerts to 10
+        const limitedAlerts = alerts.slice(0, 10);
+
+        return {
+            resale: {
+                availableProducts: activeProducts.length,
+                activeCategories: activeCategoryIds.size,
+                productsWithoutCategory: productsWithoutCategory.length,
+                productsByCategory,
+                products: resaleProducts,
+            },
+            production: {
+                totalElementsProduced,
+                avgElementsPerWeek,
+                elementsByWeek,
+                elementsByCategory,
+            },
+            alerts: limitedAlerts,
+        };
+    },
+);
