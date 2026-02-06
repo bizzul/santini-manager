@@ -15,7 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
-import { createInventoryItemSchema, type CreateInventoryItemInput } from "@/validation/inventory";
+import {
+  createInventoryItemSchema,
+  type CreateInventoryItemInput,
+} from "@/validation/inventory";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
@@ -30,7 +33,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { InventoryCategory, InventorySupplier, InventoryUnit, InventoryWarehouse } from "@/types/supabase";
+import {
+  InventoryCategory,
+  InventorySupplier,
+  InventoryUnit,
+  InventoryWarehouse,
+} from "@/types/supabase";
 
 const CreateProductForm = ({
   handleClose,
@@ -46,12 +54,19 @@ const CreateProductForm = ({
   const domain = pathname.split("/")[2] || "";
 
   const [units, setUnits] = useState<InventoryUnit[]>(data.units || []);
-  const [categories, setCategories] = useState<InventoryCategory[]>(data.categories || []);
-  const [suppliers, setSuppliers] = useState<InventorySupplier[]>(data.suppliers || []);
-  const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>(data.warehouses || []);
+  const [categories, setCategories] = useState<InventoryCategory[]>(
+    data.categories || []
+  );
+  const [suppliers, setSuppliers] = useState<InventorySupplier[]>(
+    data.suppliers || []
+  );
+  const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>(
+    data.warehouses || []
+  );
 
   const form = useForm<CreateInventoryItemInput>({
     resolver: zodResolver(createInventoryItemSchema),
+    mode: "onChange",
     defaultValues: {
       name: "",
       description: "",
@@ -98,15 +113,36 @@ const CreateProductForm = ({
   useEffect(() => {
     if (units.length === 0) {
       fetch("/api/inventory/units/")
-        .then(res => res.json())
-        .then(data => setUnits(data))
+        .then((res) => res.json())
+        .then((data) => setUnits(data))
         .catch(console.error);
     }
   }, [units.length]);
 
   const onSubmit: SubmitHandler<CreateInventoryItemInput> = async (d) => {
     try {
-      console.log("Submitting form data:", d);
+      console.log("=== FORM SUBMISSION DEBUG ===");
+      console.log("Form data received:", JSON.stringify(d, null, 2));
+      console.log("Name field value:", d.name);
+      console.log("Name field type:", typeof d.name);
+      console.log("All form values:", form.getValues());
+
+      // Client-side validation
+      if (!d.name || d.name.trim() === "") {
+        toast({
+          variant: "destructive",
+          title: "Campo obbligatorio mancante",
+          description:
+            "Il campo 'Nome' è obbligatorio. Inserisci il nome del prodotto.",
+          duration: 5000,
+        });
+        form.setError("name", {
+          type: "manual",
+          message: "Il nome è obbligatorio",
+        });
+        return;
+      }
+
       const result = await createItem(d, domain);
       if (result.error) {
         console.error("Validation error details:", result);
@@ -114,7 +150,7 @@ const CreateProductForm = ({
           variant: "destructive",
           title: "Errore di validazione",
           description: result.error,
-          duration: 8000,
+          duration: 10000,
         });
       } else {
         handleClose(false);
@@ -202,14 +238,21 @@ const CreateProductForm = ({
 
           <div className="grid grid-cols-2 gap-4">
             <FormField
-              disabled={isSubmitting}
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nome *</FormLabel>
+                  <FormLabel className="text-red-500">
+                    Nome * (obbligatorio)
+                  </FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input
+                      {...field}
+                      disabled={isSubmitting}
+                      placeholder="Inserisci il nome del prodotto"
+                      autoFocus
+                      className={!field.value ? "border-red-500" : ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -259,7 +302,11 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Codice Interno</FormLabel>
                   <FormControl>
-                    <Input placeholder="es. LG_PA_MEL_9010" {...field} value={field.value || ""} />
+                    <Input
+                      placeholder="es. LG_PA_MEL_9010"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -273,7 +320,11 @@ const CreateProductForm = ({
                 <FormItem>
                   <FormLabel>Nr. Magazzino</FormLabel>
                   <FormControl>
-                    <Input placeholder="es. 1000" {...field} value={field.value || ""} />
+                    <Input
+                      placeholder="es. 1000"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -301,7 +352,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -322,7 +375,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -343,7 +398,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -366,7 +423,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -387,7 +446,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -416,7 +477,9 @@ const CreateProductForm = ({
                       type="number"
                       {...field}
                       value={field.value ?? 0}
-                      onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                      onChange={(e) =>
+                        field.onChange(Number(e.target.value) || 0)
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -465,7 +528,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -487,7 +552,9 @@ const CreateProductForm = ({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? Number(e.target.value) : null)
+                        field.onChange(
+                          e.target.value ? Number(e.target.value) : null
+                        )
                       }
                     />
                   </FormControl>
@@ -514,7 +581,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Sottocategoria</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. Pannelli" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. Pannelli"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -528,7 +599,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Sottocategoria</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. PA" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. PA"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -544,7 +619,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. Pannello melaminico" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. Pannello melaminico"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -558,7 +637,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Sottocategoria 2</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. MEL" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. MEL"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -582,7 +665,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Colore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. BIANCO" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. BIANCO"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -596,7 +683,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Colore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. 9010" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. 9010"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -620,7 +711,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Produttore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. HERZOG-HELMIGER" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. HERZOG-HELMIGER"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -634,7 +729,11 @@ const CreateProductForm = ({
                     <FormItem>
                       <FormLabel>Codice Produttore</FormLabel>
                       <FormControl>
-                        <Input placeholder="es. HEHE" {...field} value={field.value || ""} />
+                        <Input
+                          placeholder="es. HEHE"
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -649,7 +748,11 @@ const CreateProductForm = ({
                   <FormItem>
                     <FormLabel>Codice Fornitore</FormLabel>
                     <FormControl>
-                      <Input placeholder="es. HEHE" {...field} value={field.value || ""} />
+                      <Input
+                        placeholder="es. HEHE"
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -671,7 +774,12 @@ const CreateProductForm = ({
                   <FormItem>
                     <FormLabel>URL Scheda Tecnica</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="https://..." {...field} value={field.value || ""} />
+                      <Input
+                        type="url"
+                        placeholder="https://..."
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -685,7 +793,12 @@ const CreateProductForm = ({
                   <FormItem>
                     <FormLabel>URL Immagine</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="https://..." {...field} value={field.value || ""} />
+                      <Input
+                        type="url"
+                        placeholder="https://..."
+                        {...field}
+                        value={field.value || ""}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

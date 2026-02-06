@@ -5,7 +5,10 @@ import { z } from "zod";
  */
 export const createInventoryItemSchema = z.object({
   // Item fields
-  name: z.string().min(1, "Nome richiesto"),
+  name: z.preprocess(
+    (val) => typeof val === "string" ? val.trim() : val,
+    z.string().min(1, "Il campo Nome è obbligatorio"),
+  ),
   description: z.preprocess(
     (val) => (val === "" ? null : val),
     z.string().nullable().optional(),
