@@ -6,8 +6,14 @@ import { z } from "zod";
 export const createInventoryItemSchema = z.object({
   // Item fields
   name: z.string().min(1, "Nome richiesto"),
-  description: z.string().optional(),
-  item_type: z.string().optional(),
+  description: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  item_type: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
   category_id: z.preprocess(
     (val) => (val === "" || val === undefined ? null : val),
     z.string().uuid().nullable().optional(),
@@ -21,10 +27,22 @@ export const createInventoryItemSchema = z.object({
   is_active: z.boolean().default(true),
 
   // Variant fields
-  internal_code: z.string().optional().nullable(),
-  supplier_code: z.string().optional().nullable(),
-  producer: z.string().optional().nullable(),
-  producer_code: z.string().optional().nullable(),
+  internal_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  supplier_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  producer: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  producer_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
   unit_id: z.preprocess(
     (val) => (val === "" || val === undefined ? null : val),
     z.string().uuid().nullable().optional(),
@@ -37,13 +55,28 @@ export const createInventoryItemSchema = z.object({
     (val) => (val ? Number(val) : null),
     z.number().nullable().optional(),
   ),
-  image_url: z.string().optional().nullable(),
-  url_tds: z.string().optional().nullable(),
-  warehouse_number: z.string().optional().nullable(),
+  image_url: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  url_tds: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  warehouse_number: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
 
   // Attributes (will be stored in JSONB)
-  color: z.string().optional().nullable(),
-  color_code: z.string().optional().nullable(),
+  color: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  color_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
   width: z.preprocess(
     (val) => (val ? Number(val) : null),
     z.number().nullable().optional(),
@@ -66,12 +99,30 @@ export const createInventoryItemSchema = z.object({
   ),
 
   // Category hierarchy (for display/filtering)
-  category: z.string().optional().nullable(),
-  category_code: z.string().optional().nullable(),
-  subcategory: z.string().optional().nullable(),
-  subcategory_code: z.string().optional().nullable(),
-  subcategory2: z.string().optional().nullable(),
-  subcategory2_code: z.string().optional().nullable(),
+  category: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  category_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  subcategory: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  subcategory_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  subcategory2: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
+  subcategory2_code: z.preprocess(
+    (val) => (val === "" ? null : val),
+    z.string().nullable().optional(),
+  ),
 
   // Initial stock quantity
   initial_quantity: z.preprocess(
