@@ -7,6 +7,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { getSiteContextFromDomain } from "@/lib/site-context";
 
 export async function createItem(props: any, domain?: string) {
+  console.log("Creating inventory item with data:", JSON.stringify(props, null, 2));
   const result = createInventoryItemSchema.safeParse(props);
   const userContext = await getUserContext();
   let userId = null;
@@ -141,6 +142,13 @@ export async function createItem(props: any, domain?: string) {
     }
   } else {
     console.error("Validation errors:", result.error.errors);
-    return { error: "Validazione fallita: " + result.error.errors.map(e => e.message).join(", ") };
+    const errorDetails = result.error.errors.map(e => {
+      const field = e.path.join('.');
+      return `${field}: ${e.message}`;
+    }).join("; ");
+    return { 
+      error: `Validazione fallita - ${errorDetails}`,
+      validationErrors: result.error.errors 
+    };
   }
 }

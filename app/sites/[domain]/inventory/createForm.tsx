@@ -106,11 +106,15 @@ const CreateProductForm = ({
 
   const onSubmit: SubmitHandler<CreateInventoryItemInput> = async (d) => {
     try {
+      console.log("Submitting form data:", d);
       const result = await createItem(d, domain);
       if (result.error) {
+        console.error("Validation error details:", result);
         toast({
           variant: "destructive",
+          title: "Errore di validazione",
           description: result.error,
+          duration: 8000,
         });
       } else {
         handleClose(false);
@@ -119,6 +123,7 @@ const CreateProductForm = ({
         });
       }
     } catch (e) {
+      console.error("Submit error:", e);
       toast({
         variant: "destructive",
         description: `Errore nel creare l'elemento! ${e}`,
