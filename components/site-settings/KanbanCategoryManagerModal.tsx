@@ -27,7 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Plus, Pencil, Trash2, Folder, Building2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Copy, Folder, Building2 } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { IconSelectorWithColor } from "@/components/kanbans/IconSelector";
 import { useQueryClient } from "@tanstack/react-query";
@@ -82,6 +82,7 @@ export default function KanbanCategoryManagerModal({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] =
     useState<KanbanCategory | null>(null);
+  const [duplicatingCategoryId, setDuplicatingCategoryId] = useState<number | null>(null);
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -243,6 +244,32 @@ export default function KanbanCategoryManagerModal({
     setDeleteDialogOpen(true);
   };
 
+  const handleDuplicate = async (category: KanbanCategory) => {
+    setDuplicatingCategoryId(category.id);
+    try {
+      const response = await fetch(`/api/kanban/categories/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: category.id, domain }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast.success(result.message || "Categoria duplicata con successo");
+        loadCategories();
+        queryClient.invalidateQueries({ queryKey: ["kanban-categories"] });
+      } else {
+        toast.error(result.error || "Impossibile duplicare la categoria");
+      }
+    } catch (error) {
+      console.error("Error duplicating category:", error);
+      toast.error("Impossibile duplicare la categoria");
+    } finally {
+      setDuplicatingCategoryId(null);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!categoryToDelete) return;
 
@@ -367,6 +394,20 @@ export default function KanbanCategoryManagerModal({
                               </div>
                             </div>
                             <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDuplicate(category)}
+                                disabled={duplicatingCategoryId === category.id}
+                                className="text-white/70 hover:text-white hover:bg-white/10"
+                                title="Duplica categoria e kanban"
+                              >
+                                {duplicatingCategoryId === category.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"

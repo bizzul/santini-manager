@@ -413,6 +413,74 @@ export async function createOrganizationAndInviteUser(
     };
 }
 
+// Duplicate organization (superadmin only)
+export async function duplicateOrganization(orgId: string) {
+    const supabase = await createClient();
+    const userContext = await getUserContext();
+
+    if (!userContext?.canAccessAllOrganizations) {
+        return {
+            success: false,
+            message: "Solo i superadmin possono duplicare organizzazioni",
+        };
+    }
+
+    const { data: org, error: fetchError } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("id", orgId)
+        .single();
+
+    if (fetchError || !org) {
+        return {
+            success: false,
+            message: "Organizzazione non trovata",
+        };
+    }
+
+    function generateOrganizationCode(): string {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    const newName = `${org.name} (copia)`;
+    let code = generateOrganizationCode();
+    let attempts = 0;
+    while (attempts < 10) {
+        const { data: existing } = await supabase
+            .from("organizations")
+            .select("id")
+            .eq("code", code)
+            .single();
+        if (!existing) break;
+        code = generateOrganizationCode();
+        attempts++;
+    }
+
+    const { data: newOrg, error: createError } = await supabase
+        .from("organizations")
+        .insert({
+            name: newName,
+            code,
+        })
+        .select()
+        .single();
+
+    if (createError || !newOrg) {
+        return {
+            success: false,
+            message: "Errore durante la duplicazione: " + (createError?.message || "Errore sconosciuto"),
+        };
+    }
+
+    revalidatePath("/administration/organizations");
+    revalidatePath("/administration");
+    return {
+        success: true,
+        message: `Organizzazione duplicata: "${newOrg.name}"`,
+        organizationId: newOrg.id,
+    };
+}
+
 // Update organization details
 export async function updateOrganization(orgId: string, updates: any) {
     const supabase = await createClient();

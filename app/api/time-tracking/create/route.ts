@@ -13,16 +13,16 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Extract site_id from headers or domain
-    let siteId = null;
+    // Extract site_id from headers (x-site-domain = subdomain from URL, e.g. "santini")
+    let siteId: string | null = null;
     const siteIdHeader = req.headers.get("x-site-id");
-    const domain = req.headers.get("host");
+    const siteDomain = req.headers.get("x-site-domain");
 
     if (siteIdHeader) {
       siteId = siteIdHeader;
-    } else if (domain) {
+    } else if (siteDomain) {
       try {
-        const siteResult = await getSiteData(domain);
+        const siteResult = await getSiteData(siteDomain);
         if (siteResult?.data) {
           siteId = siteResult.data.id;
         }
@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
         totalTime: roundedTotalTime,
         use_cnc: useCNC,
         employee_id: employeeId,
+        site_id: siteId,
         activity_type: activityType,
         lunch_offsite: data.lunchOffsite || false,
         lunch_location: data.lunchLocation || null,

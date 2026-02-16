@@ -14,6 +14,9 @@ type ErrorTrackingRow = {
   error_type?: string;
   error_category?: string;
   description?: string;
+  material_cost?: number;
+  time_spent_hours?: number;
+  transfer_km?: number;
   user?: {
     given_name?: string;
     family_name?: string;
@@ -42,11 +45,14 @@ const createErrorTrackingEditHandler = () => {
     field: string,
     newValue: string | number | boolean | null
   ): Promise<{ success?: boolean; error?: string }> => {
-    const formData = {
+    const formData: Record<string, unknown> = {
       description: rowData.description,
       errorCategory: rowData.error_category,
       errorType: rowData.error_type,
-      [field === "error_type" ? "errorType" : field === "error_category" ? "errorCategory" : field]: newValue,
+      materialCost: rowData.material_cost,
+      timeSpentHours: rowData.time_spent_hours,
+      transferKm: rowData.transfer_km,
+      [field === "error_type" ? "errorType" : field === "error_category" ? "errorCategory" : field === "material_cost" ? "materialCost" : field === "time_spent_hours" ? "timeSpentHours" : field === "transfer_km" ? "transferKm" : field]: newValue,
     };
 
     try {
@@ -186,6 +192,36 @@ export const createColumns = (): ColumnDef<ErrorTrackingRow>[] => {
           onSave={handleErrorTrackingEdit}
         />
       ),
+    },
+    {
+      accessorKey: "material_cost",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Costo mat. (CHF)" />
+      ),
+      cell: ({ row }) => {
+        const v = row.original.material_cost;
+        return v != null ? `${v} CHF` : "-";
+      },
+    },
+    {
+      accessorKey: "time_spent_hours",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Ore" />
+      ),
+      cell: ({ row }) => {
+        const v = row.original.time_spent_hours;
+        return v != null ? `${v} h` : "-";
+      },
+    },
+    {
+      accessorKey: "transfer_km",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="KM trasferta" />
+      ),
+      cell: ({ row }) => {
+        const v = row.original.transfer_km;
+        return v != null ? `${v} km` : "-";
+      },
     },
     {
       accessorKey: "files.image",

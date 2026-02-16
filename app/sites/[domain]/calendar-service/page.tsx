@@ -1,6 +1,6 @@
 import React from "react";
 import { Task, Kanban } from "@/types/supabase";
-import CalendarComponent from "@/components/calendar/calendarComponent";
+import CalendarTimeView from "@/components/calendar/CalendarTimeView";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
@@ -25,7 +25,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   // First, fetch tasks with delivery dates
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
-    .select("*")
+    .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
     .eq("site_id", siteId)
     .eq("archived", false)
     .not("deliveryDate", "is", null);
@@ -95,7 +95,7 @@ async function Page({
 
   return (
     <div className="container w-full mx-auto relative ">
-      <CalendarComponent tasks={data as TaskWithKanban[]} calendarType="service" />
+      <CalendarTimeView tasks={data as TaskWithKanban[]} calendarType="service" domain={domain} />
     </div>
   );
 }

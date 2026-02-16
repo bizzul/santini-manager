@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building, Globe, Users, Settings } from "lucide-react";
+import { DuplicateOrganizationButton } from "../DuplicateOrganizationButton";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
@@ -78,15 +79,18 @@ export default async function OrganizationDetailsPage({
               </Button>
             </Link>
             {role === "superadmin" && (
-              <Link href={`/administration/organizations/${id}/edit`}>
-                <Button
-                  variant="outline"
-                  className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Edit Organization
-                </Button>
-              </Link>
+              <>
+                <DuplicateOrganizationButton organizationId={id} />
+                <Link href={`/administration/organizations/${id}/edit`}>
+                  <Button
+                    variant="outline"
+                    className="border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Edit Organization
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
           <h1 className="text-4xl font-bold text-center text-white">

@@ -30,6 +30,10 @@ export const validation = z.object({
   productIds: z.array(z.number()).optional().nullable(),
   deliveryDate: z.preprocess(parseDate, z.date().optional().nullable()),
   termine_produzione: z.preprocess(parseDate, z.date().optional().nullable()),
+  // Posa/Service: ora inizio/fine (HH:mm), squadra (1 o 2)
+  ora_inizio: z.preprocess((v) => (v === "" || v == null ? null : v), z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional().nullable()),
+  ora_fine: z.preprocess((v) => (v === "" || v == null ? null : v), z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional().nullable()),
+  squadra: z.preprocess((val) => (val ? Number(val) : null), z.union([z.literal(1), z.literal(2)]).optional().nullable()),
   name: z.string().optional(),
   luogo: z.string().optional(),
   sellPrice: z.preprocess((val) => Number(val), z.number()),

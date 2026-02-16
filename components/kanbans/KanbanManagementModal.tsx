@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2, Copy } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import {
   Dialog,
@@ -36,6 +37,7 @@ import {
   AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { deleteKanban } from "@/app/sites/[domain]/kanban/actions/delete-kanban.action";
+import { duplicateKanban } from "@/app/sites/[domain]/kanban/actions/duplicate-kanban.action";
 import { KanbanCategorySelector } from "./KanbanCategorySelector";
 import { Badge } from "../ui/badge";
 import {
@@ -136,6 +138,8 @@ export default function KanbanManagementModal({
   );
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   // Load categories when domain is available
   useEffect(() => {
@@ -290,6 +294,28 @@ export default function KanbanManagementModal({
     setIsDeleteDialogOpen(true);
   };
 
+  const handleDuplicate = async () => {
+    if (!kanban?.id || !domain) return;
+    setIsDuplicating(true);
+    try {
+      const result = await duplicateKanban(kanban.id, domain);
+      if (result.success) {
+        toast({ description: result.message || "Kanban duplicato" });
+        setIsOpen(false);
+        setOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["kanbans"] });
+        queryClient.invalidateQueries({ queryKey: ["kanban-categories"] });
+        router.refresh();
+      } else {
+        toast({ variant: "destructive", description: result.error });
+      }
+    } catch {
+      toast({ variant: "destructive", description: "Errore durante la duplicazione" });
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (!kanban?.id) {
       toast({
@@ -362,11 +388,13 @@ export default function KanbanManagementModal({
         i === index ? { ...col, [field]: value } : col
       );
 
-      // Auto-generate column identifier when title changes in create mode
-      if (field === "title" && mode === "create" && identifier) {
+      // Auto-generate column identifier when title changes (create mode o nuova colonna in edit)
+      const col = updated[index] as Column & { id?: number };
+      const isNewColumn = !col.id || col.id <= 0;
+      if (field === "title" && identifier && (mode === "create" || isNewColumn)) {
         updated[index].identifier = value
           ? `${generateIdentifier(value)}_${identifier}`
-          : "";
+          : col.identifier || "";
       }
 
       return updated;
@@ -408,7 +436,7 @@ export default function KanbanManagementModal({
             {mode === "create"
               ? "Crea una nuova board kanban"
               : hasTasks
-              ? "Modifica solo le icone delle colonne"
+              ? "Puoi modificare titolo, icona, tipo e ordine delle colonne. Non puoi eliminare colonne che contengono task."
               : "Modifica la configurazione del kanban"}
           </DialogDescription>
         </DialogHeader>
@@ -691,6 +719,7 @@ export default function KanbanManagementModal({
             <div className="space-y-2">
               {columns.map((column, index) => (
                 <div key={index} className="flex items-center gap-2">
+                  {/* Elimina: solo se nessuna task (evita errori backend) */}
                   {(mode === "create" || (mode === "edit" && !hasTasks)) && (
                     <Button
                       type="button"
@@ -704,7 +733,8 @@ export default function KanbanManagementModal({
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
-                  {(mode === "create" || (mode === "edit" && !hasTasks)) && (
+                  {/* Riordino: sempre consentito (aggiorna solo position) */}
+                  {(mode === "create" || mode === "edit") && (
                     <div className="flex flex-col gap-1">
                       <Button
                         type="button"
@@ -717,7 +747,6 @@ export default function KanbanManagementModal({
                               const temp = arr[index - 1];
                               arr[index - 1] = arr[index];
                               arr[index] = temp;
-                              // Update positions
                               return arr.map((col, i) => ({
                                 ...col,
                                 position: i + 1,
@@ -740,7 +769,6 @@ export default function KanbanManagementModal({
                               const temp = arr[index + 1];
                               arr[index + 1] = arr[index];
                               arr[index] = temp;
-                              // Update positions
                               return arr.map((col, i) => ({
                                 ...col,
                                 position: i + 1,
@@ -768,8 +796,9 @@ export default function KanbanManagementModal({
                       handleColumnChange(index, "identifier", e.target.value)
                     }
                     className="flex-1"
-                    disabled={mode === "edit"} // Identifier cannot be changed after creation
+                    disabled={mode === "edit"}
                     placeholder="identificatore"
+                    title={mode === "edit" ? "L'identificatore non può essere modificato dopo la creazione" : undefined}
                   />
                   <IconSelector
                     value={column.icon}
@@ -838,7 +867,8 @@ export default function KanbanManagementModal({
                 </div>
               ))}
             </div>
-            {(mode === "create" || (mode === "edit" && !hasTasks)) && (
+            {/* Aggiungi colonna: consentito anche in edit (il backend crea la nuova colonna) */}
+            {(mode === "create" || mode === "edit") && (
               <Button
                 type="button"
                 onClick={() =>
@@ -846,7 +876,9 @@ export default function KanbanManagementModal({
                     ...prev,
                     {
                       title: "",
-                      identifier: "",
+                      identifier: identifier
+                        ? `${generateIdentifier("nuova")}_${identifier}_${Date.now()}`
+                        : `col_${Date.now()}`,
                       position: prev.length + 1,
                       icon: "Check",
                       column_type: "normal",
@@ -863,17 +895,35 @@ export default function KanbanManagementModal({
             )}
           </div>
           <DialogFooter>
-            <div className="flex justify-between w-full">
-              {mode === "edit" && kanban?.id && (
-                <Button
-                  variant="destructive"
-                  type="button"
-                  onClick={handleDeleteClick}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina Kanban
-                </Button>
-              )}
+            <div className="flex justify-between w-full items-center gap-2">
+              <div className="flex gap-2">
+                {mode === "edit" && kanban?.id && (
+                  <>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={handleDuplicate}
+                      disabled={isDuplicating}
+                      title="Duplica Kanban"
+                    >
+                      {isDuplicating ? (
+                        <span className="animate-spin">⏳</span>
+                      ) : (
+                        <Copy className="h-4 w-4 mr-2" />
+                      )}
+                      Duplica
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      type="button"
+                      onClick={handleDeleteClick}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Elimina
+                    </Button>
+                  </>
+                )}
+              </div>
               <Button type="submit">
                 {mode === "create" ? "Crea" : "Salva Modifiche"}
               </Button>

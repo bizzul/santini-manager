@@ -99,6 +99,10 @@ function mapRowToSellProduct(
     if (product.price_list == null) {
         product.price_list = false;
     }
+    // type is NOT NULL in SellProduct - default to empty string when missing
+    if (product.type == null || product.type === "") {
+        product.type = "";
+    }
 
     return product;
 }

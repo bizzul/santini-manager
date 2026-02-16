@@ -24,16 +24,20 @@ export async function editItem(
 
   if (result.success) {
     try {
+      const updateData: Record<string, unknown> = {
+        supplier_id: result.data.supplier ? Number(result.data.supplier) : null,
+        description: result.data.description ?? "",
+        error_category: result.data.errorCategory,
+        error_type: result.data.errorType ?? "",
+        task_id: result.data.task ? Number(result.data.task) : undefined,
+        employee_id: result.data.user ? Number(result.data.user) : undefined,
+      };
+      if (result.data.materialCost != null) updateData.material_cost = result.data.materialCost;
+      if (result.data.timeSpentHours != null) updateData.time_spent_hours = result.data.timeSpentHours;
+      if (result.data.transferKm != null) updateData.transfer_km = result.data.transferKm;
       const { error: updateError } = await supabase
         .from("Errortracking")
-        .update({
-          supplier_id: result.data.supplier ? Number(result.data.supplier) : null,
-          description: result.data.description ?? "",
-          error_category: result.data.errorCategory,
-          error_type: result.data.errorType ?? "",
-          task_id: result.data.task ? Number(result.data.task) : undefined,
-          employee_id: result.data.user ? Number(result.data.user) : undefined,
-        })
+        .update(updateData)
         .eq("id", id);
 
       if (updateError) {

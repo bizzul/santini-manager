@@ -13,6 +13,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { validation } from "@/validation/errorTracking/create";
 import { useToast } from "@/components/ui/use-toast";
@@ -80,6 +81,9 @@ const EditProductForm = ({ handleClose, data }: Props) => {
       errorType: "",
       supplier: "",
       task: "",
+      materialCost: undefined,
+      timeSpentHours: undefined,
+      transferKm: undefined,
     },
   });
   const { setValue } = form;
@@ -180,6 +184,9 @@ const EditProductForm = ({ handleClose, data }: Props) => {
     setValue("supplier", data.supplier_id?.toString());
     setValue("task", data.task_id?.toString());
     setValue("user", data.employee_id?.toString());
+    setValue("materialCost", data.material_cost ?? "");
+    setValue("timeSpentHours", data.time_spent_hours ?? "");
+    setValue("transferKm", data.transfer_km ?? "");
 
     getSuppliers();
     getCategories();
@@ -404,6 +411,69 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             </FormItem>
           )}
         />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <FormField
+            name="materialCost"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Costo materiale (CHF)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="es. 50"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="timeSpentHours"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tempo impiegato (Ore)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="es. 2.5"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="transferKm"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>KM trasferta supplementare</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="es. 60"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="grid grid-cols-1 gap-6">
           <div className="col-span-3 sm:col-span-2">

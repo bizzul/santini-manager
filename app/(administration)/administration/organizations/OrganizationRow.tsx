@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Users, Trash2, Globe } from "lucide-react";
+import { Users, Trash2, Globe, Copy } from "lucide-react";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
-import { deleteOrganization } from "../actions";
+import { deleteOrganization, duplicateOrganization } from "../actions";
 import { toast } from "sonner";
 
 interface Organization {
@@ -34,6 +35,28 @@ export function OrganizationRow({
       router.refresh();
     } else {
       throw new Error(result.message || "Errore durante l'eliminazione");
+    }
+  };
+
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const handleDuplicate = async () => {
+    setIsDuplicating(true);
+    try {
+      const result = await duplicateOrganization(organization.id);
+      if (result.success) {
+        toast.success(result.message || "Organizzazione duplicata");
+        if (result.organizationId) {
+          router.push(`/administration/organizations/${result.organizationId}`);
+        } else {
+          router.refresh();
+        }
+      } else {
+        toast.error(result.message || "Errore durante la duplicazione");
+      }
+    } catch (err) {
+      toast.error("Errore durante la duplicazione");
+    } finally {
+      setIsDuplicating(false);
     }
   };
 
@@ -81,6 +104,16 @@ export function OrganizationRow({
         </Link>
         {isSuperadmin && (
           <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border border-white/40 text-white hover:bg-white/20"
+              onClick={handleDuplicate}
+              disabled={isDuplicating}
+              title="Duplica organizzazione"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
             <Link
               href={`/administration/organizations/${organization.id}/edit`}
             >

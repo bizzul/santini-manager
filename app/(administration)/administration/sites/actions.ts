@@ -9,6 +9,105 @@ export async function deleteSite(siteId: string) {
     return parentDeleteSite(siteId);
 }
 
+export async function duplicateSite(siteId: string) {
+    const supabase = await createClient();
+
+    const { getUserContext } = await import("@/lib/auth-utils");
+    const userContext = await getUserContext();
+    if (!userContext?.canAccessAllOrganizations) {
+        return {
+            success: false,
+            message: "Solo i superadmin possono duplicare siti",
+        };
+    }
+
+    const { data: site, error: fetchError } = await supabase
+        .from("sites")
+        .select("*")
+        .eq("id", siteId)
+        .single();
+
+    if (fetchError || !site) {
+        return {
+            success: false,
+            message: "Sito non trovato",
+        };
+    }
+
+    // Genera subdomain univoco (subdomain-copia, subdomain-copia-2, ...)
+    let baseSubdomain = site.subdomain.replace(/-copia(-\d+)?$/, "");
+    let newSubdomain = `${baseSubdomain}-copia`;
+    let attempts = 0;
+    while (attempts < 20) {
+        const { data: existing } = await supabase
+            .from("sites")
+            .select("id")
+            .eq("subdomain", newSubdomain)
+            .single();
+        if (!existing) break;
+        attempts++;
+        newSubdomain = `${baseSubdomain}-copia-${attempts}`;
+    }
+
+    const newName = `${site.name} (copia)`;
+
+    const { data: newSite, error: createError } = await supabase
+        .from("sites")
+        .insert({
+            name: newName,
+            subdomain: newSubdomain,
+            description: site.description || null,
+            organization_id: site.organization_id,
+            image: site.image || null,
+        })
+        .select()
+        .single();
+
+    if (createError || !newSite) {
+        return {
+            success: false,
+            message: "Errore durante la duplicazione: " + (createError?.message || "Errore sconosciuto"),
+        };
+    }
+
+    // Copia user_sites (stessi utenti)
+    const { data: siteUsers } = await supabase
+        .from("user_sites")
+        .select("user_id")
+        .eq("site_id", siteId);
+
+    if (siteUsers && siteUsers.length > 0) {
+        const userRows = siteUsers.map((row: any) => ({
+            site_id: newSite.id,
+            user_id: row.user_id,
+        }));
+        await supabase.from("user_sites").insert(userRows);
+    }
+
+    // Copia site_modules
+    const { data: siteModules } = await supabase
+        .from("site_modules")
+        .select("module_name, is_enabled")
+        .eq("site_id", siteId);
+
+    if (siteModules && siteModules.length > 0) {
+        const moduleRows = siteModules.map((row: any) => ({
+            site_id: newSite.id,
+            module_name: row.module_name,
+            is_enabled: row.is_enabled ?? true,
+        }));
+        await supabase.from("site_modules").insert(moduleRows);
+    }
+
+    revalidatePath("/administration/sites");
+    revalidatePath("/administration");
+    return {
+        success: true,
+        message: `Sito duplicato: "${newSite.name}" (${newSite.subdomain})`,
+        siteId: newSite.id,
+    };
+}
+
 export async function createSiteWithAssociations(
     prevState: any,
     formData: FormData,

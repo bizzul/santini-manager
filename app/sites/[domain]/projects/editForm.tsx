@@ -30,6 +30,13 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useClients, useSellProducts } from "@/hooks/use-api";
 import { logger } from "@/lib/logger";
 
@@ -51,6 +58,9 @@ const EditForm = ({ handleClose, data }: Props) => {
       termine_produzione: (data as any).termine_produzione
         ? new Date((data as any).termine_produzione)
         : undefined,
+      ora_inizio: (data as any).ora_inizio ?? null,
+      ora_fine: (data as any).ora_fine ?? null,
+      squadra: (data as any).squadra ?? null,
       name: data.name ?? "",
       position1: data.positions?.[0] ?? "",
       position2: data.positions?.[1] ?? "",
@@ -388,6 +398,80 @@ const EditForm = ({ handleClose, data }: Props) => {
               </FormItem>
             )}
           />
+
+          {/* Posa/Service: Ora e Squadra */}
+          <div className="grid grid-cols-3 gap-4">
+            <FormField
+              name="ora_inizio"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ora inizio</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="time"
+                      min="06:00"
+                      max="20:00"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value || null)}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              name="ora_fine"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Ora fine</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="time"
+                      min="06:00"
+                      max="20:00"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value || null)}
+                      disabled={isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              name="squadra"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Squadra</FormLabel>
+                  <Select
+                    value={field.value?.toString() ?? "__none__"}
+                    onValueChange={(v) =>
+                      field.onChange(
+                        v && v !== "__none__" ? parseInt(v) : null
+                      )
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">—</SelectItem>
+                      <SelectItem value="1">Squadra 1</SelectItem>
+                      <SelectItem value="2">Squadra 2</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         <div className="flex">

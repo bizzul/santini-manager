@@ -278,17 +278,6 @@ export const createColumns = (
       size: 100,
     },
     {
-      accessorKey: "warehouse_number",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Mag." />
-      ),
-      cell: ({ row }) => {
-        // Warehouse number field doesn't exist in SellProduct yet, showing placeholder
-        return <span className="text-muted-foreground">-</span>;
-      },
-      size: 100,
-    },
-    {
       accessorKey: "supplier",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Fornitore" />
@@ -306,9 +295,6 @@ export const createColumns = (
       ),
       cell: ({ row }) => {
         const docUrl = row.original.doc_url;
-        if (!docUrl) {
-          return <span className="text-muted-foreground">-</span>;
-        }
         return (
           <TooltipProvider>
             <Tooltip>
@@ -317,13 +303,20 @@ export const createColumns = (
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0"
-                  onClick={() => window.open(docUrl, "_blank")}
+                  onClick={() => docUrl && window.open(docUrl, "_blank")}
+                  disabled={!docUrl}
                 >
-                  <FileText className="h-4 w-4 text-blue-600" />
+                  <FileText
+                    className={`h-4 w-4 ${docUrl ? "text-blue-600 hover:text-blue-700" : "text-muted-foreground"}`}
+                  />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Visualizza scheda tecnica</p>
+                <p>
+                  {docUrl
+                    ? "Apri scheda tecnica / cartella"
+                    : "Nessuna scheda tecnica disponibile"}
+                </p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -335,6 +328,41 @@ export const createColumns = (
       id: "actions",
       header: "Azioni",
       cell: ({ row }) => <DataTableRowActions row={row} domain={domain} />,
+    },
+    {
+      id: "last_modified",
+      accessorFn: (row) => row.lastAction?.createdAt,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Ultima modifica" />
+      ),
+      cell: ({ row }) => {
+        const createdAt = row.original.lastAction?.createdAt;
+        if (!createdAt) return <span className="text-muted-foreground">-</span>;
+        return (
+          <span suppressHydrationWarning>
+            {formatDistanceToNow(new Date(createdAt), {
+              addSuffix: true,
+              locale: it,
+            })}
+          </span>
+        );
+      },
+      size: 120,
+    },
+    {
+      id: "modified_by",
+      accessorFn: (row) =>
+        row.lastAction?.User?.given_name || row.lastAction?.User?.family_name,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Modificato da" />
+      ),
+      cell: ({ row }) => {
+        const user = row.original.lastAction?.User;
+        if (!user) return <span className="text-muted-foreground">-</span>;
+        const name = [user.given_name, user.family_name].filter(Boolean).join(" ");
+        return name || "-";
+      },
+      size: 120,
     },
   ];
 };

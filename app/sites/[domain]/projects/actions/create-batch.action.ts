@@ -133,9 +133,15 @@ export async function createBatchProjects(
                 } else {
                     // Create new client with location info if available
                     // Default to BUSINESS type with businessName
+                    // code is NOT NULL - generate from businessName (first 4 chars)
+                    const codeFromName = (project.cliente || "AZ")
+                        .slice(0, 4)
+                        .toUpperCase()
+                        .replace(/\s/g, "") || `AZ${i}`;
                     const newClientData: Record<string, unknown> = {
                         businessName: project.cliente,
                         clientType: "BUSINESS",
+                        code: codeFromName,
                         site_id: siteId,
                     };
 

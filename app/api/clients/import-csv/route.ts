@@ -7,6 +7,7 @@ import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 const CSV_FIELD_MAPPING: Record<string, string> = {
     ID: "id",
     TIPO: "clientType",
+    CODICE: "code",
     RAGIONE_SOCIALE: "businessName",
     TITOLO: "individualTitle",
     NOME: "individualFirstName",
@@ -20,6 +21,28 @@ const CSV_FIELD_MAPPING: Record<string, string> = {
     CELLULARE: "mobilePhone",
     EMAIL: "email",
 };
+
+/**
+ * Generate client code when not provided. Required by DB (NOT NULL constraint).
+ * For BUSINESS: first 4 chars of businessName, or "AZ" fallback
+ * For INDIVIDUAL: first 2 chars of firstName + first 2 of lastName, or "PR" fallback
+ */
+function generateClientCode(client: Record<string, any>, rowIndex: number): string {
+    if (client.code && String(client.code).trim() !== "") {
+        return String(client.code).trim();
+    }
+    if (client.clientType === "BUSINESS" && client.businessName) {
+        const code = client.businessName.slice(0, 4).toUpperCase().replace(/\s/g, "");
+        return code || `AZ${rowIndex}`;
+    }
+    if (client.clientType === "INDIVIDUAL") {
+        const first = (client.individualFirstName || "").slice(0, 2);
+        const last = (client.individualLastName || "").slice(0, 2);
+        const code = (first + last).toUpperCase().replace(/\s/g, "");
+        return code || `PR${rowIndex}`;
+    }
+    return `CLI${rowIndex}`;
+}
 
 // Numeric fields that should be parsed as numbers
 const NUMERIC_FIELDS = ["id", "zipCode"];
@@ -298,6 +321,9 @@ export async function POST(request: NextRequest) {
                 } else {
                     // For new records, remove ID (if present but not in DB) and add to insert list
                     delete client.id;
+
+                    // Generate code (required NOT NULL in Client table)
+                    client.code = generateClientCode(client, i + 2);
 
                     // Add to existing sets to prevent duplicates within the same import
                     if (client.email) {

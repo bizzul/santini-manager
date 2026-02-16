@@ -2,6 +2,7 @@ import { getSiteById, getSiteUsers, addUserToSiteHelper } from "../actions";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DeleteSiteButton } from "./DeleteSiteButton";
+import { DuplicateSiteButton } from "./DuplicateSiteButton";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
@@ -94,6 +95,7 @@ export default async function SiteDetailsPage({
             </Link>
             {role === "superadmin" && (
               <>
+                <DuplicateSiteButton siteId={site.id} />
                 <Link href={`/administration/sites/${site.id}/edit`}>
                   <Button
                     variant="outline"

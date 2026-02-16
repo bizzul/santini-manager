@@ -70,9 +70,10 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
 
   // Fetch tasks from production kanbans that have a delivery date or termine_produzione
   // For production calendar, we use deliveryDate OR termine_produzione
+  // Include SellProduct with category for colors/icons per product type
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
-    .select("*")
+    .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
     .eq("site_id", siteId)
     .eq("archived", false)
     .in("kanbanId", productionKanbanIds);
@@ -92,7 +93,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     // Also try with kanban_id field (alternative column name)
     const { data: tasksAlt, error: tasksAltError } = await supabase
       .from("Task")
-      .select("*")
+      .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
       .eq("site_id", siteId)
       .eq("archived", false)
       .in("kanban_id", productionKanbanIds);
@@ -161,7 +162,7 @@ async function Page({
   return (
     <div className="container w-full mx-auto relative ">
       {/* Tasks are already filtered server-side for production kanbans, use "all" to avoid double filtering */}
-      <CalendarComponent tasks={data as TaskWithKanban[]} calendarType="all" />
+      <CalendarComponent tasks={data as TaskWithKanban[]} calendarType="all" domain={domain} />
     </div>
   );
 }

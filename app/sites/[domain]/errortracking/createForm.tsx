@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -13,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -56,6 +58,10 @@ const CreateProductForm = ({
   data: any;
 }) => {
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const domain = pathname?.split("/")[2] || "";
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -64,6 +70,9 @@ const CreateProductForm = ({
       errorType: "",
       supplier: "",
       task: "",
+      materialCost: undefined,
+      timeSpentHours: undefined,
+      transferKm: undefined,
     },
   });
 
@@ -83,21 +92,25 @@ const CreateProductForm = ({
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       const dataObject = { data: d, fileIds: fileIds };
-      const res = await createItem(dataObject);
+      const res = await createItem(dataObject, domain);
+      //@ts-ignore
+      if (res?.error === true) {
+        toast({
+          variant: "destructive",
+          //@ts-ignore
+          description: `Errore! ${res?.message || "Creazione fallita"}`,
+        });
+        return;
+      }
       handleClose(false);
       toast({
-        description: `Elemento ${d.errorType} creato correttamente!`,
+        description: `Elemento ${d.errorType || "errore"} creato correttamente!`,
       });
       form.reset();
-      //@ts-ignore
-      if (res.error === true) {
-        toast({
-          //@ts-ignore
-          description: `Errore! ${res.message}`,
-        });
-      }
+      router.refresh();
     } catch (e) {
       toast({
+        variant: "destructive",
         description: `Errore nel creare l'elemento! ${e}`,
       });
     }
@@ -269,6 +282,70 @@ const CreateProductForm = ({
             </FormItem>
           )}
         />
+
+        {/* Campi opzionali */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <FormField
+            name="materialCost"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Costo materiale (CHF)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="es. 50"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="timeSpentHours"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tempo impiegato (Ore)</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    placeholder="es. 2.5"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            name="transferKm"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>KM trasferta supplementare</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="es. 60"
+                    disabled={isSubmitting}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         {/* Foto */}
         <div>

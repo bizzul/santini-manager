@@ -39,6 +39,9 @@ export interface Task {
     percentStatus?: number; // Alternative property name
     sellPrice?: number;
     deliveryDate?: string;
+    ora_inizio?: string | null;
+    ora_fine?: string | null;
+    squadra?: 1 | 2 | null;
     other?: string;
     kanbanId?: number; // Alternative property name
     kanbanColumnId?: number; // Alternative property name for column_id

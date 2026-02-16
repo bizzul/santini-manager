@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
-import { validation } from "@/validation/timeTracking/createManual";
+import { validation } from "@/validation/timeTracking/editManual";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
@@ -36,27 +36,36 @@ export async function editItem(props: any, id: number, domain?: string) {
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
 
       // Check if the user used the CNC
-      let useCNC = false;
-      if (result.data.roles === "2") {
-        useCNC = true;
-      } else {
-        useCNC = false;
+      const roleId = Array.isArray(result.data.roles)
+        ? result.data.roles[0]
+        : result.data.roles;
+      const useCNC = roleId === "2" || roleId === 2;
+
+      const updateData: Record<string, unknown> = {
+        description: result.data.description,
+        description_type: result.data.descriptionCat,
+        hours: result.data.hours,
+        minutes: result.data.minutes,
+        totalTime: roundedTotalTime,
+        use_cnc: useCNC,
+        site_id: siteId,
+      };
+
+      if (result.data.date || result.data.created_at) {
+        updateData.created_at = new Date(
+          result.data.date || result.data.created_at!
+        );
+      }
+      if (result.data.task != null) {
+        updateData.task_id = Number(result.data.task);
+      }
+      if (result.data.userId != null) {
+        updateData.employee_id = Number(result.data.userId);
       }
 
       const { data: timetracking, error: timetrackingError } = await supabase
         .from("Timetracking")
-        .update({
-          created_at: new Date(result.data.date),
-          description: result.data.description,
-          description_type: result.data.descriptionCat,
-          hours: result.data.hours,
-          minutes: result.data.minutes,
-          totalTime: roundedTotalTime,
-          use_cnc: useCNC,
-          task_id: Number(result.data.task),
-          employee_id: Number(result.data.userId),
-          site_id: siteId,
-        })
+        .update(updateData)
         .eq("id", id)
         .select()
         .single();
@@ -70,7 +79,7 @@ export async function editItem(props: any, id: number, domain?: string) {
       }
 
       // Update role relationship if role is provided
-      if (result.data.roles) {
+      if (roleId != null) {
         // First, delete existing role relationships for this timetracking entry
         await supabase
           .from("_RolesToTimetracking")
@@ -81,7 +90,7 @@ export async function editItem(props: any, id: number, domain?: string) {
         const { error: roleError } = await supabase
           .from("_RolesToTimetracking")
           .insert({
-            A: Number(result.data.roles),
+            A: Number(roleId),
             B: id,
           });
 

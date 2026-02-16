@@ -6,8 +6,7 @@ import { createClient } from "@/utils/server";
 import { validation } from "@/validation/errorTracking/create";
 import { logger } from "@/lib/logger";
 import { getUserContext } from "@/lib/auth-utils";
-
-export async function createItem(props: any) {
+export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
   const supabase = createServiceClient();
   const authClient = await createClient();
@@ -27,26 +26,36 @@ export async function createItem(props: any) {
 
   try {
     if (result.success) {
+      const insertData: Record<string, unknown> = {
+        supplier_id: result.data.supplier
+          ? Number(result.data.supplier)
+          : null,
+        description: result.data.description ?? "",
+        error_category: result.data.errorCategory,
+        error_type: result.data.errorType ?? "",
+        task_id: Number(result.data.task),
+        user_id: userContext.userId,
+      };
+      if (result.data.materialCost != null) {
+        insertData.material_cost = result.data.materialCost;
+      }
+      if (result.data.timeSpentHours != null) {
+        insertData.time_spent_hours = result.data.timeSpentHours;
+      }
+      if (result.data.transferKm != null) {
+        insertData.transfer_km = result.data.transferKm;
+      }
       const { data: createError, error: createErrorResponse } = await supabase
         .from("Errortracking")
-        .insert({
-          supplier_id: result.data.supplier
-            ? Number(result.data.supplier)
-            : null,
-          description: result.data.description ?? "",
-          error_category: result.data.errorCategory,
-          error_type: result.data.errorType ?? "",
-          task_id: Number(result.data.task),
-          user_id: userContext.userId,
-        })
+        .insert(insertData)
         .select()
         .single();
 
       if (createErrorResponse) {
         logger.error("Error creating errortracking:", createErrorResponse);
         return {
-          message: "Creazione elemento fallita!",
-          error: createErrorResponse.message,
+          error: true,
+          message: createErrorResponse.message || "Creazione elemento fallita!",
         };
       }
 
@@ -73,7 +82,12 @@ export async function createItem(props: any) {
         }
       }
 
-      return revalidatePath("/errortracking");
+      if (domain) {
+        revalidatePath(`/sites/${domain}/errortracking`);
+      } else {
+        revalidatePath("/errortracking");
+      }
+      return createError;
     } else {
       return { error: true, message: "Validazione elemento fallita!" };
     }

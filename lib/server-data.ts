@@ -869,9 +869,27 @@ export const fetchQualityControl = cache(async (siteId: string) => {
 
 /**
  * Fetch error tracking data with task and user relations
+ * Filters by task.site_id (tasks belong to sites) since Errortracking links to Task
  */
 export const fetchErrorTracking = cache(async (siteId: string) => {
     const supabase = createServiceClient();
+
+    // Get task IDs for this site
+    const { data: siteTasks, error: tasksError } = await supabase
+        .from("Task")
+        .select("id")
+        .eq("site_id", siteId);
+
+    if (tasksError) {
+        log.error("Error fetching site tasks for errortracking:", tasksError);
+        return [];
+    }
+
+    const siteTaskIds = (siteTasks || []).map((t) => t.id);
+    if (siteTaskIds.length === 0) {
+        return [];
+    }
+
     const { data, error } = await supabase
         .from("Errortracking")
         .select(`
@@ -880,7 +898,7 @@ export const fetchErrorTracking = cache(async (siteId: string) => {
             user:user_id(id, given_name, family_name),
             supplier:supplier_id(name)
         `)
-        .eq("site_id", siteId)
+        .in("task_id", siteTaskIds)
         .order("created_at", { ascending: false });
 
     if (error) {

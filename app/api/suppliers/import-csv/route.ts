@@ -314,7 +314,12 @@ export async function POST(request: NextRequest) {
                 } else {
                     // For new records, remove ID and add to insert list
                     delete supplier.id;
-                    
+
+                    // description is NOT NULL in Supplier table - use empty string if missing
+                    if (supplier.description == null || supplier.description === "") {
+                        supplier.description = "";
+                    }
+
                     // Add to existing sets to prevent duplicates within the same import
                     if (supplier.name) {
                         existingNames.add(supplier.name.toLowerCase());

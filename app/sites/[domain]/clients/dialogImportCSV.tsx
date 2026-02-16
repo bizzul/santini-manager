@@ -40,6 +40,11 @@ const CSV_COLUMNS = [
     required: false,
   },
   {
+    name: "CODICE",
+    description: "Codice cliente (opzionale, generato automaticamente se vuoto)",
+    required: false,
+  },
+  {
     name: "TIPO",
     description: "Tipo cliente (BUSINESS/INDIVIDUAL)",
     required: true,
@@ -77,6 +82,7 @@ const CSV_COLUMNS = [
 // Example row data for the CSV template
 const EXAMPLE_ROW = {
   ID: "",
+  CODICE: "",
   TIPO: "BUSINESS",
   RAGIONE_SOCIALE: "Azienda Esempio SA",
   TITOLO: "",
@@ -95,6 +101,7 @@ const EXAMPLE_ROW = {
 // Example row for individual client
 const EXAMPLE_ROW_INDIVIDUAL = {
   ID: "",
+  CODICE: "",
   TIPO: "INDIVIDUAL",
   RAGIONE_SOCIALE: "",
   TITOLO: "Sig.",

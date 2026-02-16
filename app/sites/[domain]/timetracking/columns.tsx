@@ -38,13 +38,16 @@ const createTimetrackingEditHandler = (domain?: string) => {
     field: string,
     newValue: string | number | boolean | null
   ): Promise<{ success?: boolean; error?: string }> => {
-    // Map field names to validation schema
+    // Map field names to validation schema - include all required fields for edit
     const formData: any = {
       hours: rowData.hours,
       minutes: rowData.minutes,
       description: rowData.description,
       descriptionCat: rowData.description_type,
       date: rowData.created_at,
+      task: rowData.task_id?.toString(),
+      userId: rowData.employee_id?.toString(),
+      roles: rowData.roles?.[0]?.role?.id ?? rowData.roles?.[0],
       [field === "description_type" ? "descriptionCat" : field]: newValue,
     };
 

@@ -42,6 +42,7 @@ import {
   List,
 } from "lucide-react";
 import { MyHoursList } from "./my-hours-list";
+import { VoiceInputButton } from "./VoiceInputButton";
 
 // Internal activity type from database
 export interface InternalActivity {
@@ -131,18 +132,26 @@ const QUICK_TIMES = [
   { hours: 8, minutes: 0, label: "8h" },
 ];
 
-const WORK_HOURS_TARGET = 8.5; // 8h 30m
+// Ore obiettivo per giorno: Lun-Gio 9h, Ven 5h
+function getWorkHoursTarget(): number {
+  const day = new Date().getDay(); // 0=Dom, 1=Lun, ..., 5=Ven, 6=Sab
+  return day === 5 ? 5 : 9; // Venerdì 5h, altri giorni 9h
+}
 
 const CreatePage = ({
   data,
   session,
   internalActivities = [],
   allUserEntries = [],
+  domain,
+  siteId,
 }: {
   data: { roles: Roles[]; tasks: Task[]; todayEntries?: TodayEntry[] };
   session: Session;
   internalActivities?: InternalActivity[];
   allUserEntries?: AllUserEntry[];
+  domain?: string;
+  siteId?: string;
 }) => {
   const [activeTab, setActiveTab] = useState("create");
   const rolesOptions = data.roles;
@@ -293,7 +302,7 @@ const CreatePage = ({
     const totalMinutes = savedTodayMinutes + newMinutes;
     const totalHours = Math.floor(totalMinutes / 60);
     const remainingMinutes = totalMinutes % 60;
-    const targetMinutes = WORK_HOURS_TARGET * 60;
+    const targetMinutes = getWorkHoursTarget() * 60;
     const remainingToTarget = Math.max(0, targetMinutes - totalMinutes);
     const progress = Math.min(100, (totalMinutes / targetMinutes) * 100);
 
@@ -457,6 +466,37 @@ const CreatePage = ({
     setRows([...rows, createEmptyRow()]);
   };
 
+  // Add row from voice input
+  const handleAddFromVoice = useCallback(
+    (entry: {
+      task?: string;
+      taskLabel?: string;
+      hours: string;
+      minutes: string;
+      activityType: "project" | "internal";
+      internalActivity?: string;
+      description?: string;
+    }) => {
+      const taskLabel =
+        entry.activityType === "internal" && entry.internalActivity
+          ? activityLabels.get(entry.internalActivity) || entry.internalActivity
+          : entry.taskLabel || entry.task || "";
+      const newRow: TimeRow = {
+        ...createEmptyRow(),
+        task: entry.task || "",
+        taskLabel,
+        hours: entry.hours,
+        minutes: entry.minutes,
+        activityType: entry.activityType,
+        internalActivity: entry.internalActivity,
+        description: entry.description || "",
+      };
+      setRows((prev) => [...prev, newRow]);
+      handleSaveTemp();
+    },
+    [createEmptyRow, activityLabels, handleSaveTemp]
+  );
+
   // Delete row
   const handleDeleteRow = (index: number) => {
     if (rows.length === 1) {
@@ -531,7 +571,10 @@ const CreatePage = ({
 
       const response = await fetch("/api/time-tracking/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(domain && { "x-site-domain": domain }),
+        },
         body: JSON.stringify(cleanedRows),
       });
 
@@ -1117,15 +1160,26 @@ const CreatePage = ({
           ))}
         </div>
 
-        {/* Add Row Button */}
-        <Button
-          variant="outline"
-          className="w-full border-dashed border-2 h-14 text-muted-foreground hover:text-foreground hover:border-primary"
-          onClick={handleAddRow}
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Aggiungi registrazione
-        </Button>
+        {/* Add Row Button + Voice Input */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1 border-dashed border-2 h-14 text-muted-foreground hover:text-foreground hover:border-primary"
+            onClick={handleAddRow}
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            Aggiungi registrazione
+          </Button>
+          {domain && siteId && (
+            <VoiceInputButton
+              domain={domain}
+              siteId={siteId}
+              tasks={data.tasks}
+              internalActivities={internalActivities}
+              onAddEntry={handleAddFromVoice}
+            />
+          )}
+        </div>
       </TabsContent>
 
       {/* My Hours Tab Content */}

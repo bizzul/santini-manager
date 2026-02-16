@@ -1,6 +1,18 @@
 "use client";
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Task, Kanban } from "@/types/supabase";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  getEventStyleFromProduct,
+  getProductCategoryIcon,
+} from "@/lib/calendar-product-styling";
+import { CalendarSummaryBar } from "./CalendarSummaryBar";
 
 export interface KanbanCategory {
   id: number;
@@ -12,24 +24,18 @@ export type TaskWithKanban = Task & {
   Kanban?: Pick<Kanban, "id" | "color" | "title" | "identifier" | "is_production_kanban"> & {
     category?: KanbanCategory | null;
   } | null;
+  SellProduct?: {
+    id?: number;
+    name?: string | null;
+    type?: string | null;
+    category?: { id?: number; name?: string | null; color?: string | null } | null;
+  } | null;
 };
 
 export type CalendarType = "production" | "installation" | "service" | "all";
 
-// Helper function to determine if a color is light or dark
-function getContrastColor(hexColor: string): string {
-  // Remove # if present
-  const hex = hexColor.replace("#", "");
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  // Calculate luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5 ? "#000000" : "#ffffff";
-}
-
-// Helper function to check if a kanban matches a calendar type
-function matchesCalendarType(
+// Helper function to check if a kanban matches a calendar type (exported for CalendarTimeView)
+export function matchesCalendarType(
   kanban: TaskWithKanban["Kanban"],
   type: CalendarType
 ): boolean {
@@ -85,10 +91,38 @@ function matchesCalendarType(
   }
 }
 
-function renderEventContent(eventInfo: any) {
+// Project info for tooltip - from event extendedProps
+function EventTooltipContent({ task }: { task: TaskWithKanban | null }) {
+  if (!task) return null;
+  const deliveryStr = task.deliveryDate
+    ? new Date(task.deliveryDate).toLocaleDateString("it-CH", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "-";
   return (
-    <div className="px-2 py-1 truncate text-xs font-medium leading-tight rounded-sm">
-      <span>{eventInfo.event.title}</span>
+    <div className="space-y-1.5 p-1 min-w-[200px]">
+      <div className="font-semibold text-sm">{task.unique_code}</div>
+      {(task.title || task.name) && (
+        <div className="text-xs">
+          <span className="text-muted-foreground">Progetto: </span>
+          {task.title || task.name}
+        </div>
+      )}
+      {task.luogo && (
+        <div className="text-xs">
+          <span className="text-muted-foreground">Luogo: </span>
+          {task.luogo}
+        </div>
+      )}
+      <div className="text-xs">
+        <span className="text-muted-foreground">Data: </span>
+        {deliveryStr}
+      </div>
+      <div className="text-xs text-muted-foreground pt-1 border-t">
+        Clicca per aprire il progetto
+      </div>
     </div>
   );
 }
@@ -170,11 +204,28 @@ function fixCalendarTitle(text: string): string {
 export default function CalendarComponent({
   tasks,
   calendarType = "all",
+  domain,
 }: {
   tasks: TaskWithKanban[];
   calendarType?: CalendarType;
+  domain?: string;
 }) {
+  const router = useRouter();
+  const params = useParams();
+  const domainFromPath = params?.domain as string | undefined;
+  const effectiveDomain = domain ?? domainFromPath;
   const [mounted, setMounted] = useState(false);
+  const [dateRange, setDateRange] = useState<{
+    weekStart: Date | null;
+    weekEnd: Date | null;
+    monthStart: Date | null;
+    monthEnd: Date | null;
+  }>({
+    weekStart: null,
+    weekEnd: null,
+    monthStart: null,
+    monthEnd: null,
+  });
   const [currentTitle, setCurrentTitle] = useState<string>("");
   const calendarRef = useRef<any>(null);
   const [calendarComponents, setCalendarComponents] = useState<{
@@ -250,9 +301,9 @@ export default function CalendarComponent({
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
 
-      // Get kanban color or use default
+      // Get style from product category (like Kanban Posa) or fallback to kanban color
       const kanbanColor = task.Kanban?.color || "#1e293b";
-      const textColor = getContrastColor(kanbanColor);
+      const style = getEventStyleFromProduct(task, kanbanColor);
 
       // Build title with code and project name
       const projectName = task.title || task.name;
@@ -263,12 +314,51 @@ export default function CalendarComponent({
       return {
         title: displayTitle,
         date: `${year}-${month}-${day}`, // Format as YYYY-MM-DD using local date
-        backgroundColor: kanbanColor,
-        borderColor: kanbanColor,
-        textColor: textColor,
+        backgroundColor: style.backgroundColor,
+        borderColor: style.borderColor,
+        textColor: style.textColor,
         classNames: ["calendar-event"],
+        extendedProps: { taskId: task.id, task },
       };
     });
+
+  // Event content with tooltip, icon and click
+  const renderEventContent = useCallback(
+    (eventInfo: any) => {
+      const task = eventInfo.event.extendedProps?.task as TaskWithKanban | undefined;
+      const categoryName = task?.SellProduct?.category?.name ?? (task as any)?.sellProduct?.category?.name;
+      const CategoryIcon = getProductCategoryIcon(categoryName);
+      const content = (
+        <div className="px-2 py-1 truncate text-xs font-medium leading-tight rounded-sm w-full flex items-center gap-1">
+          <CategoryIcon className="h-3 w-3 shrink-0" />
+          <span className="truncate">{eventInfo.event.title}</span>
+        </div>
+      );
+      return (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="w-full cursor-pointer">{content}</div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <EventTooltipContent task={task || null} />
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    },
+    []
+  );
+
+  const handleEventClick = useCallback(
+    (info: any) => {
+      const taskId = info.event.extendedProps?.taskId;
+      if (taskId && effectiveDomain) {
+        router.push(`/sites/${effectiveDomain}/progetti/${taskId}`);
+      }
+    },
+    [effectiveDomain, router]
+  );
 
   // Custom header format - no title in center since we render our own
   const headerToolbar = {
@@ -282,25 +372,59 @@ export default function CalendarComponent({
     return currentTitle || "";
   }, [currentTitle]);
 
-  // Handle date changes - get proper title from calendar API
+  // Handle date changes - get proper title and date range from calendar API
   const handleDatesSet = useCallback((dateInfo: any) => {
-    // Get the view title directly from FullCalendar's API
     if (dateInfo?.view?.title) {
       const rawTitle = dateInfo.view.title;
       const fixedTitle = fixCalendarTitle(rawTitle);
       setCurrentTitle(fixedTitle);
     }
+    const viewStart = dateInfo?.view?.currentStart;
+    const viewEnd = dateInfo?.view?.currentEnd;
+    if (viewStart && viewEnd) {
+      const start = new Date(viewStart);
+      const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
+      const monthEnd = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+      const midMonth = new Date(start.getFullYear(), start.getMonth(), 15);
+      const dayOfWeek = midMonth.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStart = new Date(midMonth);
+      weekStart.setDate(midMonth.getDate() + mondayOffset);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 4);
+      weekEnd.setHours(23, 59, 59, 999);
+      setDateRange({ weekStart, weekEnd, monthStart, monthEnd });
+    }
   }, []);
 
-  // Set initial title on mount
+  // Set initial title and date range on mount
   useEffect(() => {
     if (!mounted || !calendarRef.current) return;
-    
     const api = calendarRef.current.getApi?.();
-    if (api?.view?.title) {
-      const rawTitle = api.view.title;
-      const fixedTitle = fixCalendarTitle(rawTitle);
-      setCurrentTitle(fixedTitle);
+    if (api?.view) {
+      const view = api.view;
+      if (view.title) {
+        const fixedTitle = fixCalendarTitle(view.title);
+        setCurrentTitle(fixedTitle);
+      }
+      const start = view.currentStart;
+      const end = view.currentEnd;
+      if (start && end) {
+        const s = new Date(start);
+        const monthStart = new Date(s.getFullYear(), s.getMonth(), 1);
+        const monthEnd = new Date(s.getFullYear(), s.getMonth() + 1, 0);
+        const midMonth = new Date(s.getFullYear(), s.getMonth(), 15);
+        const dayOfWeek = midMonth.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const weekStart = new Date(midMonth);
+        weekStart.setDate(midMonth.getDate() + mondayOffset);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 4);
+        weekEnd.setHours(23, 59, 59, 999);
+        setDateRange({ weekStart, weekEnd, monthStart, monthEnd });
+      }
     }
   }, [mounted]);
 
@@ -322,6 +446,7 @@ export default function CalendarComponent({
     initialView: "dayGridMonth" as const,
     weekends: false,
     eventContent: renderEventContent,
+    eventClick: handleEventClick,
     events: events,
     height: "auto" as const,
     contentHeight: "auto" as const,
@@ -419,10 +544,17 @@ export default function CalendarComponent({
         }
       `}</style>
       {/* Custom title - controlled by React state to avoid FullCalendar issues */}
-      <div className="calendar-custom-title mb-6 text-center">
+      <div className="calendar-custom-title mb-4 text-center">
         <h1 className="text-2xl font-bold mb-1">{CALENDAR_TYPE_NAMES[calendarType]}</h1>
         <p className="text-lg text-muted-foreground">{displayTitle}</p>
       </div>
+      <CalendarSummaryBar
+        tasks={filteredTasks}
+        weekStart={dateRange.weekStart}
+        weekEnd={dateRange.weekEnd}
+        monthStart={dateRange.monthStart}
+        monthEnd={dateRange.monthEnd}
+      />
       <FC 
         ref={calendarRef}
         key="calendar-mounted"
@@ -431,6 +563,7 @@ export default function CalendarComponent({
         initialView={calendarProps.initialView}
         weekends={calendarProps.weekends}
         eventContent={calendarProps.eventContent}
+        eventClick={calendarProps.eventClick}
         events={calendarProps.events}
         height={calendarProps.height}
         contentHeight={calendarProps.contentHeight}

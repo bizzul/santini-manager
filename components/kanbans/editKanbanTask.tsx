@@ -86,6 +86,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       clientId: undefined,
       deliveryDate: undefined,
       termine_produzione: undefined,
+      ora_inizio: null,
+      ora_fine: null,
+      squadra: null,
       name: "",
       luogo: "",
       other: "",
@@ -199,6 +202,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
           ? new Date(resource.termine_produzione)
           : undefined
       );
+      form.setValue("ora_inizio", (resource as any).ora_inizio ?? null);
+      form.setValue("ora_fine", (resource as any).ora_fine ?? null);
+      form.setValue("squadra", (resource as any).squadra ?? null);
       form.setValue("name", resource.name ?? "");
       form.setValue("luogo", resource.luogo ?? "");
       form.setValue("other", resource.other ?? undefined);
@@ -804,6 +810,77 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                 </FormItem>
               )}
             />
+
+            {/* Posa/Service: Ora e Squadra */}
+            <div className="grid grid-cols-3 gap-4">
+              <FormField
+                name="ora_inizio"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ora inizio</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        min="06:00"
+                        max="20:00"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="ora_fine"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ora fine</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="time"
+                        min="06:00"
+                        max="20:00"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                name="squadra"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Squadra</FormLabel>
+                    <Select
+                      value={field.value?.toString() ?? "__none__"}
+                      onValueChange={(v) =>
+                        field.onChange(
+                          v && v !== "__none__" ? parseInt(v) : null
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">—</SelectItem>
+                        <SelectItem value="1">Squadra 1</SelectItem>
+                        <SelectItem value="2">Squadra 2</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           {/* Row 5: Kanban + Colonna */}

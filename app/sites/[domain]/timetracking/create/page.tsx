@@ -335,6 +335,8 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
         session={session}
         internalActivities={data.internalActivities}
         allUserEntries={data.allUserEntries}
+        domain={domain}
+        siteId={siteId}
       />
     </div>
   );
