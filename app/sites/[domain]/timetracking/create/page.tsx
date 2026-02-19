@@ -144,8 +144,8 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
     // Get task IDs for this site for filtering
     const siteTaskIds = (tasks || []).map((t: any) => t.id);
 
-    // Fetch today's entries
-    const { data: timetrackingData, error: timetrackingError } = await supabase
+    // Fetch today's entries (filtered by site)
+    let todayQuery = supabase
       .from("Timetracking")
       .select(
         `
@@ -165,6 +165,14 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       .gte("created_at", startOfDay.toISOString())
       .lt("created_at", endOfDay.toISOString())
       .order("created_at", { ascending: false });
+
+    if (siteTaskIds.length > 0) {
+      todayQuery = todayQuery.or(`site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`);
+    } else {
+      todayQuery = todayQuery.eq("site_id", siteId);
+    }
+
+    const { data: timetrackingData, error: timetrackingError } = await todayQuery;
 
     if (timetrackingError) {
       console.error("Error fetching today's timetracking:", timetrackingError);

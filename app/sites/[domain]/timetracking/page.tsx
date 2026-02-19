@@ -30,9 +30,14 @@ export default async function Page({
   // Filter timetracking entries based on user role
   // Regular users can only see their own entries
   const isRegularUser = userContext.role === "user";
+  // userContext.user.id is the auth UUID, but employee_id references User.id (integer)
+  // We need to find the current user's User table record to get the integer ID
+  const currentUserRecord = data.users.find(
+    (u: any) => u.authId === userContext.user.id
+  );
   const filteredTimetrackings = isRegularUser
     ? data.timetrackings.filter(
-        (entry: any) => entry.employee_id === userContext.user.id
+        (entry: any) => entry.employee_id === currentUserRecord?.id
       )
     : data.timetrackings;
 

@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import {
   Form,
@@ -20,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { validation } from "@/validation/timeTracking/createManual";
+import { validation } from "@/validation/timeTracking/editManual";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect } from "@/components/ui/search-select";
 import { editItem } from "./actions/edit-item.action";
@@ -35,6 +34,17 @@ interface RoleEntry {
     id: number;
     name: string;
   };
+}
+
+interface EditFormValues {
+  date: string;
+  description: string;
+  descriptionCat: string;
+  hours: number;
+  minutes: number;
+  roles: string;
+  task: string;
+  userId: string;
 }
 
 function formatDate(date: Date) {
@@ -72,17 +82,17 @@ const EditForm = ({
   const [userAssignedRoles, setUserAssignedRoles] = useState<Roles[]>([]);
   const [loadingUserRoles, setLoadingUserRoles] = useState(false);
 
-  const form = useForm<z.infer<typeof validation>>({
+  const form = useForm<EditFormValues>({
     resolver: zodResolver(validation),
     defaultValues: {
-      date: "", // if it's a date string or use new Date() if it expects a Date object
+      date: "",
       description: "",
       descriptionCat: "",
-      hours: 0, // Assuming hours is a number
-      minutes: 0, // Assuming minutes is a number
-      roles: "", // Assuming roles is an array
-      task: "", // or the default value for a task id or object
-      userId: "", // Assuming userId is a string or number
+      hours: 0,
+      minutes: 0,
+      roles: "",
+      task: "",
+      userId: "",
     },
   });
 
@@ -117,8 +127,8 @@ const EditForm = ({
         ? formatDate(new Date(data.created_at))
         : formatDate(new Date())
     );
-    setValue("description", data.description ?? undefined);
-    setValue("descriptionCat", data.description_type ?? undefined);
+    setValue("description", data.description ?? "");
+    setValue("descriptionCat", data.description_type ?? "");
     setValue("hours", data.hours!);
     setValue("minutes", data.minutes!);
 
@@ -131,8 +141,8 @@ const EditForm = ({
       task_id: data.task_id,
     });
 
-    setValue("task", data.task_id!.toString());
-    setValue("userId", data.employee_id!.toString());
+    setValue("task", data.task_id ? data.task_id.toString() : "");
+    setValue("userId", data.employee_id ? data.employee_id.toString() : "");
 
     // Load assigned roles for the current user
     if (data.employee_id) {
@@ -246,13 +256,10 @@ const EditForm = ({
     }
   }, [selectedUserId]);
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
+  const onSubmit: SubmitHandler<EditFormValues> = async (d) => {
     try {
-      // If d is empty, get the data directly from form
-      const formData = Object.keys(d).length === 0 ? form.getValues() : d;
-
       //@ts-ignore
-      const timetracking = await editItem(formData, data.id, domain);
+      const timetracking = await editItem(d, data.id, domain);
       if (timetracking && timetracking.id) {
         handleClose(false);
         toast({
@@ -278,7 +285,9 @@ const EditForm = ({
 
   return (
     <Form {...form}>
-      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
+      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          logger.error("Edit form validation failed:", errors);
+        })}>
         <FormField
           disabled={isSubmitting}
           control={form.control}

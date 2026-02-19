@@ -146,23 +146,11 @@ const CreateProductForm = ({
   }, [selectedUserId]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    console.log("=== FORM SUBMIT START ===");
-    console.log("Form data received (d):", d);
-    console.log("Form.getValues():", form.getValues());
-    console.log("Domain:", domain);
-
     try {
-      // Always use form.getValues() to ensure we get all current values
-      const formData = form.getValues();
-      console.log("FormData to send:", formData);
-
       //@ts-ignore
-      const result = await createItem(formData, domain);
-      console.log("CreateItem result:", result);
+      const result = await createItem(d, domain);
 
-      // Check if result has an error
       if (result && "error" in result) {
-        console.error("CreateItem returned error:", result);
         toast({
           description: `Errore: ${result.message || result.error}`,
           variant: "destructive",
@@ -171,21 +159,18 @@ const CreateProductForm = ({
       }
 
       if (result && result.id) {
-        console.log("Success! Created timetracking with id:", result.id);
         handleClose(false);
         toast({
           description: `Registrazione #${result.id} creata correttamente!`,
         });
         form.reset();
       } else {
-        console.error("No id in result:", result);
         toast({
           description: "Errore nel creare la registrazione",
           variant: "destructive",
         });
       }
     } catch (e) {
-      console.error("Exception in onSubmit:", e);
       logger.error("Error creating timetracking:", e);
       toast({
         description: `Errore nel creare l'elemento!`,
@@ -199,9 +184,7 @@ const CreateProductForm = ({
       <form
         className="space-y-4"
         onSubmit={form.handleSubmit(onSubmit, (errors) => {
-          console.error("=== FORM VALIDATION FAILED ===");
-          console.error("Validation errors:", errors);
-          logger.debug("Form validation failed:", errors);
+          logger.error("Form validation failed:", errors);
         })}
       >
         <FormField

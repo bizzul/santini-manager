@@ -7,18 +7,7 @@ import { validation } from "@/validation/timeTracking/createManual";
 import { getSiteData } from "@/lib/fetchers";
 
 export async function createItem(props: Timetracking, domain?: string) {
-  console.log("=== CREATE ITEM ACTION START ===");
-  console.log("Props received:", JSON.stringify(props, null, 2));
-  console.log("Domain:", domain);
-
   const result = validation.safeParse(props);
-  console.log("Validation result:", result.success ? "SUCCESS" : "FAILED");
-  if (!result.success) {
-    console.error(
-      "Validation errors:",
-      JSON.stringify(result.error.format(), null, 2),
-    );
-  }
 
   let siteId = null;
 
@@ -40,11 +29,8 @@ export async function createItem(props: Timetracking, domain?: string) {
       const totalTimeInHours = result.data.hours + result.data.minutes / 60;
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
 
-      // Check if the user used the CNC
-      let useCNC = false;
-      if (result.data.roles === "CNC") {
-        useCNC = true;
-      }
+      const roleId = result.data.roles;
+      const useCNC = roleId === "2";
 
       // Determine activity type (default to 'project' for backwards compatibility)
       const activityType = result.data.activityType || "project";
