@@ -25,7 +25,7 @@ export const POST = async (req: NextRequest) => {
       .select(`
         *,
         suppliers:supplier_id(name),
-        users:user_id(family_name),
+        users:employee_id(family_name),
         tasks:task_id(unique_code),
         files(url)
       `);

@@ -431,7 +431,7 @@ export interface File {
 export interface ErrorTracking {
     id: number;
     task_id?: number;
-    user_id?: string;
+    employee_id?: number;
     error_category?: string;
     error_type?: string;
     position?: number;

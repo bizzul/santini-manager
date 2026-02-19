@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Mic, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,14 @@ interface InternalActivity {
   id: string;
   code: string;
   label: string;
+}
+
+type SpeechProvider = "web-speech" | "whisper";
+
+interface SiteAiSettings {
+  speechProvider: SpeechProvider;
+  hasAiApiKey: boolean;
+  hasWhisperApiKey: boolean;
 }
 
 interface VoiceInputButtonProps {
@@ -48,62 +57,116 @@ export function VoiceInputButton({
   const [isRecording, setIsRecording] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [siteSettings, setSiteSettings] = useState<SiteAiSettings | null>(null);
+  const [whisperProcessing, setWhisperProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognitionRef = useRef<any>(null);
   const { toast } = useToast();
 
-  const startRecording = useCallback(async () => {
+  const useWhisper =
+    siteSettings?.speechProvider === "whisper" &&
+    (siteSettings?.hasWhisperApiKey || siteSettings?.hasAiApiKey);
+
+  useEffect(() => {
+    if (open && domain) {
+      fetch(`/api/sites/${domain}/ai-settings`)
+        .then((res) => res.json())
+        .then((data) => {
+          setSiteSettings({
+            speechProvider: data.speechProvider || "web-speech",
+            hasAiApiKey: data.hasAiApiKey || false,
+            hasWhisperApiKey: data.hasWhisperApiKey || false,
+          });
+        })
+        .catch(() => {
+          setSiteSettings({
+            speechProvider: "web-speech",
+            hasAiApiKey: false,
+            hasWhisperApiKey: false,
+          });
+        });
+    }
+  }, [open, domain]);
+
+  const startWebSpeechRecording = useCallback(() => {
+    setError(null);
+    setTranscript("");
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "it-IT";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event: any) => {
+      let final = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        final += event.results[i][0].transcript;
+      }
+      setTranscript((prev) => prev + final);
+    };
+    recognition.onerror = (e: any) => setError(e.error || "Errore riconoscimento");
+    recognition.start();
+    recognitionRef.current = recognition;
+    setIsRecording(true);
+  }, []);
+
+  const startWhisperRecording = useCallback(async () => {
     setError(null);
     setTranscript("");
     try {
-      if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
-        const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = "it-IT";
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.onresult = (event: any) => {
-          let final = "";
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            final += event.results[i][0].transcript;
-          }
-          setTranscript((prev) => prev + final);
-        };
-        recognition.onerror = (e: any) => setError(e.error || "Errore riconoscimento");
-        recognition.start();
-        recognitionRef.current = recognition;
-      } else {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioChunksRef.current = [];
-        const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
-        });
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) audioChunksRef.current.push(e.data);
-        };
-        mediaRecorder.onstop = async () => {
-          try {
-            const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
-            const formData = new FormData();
-            formData.append("audio", blob, "audio.webm");
-            formData.append("siteId", siteId);
-            const res = await fetch("/api/voice-input/transcribe", { method: "POST", body: formData });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Errore trascrizione");
-            if (data.transcript) setTranscript((prev) => (prev ? `${prev} ${data.transcript}` : data.transcript));
-          } catch (err) {
-            setError(err instanceof Error ? err.message : "Errore trascrizione");
-          }
-        };
-        mediaRecorderRef.current = mediaRecorder;
-        mediaRecorder.start();
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          "Microfono non disponibile. Usa HTTPS e un browser che supporta l'accesso al microfono."
+        );
       }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
+      });
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      mediaRecorder.onstop = async () => {
+        setWhisperProcessing(true);
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
+          const formData = new FormData();
+          formData.append("audio", blob, "audio.webm");
+          formData.append("siteId", siteId);
+          const res = await fetch("/api/voice-input/transcribe", { method: "POST", body: formData });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Errore trascrizione");
+          if (data.transcript) setTranscript((prev) => (prev ? `${prev} ${data.transcript}` : data.transcript));
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Errore trascrizione");
+        } finally {
+          setWhisperProcessing(false);
+        }
+      };
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
       setIsRecording(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Permesso microfono negato");
     }
   }, [siteId]);
+
+  const startRecording = useCallback(async () => {
+    setError(null);
+    setTranscript("");
+    try {
+      if (useWhisper) {
+        await startWhisperRecording();
+      } else if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+        startWebSpeechRecording();
+      } else {
+        await startWhisperRecording();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Permesso microfono negato");
+    }
+  }, [useWhisper, startWebSpeechRecording, startWhisperRecording]);
 
   const stopRecording = useCallback(() => {
     if (recognitionRef.current) {
@@ -166,7 +229,7 @@ export function VoiceInputButton({
     } finally {
       setIsExtracting(false);
     }
-  }, [transcript, siteId, tasks, onAddEntry, toast]);
+  }, [transcript, siteId, tasks, internalActivities, onAddEntry, toast]);
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -196,10 +259,21 @@ export function VoiceInputButton({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <Badge variant="secondary" className="mb-2">
+              {useWhisper ? "Whisper (OpenAI)" : "Web Speech API"}
+            </Badge>
             <div className="flex gap-2">
               {!isRecording ? (
-                <Button onClick={startRecording} className="flex-1">
-                  <Mic className="h-4 w-4 mr-2" />
+                <Button
+                  onClick={startRecording}
+                  className="flex-1"
+                  disabled={whisperProcessing}
+                >
+                  {whisperProcessing ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Mic className="h-4 w-4 mr-2" />
+                  )}
                   Avvia registrazione
                 </Button>
               ) : (
@@ -208,6 +282,11 @@ export function VoiceInputButton({
                 </Button>
               )}
             </div>
+            {useWhisper && !isRecording && !transcript && (
+              <p className="text-xs text-muted-foreground">
+                Con Whisper la trascrizione avviene dopo aver fermato la registrazione.
+              </p>
+            )}
             {transcript && (
               <div className="rounded-lg border bg-muted/50 p-3 text-sm">
                 <p className="text-muted-foreground text-xs mb-1">Trascrizione:</p>
@@ -222,7 +301,10 @@ export function VoiceInputButton({
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
               Annulla
             </Button>
-            <Button onClick={handleExtractAndAdd} disabled={!transcript.trim() || isExtracting}>
+            <Button
+              onClick={handleExtractAndAdd}
+              disabled={!transcript.trim() || isExtracting || isRecording || whisperProcessing}
+            >
               {isExtracting ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (

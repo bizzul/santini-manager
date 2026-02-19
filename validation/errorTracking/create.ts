@@ -10,6 +10,7 @@ export const validation = z.object({
   supplier: z.string().optional(),
   task: z.string().min(1),
   user: z.string().optional(),
+  position: z.string().optional(),
   // Optional fields (dopo descrizione)
   materialCost: z
     .union([z.string(), z.number()])

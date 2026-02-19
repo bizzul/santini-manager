@@ -895,8 +895,9 @@ export const fetchErrorTracking = cache(async (siteId: string) => {
         .select(`
             *,
             task:task_id(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
-            user:user_id(id, given_name, family_name),
-            supplier:supplier_id(name)
+            user:employee_id(id, given_name, family_name),
+            supplier:supplier_id(name),
+            files:File(id, url)
         `)
         .in("task_id", siteTaskIds)
         .order("created_at", { ascending: false });

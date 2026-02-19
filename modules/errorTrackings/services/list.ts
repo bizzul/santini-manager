@@ -16,7 +16,7 @@ export const list = async (
 
     let query = supabase
       .from("Errortracking")
-      .select("*, files(*), supplier(*), task(*), user(*)");
+      .select("*, files(*), supplier(*), task(*), user:employee_id(*)");
 
     if (filters.q) {
       // Use OR logic for multiple field search

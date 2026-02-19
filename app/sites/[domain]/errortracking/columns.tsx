@@ -39,16 +39,19 @@ type ErrorTrackingRow = {
 
 // Handler for inline editing errortracking
 // Note: editItem requires files parameter, we pass empty array for inline edits
-const createErrorTrackingEditHandler = () => {
+const createErrorTrackingEditHandler = (domain?: string) => {
   return async (
     rowData: ErrorTrackingRow,
     field: string,
     newValue: string | number | boolean | null
   ): Promise<{ success?: boolean; error?: string }> => {
     const formData: Record<string, unknown> = {
-      description: rowData.description,
-      errorCategory: rowData.error_category,
-      errorType: rowData.error_type,
+      description: rowData.description ?? "",
+      errorCategory: rowData.error_category ?? "",
+      errorType: rowData.error_type ?? "",
+      task: rowData.task_id?.toString() ?? "",
+      user: rowData.employee_id != null ? String(rowData.employee_id) : "",
+      position: rowData.position ?? "",
       materialCost: rowData.material_cost,
       timeSpentHours: rowData.time_spent_hours,
       transferKm: rowData.transfer_km,
@@ -56,7 +59,7 @@ const createErrorTrackingEditHandler = () => {
     };
 
     try {
-      const result = await editItem(formData, rowData.id, []);
+      const result = await editItem(formData, rowData.id, [], domain);
       if (result?.error) {
         return { error: result.error };
       }
@@ -67,8 +70,8 @@ const createErrorTrackingEditHandler = () => {
   };
 };
 
-export const createColumns = (): ColumnDef<ErrorTrackingRow>[] => {
-  const handleErrorTrackingEdit = createErrorTrackingEditHandler();
+export const createColumns = (domain?: string): ColumnDef<ErrorTrackingRow>[] => {
+  const handleErrorTrackingEdit = createErrorTrackingEditHandler(domain);
 
   return [
     {
@@ -138,7 +141,10 @@ export const createColumns = (): ColumnDef<ErrorTrackingRow>[] => {
       cell: ({ row }) => {
         const { created_at } = row.original;
         if (!created_at) return "-";
-        const formattedDate = created_at.toLocaleDateString();
+        const formattedDate =
+          created_at instanceof Date
+            ? created_at.toLocaleDateString()
+            : new Date(created_at as string).toLocaleDateString();
         return <div suppressHydrationWarning>{formattedDate}</div>;
       },
     },

@@ -26,6 +26,7 @@ import {
   User,
 } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -72,6 +73,9 @@ type Props = {
 
 const EditProductForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const domain = pathname?.split("/")[2] || "";
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -81,6 +85,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
       errorType: "",
       supplier: "",
       task: "",
+      position: "",
       materialCost: undefined,
       timeSpentHours: undefined,
       transferKm: undefined,
@@ -110,7 +115,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
   useEffect(() => {
     const getSuppliers = async () => {
-      const d = await fetch(`../api/suppliers/`);
+      const d = await fetch(`/api/suppliers`);
       if (!d.ok) {
         throw new Error("Failed to fetch suppliers");
       }
@@ -121,7 +126,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     const getCategories = async () => {
       try {
-        const response = await fetch(`../api/inventory/categories/`);
+        const response = await fetch(`/api/inventory/categories`);
         if (!response.ok) {
           throw new Error("Failed to fetch categories");
         }
@@ -136,7 +141,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     const getRoles = async () => {
       try {
-        const response = await fetch(`../api/roles/`);
+        const response = await fetch(`/api/roles`);
         if (!response.ok) {
           throw new Error("Failed to fetch categories");
         }
@@ -151,7 +156,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     const getTasks = async () => {
       try {
-        const response = await fetch(`../api/tasks/?include=client`);
+        const response = await fetch(`/api/tasks?include=client`);
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
         }
@@ -165,7 +170,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
 
     const getUsers = async () => {
       try {
-        const response = await fetch(`../api/users/list`);
+        const response = await fetch(`/api/users/list`);
         if (!response.ok) {
           throw new Error("Failed to fetch categories");
         }
@@ -184,6 +189,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
     setValue("supplier", data.supplier_id?.toString());
     setValue("task", data.task_id?.toString());
     setValue("user", data.employee_id?.toString());
+    setValue("position", data.position ?? "");
     setValue("materialCost", data.material_cost ?? "");
     setValue("timeSpentHours", data.time_spent_hours ?? "");
     setValue("transferKm", data.transfer_km ?? "");
@@ -196,17 +202,19 @@ const EditProductForm = ({ handleClose, data }: Props) => {
   }, [data, setValue]);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    const response = await editItem(d, data?.id, fileIds);
+    const response = await editItem(d, data?.id, fileIds, domain);
     if (response?.error) {
       toast({
+        variant: "destructive",
         description: `Errore! ${response.error}`,
       });
     } else {
       handleClose(false);
       toast({
-        description: `Elemento ${d.errorType} aggiornato correttamente!`,
+        description: `Elemento aggiornato correttamente!`,
       });
       form.reset();
+      router.refresh();
     }
   };
 
@@ -407,6 +415,20 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                 <Textarea {...field} />
               </FormControl>
               {/* <FormDescription>Categoria del prodotto</FormDescription> */}
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="position"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Posizione (opzionale)</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="es. pos. 1" disabled={isSubmitting} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

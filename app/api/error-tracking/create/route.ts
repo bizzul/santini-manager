@@ -16,6 +16,36 @@ export async function POST(req: NextRequest) {
     const data = validation.safeParse(body); //? <---Veryfing body against validation schema
 
     if (data.success) {
+      // Errortracking uses employee_id (User.id integer), not user_id
+      let employeeId: number | undefined;
+      if (data.data.user) {
+        const parsed = Number(data.data.user);
+        if (!Number.isNaN(parsed)) {
+          employeeId = parsed; // ID numerico da form desktop
+        } else {
+          // Auth UUID da mobile page (session.user.sub)
+          const { data: userRow } = await supabase
+            .from("User")
+            .select("id")
+            .eq("authId", data.data.user)
+            .maybeSingle();
+          employeeId = userRow?.id;
+        }
+      } else {
+        const { data: userRow } = await supabase
+          .from("User")
+          .select("id")
+          .eq("authId", user.id)
+          .maybeSingle();
+        employeeId = userRow?.id;
+      }
+      if (!employeeId) {
+        return NextResponse.json(
+          { error: "Utente non trovato nel database" },
+          { status: 400 }
+        );
+      }
+
       // Create the error tracking record
       const { data: result, error: createError } = await supabase
         .from("Errortracking")
@@ -25,7 +55,8 @@ export async function POST(req: NextRequest) {
           error_type: data.data.errorType ?? "",
           supplier_id: data.data.supplier ? Number(data.data.supplier) : null,
           task_id: Number(data.data.task),
-          user_id: user.id,
+          employee_id: employeeId,
+          position: data.data.position || null,
         })
         .select()
         .single();

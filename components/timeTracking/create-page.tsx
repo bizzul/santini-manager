@@ -132,10 +132,10 @@ const QUICK_TIMES = [
   { hours: 8, minutes: 0, label: "8h" },
 ];
 
-// Ore obiettivo per giorno: Lun-Gio 9h, Ven 5h
+// Ore obiettivo per giorno: Lun-Gio 9h, Ven 6h
 function getWorkHoursTarget(): number {
   const day = new Date().getDay(); // 0=Dom, 1=Lun, ..., 5=Ven, 6=Sab
-  return day === 5 ? 5 : 9; // Venerdì 5h, altri giorni 9h
+  return day === 5 ? 6 : 9; // Venerdì 6h, altri giorni 9h
 }
 
 const CreatePage = ({
@@ -640,21 +640,32 @@ const CreatePage = ({
       {/* Tabs Navigation */}
       <div className="max-w-4xl mx-auto px-4 pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="create" className="gap-2">
-              <Plus className="h-4 w-4" />
-              Registra ore
-            </TabsTrigger>
-            <TabsTrigger value="my-hours" className="gap-2">
-              <List className="h-4 w-4" />
-              Le mie ore
-              {allUserEntries.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                  {allUserEntries.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-2">
+            <TabsList className="grid flex-1 grid-cols-2">
+              <TabsTrigger value="create" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Registra ore
+              </TabsTrigger>
+              <TabsTrigger value="my-hours" className="gap-2">
+                <List className="h-4 w-4" />
+                Le mie ore
+                {allUserEntries.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                    {allUserEntries.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+            {domain && siteId && activeTab === "create" && (
+              <VoiceInputButton
+                domain={domain}
+                siteId={siteId}
+                tasks={data.tasks}
+                internalActivities={internalActivities}
+                onAddEntry={handleAddFromVoice}
+              />
+            )}
+          </div>
 
           {/* Create Tab Content */}
           <TabsContent value="create" className="mt-4 space-y-6">
@@ -1160,26 +1171,15 @@ const CreatePage = ({
           ))}
         </div>
 
-        {/* Add Row Button + Voice Input */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1 border-dashed border-2 h-14 text-muted-foreground hover:text-foreground hover:border-primary"
-            onClick={handleAddRow}
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Aggiungi registrazione
-          </Button>
-          {domain && siteId && (
-            <VoiceInputButton
-              domain={domain}
-              siteId={siteId}
-              tasks={data.tasks}
-              internalActivities={internalActivities}
-              onAddEntry={handleAddFromVoice}
-            />
-          )}
-        </div>
+        {/* Add Row Button */}
+        <Button
+          variant="outline"
+          className="w-full border-dashed border-2 h-14 text-muted-foreground hover:text-foreground hover:border-primary"
+          onClick={handleAddRow}
+        >
+          <Plus className="h-5 w-5 mr-2" />
+          Aggiungi registrazione
+        </Button>
       </TabsContent>
 
       {/* My Hours Tab Content */}

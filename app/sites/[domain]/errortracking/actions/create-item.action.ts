@@ -26,6 +26,33 @@ export async function createItem(props: any, domain?: string) {
 
   try {
     if (result.success) {
+      // Errortracking uses employee_id (User.id integer), not user_id
+      let employeeId: number | undefined;
+      if (result.data.user) {
+        const parsed = Number(result.data.user);
+        if (!Number.isNaN(parsed)) {
+          employeeId = parsed; // ID numerico da form desktop
+        } else {
+          // Auth UUID da mobile (session.user.sub)
+          const { data: userRow } = await supabase
+            .from("User")
+            .select("id")
+            .eq("authId", result.data.user)
+            .maybeSingle();
+          employeeId = userRow?.id;
+        }
+      } else {
+        const { data: userRow } = await supabase
+          .from("User")
+          .select("id")
+          .eq("authId", userContext.userId)
+          .maybeSingle();
+        employeeId = userRow?.id;
+      }
+      if (!employeeId) {
+        return { error: true, message: "Utente non trovato!" };
+      }
+
       const insertData: Record<string, unknown> = {
         supplier_id: result.data.supplier
           ? Number(result.data.supplier)
@@ -34,7 +61,8 @@ export async function createItem(props: any, domain?: string) {
         error_category: result.data.errorCategory,
         error_type: result.data.errorType ?? "",
         task_id: Number(result.data.task),
-        user_id: userContext.userId,
+        employee_id: employeeId,
+        position: result.data.position || null,
       };
       if (result.data.materialCost != null) {
         insertData.material_cost = result.data.materialCost;

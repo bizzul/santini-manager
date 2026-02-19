@@ -14,6 +14,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 function ImageGallery({ files }: { files: any }) {
   const [currentImage, setCurrentImage] = useState(0);
   const [open, setOpen] = useState(false);
+
+  if (!files?.length) return <div>N/A</div>;
   const handlePrevClickImages = () => {
     setCurrentImage(currentImage - 1);
   };

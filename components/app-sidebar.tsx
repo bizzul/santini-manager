@@ -64,6 +64,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
 import { getKanbanIcon } from "@/lib/kanban-icons";
+import { cn } from "@/lib/utils";
 
 // localStorage keys for sidebar state persistence
 const SIDEBAR_COLLAPSED_MENUS_KEY = "santini-sidebar-collapsed-menus";
@@ -500,6 +501,7 @@ const UserSection = memo(function UserSection({
 export function AppSidebar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { state } = useSidebar();
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
   // Initialize collapsed menus from localStorage (with Kanban collapsed by default)
@@ -1504,7 +1506,14 @@ export function AppSidebar() {
         <div className="flex flex-col gap-2">
           {/* Quick access icons for Ore, Errori, Reports */}
           {domain && (
-            <div className="flex justify-around items-center px-2 py-2 border-b border-border">
+            <div
+              className={cn(
+                "flex items-center py-2 border-b border-border",
+                state === "collapsed"
+                  ? "flex-col gap-1 justify-center px-0"
+                  : "flex-row justify-around px-2"
+              )}
+            >
               {enabledModules.some((m) => m.name === "timetracking") && (
                 <Link
                   href={`${basePath}/timetracking`}

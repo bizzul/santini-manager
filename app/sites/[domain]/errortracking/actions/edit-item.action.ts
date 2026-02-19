@@ -10,6 +10,7 @@ export async function editItem(
   formData: any,
   id: number,
   files: any,
+  domain?: string
 ) {
   const supabase = createServiceClient();
   const authClient = await createClient();
@@ -29,9 +30,16 @@ export async function editItem(
         description: result.data.description ?? "",
         error_category: result.data.errorCategory,
         error_type: result.data.errorType ?? "",
-        task_id: result.data.task ? Number(result.data.task) : undefined,
-        employee_id: result.data.user ? Number(result.data.user) : undefined,
       };
+      if (result.data.task) {
+        updateData.task_id = Number(result.data.task);
+      }
+      if (result.data.user) {
+        updateData.employee_id = Number(result.data.user);
+      }
+      if (result.data.position !== undefined) {
+        updateData.position = result.data.position;
+      }
       if (result.data.materialCost != null) updateData.material_cost = result.data.materialCost;
       if (result.data.timeSpentHours != null) updateData.time_spent_hours = result.data.timeSpentHours;
       if (result.data.transferKm != null) updateData.transfer_km = result.data.transferKm;
@@ -68,7 +76,11 @@ export async function editItem(
         }
       }
 
-      return revalidatePath("/errortracking");
+      revalidatePath("/errortracking");
+      if (domain) {
+        revalidatePath(`/sites/${domain}/errortracking`);
+      }
+      return;
     } catch (e) {
       logger.error(e);
       return { error: "Modifica elemento fallita!" };

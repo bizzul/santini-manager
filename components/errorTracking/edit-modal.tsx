@@ -10,7 +10,7 @@ import { Dispatch, FC, SetStateAction, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { validation } from "../../validation/products/create";
+import { validation } from "../../validation/errorTracking/create";
 import TasksFilter from "./filterTaskWhite";
 import { Roles, Supplier } from "@/types/supabase";
 import {
@@ -273,14 +273,13 @@ export const EditModal: FC<Props> = ({
                   </div>
 
                   <div>
-                    <label className="form-label">Posizione</label>
+                    <label className="form-label">Posizione (opzionale)</label>
                     <div>
                       <input
                         type="text"
                         {...register("position")}
                         className="focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-none rounded-r-md sm:text-sm border-gray-300 bg-transparent"
                       />
-                      {errors.position && <span>Campo necessario</span>}
                     </div>
                   </div>
 

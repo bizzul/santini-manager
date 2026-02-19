@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { removeItem } from "./actions/delete-item.action";
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 const initialState = {
   message: null,
@@ -25,19 +26,18 @@ type Props = {
 
 function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
   const { toast } = useToast();
-  // const { pending } = useFormStatus();
+  const router = useRouter();
+  const pathname = usePathname();
+  const domain = pathname?.split("/")[2] || "";
   const [pending, setPending] = useState(false);
-  // const [state, formAction] = useFormState(
-  //   removeItem.bind(null, data?.id),
-  //   initialState
-  // );
 
   async function handleDelete(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
-    const response = await removeItem(data);
+    const response = await removeItem(data, domain);
     if (response?.message) {
       toast({
+        variant: "destructive",
         description: `Errore! ${response.message}`,
       });
       setPending(false);
@@ -47,6 +47,8 @@ function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
       });
       setPending(false);
       setOpen(false);
+      setData(null);
+      router.refresh();
     }
   }
 

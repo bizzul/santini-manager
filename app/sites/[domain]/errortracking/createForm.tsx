@@ -70,6 +70,7 @@ const CreateProductForm = ({
       errorType: "",
       supplier: "",
       task: "",
+      position: "",
       materialCost: undefined,
       timeSpentHours: undefined,
       transferKm: undefined,
@@ -263,6 +264,25 @@ const CreateProductForm = ({
             />
           )}
         </div>
+
+        {/* Posizione (opzionale) */}
+        <FormField
+          name="position"
+          control={form.control}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Posizione (opzionale)</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="es. pos. 1"
+                  disabled={isSubmitting}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Descrizione */}
         <FormField
