@@ -39,8 +39,8 @@ export async function createItem(props: Timetracking, domain?: string) {
       // Build insert data
       const insertData: any = {
         created_at: new Date(result.data.date),
-        description: result.data.description,
-        description_type: result.data.descriptionCat,
+        description: result.data.description || null,
+        description_type: result.data.descriptionCat || undefined,
         hours: result.data.hours,
         minutes: result.data.minutes,
         totalTime: roundedTotalTime,
@@ -135,6 +135,15 @@ export async function createItem(props: Timetracking, domain?: string) {
       return { message: "Creazione elemento fallita!", error: error.message };
     }
   } else {
-    return { message: "Validazione elemento fallita!" };
+    const flat = result.error.flatten();
+    console.error("Validation failed:", JSON.stringify(flat));
+    const fieldMessages = Object.entries(flat.fieldErrors)
+      .map(([k, v]) => `${k}: ${(v as string[]).join(", ")}`)
+      .join("; ");
+    const formMessages = flat.formErrors.join("; ");
+    return {
+      message: "Validazione elemento fallita!",
+      error: [fieldMessages, formMessages].filter(Boolean).join(" | "),
+    };
   }
 }

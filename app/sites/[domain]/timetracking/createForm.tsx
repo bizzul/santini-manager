@@ -151,8 +151,9 @@ const CreateProductForm = ({
       const result = await createItem(d, domain);
 
       if (result && "error" in result) {
+        logger.error("Server error creating timetracking:", result);
         toast({
-          description: `Errore: ${result.message || result.error}`,
+          description: `Errore: ${result.error || result.message}`,
           variant: "destructive",
         });
         return;
@@ -165,6 +166,7 @@ const CreateProductForm = ({
         });
         form.reset();
       } else {
+        logger.error("Unexpected result from createItem:", result);
         toast({
           description: "Errore nel creare la registrazione",
           variant: "destructive",

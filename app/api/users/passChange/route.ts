@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     // Send password reset email using Supabase
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${baseUrl}/auth/reset-password`,
+      redirectTo: `${baseUrl}/auth/update-password`,
     });
 
     if (error) {
