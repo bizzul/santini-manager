@@ -54,7 +54,7 @@ export const EditModal: FC<Props> = ({
     const client = resource?.client;
     if (!client) return null;
     return (client as any).businessName || 
-      `${(client as any).individualFirstName || ''} ${(client as any).individualLastName || ''}`.trim() ||
+      `${(client as any).individualLastName || ''} ${(client as any).individualFirstName || ''}`.trim() ||
       'Cliente';
   }, [resource?.client]);
   const [error, setError] = useState<string | null>(null);

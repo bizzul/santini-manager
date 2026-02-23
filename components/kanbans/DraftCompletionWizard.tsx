@@ -419,8 +419,8 @@ export default function DraftCompletionWizard({
                         value: client.id,
                         label:
                           client.businessName ||
-                          `${client.individualFirstName || ""} ${
-                            client.individualLastName || ""
+                          `${client.individualLastName || ""} ${
+                            client.individualFirstName || ""
                           }`.trim() ||
                           "Cliente",
                       }))}

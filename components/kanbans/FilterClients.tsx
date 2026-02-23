@@ -16,7 +16,7 @@ export default function ClientsFilter({
       : clients.filter((client: any) => {
           const clientName = client.clientType === "BUSINESS"
             ? client.businessName || ""
-            : `${client.individualFirstName || ""} ${client.individualLastName || ""}`.trim();
+            : `${client.individualLastName || ""} ${client.individualFirstName || ""}`.trim();
           return clientName
             .toLowerCase()
             .replace(/\s+/g, "")
@@ -74,7 +74,7 @@ export default function ClientsFilter({
                         >
                           {client.clientType === "BUSINESS"
                             ? client.businessName || "-"
-                            : `${client.individualFirstName || ""} ${client.individualLastName || ""}`.trim() || "-"}
+                            : `${client.individualLastName || ""} ${client.individualFirstName || ""}`.trim() || "-"}
                         </span>
                         {selected ? (
                           <span

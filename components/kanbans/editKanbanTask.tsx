@@ -486,7 +486,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                 <User className="h-3 w-3" />
                 <span>
                   {selectedClient.businessName || 
-                   `${selectedClient.individualFirstName || ''} ${selectedClient.individualLastName || ''}`.trim() ||
+                   `${selectedClient.individualLastName || ''} ${selectedClient.individualFirstName || ''}`.trim() ||
                    'Cliente'}
                 </span>
               </div>
@@ -612,9 +612,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                       value: client.id,
                       label: client.businessName
                         ? client.businessName
-                        : (client.individualFirstName ?? "N/A") +
+                        : (client.individualLastName ?? "N/A") +
                           " " +
-                          (client.individualLastName ?? "N/A"),
+                          (client.individualFirstName ?? "N/A"),
                     }))
                   : [];
                 return (

@@ -267,19 +267,19 @@ export const CreateModal: FC<Props> = ({
                             <p>{selectedClient.businessName}</p>
                           </div>
                         </div>
-                        {selectedClient.individualFirstName && (
-                          <div className="pb-4">
-                            <h2 className="text-slate-400 text-sm">NOME</h2>
-                            <div className="flex flex-row gap-3 pt-2">
-                              <p>{selectedClient.individualFirstName}</p>
-                            </div>
-                          </div>
-                        )}
                         {selectedClient.individualLastName && (
                           <div className="pb-4">
                             <h2 className="text-slate-400 text-sm">COGNOME</h2>
                             <div className="flex flex-row gap-3 pt-2">
                               <p>{selectedClient.individualLastName}</p>
+                            </div>
+                          </div>
+                        )}
+                        {selectedClient.individualFirstName && (
+                          <div className="pb-4">
+                            <h2 className="text-slate-400 text-sm">NOME</h2>
+                            <div className="flex flex-row gap-3 pt-2">
+                              <p>{selectedClient.individualFirstName}</p>
                             </div>
                           </div>
                         )}

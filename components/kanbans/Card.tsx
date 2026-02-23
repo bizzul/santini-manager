@@ -345,7 +345,7 @@ export default function Card({
     }
     const firstName = data.client.individualFirstName || "";
     const lastName = data.client.individualLastName || "";
-    return `${firstName} ${lastName}`.trim() || "-";
+    return `${lastName} ${firstName}`.trim() || "-";
   };
 
   // Get pieces count

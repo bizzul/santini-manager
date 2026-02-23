@@ -114,7 +114,7 @@ export default function OfferFollowUpDialog({
     }
     const firstName = task.client.individualFirstName || "";
     const lastName = task.client.individualLastName || "";
-    return `${firstName} ${lastName}`.trim() || "-";
+    return `${lastName} ${firstName}`.trim() || "-";
   }, [task?.client]);
 
   // Reset form when dialog opens with new task

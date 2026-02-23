@@ -55,6 +55,7 @@ export default async function Page({
           users={data.users}
           roles={data.roles}
           tasks={data.tasks}
+          domain={domain}
         />
       ) : (
         <div className="w-full h-full text-center">
