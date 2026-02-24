@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { generateTaskCode } from "@/lib/code-generator";
 import { createProjectFolders } from "@/lib/project-folders";
+import { formatLocalDate } from "@/lib/utils";
 import type { ExtractedProject } from "@/validation/voice-input/extracted-project";
 
 interface CreateBatchResult {
@@ -193,7 +194,7 @@ export async function createBatchProjects(
                     luogo: project.luogo || null,
                     clientId: clientId,
                     deliveryDate: project.terminePosa
-                        ? new Date(project.terminePosa).toISOString()
+                        ? formatLocalDate(new Date(project.terminePosa))
                         : null,
                     unique_code: uniqueCode,
                     kanbanId: offerKanban.id,

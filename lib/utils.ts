@@ -5,6 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Format a Date as YYYY-MM-DD using local timezone.
+ * Avoids the UTC shift caused by Date.toISOString().
+ */
+export function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 // Standard fetcher for SWR
 export const fetcher = (url: string) => fetch(url).then((res) => res.json());
 

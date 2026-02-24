@@ -999,9 +999,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                       type="date"
                       value={
                         ts.deliveryDate
-                          ? new Date(ts.deliveryDate)
-                              .toISOString()
-                              .split("T")[0]
+                          ? ts.deliveryDate.split("T")[0]
                           : ""
                       }
                       onChange={async (e) => {

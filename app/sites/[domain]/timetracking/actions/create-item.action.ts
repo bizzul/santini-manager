@@ -1,12 +1,12 @@
 "use server";
 
-import { Timetracking } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/server";
 import { validation } from "@/validation/timeTracking/createManual";
 import { getSiteData } from "@/lib/fetchers";
+import { z } from "zod";
 
-export async function createItem(props: Timetracking, domain?: string) {
+export async function createItem(props: z.input<typeof validation>, domain?: string) {
   const result = validation.safeParse(props);
 
   let siteId = null;

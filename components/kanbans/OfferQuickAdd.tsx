@@ -25,7 +25,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, formatLocalDate } from "@/lib/utils";
 import { Client, SellProductCategory } from "@/types/supabase";
 
 // Validation schema for quick add form
@@ -113,7 +113,7 @@ export default function OfferQuickAdd({
           productIds: [],
           // Store category IDs for filtering products when completing
           draftCategoryIds: data.categoryIds,
-          deliveryDate: data.deliveryDate?.toISOString() || null,
+          deliveryDate: data.deliveryDate ? formatLocalDate(data.deliveryDate) : null,
           other: data.other || "",
           kanbanId: kanbanId,
           isDraft: true,

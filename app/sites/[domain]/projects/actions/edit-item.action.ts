@@ -6,6 +6,7 @@ import { validation } from "@/validation/task/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 import { logger } from "@/lib/logger";
+import { formatLocalDate } from "@/lib/utils";
 
 export async function editItem(formData: any, id: number, domain?: string) {
   const result = validation.safeParse(formData);
@@ -116,8 +117,8 @@ export async function editItem(formData: any, id: number, domain?: string) {
           unique_code: result.data?.unique_code || null,
           name: result.data?.name || null,
           luogo: result.data?.luogo || null,
-          deliveryDate: result.data.deliveryDate || null,
-          termine_produzione: result.data.termine_produzione || null,
+          deliveryDate: result.data.deliveryDate instanceof Date ? formatLocalDate(result.data.deliveryDate) : result.data.deliveryDate || null,
+          termine_produzione: result.data.termine_produzione instanceof Date ? formatLocalDate(result.data.termine_produzione) : result.data.termine_produzione || null,
           ora_inizio: result.data?.ora_inizio || null,
           ora_fine: result.data?.ora_fine || null,
           squadra: result.data?.squadra ?? null,

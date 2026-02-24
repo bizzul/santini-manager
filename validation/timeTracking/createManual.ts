@@ -3,8 +3,8 @@ import { z } from "zod";
 export const validation = z.object({
   description: z.string().optional(),
   descriptionCat: z.string().optional(),
-  hours: z.coerce.number(),
-  minutes: z.coerce.number(),
+  hours: z.coerce.number().default(0),
+  minutes: z.coerce.number().default(0),
   task: z.string().optional(),
   userId: z.string().min(1, "Seleziona un dipendente"),
   roles: z.string().optional(),

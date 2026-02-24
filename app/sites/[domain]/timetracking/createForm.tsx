@@ -147,8 +147,21 @@ const CreateProductForm = ({
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
-      //@ts-ignore
-      const result = await createItem(d, domain);
+      const payload = {
+        date: d.date,
+        description: d.description ?? "",
+        descriptionCat: d.descriptionCat ?? "",
+        hours: Number(d.hours) || 0,
+        minutes: Number(d.minutes) || 0,
+        task: d.task ?? "",
+        userId: d.userId,
+        roles: d.roles ?? "",
+        activityType: d.activityType ?? "project",
+        internalActivity: d.internalActivity,
+        lunchOffsite: d.lunchOffsite ?? false,
+        lunchLocation: d.lunchLocation ?? "",
+      };
+      const result = await createItem(payload as any, domain);
 
       if (result && "error" in result) {
         logger.error("Server error creating timetracking:", result);
