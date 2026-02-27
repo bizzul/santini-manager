@@ -33,7 +33,6 @@ import {
   MapPin,
   Package,
   Euro,
-  Clock,
   Send,
   FileText,
   User,
@@ -123,7 +122,7 @@ export default function OfferFollowUpDialog({
 
   const contactPhone = useMemo(() => {
     if (!task?.client) return null;
-    return task.client.mobilePhone || task.client.phone || task.client.landlinePhone || null;
+    return task.client.mobilePhone || task.client.phone || null;
   }, [task?.client]);
 
   const sentDateFormatted = useMemo(() => {
@@ -360,31 +359,18 @@ export default function OfferFollowUpDialog({
             </div>
 
             {/* Dates */}
-            {(task.deliveryDate || task.termine_produzione) && (
+            {task.deliveryDate && (
               <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                {task.deliveryDate && (
-                  <div className="flex items-center gap-3">
-                    <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div>
-                      <span className="text-xs text-muted-foreground">Data consegna: </span>
-                      <span className="font-medium text-sm">
-                        {DateManager.formatEUDate(task.deliveryDate)}
-                        {" "}(S.{DateManager.getWeekNumber(task.deliveryDate)})
-                      </span>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <span className="text-xs text-muted-foreground">Data consegna: </span>
+                    <span className="font-medium text-sm">
+                      {DateManager.formatEUDate(task.deliveryDate)}
+                      {" "}(S.{DateManager.getWeekNumber(task.deliveryDate)})
+                    </span>
                   </div>
-                )}
-                {task.termine_produzione && (
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div>
-                      <span className="text-xs text-muted-foreground">Termine produzione: </span>
-                      <span className="font-medium text-sm">
-                        {DateManager.formatEUDate(task.termine_produzione)}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             )}
 
