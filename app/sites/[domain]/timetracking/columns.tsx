@@ -9,6 +9,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
 
+interface InternalActivity {
+  id: string;
+  code: string;
+  label: string;
+  site_id: string | null;
+  sort_order: number;
+}
+
 type TimetrackingRow = Timetracking & {
   user?: {
     given_name?: string;
@@ -29,6 +37,7 @@ type TimetrackingRow = Timetracking & {
       individualLastName?: string;
     };
   };
+  internal_activity?: string;
 };
 
 // Handler for inline editing timetracking
@@ -83,7 +92,7 @@ const saveScrollPositions = (
   return positions;
 };
 
-export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => {
+export const createColumns = (domain?: string, internalActivities: InternalActivity[] = []): ColumnDef<TimetrackingRow>[] => {
   const handleTimetrackingEdit = createTimetrackingEditHandler(domain);
 
   return [
@@ -182,7 +191,15 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
         <DataTableColumnHeader column={column} title="Ruolo" />
       ),
       cell: ({ row }) => {
-        const { roles } = row.original;
+        const { roles, internal_activity } = row.original;
+        if (internal_activity) {
+          const activity = internalActivities.find((a) => a.code === internal_activity);
+          return (
+            <span className="text-muted-foreground italic">
+              {activity?.label || internal_activity}
+            </span>
+          );
+        }
         if (roles?.length) {
           return (
             <ul>
@@ -191,9 +208,8 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
               ))}
             </ul>
           );
-        } else {
-          return "Nessun ruolo";
         }
+        return "Nessun ruolo";
       },
     },
     {
@@ -319,4 +335,4 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
 };
 
 // Legacy export for backward compatibility
-export const columns = createColumns();
+export const columns = createColumns(undefined, []);

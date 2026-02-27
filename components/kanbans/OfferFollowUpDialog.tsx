@@ -30,11 +30,19 @@ import {
   Phone,
   Mail,
   MessageSquare,
+  MapPin,
+  Package,
+  Euro,
+  Clock,
+  Send,
+  FileText,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Task, KanbanColumn, Client } from "@/types/supabase";
+import { DateManager } from "../../package/utils/dates/date-manager";
 import { useToast } from "@/components/ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
 
@@ -44,7 +52,10 @@ interface OfferFollowUpDialogProps {
   task:
     | (Task & {
         client?: Client;
-        sellProduct?: { type?: string; name?: string };
+        sellProduct?: { type?: string; name?: string; category?: any };
+        column?: KanbanColumn;
+        positions?: string[];
+        numero_pezzi?: number | null;
       })
     | null;
   columns: KanbanColumn[];
@@ -74,19 +85,14 @@ export default function OfferFollowUpDialog({
   const [note, setNote] = useState("");
   const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 
-  // Filter columns to show only valid destinations (Vinta, Persa)
-  // These are columns after "Trattativa" that make sense for follow-up
   const destinationColumns = useMemo(() => {
     if (!columns) return [];
 
-    // Get columns that are not the current column (Trattativa)
-    // and are either won or lost type
     return columns
       .filter((col) => {
         const colType = col.column_type || col.columnType || "normal";
         const colIdentifier = col.identifier?.toUpperCase() || "";
 
-        // Exclude "Inviata", "Elaborazione" and "Trattativa" columns
         if (
           colIdentifier.includes("INVIAT") ||
           colIdentifier.includes("ELABOR") ||
@@ -95,7 +101,6 @@ export default function OfferFollowUpDialog({
           return false;
         }
 
-        // Include only Vinta (won), Persa (lost)
         return (
           colType === "won" ||
           colType === "lost" ||
@@ -106,7 +111,6 @@ export default function OfferFollowUpDialog({
       .sort((a, b) => (a.position || 0) - (b.position || 0));
   }, [columns]);
 
-  // Get client name
   const clientName = useMemo(() => {
     if (!task?.client) return "-";
     if (task.client.clientType === "BUSINESS") {
@@ -117,7 +121,39 @@ export default function OfferFollowUpDialog({
     return `${lastName} ${firstName}`.trim() || "-";
   }, [task?.client]);
 
-  // Reset form when dialog opens with new task
+  const contactPhone = useMemo(() => {
+    if (!task?.client) return null;
+    return task.client.mobilePhone || task.client.phone || task.client.landlinePhone || null;
+  }, [task?.client]);
+
+  const sentDateFormatted = useMemo(() => {
+    if (!task) return "-";
+    const sentDate = task.sent_date || task.sentDate;
+    if (!sentDate) return "-";
+    return DateManager.formatEUDate(sentDate);
+  }, [task]);
+
+  const daysSinceSent = useMemo(() => {
+    if (!task) return 0;
+    const sentDate = task.sent_date || task.sentDate;
+    if (!sentDate) return 0;
+    const sent = new Date(sentDate);
+    const now = new Date();
+    return Math.floor((now.getTime() - sent.getTime()) / (1000 * 60 * 60 * 24));
+  }, [task]);
+
+  const piecesDisplay = useMemo(() => {
+    if (!task) return "-";
+    if (task.numero_pezzi && task.numero_pezzi > 0) {
+      return `${task.numero_pezzi} pz`;
+    }
+    if (task.positions && task.positions.length > 0) {
+      const count = task.positions.filter((p: string) => p && p.trim() !== "").length;
+      if (count > 0) return `${count} pos.`;
+    }
+    return "-";
+  }, [task]);
+
   React.useEffect(() => {
     if (open && task) {
       setContactDate(new Date());
@@ -153,7 +189,6 @@ export default function OfferFollowUpDialog({
     setIsSubmitting(true);
 
     try {
-      // Build the note content
       const contactTypeLabels: Record<ContactType, string> = {
         call: "Chiamata",
         email: "Email",
@@ -164,7 +199,6 @@ export default function OfferFollowUpDialog({
         locale: it,
       })}] ${contactTypeLabels[contactType]}: ${note}`;
 
-      // Save the note via API
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       };
@@ -172,7 +206,6 @@ export default function OfferFollowUpDialog({
         headers["x-site-id"] = siteId;
       }
 
-      // Add note to task
       const noteResponse = await fetch(`/api/tasks/${task.id}/notes`, {
         method: "POST",
         headers,
@@ -184,11 +217,9 @@ export default function OfferFollowUpDialog({
       });
 
       if (!noteResponse.ok) {
-        // Note API might not exist yet, continue anyway
         console.warn("Note API not available, continuing with move");
       }
 
-      // Move the card to the selected column
       await onMoveCard(
         task.id,
         selectedColumn.id,
@@ -217,156 +248,298 @@ export default function OfferFollowUpDialog({
 
   if (!task) return null;
 
+  const productName = task.sellProduct?.name || task.sellProduct?.type || "-";
+  const categoryName = (() => {
+    const cat = task.sellProduct?.category;
+    if (!cat) return null;
+    const catData = Array.isArray(cat) ? cat[0] : cat;
+    return catData?.name || null;
+  })();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span>Follow-up Offerta</span>
-            <span className="text-sm font-normal text-muted-foreground">
+            <span className="text-lg font-bold text-primary">
               {task.unique_code}
             </span>
           </DialogTitle>
-          <DialogDescription>
-            Cliente: <strong>{clientName}</strong>
-            {task.sellProduct?.type && (
-              <span className="ml-2">• {task.sellProduct.type}</span>
-            )}
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          {/* Contact Date */}
-          <div className="space-y-2">
-            <Label>Data Contatto</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !contactDate && "text-muted-foreground"
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">
+          {/* LEFT: Project Details */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Dettagli Progetto
+            </h3>
+
+            {/* Client */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <User className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Cliente</div>
+                  <div className="font-semibold truncate">{clientName}</div>
+                  {contactPhone && (
+                    <a
+                      href={`tel:${contactPhone}`}
+                      className="text-sm text-primary hover:underline flex items-center gap-1 mt-0.5"
+                    >
+                      <Phone className="h-3 w-3" />
+                      {contactPhone}
+                    </a>
                   )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {contactDate ? (
-                    format(contactDate, "PPP", { locale: it })
-                  ) : (
-                    <span>Seleziona data</span>
+                </div>
+              </div>
+
+              {/* Object Name + Location */}
+              {(task.name || task.luogo) && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    {task.name && (
+                      <>
+                        <div className="text-xs text-muted-foreground">Oggetto</div>
+                        <div className="font-medium truncate">{task.name}</div>
+                      </>
+                    )}
+                    {task.luogo && (
+                      <>
+                        <div className="text-xs text-muted-foreground mt-1">Luogo</div>
+                        <div className="text-sm">{task.luogo}</div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Product + Category */}
+              <div className="flex items-start gap-3">
+                <Package className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground">Prodotto</div>
+                  <div className="font-medium">{productName}</div>
+                  {categoryName && (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Categoria: {categoryName}
+                    </div>
                   )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={contactDate}
-                  onSelect={(date) => date && setContactDate(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+                </div>
+              </div>
+            </div>
+
+            {/* Numbers Row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                <Euro className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                <div className="text-xs text-muted-foreground">Valore</div>
+                <div className="font-bold text-lg">
+                  {((task.sellPrice || 0) / 1000).toFixed(1)}K
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                <Package className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                <div className="text-xs text-muted-foreground">Pezzi</div>
+                <div className="font-bold text-lg">{piecesDisplay}</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3 text-center">
+                <Send className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
+                <div className="text-xs text-muted-foreground">Inviata</div>
+                <div className="font-bold text-sm">{sentDateFormatted}</div>
+                {daysSinceSent > 0 && (
+                  <div className={cn(
+                    "text-xs mt-0.5",
+                    daysSinceSent >= 7 ? "text-orange-600 font-semibold" : "text-muted-foreground"
+                  )}>
+                    {daysSinceSent} giorni fa
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Dates */}
+            {(task.deliveryDate || task.termine_produzione) && (
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                {task.deliveryDate && (
+                  <div className="flex items-center gap-3">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <span className="text-xs text-muted-foreground">Data consegna: </span>
+                      <span className="font-medium text-sm">
+                        {DateManager.formatEUDate(task.deliveryDate)}
+                        {" "}(S.{DateManager.getWeekNumber(task.deliveryDate)})
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {task.termine_produzione && (
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <span className="text-xs text-muted-foreground">Termine produzione: </span>
+                      <span className="font-medium text-sm">
+                        {DateManager.formatEUDate(task.termine_produzione)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notes/Comments */}
+            {task.other && (
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground font-medium">Note</span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{task.other}</p>
+              </div>
+            )}
           </div>
 
-          {/* Contact Type */}
-          <div className="space-y-2">
-            <Label>Tipo Contatto</Label>
-            <div className="flex gap-2">
+          {/* RIGHT: Follow-up Form */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Azione Follow-up
+            </h3>
+
+            {/* Contact Date */}
+            <div className="space-y-2">
+              <Label>Data Contatto</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !contactDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {contactDate ? (
+                      format(contactDate, "PPP", { locale: it })
+                    ) : (
+                      <span>Seleziona data</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={contactDate}
+                    onSelect={(date) => date && setContactDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Contact Type */}
+            <div className="space-y-2">
+              <Label>Tipo Contatto</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={contactType === "call" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setContactType("call")}
+                  className="flex-1"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Chiamata
+                </Button>
+                <Button
+                  type="button"
+                  variant={contactType === "email" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setContactType("email")}
+                  className="flex-1"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email
+                </Button>
+                <Button
+                  type="button"
+                  variant={contactType === "other" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setContactType("other")}
+                  className="flex-1"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Altro
+                </Button>
+              </div>
+            </div>
+
+            {/* Note */}
+            <div className="space-y-2">
+              <Label htmlFor="note">Note</Label>
+              <Textarea
+                id="note"
+                placeholder="Inserisci le informazioni del contatto..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            {/* Destination Column */}
+            <div className="space-y-2">
+              <Label>Sposta in</Label>
+              <Select
+                value={selectedColumnId}
+                onValueChange={setSelectedColumnId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona destinazione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {destinationColumns.map((col) => {
+                    const colType = col.column_type || col.columnType || "normal";
+                    let icon = "";
+                    if (colType === "won") icon = "🏆 ";
+                    if (colType === "lost") icon = "❌ ";
+
+                    return (
+                      <SelectItem key={col.id} value={col.id.toString()}>
+                        {icon}
+                        {col.title || col.identifier}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 pt-4">
               <Button
-                type="button"
-                variant={contactType === "call" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setContactType("call")}
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
                 className="flex-1"
               >
-                <Phone className="h-4 w-4 mr-2" />
-                Chiamata
+                Annulla
               </Button>
               <Button
-                type="button"
-                variant={contactType === "email" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setContactType("email")}
+                onClick={handleSubmit}
+                disabled={isSubmitting || !selectedColumnId}
                 className="flex-1"
               >
-                <Mail className="h-4 w-4 mr-2" />
-                Email
-              </Button>
-              <Button
-                type="button"
-                variant={contactType === "other" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setContactType("other")}
-                className="flex-1"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Altro
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salva e Sposta"
+                )}
               </Button>
             </div>
           </div>
-
-          {/* Note */}
-          <div className="space-y-2">
-            <Label htmlFor="note">Note</Label>
-            <Textarea
-              id="note"
-              placeholder="Inserisci le informazioni del contatto..."
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          {/* Destination Column */}
-          <div className="space-y-2">
-            <Label>Sposta in</Label>
-            <Select
-              value={selectedColumnId}
-              onValueChange={setSelectedColumnId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona destinazione..." />
-              </SelectTrigger>
-              <SelectContent>
-                {destinationColumns.map((col) => {
-                  const colType = col.column_type || col.columnType || "normal";
-                  let icon = "";
-                  if (colType === "won") icon = "🏆 ";
-                  if (colType === "lost") icon = "❌ ";
-
-                  return (
-                    <SelectItem key={col.id} value={col.id.toString()}>
-                      {icon}
-                      {col.title || col.identifier}
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
         </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Annulla
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || !selectedColumnId}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              "Salva e Sposta"
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

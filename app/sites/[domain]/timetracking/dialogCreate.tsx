@@ -25,13 +25,11 @@ function DialogCreate({
   users,
   roles,
   internalActivities,
-  currentUserId,
 }: {
   data: Task[];
   users: User[];
   roles: Roles[];
   internalActivities: InternalActivity[];
-  currentUserId?: number;
 }) {
   const [isOpen, setOpen] = useState(false);
   return (
@@ -49,13 +47,12 @@ function DialogCreate({
           <DialogDescription>Crea un nuovo report ore</DialogDescription>
         </DialogHeader>
         <CreateProductForm
-          key={isOpen ? "open" : "closed"}
+          key={String(isOpen)}
           data={data}
           users={users}
           roles={roles}
           internalActivities={internalActivities}
           handleClose={() => setOpen(false)}
-          currentUserId={currentUserId}
         />
       </DialogContent>
     </Dialog>

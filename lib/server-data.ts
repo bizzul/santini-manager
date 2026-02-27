@@ -1902,6 +1902,7 @@ export const fetchDashboardData = cache(
 // ============================================
 
 export interface VenditaDashboardStats {
+    offerKanbanIdentifier: string | null;
     // Offer status counts with values
     offerStatus: {
         todo: { count: number; value: number };
@@ -1952,10 +1953,10 @@ export const fetchVenditaDashboardData = cache(
         const sixMonthsAgo = new Date(now);
         sixMonthsAgo.setMonth(now.getMonth() - 6);
 
-        // First fetch kanbans to get their IDs
+        // First fetch kanbans with their category (for sidebar-order)
         const kanbansResult = await supabase
             .from("Kanban")
-            .select("id, is_offer_kanban, title, identifier, category_id")
+            .select("id, is_offer_kanban, is_production_kanban, title, identifier, category_id, category:KanbanCategory!category_id(id, name, display_order, is_internal)")
             .eq("site_id", siteId);
 
         const kanbans = kanbansResult.data || [];
@@ -1965,10 +1966,9 @@ export const fetchVenditaDashboardData = cache(
         const [
             tasksResult,
             columnsResult,
-            kanbanCategoriesResult,
             historicalTasksResult,
         ] = await Promise.all([
-            // All tasks (not archived)
+            // All tasks (not archived) with SellProduct category
             supabase
                 .from("Task")
                 .select(`
@@ -1985,7 +1985,8 @@ export const fetchVenditaDashboardData = cache(
                     sent_date,
                     deliveryDate,
                     clientId,
-                    Client:clientId(id, businessName)
+                    Client:clientId(id, businessName),
+                    SellProduct:sellProductId(id, name, category:category_id(id, name, color))
                 `)
                 .eq("site_id", siteId)
                 .eq("archived", false),
@@ -1996,11 +1997,6 @@ export const fetchVenditaDashboardData = cache(
                     .select("id, kanbanId, column_type, title, position")
                     .in("kanbanId", kanbanIds)
                 : Promise.resolve({ data: [], error: null }),
-            // Kanban categories
-            supabase
-                .from("KanbanCategory")
-                .select("id, name, color")
-                .eq("site_id", siteId),
             // Historical tasks for trend chart
             supabase
                 .from("Task")
@@ -2020,24 +2016,18 @@ export const fetchVenditaDashboardData = cache(
 
         const tasks = tasksResult.data || [];
         const columns = columnsResult.data || [];
-        const kanbanCategories = kanbanCategoriesResult.data || [];
         const historicalTasks = historicalTasksResult.data || [];
 
         // Create lookup maps
-        const offerKanbanIds = new Set(
-            kanbans.filter((k) => k.is_offer_kanban).map((k) => k.id),
-        );
+        const offerKanbans = kanbans.filter((k) => k.is_offer_kanban);
+        const offerKanbanIds = new Set(offerKanbans.map((k) => k.id));
+        const offerKanbanIdentifier = offerKanbans[0]?.identifier ?? null;
         const columnMap = new Map(columns.map((c) => [c.id, c]));
         const kanbanMap = new Map(kanbans.map((k) => [k.id, k]));
-        const categoryMap = new Map(
-            kanbanCategories.map((c) => [c.id, c]),
-        );
 
-        // Filter only offers
+        // Filter only offers currently in the offer kanban
         const offers = tasks.filter(
-            (task: any) =>
-                task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId),
+            (task: any) => offerKanbanIds.has(task.kanbanId),
         );
 
         // Initialize status counters
@@ -2055,22 +2045,66 @@ export const fetchVenditaDashboardData = cache(
             { offerte: number; elementi: number; color: string }
         >();
 
-        // Process offers
+        // Build order map from production kanban titles (e.g. "1. Arredamento" → "arredamento")
+        const categoryOrderMap = new Map<string, number>();
+        kanbans
+            .filter((k: any) => !offerKanbanIds.has(k.id))
+            .map((k: any) => k.title as string || "")
+            .sort()
+            .forEach((title, idx) => {
+                const name = title.replace(/^\d+\.\s*/, "").trim().toLowerCase();
+                if (name && !categoryOrderMap.has(name)) {
+                    categoryOrderMap.set(name, idx);
+                }
+            });
 
+        // Build column → dashboard status map based on actual kanban columns
+        type DashboardStatus =
+            | "todo"
+            | "inviate"
+            | "inTrattativa"
+            | "vinte"
+            | "perse";
+        const columnStatusMap = new Map<number, DashboardStatus>();
+        for (const col of columns) {
+            if (!offerKanbanIds.has(col.kanbanId)) continue;
+            const ct = col.column_type || "normal";
+            if (ct === "won") {
+                columnStatusMap.set(col.id, "vinte");
+            } else if (ct === "lost") {
+                columnStatusMap.set(col.id, "perse");
+            } else {
+                const t = (col.title || "").toLowerCase();
+                if (t.includes("inviat")) {
+                    columnStatusMap.set(col.id, "inviate");
+                } else if (
+                    t.includes("trattativa") || t.includes("negoziazione")
+                ) {
+                    columnStatusMap.set(col.id, "inTrattativa");
+                } else if (
+                    col.position === 0 || t.includes("todo") ||
+                    t.includes("da fare")
+                ) {
+                    columnStatusMap.set(col.id, "todo");
+                } else {
+                    columnStatusMap.set(col.id, "todo");
+                }
+            }
+        }
+
+        // Process offers
         offers.forEach((task: any) => {
-            const column = columnMap.get(task.kanbanColumnId);
             const sellPrice = task.sellPrice || 0;
             const positionsCount = task.positions?.length || 1;
 
-            // Get category from Kanban
-            const kanban = kanbanMap.get(task.kanbanId);
-            const category = kanban?.category_id
-                ? categoryMap.get(kanban.category_id)
-                : null;
-            const categoryName = category?.name || "Senza Categoria";
-            const categoryColor = category?.color || "#6b7280";
+            // Get product category from SellProduct
+            const sellProduct = task.SellProduct;
+            const productCategory = Array.isArray(sellProduct?.category)
+                ? sellProduct.category[0]
+                : sellProduct?.category;
+            const categoryName = productCategory?.name || "Senza Categoria";
+            const categoryColor = productCategory?.color || "#6b7280";
 
-            // Update category stats
             if (!categoryStatsMap.has(categoryName)) {
                 categoryStatsMap.set(categoryName, {
                     offerte: 0,
@@ -2082,55 +2116,36 @@ export const fetchVenditaDashboardData = cache(
             catStats.offerte++;
             catStats.elementi += positionsCount;
 
-            // Categorize by status
-            if (
-                task.display_mode === "small_green" ||
-                column?.column_type === "won"
-            ) {
-                offerStatus.vinte.count++;
-                offerStatus.vinte.value += sellPrice;
-            } else if (
-                task.display_mode === "small_red" ||
-                column?.column_type === "lost"
-            ) {
-                offerStatus.perse.count++;
-                offerStatus.perse.value += sellPrice;
-            } else if (task.sent_date) {
-                // Sent but not won/lost - check if in negotiation based on column
-                const columnTitle = column?.title?.toLowerCase() || "";
-                if (
-                    columnTitle.includes("trattativa") ||
-                    columnTitle.includes("negoziazione")
-                ) {
-                    offerStatus.inTrattativa.count++;
-                    offerStatus.inTrattativa.value += sellPrice;
-                } else {
-                    offerStatus.inviate.count++;
-                    offerStatus.inviate.value += sellPrice;
-                }
-            } else if (
-                column?.position === 0 ||
-                column?.title?.toLowerCase().includes("todo") ||
-                column?.title?.toLowerCase().includes("da fare")
-            ) {
-                offerStatus.todo.count++;
-                offerStatus.todo.value += sellPrice;
+            // Categorize by status — display_mode overrides column for won/lost
+            let status: DashboardStatus;
+            if (task.display_mode === "small_green") {
+                status = "vinte";
+            } else if (task.display_mode === "small_red") {
+                status = "perse";
             } else {
-                // Default to "in trattativa" for work in progress
-                offerStatus.inTrattativa.count++;
-                offerStatus.inTrattativa.value += sellPrice;
+                status = columnStatusMap.get(task.kanbanColumnId) ?? "todo";
             }
+
+            offerStatus[status].count++;
+            offerStatus[status].value += sellPrice;
         });
 
-        // Calculate categories data
+        // Only show categories that match production kanbans, in sidebar order
         const categoriesData = Array.from(categoryStatsMap.entries())
+            .filter(([category, stats]) =>
+                stats.offerte > 0 && categoryOrderMap.has(category.toLowerCase())
+            )
             .map(([category, stats]) => ({
                 category,
                 offerte: stats.offerte,
                 elementi: stats.elementi,
                 color: stats.color,
             }))
-            .sort((a, b) => b.elementi - a.elementi);
+            .sort((a, b) => {
+                const orderA = categoryOrderMap.get(a.category.toLowerCase()) ?? 999;
+                const orderB = categoryOrderMap.get(b.category.toLowerCase()) ?? 999;
+                return orderA - orderB;
+            });
 
         // Calculate pipeline trend (6 months)
         const monthNames = [
@@ -2166,9 +2181,7 @@ export const fetchVenditaDashboardData = cache(
 
         // Aggregate historical data
         historicalTasks.forEach((task: any) => {
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
-            if (!isOffer) return;
+            if (!offerKanbanIds.has(task.kanbanId)) return;
 
             const taskDate = new Date(task.created_at);
             const monthKey = monthNames[taskDate.getMonth()];
@@ -2204,9 +2217,7 @@ export const fetchVenditaDashboardData = cache(
 
         // Calculate last month conversion for change
         const lastMonthOffers = historicalTasks.filter((task: any) => {
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
-            if (!isOffer) return false;
+            if (!offerKanbanIds.has(task.kanbanId)) return false;
             const taskDate = new Date(task.created_at);
             return (
                 taskDate >= startOfLastMonth && taskDate <= endOfLastMonth
@@ -2335,6 +2346,7 @@ export const fetchVenditaDashboardData = cache(
         const limitedAlerts = alerts.slice(0, 5);
 
         return {
+            offerKanbanIdentifier,
             offerStatus,
             categoriesData,
             pipelineTrend,
@@ -2415,20 +2427,34 @@ export const fetchAvorDashboardData = cache(
         const fourWeeksAgo = new Date(now);
         fourWeeksAgo.setDate(now.getDate() - 28);
 
-        // First find AVOR kanban(s) - by is_work_kanban flag or name pattern
+        // Fetch all kanbans (need production kanbans for category order)
         const kanbansResult = await supabase
             .from("Kanban")
-            .select("id, title, identifier, is_work_kanban, color")
+            .select("id, title, identifier, is_work_kanban, is_offer_kanban, color")
             .eq("site_id", siteId);
 
         const allKanbans = kanbansResult.data || [];
 
         // Find AVOR kanban - prefer is_work_kanban flag, fallback to name matching
-        const avorKanbans = allKanbans.filter((k) => {
+        const avorKanbans = allKanbans.filter((k: any) => {
             if (k.is_work_kanban) return true;
             const name = (k.title || k.identifier || "").toLowerCase();
             return name.includes("avor") || name.includes("ufficio");
         });
+
+        // Build category order from non-offer kanban titles (e.g. "1. Arredamento")
+        const offerIds = new Set(allKanbans.filter((k: any) => k.is_offer_kanban).map((k: any) => k.id));
+        const categoryOrderMap = new Map<string, number>();
+        allKanbans
+            .filter((k: any) => !offerIds.has(k.id))
+            .map((k: any) => (k.title as string) || "")
+            .sort()
+            .forEach((title: string, idx: number) => {
+                const name = title.replace(/^\d+\.\s*/, "").trim().toLowerCase();
+                if (name && !categoryOrderMap.has(name)) {
+                    categoryOrderMap.set(name, idx);
+                }
+            });
 
         if (avorKanbans.length === 0) {
             // No AVOR kanban found
@@ -2563,13 +2589,14 @@ export const fetchAvorDashboardData = cache(
             );
         });
 
-        // Convert to array format
+        // Convert to array format — only matching production categories, in sidebar order
         const workloadData: AvorWorkloadData[] = Array.from(
             categoryWorkloadMap.entries(),
         )
-            .filter(([_, data]) => {
-                // Only include categories with at least one task
-                return Array.from(data.columns.values()).some((v) => v > 0);
+            .filter(([category, data]) => {
+                const hasData = Array.from(data.columns.values()).some((v) => v > 0);
+                const isKnown = categoryOrderMap.has(category.toLowerCase());
+                return hasData && isKnown;
             })
             .map(([category, data]) => ({
                 category,
@@ -2580,9 +2607,9 @@ export const fetchAvorDashboardData = cache(
                 })),
             }))
             .sort((a, b) => {
-                const totalA = a.columns.reduce((sum, c) => sum + c.count, 0);
-                const totalB = b.columns.reduce((sum, c) => sum + c.count, 0);
-                return totalB - totalA;
+                const orderA = categoryOrderMap.get(a.category.toLowerCase()) ?? 999;
+                const orderB = categoryOrderMap.get(b.category.toLowerCase()) ?? 999;
+                return orderA - orderB;
             });
 
         // 3. Calculate weekly trend (last 4 weeks)

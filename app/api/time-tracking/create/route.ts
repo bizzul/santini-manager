@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       // Create timetracking entry
       const insertData: any = {
         description: data.description,
-        description_type: data.descriptionCat,
+        description_type: data.descriptionCat || "",
         hours: data.hours,
         minutes: data.minutes,
         totalTime: roundedTotalTime,

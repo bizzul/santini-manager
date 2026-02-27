@@ -40,23 +40,16 @@ const CreateProductForm = ({
   users,
   roles,
   internalActivities,
-  currentUserId,
 }: {
   handleClose: any;
   data: Task[];
   users: User[];
   roles: Roles[];
   internalActivities: InternalActivity[];
-  currentUserId?: number;
 }) => {
   const { toast } = useToast();
   const [userAssignedRoles, setUserAssignedRoles] = useState<Roles[]>([]);
   const [loadingUserRoles, setLoadingUserRoles] = useState(false);
-
-  const defaultUserId =
-    currentUserId && users.some((u) => String(u.id) === String(currentUserId))
-      ? String(currentUserId)
-      : "";
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -67,7 +60,7 @@ const CreateProductForm = ({
       minutes: 0,
       roles: "",
       task: "",
-      userId: defaultUserId,
+      userId: "",
       activityType: "project",
       internalActivity: undefined,
       lunchOffsite: false,
@@ -132,20 +125,21 @@ const CreateProductForm = ({
     }
   }, [selectedUserId]);
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
+  const onSubmit = async () => {
     try {
+      const values = form.getValues();
       const payload = {
-        date: d.date || new Date().toISOString().split("T")[0],
-        description: d.description ?? "",
-        hours: Number(d.hours) || 0,
-        minutes: Number(d.minutes) || 0,
-        task: d.task ?? "",
-        userId: d.userId,
-        roles: d.roles ?? "",
-        activityType: d.activityType ?? "project",
-        internalActivity: d.internalActivity,
-        lunchOffsite: d.lunchOffsite ?? false,
-        lunchLocation: d.lunchLocation ?? "",
+        date: values.date,
+        description: values.description ?? "",
+        hours: Number(values.hours) || 0,
+        minutes: Number(values.minutes) || 0,
+        task: values.task ?? "",
+        userId: values.userId,
+        roles: values.roles ?? "",
+        activityType: values.activityType ?? "project",
+        internalActivity: values.internalActivity,
+        lunchOffsite: values.lunchOffsite ?? false,
+        lunchLocation: values.lunchLocation ?? "",
       };
       const result = await createItem(payload as any, domain);
 
@@ -212,18 +206,21 @@ const CreateProductForm = ({
             <FormItem>
               <FormLabel>Dipendente</FormLabel>
               <FormControl>
-                <SearchSelect
+                <select
+                  {...field}
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onChange={(e) => field.onChange(e.target.value)}
                   disabled={isSubmitting}
-                  options={users.map((u: User) => ({
-                    value: u.id.toString(),
-                    label: (u.given_name || "") + " " + (u.family_name || ""),
-                  }))}
-                  placeholder="Seleziona dipendente..."
-                />
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Seleziona dipendente...</option>
+                  {users.map((u: User) => (
+                    <option key={u.id} value={String(u.id)}>
+                      {(u.given_name || "") + " " + (u.family_name || "")}
+                    </option>
+                  ))}
+                </select>
               </FormControl>
-              {/* <FormDescription>Categoria del prodotto</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}

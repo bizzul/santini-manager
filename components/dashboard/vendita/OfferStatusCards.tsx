@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { Layers } from "lucide-react";
 import { VenditaDashboardStats } from "@/lib/server-data";
 
 interface OfferStatusCardsProps {
   data: VenditaDashboardStats["offerStatus"];
+  kanbanIdentifier: string | null;
+  domain: string;
 }
 
 function formatCurrency(value: number): string {
@@ -21,11 +24,16 @@ interface StatusCardProps {
   count: number;
   value: number;
   dotColor: string;
+  href: string | null;
 }
 
-function StatusCard({ label, count, value, dotColor }: StatusCardProps) {
-  return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4">
+function StatusCard({ label, count, value, dotColor, href }: StatusCardProps) {
+  const content = (
+    <div
+      className={`bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 transition-colors ${
+        href ? "hover:bg-slate-700/50 hover:border-slate-600/50 cursor-pointer" : ""
+      }`}
+    >
       <div className="flex items-center gap-2 mb-2">
         <div className={`w-2 h-2 rounded-full ${dotColor}`} />
         <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
@@ -38,9 +46,21 @@ function StatusCard({ label, count, value, dotColor }: StatusCardProps) {
       </div>
     </div>
   );
+
+  if (!href) return content;
+
+  return <Link href={href}>{content}</Link>;
 }
 
-export default function OfferStatusCards({ data }: OfferStatusCardsProps) {
+export default function OfferStatusCards({
+  data,
+  kanbanIdentifier,
+  domain,
+}: OfferStatusCardsProps) {
+  const kanbanHref = kanbanIdentifier
+    ? `/sites/${domain}/kanban?name=${kanbanIdentifier}`
+    : null;
+
   return (
     <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -61,30 +81,35 @@ export default function OfferStatusCards({ data }: OfferStatusCardsProps) {
           count={data.todo.count}
           value={data.todo.value}
           dotColor="bg-blue-500"
+          href={kanbanHref}
         />
         <StatusCard
           label="Inviate"
           count={data.inviate.count}
           value={data.inviate.value}
           dotColor="bg-yellow-500"
+          href={kanbanHref}
         />
         <StatusCard
           label="In Trattativa"
           count={data.inTrattativa.count}
           value={data.inTrattativa.value}
           dotColor="bg-orange-500"
+          href={kanbanHref}
         />
         <StatusCard
           label="Vinte"
           count={data.vinte.count}
           value={data.vinte.value}
           dotColor="bg-green-500"
+          href={kanbanHref}
         />
         <StatusCard
           label="Perse"
           count={data.perse.count}
           value={data.perse.value}
           dotColor="bg-red-500"
+          href={kanbanHref}
         />
       </div>
     </div>

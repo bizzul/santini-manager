@@ -1,155 +1,42 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { ApexOptions } from "apexcharts";
-import { BarChart3 } from "lucide-react";
+import {
+  Sofa,
+  DoorOpen,
+  LayoutGrid,
+  Wrench,
+  HardHat,
+  Tag,
+  BarChart3,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AvorDashboardStats } from "@/lib/server-data";
-
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {
-  ssr: false,
-});
 
 interface AvorWorkloadChartProps {
   data: AvorDashboardStats["workloadData"];
   columnNames: string[];
 }
 
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  arredamento: Sofa,
+  porte: DoorOpen,
+  serramenti: LayoutGrid,
+  accessori: Wrench,
+  posa: HardHat,
+};
+
+function getCategoryIcon(name: string): LucideIcon {
+  return CATEGORY_ICONS[name.toLowerCase().trim()] || Tag;
+}
+
 export default function AvorWorkloadChart({
   data,
   columnNames,
 }: AvorWorkloadChartProps) {
-  if (data.length === 0) {
-    return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-blue-500" />
-          </div>
-          <h3 className="text-lg font-bold">Carico di lavoro per tipologia</h3>
-        </div>
-        <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-          Nessun dato disponibile
-        </div>
-      </div>
-    );
-  }
-
-  // Create series for stacked bar chart
-  // Each series is a column, data points are categories
-  const chartSeries = columnNames.map((colName) => ({
-    name: colName,
-    data: data.map((cat) => {
-      const colData = cat.columns.find((c) => c.columnName === colName);
-      return colData?.count || 0;
-    }),
-  }));
-
-  const chartOptions: ApexOptions = {
-    chart: {
-      type: "bar",
-      height: 300,
-      stacked: true,
-      animations: {
-        enabled: true,
-        speed: 800,
-      },
-      toolbar: {
-        show: false,
-      },
-      background: "transparent",
-    },
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 4,
-        borderRadiusApplication: "end",
-        borderRadiusWhenStacked: "last",
-        barHeight: "70%",
-      },
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    stroke: {
-      show: true,
-      width: 1,
-      colors: ["transparent"],
-    },
-    xaxis: {
-      categories: data.map((d) => d.category),
-      labels: {
-        style: {
-          colors: "#a1a1aa",
-          fontSize: "12px",
-        },
-      },
-      axisBorder: {
-        show: false,
-      },
-      axisTicks: {
-        show: false,
-      },
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: "#a1a1aa",
-          fontSize: "12px",
-        },
-      },
-    },
-    fill: {
-      opacity: 1,
-    },
-    grid: {
-      show: true,
-      borderColor: "#3f3f46",
-      strokeDashArray: 3,
-      xaxis: {
-        lines: {
-          show: true,
-        },
-      },
-      yaxis: {
-        lines: {
-          show: false,
-        },
-      },
-    },
-    tooltip: {
-      theme: "dark",
-      shared: true,
-      intersect: false,
-      y: {
-        formatter: (value) => `${value} pratiche`,
-      },
-    },
-    legend: {
-      position: "bottom",
-      horizontalAlign: "center",
-      markers: {
-        size: 8,
-        shape: "circle",
-      },
-      labels: {
-        colors: "#a1a1aa",
-      },
-      itemMargin: {
-        horizontal: 8,
-      },
-    },
-    // Generate colors for columns - use a gradient of blues/oranges
-    colors: [
-      "#3b82f6", // blue
-      "#f97316", // orange
-      "#22c55e", // green
-      "#a855f7", // purple
-      "#ec4899", // pink
-      "#14b8a6", // teal
-      "#eab308", // yellow
-      "#6366f1", // indigo
-    ].slice(0, columnNames.length),
-  };
+  const globalMax = Math.max(
+    ...data.flatMap((d) => d.columns.map((c) => c.count)),
+    1
+  );
 
   return (
     <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
@@ -158,19 +45,89 @@ export default function AvorWorkloadChart({
           <BarChart3 className="w-5 h-5 text-blue-500" />
         </div>
         <div>
-          <h3 className="text-lg font-bold">Carico di lavoro per tipologia</h3>
+          <h3 className="text-lg font-bold">
+            Carico di lavoro per tipologia
+          </h3>
           <p className="text-xs text-muted-foreground">
             Pratiche per categoria e colonna
           </p>
         </div>
       </div>
 
-      <ReactApexChart
-        options={chartOptions}
-        series={chartSeries}
-        type="bar"
-        height={300}
-      />
+      {data.length === 0 ? (
+        <div className="h-[120px] flex items-center justify-center text-muted-foreground">
+          Nessun dato disponibile
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {data.map((cat) => {
+            const Icon = getCategoryIcon(cat.category);
+            const total = cat.columns.reduce((sum, c) => sum + c.count, 0);
+            return (
+              <div key={cat.category} className="flex items-center gap-2.5">
+                <div
+                  className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: `${cat.color}20` }}
+                >
+                  <Icon
+                    className="w-3.5 h-3.5"
+                    style={{ color: cat.color }}
+                  />
+                </div>
+                <span className="text-xs font-medium w-24 truncate shrink-0">
+                  {cat.category}
+                </span>
+                <div className="flex-1 flex items-center gap-1.5">
+                  <div className="flex-1 h-5 bg-slate-800/50 rounded-full overflow-hidden flex">
+                    {cat.columns.map((col) => {
+                      if (col.count === 0) return null;
+                      const pct = (col.count / globalMax) * 100;
+                      return (
+                        <div
+                          key={col.columnName}
+                          className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
+                          style={{
+                            width: `${Math.max(pct, 2)}%`,
+                            backgroundColor: cat.color,
+                            opacity:
+                              0.4 +
+                              0.6 *
+                                (1 -
+                                  columnNames.indexOf(col.columnName) /
+                                    Math.max(columnNames.length - 1, 1)),
+                          }}
+                          title={`${col.columnName}: ${col.count}`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="text-xs font-semibold w-6 text-right tabular-nums">
+                    {total}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+          <div className="flex items-center gap-3 pt-1 pl-[122px] flex-wrap">
+            {columnNames.map((name, i) => (
+              <div key={name} className="flex items-center gap-1.5">
+                <div
+                  className="w-3 h-2 rounded-sm"
+                  style={{
+                    backgroundColor: "#64748b",
+                    opacity:
+                      0.4 +
+                      0.6 * (1 - i / Math.max(columnNames.length - 1, 1)),
+                  }}
+                />
+                <span className="text-[10px] text-muted-foreground">
+                  {name}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

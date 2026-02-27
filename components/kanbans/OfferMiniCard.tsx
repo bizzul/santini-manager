@@ -96,7 +96,7 @@ export default function OfferMiniCard({
   // Background class based on overdue status
   const getBackgroundClass = () => {
     if (isOverdue) {
-      return "bg-orange-500 dark:bg-orange-600 animate-pulse";
+      return "bg-orange-500 dark:bg-orange-600";
     }
     return "bg-slate-600 dark:bg-slate-700";
   };

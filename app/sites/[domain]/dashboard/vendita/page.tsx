@@ -61,7 +61,11 @@ export default async function VenditaDashboardPage({
       <PageContent>
         <div className="space-y-6">
           {/* Stato Offerte Section */}
-          <OfferStatusCards data={dashboardData.offerStatus} />
+          <OfferStatusCards
+            data={dashboardData.offerStatus}
+            kanbanIdentifier={dashboardData.offerKanbanIdentifier}
+            domain={domain}
+          />
 
           {/* Charts Row: Categorie Offerte + Pipeline & Trend Offerte */}
           <div className="grid gap-4 md:grid-cols-2">

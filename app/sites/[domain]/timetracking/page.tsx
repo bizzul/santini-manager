@@ -48,7 +48,6 @@ export default async function Page({
         users={data.users}
         roles={data.roles}
         internalActivities={data.internalActivities}
-        currentUserId={currentUserRecord?.id}
       />
       {filteredTimetrackings.length > 0 ? (
         <DataWrapper
@@ -57,6 +56,7 @@ export default async function Page({
           roles={data.roles}
           tasks={data.tasks}
           domain={domain}
+          internalActivities={data.internalActivities}
         />
       ) : (
         <div className="w-full h-full text-center">

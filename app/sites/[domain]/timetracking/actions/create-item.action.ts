@@ -40,7 +40,7 @@ export async function createItem(props: z.input<typeof validation>, domain?: str
       const insertData: any = {
         created_at: new Date(result.data.date),
         description: result.data.description || null,
-        description_type: null,
+        description_type: "",
         hours: result.data.hours,
         minutes: result.data.minutes,
         totalTime: roundedTotalTime,
@@ -96,12 +96,19 @@ export async function createItem(props: z.input<typeof validation>, domain?: str
       // Create a new Action record to track the user action (non-blocking)
       if (timetracking) {
         try {
+          // Look up auth UUID for the employee
+          const { data: empUser } = await supabase
+            .from("User")
+            .select("authId")
+            .eq("id", Number(result.data.userId))
+            .single();
+
           const actionData: any = {
             type: "timetracking_create",
             data: {
               timetrackingId: resultSave.id,
             },
-            user_id: Number(result.data.userId), // Use the employee_id (internal user id)
+            user_id: empUser?.authId || result.data.userId,
           };
 
           // Add site_id if available
