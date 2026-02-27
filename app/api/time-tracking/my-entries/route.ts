@@ -71,20 +71,7 @@ export async function GET(req: NextRequest) {
 
     // Apply site filter if available
     if (siteId) {
-      // Get task IDs for this site
-      const { data: siteTasks } = await supabase
-        .from("Task")
-        .select("id")
-        .eq("site_id", siteId);
-
-      const siteTaskIds = (siteTasks || []).map((t: any) => t.id);
-
-      // Filter: either direct site_id match OR task is from this site
-      if (siteTaskIds.length > 0) {
-        query = query.or(`site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`);
-      } else {
-        query = query.eq("site_id", siteId);
-      }
+      query = query.eq("site_id", siteId);
     }
 
     const { data: entries, error: entriesError } = await query;

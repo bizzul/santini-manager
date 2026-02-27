@@ -40,7 +40,7 @@ export async function createItem(props: z.input<typeof validation>, domain?: str
       const insertData: any = {
         created_at: new Date(result.data.date),
         description: result.data.description || null,
-        description_type: result.data.descriptionCat || undefined,
+        description_type: null,
         hours: result.data.hours,
         minutes: result.data.minutes,
         totalTime: roundedTotalTime,

@@ -43,12 +43,11 @@ const createTimetrackingEditHandler = (domain?: string) => {
       hours: rowData.hours,
       minutes: rowData.minutes,
       description: rowData.description,
-      descriptionCat: rowData.description_type,
       date: rowData.created_at,
       task: rowData.task_id?.toString(),
       userId: rowData.employee_id?.toString(),
       roles: rowData.roles?.[0]?.role?.id ?? rowData.roles?.[0],
-      [field === "description_type" ? "descriptionCat" : field]: newValue,
+      [field]: newValue,
     };
 
     try {
@@ -294,21 +293,6 @@ export const createColumns = (domain?: string): ColumnDef<TimetrackingRow>[] => 
           value={row.original.description}
           row={row}
           field="description"
-          type="text"
-          onSave={handleTimetrackingEdit}
-        />
-      ),
-    },
-    {
-      accessorKey: "description_type",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Tipo Desc." />
-      ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.description_type}
-          row={row}
-          field="description_type"
           type="text"
           onSave={handleTimetrackingEdit}
         />

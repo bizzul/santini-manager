@@ -187,26 +187,35 @@ export const CreateModal: FC<Props> = ({
               <div className="flex flex-row gap-2 pt-4">
                 <div className="flex flex-col items-center">
                   <label>Ore</label>
-                  <input type="number" {...register("hours")} />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={watch("hours") === 0 ? "" : String(watch("hours"))}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      setValue("hours", v === "" ? 0 : Math.min(24, parseInt(v, 10) || 0));
+                    }}
+                  />
                   {errors.hours && <span>Campo necessario</span>}
                 </div>
                 <div className="flex flex-col items-center ">
                   <label>Minuti</label>
-                  <input type="number" {...register("minutes")} />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={watch("minutes") === 0 ? "" : String(watch("minutes"))}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      setValue("minutes", v === "" ? 0 : Math.min(59, parseInt(v, 10) || 0));
+                    }}
+                  />
                   {errors.minutes && <span>Campo necessario</span>}
                 </div>
                 <div className="flex flex-col items-center ">
                   <label>Commento</label>
                   <input type="text" {...register("description")} />
-                </div>
-                <div className="flex flex-col items-center">
-                  <label>Desc. Tipo</label>
-                  <select {...register("descriptionCat")}>
-                    <option value="">Nessuna</option>
-                    <option value="logistica">Logistica</option>
-                    <option value="speciale">Speciale</option>
-                    <option value="errore">Errore</option>
-                  </select>
                 </div>
               </div>
             </div>

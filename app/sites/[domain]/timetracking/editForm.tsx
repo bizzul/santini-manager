@@ -24,7 +24,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect } from "@/components/ui/search-select";
 import { editItem } from "./actions/edit-item.action";
 import { Roles, Task, User, Timetracking } from "@/types/supabase";
-import { Typology } from "./createForm";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
 import { logger } from "@/lib/logger";
@@ -39,7 +38,6 @@ interface RoleEntry {
 interface EditFormValues {
   date: string;
   description: string;
-  descriptionCat: string;
   hours: number;
   minutes: number;
   roles: string;
@@ -87,7 +85,6 @@ const EditForm = ({
     defaultValues: {
       date: "",
       description: "",
-      descriptionCat: "",
       hours: 0,
       minutes: 0,
       roles: "",
@@ -95,21 +92,6 @@ const EditForm = ({
       userId: "",
     },
   });
-
-  const typology = [
-    {
-      name: "Nessuna",
-    },
-    {
-      name: "Logistica",
-    },
-    {
-      name: "Speciale",
-    },
-    {
-      name: "Errore",
-    },
-  ];
 
   const { setValue } = form;
 
@@ -128,7 +110,6 @@ const EditForm = ({
         : formatDate(new Date())
     );
     setValue("description", data.description ?? "");
-    setValue("descriptionCat", data.description_type ?? "");
     setValue("hours", data.hours!);
     setValue("minutes", data.minutes!);
 
@@ -455,31 +436,6 @@ const EditForm = ({
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
                 <Input {...field} />
-              </FormControl>
-              {/* <FormDescription>Numero articolo</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          disabled={isSubmitting}
-          control={form.control}
-          name="descriptionCat"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tipologia</FormLabel>
-              <FormControl>
-                <SearchSelect
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={isSubmitting}
-                  options={typology.map((t: Typology, index) => ({
-                    value: t.name,
-                    label: t.name,
-                  }))}
-                  placeholder="Seleziona tipologia..."
-                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />

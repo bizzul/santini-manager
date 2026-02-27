@@ -34,38 +34,40 @@ import { logger } from "@/lib/logger";
 import { Briefcase, Wrench } from "lucide-react";
 import { InternalActivity } from "./dialogCreate";
 
-export interface Typology {
-  name: string;
-}
-
 const CreateProductForm = ({
   handleClose,
   data,
   users,
   roles,
   internalActivities,
+  currentUserId,
 }: {
   handleClose: any;
   data: Task[];
   users: User[];
   roles: Roles[];
   internalActivities: InternalActivity[];
+  currentUserId?: number;
 }) => {
   const { toast } = useToast();
   const [userAssignedRoles, setUserAssignedRoles] = useState<Roles[]>([]);
   const [loadingUserRoles, setLoadingUserRoles] = useState(false);
+
+  const defaultUserId =
+    currentUserId && users.some((u) => String(u.id) === String(currentUserId))
+      ? String(currentUserId)
+      : "";
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
       date: new Date().toISOString().split("T")[0], // Default to today's date (YYYY-MM-DD)
       description: "",
-      descriptionCat: "",
       hours: 0,
       minutes: 0,
       roles: "",
       task: "",
-      userId: "",
+      userId: defaultUserId,
       activityType: "project",
       internalActivity: undefined,
       lunchOffsite: false,
@@ -76,21 +78,6 @@ const CreateProductForm = ({
   // Watch activity type to show/hide fields
   const activityType = form.watch("activityType");
   const lunchOffsite = form.watch("lunchOffsite");
-
-  const typology = [
-    {
-      name: "Nessuna",
-    },
-    {
-      name: "Logistica",
-    },
-    {
-      name: "Speciale",
-    },
-    {
-      name: "Errore",
-    },
-  ];
 
   const { isSubmitting, errors } = form.formState;
   const params = useParams();
@@ -148,9 +135,8 @@ const CreateProductForm = ({
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       const payload = {
-        date: d.date,
+        date: d.date || new Date().toISOString().split("T")[0],
         description: d.description ?? "",
-        descriptionCat: d.descriptionCat ?? "",
         hours: Number(d.hours) || 0,
         minutes: Number(d.minutes) || 0,
         task: d.task ?? "",
@@ -308,9 +294,9 @@ const CreateProductForm = ({
                       disabled={isSubmitting}
                       options={data.map((t: any) => ({
                         value: t.id.toString(),
-                        label: t.client?.businessName
-                          ? `${t.unique_code} - ${t.client.businessName}`
-                          : t.unique_code || "",
+                        label: [t.unique_code, t.title || t.client?.businessName]
+                          .filter(Boolean)
+                          .join(" - ") || t.unique_code || "",
                       }))}
                       placeholder="Seleziona progetto..."
                     />
@@ -411,13 +397,14 @@ const CreateProductForm = ({
                 <FormLabel>Ore</FormLabel>
                 <FormControl>
                   <Input
-                    type="number"
-                    min="0"
-                    max="24"
-                    value={field.value ?? 0}
-                    onChange={(e) =>
-                      field.onChange(parseInt(e.target.value) || 0)
-                    }
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={field.value === 0 ? "" : String(field.value)}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "");
+                      field.onChange(v === "" ? 0 : Math.min(24, parseInt(v, 10) || 0));
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -507,32 +494,6 @@ const CreateProductForm = ({
               <FormControl>
                 <Input {...field} />
               </FormControl>
-              {/* <FormDescription>Numero articolo</FormDescription> */}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          disabled={isSubmitting}
-          control={form.control}
-          name="descriptionCat"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tipologia</FormLabel>
-              <FormControl>
-                <SearchSelect
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={isSubmitting}
-                  options={typology.map((t: Typology, index) => ({
-                    value: t.name,
-                    label: t.name,
-                  }))}
-                  placeholder="Seleziona tipologia..."
-                />
-              </FormControl>
-              {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
             </FormItem>
           )}

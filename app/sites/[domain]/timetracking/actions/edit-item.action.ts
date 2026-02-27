@@ -43,7 +43,6 @@ export async function editItem(props: any, id: number, domain?: string) {
 
       const updateData: Record<string, unknown> = {
         description: result.data.description,
-        description_type: result.data.descriptionCat,
         hours: result.data.hours,
         minutes: result.data.minutes,
         totalTime: roundedTotalTime,

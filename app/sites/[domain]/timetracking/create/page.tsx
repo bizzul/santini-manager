@@ -141,11 +141,8 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       today.getDate() + 1
     );
 
-    // Get task IDs for this site for filtering
-    const siteTaskIds = (tasks || []).map((t: any) => t.id);
-
-    // Fetch today's entries (filtered by site)
-    let todayQuery = supabase
+    // Fetch today's entries (filtered by site_id)
+    const todayQuery = supabase
       .from("Timetracking")
       .select(
         `
@@ -162,15 +159,10 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       `
       )
       .eq("employee_id", userData.id)
+      .eq("site_id", siteId)
       .gte("created_at", startOfDay.toISOString())
       .lt("created_at", endOfDay.toISOString())
       .order("created_at", { ascending: false });
-
-    if (siteTaskIds.length > 0) {
-      todayQuery = todayQuery.or(`site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`);
-    } else {
-      todayQuery = todayQuery.eq("site_id", siteId);
-    }
 
     const { data: timetrackingData, error: timetrackingError } = await todayQuery;
 
@@ -191,9 +183,8 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       }));
     }
 
-    // Fetch ALL entries for the user (for "Le mie ore" tab)
-    // Build query with proper site filtering
-    let allEntriesQuery = supabase
+    // Fetch ALL entries for the user (for "Le mie ore" tab) - filter by site_id only
+    const allEntriesQuery = supabase
       .from("Timetracking")
       .select(
         `
@@ -211,14 +202,8 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       `
       )
       .eq("employee_id", userData.id)
+      .eq("site_id", siteId)
       .order("created_at", { ascending: false });
-
-    // Filter by site (either direct site_id match OR task is from this site)
-    if (siteTaskIds.length > 0) {
-      allEntriesQuery = allEntriesQuery.or(`site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`);
-    } else {
-      allEntriesQuery = allEntriesQuery.eq("site_id", siteId);
-    }
 
     const { data: allEntriesData, error: allEntriesError } = await allEntriesQuery;
 

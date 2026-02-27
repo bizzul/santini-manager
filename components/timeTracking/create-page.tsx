@@ -62,6 +62,7 @@ interface Roles {
 interface Task {
   id: number;
   unique_code?: string;
+  title?: string;
   client?: {
     businessName?: string;
   };
@@ -114,7 +115,6 @@ interface TimeRow {
   hours: string;
   minutes: string;
   description: string;
-  descriptionCat: string;
   roles: Roles | {};
   userId: string;
   activityType: "project" | "internal";
@@ -251,7 +251,6 @@ const CreatePage = ({
       hours: "",
       minutes: "",
       description: "",
-      descriptionCat: "Nessuna",
       roles: {},
       userId: session.user.id,
       activityType: "project",
@@ -340,12 +339,13 @@ const CreatePage = ({
     const selectedTask = data.tasks.find((t) => t.id.toString() === value);
     if (selectedTask) {
       const updatedRows = [...rows];
+      const taskLabel = [selectedTask.unique_code, selectedTask.title || selectedTask.client?.businessName]
+        .filter(Boolean)
+        .join(" - ") || selectedTask.unique_code || "";
       updatedRows[index] = {
         ...updatedRows[index],
         task: selectedTask.unique_code || "",
-        taskLabel: selectedTask.client?.businessName
-          ? `${selectedTask.unique_code} - ${selectedTask.client.businessName}`
-          : selectedTask.unique_code || "",
+        taskLabel,
       };
       setRows(updatedRows);
     }
@@ -403,16 +403,6 @@ const CreatePage = ({
     updatedRows[index] = {
       ...updatedRows[index],
       [field]: e.target.value,
-    };
-    setRows(updatedRows);
-  };
-
-  // Handle description category change
-  const handleDescCatChange = (value: string, index: number) => {
-    const updatedRows = [...rows];
-    updatedRows[index] = {
-      ...updatedRows[index],
-      descriptionCat: value,
     };
     setRows(updatedRows);
   };
@@ -936,9 +926,9 @@ const CreatePage = ({
                           placeholder="Seleziona progetto..."
                           options={data.tasks.map((t) => ({
                             value: t.id.toString(),
-                            label: t.client?.businessName
-                              ? `${t.unique_code} - ${t.client.businessName}`
-                              : t.unique_code || "",
+                            label: [t.unique_code, t.title || t.client?.businessName]
+                              .filter(Boolean)
+                              .join(" - ") || t.unique_code || "",
                           }))}
                         />
                       </div>
@@ -1048,12 +1038,19 @@ const CreatePage = ({
                     <div className="flex-1">
                       <div className="relative">
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           placeholder="0"
-                          min="0"
-                          max="24"
                           value={row.hours}
-                          onChange={(e) => handleInputChange(e, index, "hours")}
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/\D/g, "");
+                            const updatedRows = [...rows];
+                            updatedRows[index] = {
+                              ...updatedRows[index],
+                              hours: v === "" ? "" : String(Math.min(24, parseInt(v, 10) || 0)),
+                            };
+                            setRows(updatedRows);
+                          }}
                           className="pr-10 text-center font-medium"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
@@ -1101,26 +1098,6 @@ const CreatePage = ({
                         handleInputChange(e, index, "description")
                       }
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                      Tipologia
-                    </label>
-                    <Select
-                      value={row.descriptionCat}
-                      onValueChange={(v) => handleDescCatChange(v, index)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona tipologia..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Nessuna">Nessuna</SelectItem>
-                        <SelectItem value="Logistica">Logistica</SelectItem>
-                        <SelectItem value="Speciale">Speciale</SelectItem>
-                        <SelectItem value="Errore">Errore</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
 

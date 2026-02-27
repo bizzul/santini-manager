@@ -800,27 +800,12 @@ export const fetchRoles = cache(async (siteId: string) => {
 
 /**
  * Fetch timetracking data with relations
- * Filters at database level for both direct site_id (internal activities)
- * and task.site_id (project-related entries)
+ * Filters by site_id only (no cache)
  */
-export const fetchTimetracking = cache(async (siteId: string) => {
+export async function fetchTimetracking(siteId: string) {
     const supabase = await createClient();
 
-    // First, get task IDs for this site to include timetracking entries linked to them
-    const { data: siteTasks, error: tasksError } = await supabase
-        .from("Task")
-        .select("id")
-        .eq("site_id", siteId);
-
-    if (tasksError) {
-        log.error("Error fetching site tasks for timetracking:", tasksError);
-    }
-
-    const siteTaskIds = (siteTasks || []).map((t) => t.id);
-
-    // Build query with proper site filtering
-    // Include client info via task for project name display
-    let query = supabase
+    const { data, error } = await supabase
         .from("Timetracking")
         .select(`
             *,
@@ -828,19 +813,8 @@ export const fetchTimetracking = cache(async (siteId: string) => {
             user:employee_id(id, given_name, family_name, email),
             roles:_RolesToTimetracking(role:Roles(id, name))
         `)
+        .eq("site_id", siteId)
         .order("created_at", { ascending: false });
-
-    // Filter: either direct site_id match OR task is from this site
-    if (siteTaskIds.length > 0) {
-        query = query.or(
-            `site_id.eq.${siteId},task_id.in.(${siteTaskIds.join(",")})`,
-        );
-    } else {
-        // If no tasks, only filter by direct site_id
-        query = query.eq("site_id", siteId);
-    }
-
-    const { data, error } = await query;
 
     if (error) {
         log.error("Error fetching timetracking:", error);
@@ -848,7 +822,7 @@ export const fetchTimetracking = cache(async (siteId: string) => {
     }
 
     return data || [];
-});
+}
 
 /**
  * Fetch quality control data
@@ -1197,7 +1171,7 @@ export const fetchInternalActivities = cache(async (siteId: string) => {
 /**
  * Fetch data for timetracking page
  */
-export const fetchTimetrackingData = cache(async (siteId: string) => {
+export async function fetchTimetrackingData(siteId: string) {
     const [timetrackings, tasks, users, roles, internalActivities] =
         await Promise.all([
             fetchTimetracking(siteId),
@@ -1208,7 +1182,7 @@ export const fetchTimetrackingData = cache(async (siteId: string) => {
         ]);
 
     return { timetrackings, tasks, users, roles, internalActivities };
-});
+}
 
 /**
  * Fetch data for projects page

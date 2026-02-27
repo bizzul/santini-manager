@@ -48,6 +48,7 @@ export default async function Page({
         users={data.users}
         roles={data.roles}
         internalActivities={data.internalActivities}
+        currentUserId={currentUserRecord?.id}
       />
       {filteredTimetrackings.length > 0 ? (
         <DataWrapper

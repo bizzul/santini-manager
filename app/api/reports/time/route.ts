@@ -141,7 +141,7 @@ export const POST = async (req: NextRequest) => {
       siteId = context.siteId;
     }
 
-    // Fetch timetracking data with proper relations
+    // Fetch timetracking data with proper relations (filter by site_id only)
     let query = supabase
       .from("Timetracking")
       .select(`
@@ -152,23 +152,20 @@ export const POST = async (req: NextRequest) => {
       `)
       .order("created_at", { ascending: false });
 
+    if (siteId) {
+      query = query.eq("site_id", siteId);
+    }
+
     const { data: timeTrackingsData, error: timeTrackingError } = await query;
 
     if (timeTrackingError) throw timeTrackingError;
 
-    // Filter by site_id and user role
+    // Filter by user role (site already filtered in query)
     let filteredTimetrackings = (timeTrackingsData || []).filter((t: any) => {
-      // Filter by site
-      const matchesSite = !siteId || t.site_id === siteId ||
-        t.task?.site_id === siteId;
-
-      // For regular users, only show their own entries
       if (isRegularUser) {
-        // Get user's internal ID
-        return matchesSite && t.user?.id && t.employee_id;
+        return t.user?.id && t.employee_id;
       }
-
-      return matchesSite;
+      return true;
     });
 
     // For regular users, filter to only their entries
