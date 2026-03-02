@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchProductsDashboardData,
 } from "@/lib/server-data";
+import { getUserContext } from "@/lib/auth-utils";
+import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import {
   ResaleKPICards,
@@ -45,6 +48,25 @@ export default async function ProdottiDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+
+  // Check dashboard permission
+  const userContext = await getUserContext();
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  if (!isAdminOrSuperadmin(userContext.role)) {
+    const hasDashboardAccess = await canAccessModule(
+      userContext.userId || userContext.user.id,
+      siteContext.siteId,
+      "dashboard",
+      userContext.role
+    );
+
+    if (!hasDashboardAccess) {
+      redirect(`/sites/${domain}`);
+    }
+  }
 
   // Fetch products dashboard data
   const dashboardData = await fetchProductsDashboardData(siteContext.siteId);

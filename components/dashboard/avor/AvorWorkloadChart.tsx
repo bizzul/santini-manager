@@ -1,32 +1,12 @@
 "use client";
 
-import {
-  Sofa,
-  DoorOpen,
-  LayoutGrid,
-  Wrench,
-  HardHat,
-  Tag,
-  BarChart3,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { AvorDashboardStats } from "@/lib/server-data";
+import { getKanbanIcon } from "@/lib/kanban-icons";
 
 interface AvorWorkloadChartProps {
   data: AvorDashboardStats["workloadData"];
   columnNames: string[];
-}
-
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  arredamento: Sofa,
-  porte: DoorOpen,
-  serramenti: LayoutGrid,
-  accessori: Wrench,
-  posa: HardHat,
-};
-
-function getCategoryIcon(name: string): LucideIcon {
-  return CATEGORY_ICONS[name.toLowerCase().trim()] || Tag;
 }
 
 export default function AvorWorkloadChart({
@@ -64,7 +44,7 @@ export default function AvorWorkloadChart({
       ) : (
         <div className="space-y-2.5">
           {data.map((cat) => {
-            const Icon = getCategoryIcon(cat.category);
+            const Icon = getKanbanIcon(cat.icon);
             const total = cat.columns.reduce((sum, c) => sum + c.count, 0);
             const praticaPct = (total / globalMax) * 100;
             const elementiPct = (cat.elementi / globalMax) * 100;

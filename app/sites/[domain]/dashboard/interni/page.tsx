@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchInterniDashboardData,
 } from "@/lib/server-data";
+import { getUserContext } from "@/lib/auth-utils";
+import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import {
   OreInterneChart,
@@ -37,6 +40,25 @@ export default async function InterniDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+
+  // Check dashboard permission
+  const userContext = await getUserContext();
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  if (!isAdminOrSuperadmin(userContext.role)) {
+    const hasDashboardAccess = await canAccessModule(
+      userContext.userId || userContext.user.id,
+      siteContext.siteId,
+      "dashboard",
+      userContext.role
+    );
+
+    if (!hasDashboardAccess) {
+      redirect(`/sites/${domain}`);
+    }
+  }
 
   // Fetch internal work dashboard data
   const dashboardData = await fetchInterniDashboardData(siteContext.siteId);

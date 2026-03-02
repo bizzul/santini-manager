@@ -10,7 +10,7 @@ export const get = async (id: number): Promise<ServiceResponse> => {
     const supabase = createClient();
 
     const { data: result, error } = await supabase
-      .from("client")
+      .from("Client")
       .select("*")
       .eq("id", id)
       .single();

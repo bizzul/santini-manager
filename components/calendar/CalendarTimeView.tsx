@@ -78,7 +78,7 @@ function EventTooltipContent({ task }: { task: TaskWithKanban | null }) {
         </div>
       )}
       <div className="text-xs text-muted-foreground pt-1 border-t">
-        Clicca per aprire il progetto
+        Clicca per modificare il progetto
       </div>
     </div>
   );
@@ -202,12 +202,12 @@ export default function CalendarTimeView({
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="px-2 py-1 truncate text-xs font-medium cursor-pointer w-full flex items-center gap-1">
+            <div className="px-2 py-1 truncate text-xs font-medium cursor-pointer w-full flex items-center gap-1 pointer-events-auto">
               <Icon className="h-3 w-3 shrink-0" />
               <span className="truncate">{eventInfo.event.title}</span>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs">
+          <TooltipContent side="top" className="max-w-xs pointer-events-none">
             <EventTooltipContent task={task || null} />
           </TooltipContent>
         </Tooltip>
@@ -219,7 +219,7 @@ export default function CalendarTimeView({
     (info: any) => {
       const taskId = info.event.extendedProps?.taskId;
       if (taskId && effectiveDomain) {
-        router.push(`/sites/${effectiveDomain}/progetti/${taskId}`);
+        router.push(`/sites/${effectiveDomain}/projects?edit=${taskId}`);
       }
     },
     [effectiveDomain, router]
@@ -276,6 +276,10 @@ export default function CalendarTimeView({
         .fc-timeline .fc-timeline-body { background: hsl(var(--card)); }
         .fc-resource-group-cell { background: hsl(var(--muted)); }
         .fc-datagrid-cell-frame { background: hsl(var(--card)); }
+        .fc-timeline-event { cursor: pointer !important; }
+        .fc-event { cursor: pointer !important; }
+        .fc-event-main { cursor: pointer !important; }
+        .fc-timeline-event:hover { opacity: 0.9; }
       `}</style>
       <div className="calendar-custom-title mb-4 text-center">
         <h1 className="text-2xl font-bold mb-1">{CALENDAR_TYPE_NAMES[calendarType]}</h1>
@@ -291,6 +295,7 @@ export default function CalendarTimeView({
       <FC
         ref={calendarRef}
         key="calendar-time"
+        schedulerLicenseKey="GPL-My-Project-Is-Open-Source"
         plugins={[resourceTimelinePlugin]}
         initialView="resourceTimelineWeek"
         resources={RESOURCES}

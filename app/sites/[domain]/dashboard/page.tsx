@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchDashboardData,
 } from "@/lib/server-data";
+import { getUserContext } from "@/lib/auth-utils";
+import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import KPICards from "@/components/dashboard/KPICards";
 import PipelineChart from "@/components/dashboard/PipelineChart";
@@ -23,8 +26,6 @@ export async function generateMetadata({
       title: `${siteContext.siteData?.name || "Site"} - Dashboard`,
     };
   } catch (error) {
-    // If site context fails, return a generic title
-    // The page component will handle the error properly
     console.log(
       "[Dashboard] generateMetadata failed for domain:",
       domain,
@@ -43,6 +44,25 @@ export default async function SiteDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+
+  // Check dashboard permission
+  const userContext = await getUserContext();
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  if (!isAdminOrSuperadmin(userContext.role)) {
+    const hasDashboardAccess = await canAccessModule(
+      userContext.userId || userContext.user.id,
+      siteContext.siteId,
+      "dashboard",
+      userContext.role
+    );
+
+    if (!hasDashboardAccess) {
+      redirect(`/sites/${domain}`);
+    }
+  }
 
   // Fetch real dashboard data
   const dashboardData = await fetchDashboardData(siteContext.siteId);

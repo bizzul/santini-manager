@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchVenditaDashboardData,
 } from "@/lib/server-data";
+import { getUserContext } from "@/lib/auth-utils";
+import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import OfferStatusCards from "@/components/dashboard/vendita/OfferStatusCards";
 import CategorieOfferteChart from "@/components/dashboard/vendita/CategorieOfferteChart";
@@ -40,6 +43,25 @@ export default async function VenditaDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+
+  // Check dashboard permission
+  const userContext = await getUserContext();
+  if (!userContext) {
+    redirect("/login");
+  }
+
+  if (!isAdminOrSuperadmin(userContext.role)) {
+    const hasDashboardAccess = await canAccessModule(
+      userContext.userId || userContext.user.id,
+      siteContext.siteId,
+      "dashboard",
+      userContext.role
+    );
+
+    if (!hasDashboardAccess) {
+      redirect(`/sites/${domain}`);
+    }
+  }
 
   // Fetch real dashboard data
   const dashboardData = await fetchVenditaDashboardData(siteContext.siteId);

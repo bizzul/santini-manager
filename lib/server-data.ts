@@ -2383,6 +2383,7 @@ export interface AvorColumnStatus {
 export interface AvorWorkloadData {
     category: string;
     color: string;
+    icon: string | null;
     columns: Array<{
         columnName: string;
         count: number;
@@ -2434,7 +2435,7 @@ export const fetchAvorDashboardData = cache(
         // Fetch all kanbans (need production kanbans for category order)
         const kanbansResult = await supabase
             .from("Kanban")
-            .select("id, title, identifier, is_work_kanban, is_offer_kanban, color")
+            .select("id, title, identifier, is_work_kanban, is_offer_kanban, color, icon")
             .eq("site_id", siteId);
 
         const allKanbans = kanbansResult.data || [];
@@ -2446,17 +2447,19 @@ export const fetchAvorDashboardData = cache(
             return name.includes("avor") || name.includes("ufficio");
         });
 
-        // Build category order from non-offer kanban titles (e.g. "1. Arredamento")
+        // Build category order and icon map from non-offer kanban titles (e.g. "1. Arredamento")
         const offerIds = new Set(allKanbans.filter((k: any) => k.is_offer_kanban).map((k: any) => k.id));
         const categoryOrderMap = new Map<string, number>();
+        const categoryIconMap = new Map<string, string | null>();
         allKanbans
             .filter((k: any) => !offerIds.has(k.id))
-            .map((k: any) => (k.title as string) || "")
-            .sort()
-            .forEach((title: string, idx: number) => {
+            .sort((a: any, b: any) => ((a.title || "") as string).localeCompare((b.title || "") as string))
+            .forEach((k: any, idx: number) => {
+                const title = (k.title as string) || "";
                 const name = title.replace(/^\d+\.\s*/, "").trim().toLowerCase();
                 if (name && !categoryOrderMap.has(name)) {
                     categoryOrderMap.set(name, idx);
+                    categoryIconMap.set(name, k.icon || null);
                 }
             });
 
@@ -2612,6 +2615,7 @@ export const fetchAvorDashboardData = cache(
             .map(([category, data]) => ({
                 category,
                 color: data.color,
+                icon: categoryIconMap.get(category.toLowerCase()) || null,
                 columns: columnNames.map((name) => ({
                     columnName: name,
                     count: data.columns.get(name) || 0,
@@ -2778,7 +2782,20 @@ export interface ProduzioneWeeklyData {
     }>;
 }
 
+export interface ProduzioneKanbanStatus {
+    kanbanId: number;
+    kanbanName: string;
+    kanbanIdentifier: string;
+    color: string;
+    icon: string | null;
+    lavori: number;
+    elementi: number;
+    ritardo: number;
+}
+
 export interface ProduzioneDashboardStats {
+    kanbanStatus: ProduzioneKanbanStatus[];
+    hasProduzionCategory: boolean;
     repartoData: ProduzioneRepartoData[];
     weeklyTrend: ProduzioneWeeklyData[];
     columnNames: string[];
@@ -2791,15 +2808,79 @@ export const fetchProduzioneDashboardData = cache(
 
         const now = new Date();
 
-        // Find Production kanban(s)
-        const kanbansResult = await supabase
-            .from("Kanban")
-            .select(
-                "id, title, identifier, is_production_kanban, color, category_id",
-            )
-            .eq("site_id", siteId);
+        // Fetch all kanbans with their categories
+        const [kanbansResult, categoriesResult] = await Promise.all([
+            supabase
+                .from("Kanban")
+                .select(
+                    "id, title, identifier, is_production_kanban, color, icon, category_id",
+                )
+                .eq("site_id", siteId),
+            supabase
+                .from("KanbanCategory")
+                .select("id, name, identifier")
+                .eq("site_id", siteId),
+        ]);
 
         const allKanbans = kanbansResult.data || [];
+        const allCategories = categoriesResult.data || [];
+
+        // Find "Produzione" category
+        const produzioneCategory = allCategories.find((c) => {
+            const name = (c.name || c.identifier || "").toLowerCase();
+            return name.includes("produzione") || name.includes("production");
+        });
+
+        const hasProduzionCategory = !!produzioneCategory;
+
+        // Get kanbans under Produzione category (for status cards and carico reparto)
+        let kanbanStatus: ProduzioneKanbanStatus[] = [];
+        if (produzioneCategory) {
+            const produzionKanbans = allKanbans.filter(
+                (k) => k.category_id === produzioneCategory.id,
+            );
+
+            if (produzionKanbans.length > 0) {
+                const produzionKanbanIds = produzionKanbans.map((k) => k.id);
+
+                // Fetch tasks for all production kanbans (with deliveryDate for ritardo)
+                const { data: prodTasks } = await supabase
+                    .from("Task")
+                    .select("id, kanbanId, positions, deliveryDate, archived")
+                    .in("kanbanId", produzionKanbanIds)
+                    .eq("archived", false);
+
+                const tasksPerKanban = new Map<number, { lavori: number; elementi: number; ritardo: number }>();
+                produzionKanbans.forEach((k) => {
+                    tasksPerKanban.set(k.id, { lavori: 0, elementi: 0, ritardo: 0 });
+                });
+
+                (prodTasks || []).forEach((task: any) => {
+                    const stats = tasksPerKanban.get(task.kanbanId);
+                    if (stats) {
+                        stats.lavori++;
+                        stats.elementi += task.positions?.length || 1;
+                        if (task.deliveryDate && new Date(task.deliveryDate) < now) {
+                            stats.ritardo++;
+                        }
+                    }
+                });
+
+                kanbanStatus = produzionKanbans.map((k) => {
+                    const stats = tasksPerKanban.get(k.id) || { lavori: 0, elementi: 0, ritardo: 0 };
+                    return {
+                        kanbanId: k.id,
+                        kanbanName: k.title || k.identifier || "Kanban",
+                        kanbanIdentifier: k.identifier || "",
+                        color: k.color || "#6b7280",
+                        icon: k.icon || null,
+                        lavori: stats.lavori,
+                        elementi: stats.elementi,
+                        ritardo: stats.ritardo,
+                    };
+                });
+            }
+        }
 
         // Find Production kanban - prefer flag, fallback to name matching
         const productionKanbans = allKanbans.filter((k) => {
@@ -2815,6 +2896,8 @@ export const fetchProduzioneDashboardData = cache(
 
         if (productionKanbans.length === 0) {
             return {
+                kanbanStatus,
+                hasProduzionCategory,
                 repartoData: [],
                 weeklyTrend: [],
                 columnNames: [],
@@ -2912,6 +2995,8 @@ export const fetchProduzioneDashboardData = cache(
         }
 
         return {
+            kanbanStatus,
+            hasProduzionCategory,
             repartoData,
             weeklyTrend,
             columnNames,
@@ -2936,25 +3021,67 @@ export interface FatturazioneWeeklyData {
     emesso: number;
 }
 
+export interface FatturazioneStatusData {
+    daEmettere: { count: number; value: number };
+    emesse: { count: number; value: number };
+    inScadenza: { count: number; value: number };
+    pagate: { count: number; value: number };
+    scadute: { count: number; value: number };
+}
+
 export interface FatturazioneDashboardStats {
+    invoiceStatus: FatturazioneStatusData;
     agingData: FatturazioneAgingData[];
     weeklyTrend: FatturazioneWeeklyData[];
     invoiceKanbanId: number | null;
+    invoiceKanbanIdentifier: string | null;
+}
+
+export type FatturazionePeriod = "week" | "month" | "quarter" | "year" | "all";
+
+function getPeriodStartDate(period: FatturazionePeriod): Date | null {
+    const now = new Date();
+    switch (period) {
+        case "week":
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            return weekStart;
+        case "month":
+            return new Date(now.getFullYear(), now.getMonth(), 1);
+        case "quarter":
+            const quarterMonth = Math.floor(now.getMonth() / 3) * 3;
+            return new Date(now.getFullYear(), quarterMonth, 1);
+        case "year":
+            return new Date(now.getFullYear(), 0, 1);
+        case "all":
+        default:
+            return null;
+    }
 }
 
 export const fetchFatturazioneDashboardData = cache(
-    async (siteId: string): Promise<FatturazioneDashboardStats> => {
+    async (siteId: string, period: FatturazionePeriod = "all"): Promise<FatturazioneDashboardStats> => {
         const supabase = await createClient();
 
         const now = new Date();
+        const periodStart = getPeriodStartDate(period);
 
-        // Fetch invoice tasks (task_type = 'FATTURA' or from invoice kanban)
-        const kanbansResult = await supabase
-            .from("Kanban")
-            .select("id, title, identifier, is_invoice_kanban")
-            .eq("site_id", siteId);
+        // Fetch invoice kanban and its columns
+        const [kanbansResult, columnsResult] = await Promise.all([
+            supabase
+                .from("Kanban")
+                .select("id, title, identifier, is_invoice_kanban")
+                .eq("site_id", siteId),
+            supabase
+                .from("KanbanColumn")
+                .select("id, kanbanId, title, position, column_type")
+                .eq("site_id", siteId)
+                .order("position", { ascending: true }),
+        ]);
 
         const allKanbans = kanbansResult.data || [];
+        const allColumns = columnsResult.data || [];
 
         // Find invoice kanban
         const invoiceKanbans = allKanbans.filter((k) => {
@@ -2969,6 +3096,20 @@ export const fetchFatturazioneDashboardData = cache(
 
         const invoiceKanban = invoiceKanbans[0];
         const invoiceKanbanId = invoiceKanban?.id || null;
+        const invoiceKanbanIdentifier = invoiceKanban?.identifier || null;
+
+        // Get columns for invoice kanban
+        const invoiceColumns = allColumns.filter(
+            (c) => c.kanbanId === invoiceKanbanId,
+        );
+        const columnMap = new Map(invoiceColumns.map((c) => [c.id, c]));
+
+        // Find first column (da emettere)
+        const firstColumn = invoiceColumns.length > 0
+            ? invoiceColumns.reduce((min, c) =>
+                  c.position < min.position ? c : min
+              )
+            : null;
 
         // Fetch invoice tasks
         const tasksResult = await supabase
@@ -2984,7 +3125,9 @@ export const fetchFatturazioneDashboardData = cache(
                 updated_at,
                 archived,
                 kanbanId,
-                display_mode
+                kanbanColumnId,
+                display_mode,
+                sent_date
             `,
             )
             .eq("site_id", siteId)
@@ -2994,13 +3137,76 @@ export const fetchFatturazioneDashboardData = cache(
 
         // Filter invoice tasks
         const invoiceKanbanIds = new Set(invoiceKanbans.map((k) => k.id));
-        const invoices = allTasks.filter(
+        const allInvoices = allTasks.filter(
             (task: any) =>
                 task.task_type === "FATTURA" ||
                 invoiceKanbanIds.has(task.kanbanId),
         );
 
-        // Separate open vs paid invoices (paid = display_mode green or archived)
+        // Apply period filter for status cards
+        const invoices = periodStart
+            ? allInvoices.filter((inv: any) => {
+                  const createdAt = new Date(inv.created_at);
+                  return createdAt >= periodStart;
+              })
+            : allInvoices;
+
+        // Calculate invoice status
+        const invoiceStatus: FatturazioneStatusData = {
+            daEmettere: { count: 0, value: 0 },
+            emesse: { count: 0, value: 0 },
+            inScadenza: { count: 0, value: 0 },
+            pagate: { count: 0, value: 0 },
+            scadute: { count: 0, value: 0 },
+        };
+
+        const sevenDaysFromNow = new Date(now);
+        sevenDaysFromNow.setDate(now.getDate() + 7);
+
+        invoices.forEach((inv: any) => {
+            const price = inv.sellPrice || 0;
+            const column = columnMap.get(inv.kanbanColumnId);
+            const isPaid = inv.display_mode === "small_green" ||
+                column?.column_type === "won";
+
+            if (isPaid) {
+                invoiceStatus.pagate.count++;
+                invoiceStatus.pagate.value += price;
+                return;
+            }
+
+            // Da emettere (in first column and no sent_date)
+            if (firstColumn && inv.kanbanColumnId === firstColumn.id && !inv.sent_date) {
+                invoiceStatus.daEmettere.count++;
+                invoiceStatus.daEmettere.value += price;
+                return;
+            }
+
+            // Check delivery date for scadenza
+            if (inv.deliveryDate) {
+                const dueDate = new Date(inv.deliveryDate);
+
+                // Scadute (overdue)
+                if (dueDate < now) {
+                    invoiceStatus.scadute.count++;
+                    invoiceStatus.scadute.value += price;
+                    return;
+                }
+
+                // In scadenza (due within 7 days)
+                if (dueDate <= sevenDaysFromNow) {
+                    invoiceStatus.inScadenza.count++;
+                    invoiceStatus.inScadenza.value += price;
+                    return;
+                }
+            }
+
+            // Emesse (sent but not paid, not overdue, not expiring soon)
+            invoiceStatus.emesse.count++;
+            invoiceStatus.emesse.value += price;
+        });
+
+        // Separate open vs paid invoices for aging
         const openInvoices = invoices.filter(
             (inv: any) => inv.display_mode !== "small_green" && !inv.archived,
         );
@@ -3039,7 +3245,6 @@ export const fetchFatturazioneDashboardData = cache(
         }));
 
         // 2. Incassi per settimana (last 4 weeks)
-        // Using paid invoices (display_mode = small_green) created_at or updated_at
         const paidInvoices = invoices.filter(
             (inv: any) => inv.display_mode === "small_green",
         );
@@ -3085,9 +3290,11 @@ export const fetchFatturazioneDashboardData = cache(
         }
 
         return {
+            invoiceStatus,
             agingData,
             weeklyTrend,
             invoiceKanbanId,
+            invoiceKanbanIdentifier,
         };
     },
 );

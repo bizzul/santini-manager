@@ -121,7 +121,7 @@ function EventTooltipContent({ task }: { task: TaskWithKanban | null }) {
         {deliveryStr}
       </div>
       <div className="text-xs text-muted-foreground pt-1 border-t">
-        Clicca per aprire il progetto
+        Clicca per modificare il progetto
       </div>
     </div>
   );
@@ -328,19 +328,16 @@ export default function CalendarComponent({
       const task = eventInfo.event.extendedProps?.task as TaskWithKanban | undefined;
       const categoryName = task?.SellProduct?.category?.name ?? (task as any)?.sellProduct?.category?.name;
       const CategoryIcon = getProductCategoryIcon(categoryName);
-      const content = (
-        <div className="px-2 py-1 truncate text-xs font-medium leading-tight rounded-sm w-full flex items-center gap-1">
-          <CategoryIcon className="h-3 w-3 shrink-0" />
-          <span className="truncate">{eventInfo.event.title}</span>
-        </div>
-      );
       return (
         <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="w-full cursor-pointer">{content}</div>
+              <div className="px-2 py-1 truncate text-xs font-medium leading-tight rounded-sm w-full flex items-center gap-1 cursor-pointer pointer-events-auto">
+                <CategoryIcon className="h-3 w-3 shrink-0" />
+                <span className="truncate">{eventInfo.event.title}</span>
+              </div>
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs">
+            <TooltipContent side="top" className="max-w-xs pointer-events-none">
               <EventTooltipContent task={task || null} />
             </TooltipContent>
           </Tooltip>
@@ -354,7 +351,7 @@ export default function CalendarComponent({
     (info: any) => {
       const taskId = info.event.extendedProps?.taskId;
       if (taskId && effectiveDomain) {
-        router.push(`/sites/${effectiveDomain}/progetti/${taskId}`);
+        router.push(`/sites/${effectiveDomain}/projects?edit=${taskId}`);
       }
     },
     [effectiveDomain, router]
@@ -528,7 +525,7 @@ export default function CalendarComponent({
         .calendar-event {
           border-radius: 4px;
           margin: 2px 0;
-          cursor: pointer;
+          cursor: pointer !important;
           transition: opacity 0.2s, transform 0.1s;
         }
         .calendar-event:hover {
@@ -538,9 +535,14 @@ export default function CalendarComponent({
         .fc-event {
           border: none;
           padding: 0;
+          cursor: pointer !important;
         }
         .fc-event-main {
           padding: 0;
+          cursor: pointer !important;
+        }
+        .fc-daygrid-event {
+          cursor: pointer !important;
         }
       `}</style>
       {/* Custom title - controlled by React state to avoid FullCalendar issues */}

@@ -2,11 +2,11 @@
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import EditProductForm from "./editForm";
+import { useParams } from "next/navigation";
 
 type Props = {
   data: any;
@@ -16,21 +16,27 @@ type Props = {
 };
 
 function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
-  const handleClose = () => {
+  const params = useParams();
+  const domain = params?.domain as string;
+
+  const handleClose = (wasDeleted?: boolean) => {
     setOpen(false);
     setData(null);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={() => handleClose()}>
+      <DialogContent className="max-w-228 max-h-[90%] overflow-scroll">
         <DialogHeader>
-          <DialogTitle>Modifica progetto</DialogTitle>
-          <DialogDescription>
-            {data?.name ? `Modifica ${data.name}` : "Modifica progetto"}
-          </DialogDescription>
+          <DialogTitle>Modifica {data?.unique_code || "progetto"}</DialogTitle>
         </DialogHeader>
-        {data && <EditProductForm data={data} handleClose={handleClose} />}
+        {data && (
+          <EditProductForm
+            handleClose={handleClose}
+            resource={data}
+            domain={domain}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

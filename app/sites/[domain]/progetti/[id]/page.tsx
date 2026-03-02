@@ -5,29 +5,25 @@ import { getUserContext } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { requireServerSiteContext } from "@/lib/server-data";
 
-async function getData(id: number, siteId: string): Promise<any | any> {
-  // Fetch data from your API here.
+async function getData(id: number, siteId: string): Promise<any> {
   const supabase = await createClient();
   const { data: task, error: taskError } = await supabase
-    .from("task")
-    .select("*")
+    .from("Task")
+    .select(`
+      *,
+      sellProduct:SellProduct!sellProductId(id, name),
+      client:Client!clientId(id, businessName),
+      column:KanbanColumn!kanbanColumnId(id, title)
+    `)
     .eq("id", id)
     .eq("site_id", siteId)
     .single();
+  
   if (taskError) {
     logger.error("Error fetching task:", taskError);
     throw new Error("Failed to fetch task");
   }
-  const { data: client, error: clientError } = await supabase
-    .from("client")
-    .select("*")
-    .eq("id", task.clientId)
-    .eq("site_id", siteId)
-    .single();
-  if (clientError) {
-    console.error("Error fetching client:", clientError);
-    throw new Error("Failed to fetch client");
-  }
+  
   return task;
 }
 
@@ -66,15 +62,13 @@ export default async function Page({
       </h1>
       <div className="grid grid-cols-2 text-left md:w-1/2 w-full px-4">
         <h2>PRODOTTO:</h2>
-        {/* @ts-ignore */}
-        <h2 className="font-bold">{data.sellProduct.name}</h2>
+        <h2 className="font-bold">{data.sellProduct?.name ?? "-"}</h2>
 
         <h2>CLIENTE:</h2>
-        {/* @ts-ignore */}
-        <h2 className="font-bold">{data.client.businessName}</h2>
+        <h2 className="font-bold">{data.client?.businessName ?? "-"}</h2>
 
         <h2>NOME PROGETTO:</h2>
-        <h2 className="font-bold">{data.title}</h2>
+        <h2 className="font-bold">{data.title || data.name || "-"}</h2>
 
         <h2>DATA CONSEGNA:</h2>
         <h2 className="font-bold">{deliveryDate.toLocaleDateString()}</h2>
@@ -86,19 +80,18 @@ export default async function Page({
         <h2 className="font-bold">{update.toLocaleDateString()}</h2>
 
         <h2>VALORE:</h2>
-        <h2 className="font-bold">{data.sellPrice}</h2>
+        <h2 className="font-bold">{data.sellPrice ?? "-"}</h2>
 
         <h2>MATERIALE DISP.:</h2>
         <h2 className="font-bold">{data.material ? "SI" : "NO"}</h2>
 
         <h2>FASE:</h2>
-        {/* @ts-ignore */}
-        <h2 className="font-bold">{data.column.title}</h2>
+        <h2 className="font-bold">{data.column?.title ?? "-"}</h2>
 
         <h2>POSIZIONI:</h2>
         <ul className="font-bold">
-          {data.positions.map((position: any, index: number) => (
-            <li key={index}>{position}</li>
+          {(data.positions || []).map((position: any, index: number) => (
+            <li key={index}>{position || "-"}</li>
           ))}
         </ul>
 

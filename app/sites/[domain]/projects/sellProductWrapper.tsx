@@ -1,11 +1,42 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { Data } from "./page";
+import DialogEdit from "./dialogEdit";
 
 const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) => {
   const columns = useMemo(() => createColumns(domain), [domain]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  
+  // Handle ?edit=taskId query parameter
+  useEffect(() => {
+    const editTaskId = searchParams.get("edit");
+    if (editTaskId) {
+      const taskId = parseInt(editTaskId, 10);
+      const task = data.tasks?.find((t: any) => t.id === taskId);
+      if (task) {
+        setSelectedTask(task);
+        setEditOpen(true);
+      }
+    }
+  }, [searchParams, data.tasks]);
+  
+  // Clear URL param when dialog closes
+  const handleEditClose = () => {
+    setEditOpen(false);
+    setSelectedTask(null);
+    // Remove edit param from URL
+    const editParam = searchParams.get("edit");
+    if (editParam) {
+      router.replace(`/sites/${domain}/projects`, { scroll: false });
+    }
+  };
   
   return (
     <div className="space-y-4">
@@ -17,6 +48,13 @@ const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) =
         columns={columns} 
         data={data.tasks} 
         categories={data.categories}
+      />
+      
+      <DialogEdit
+        isOpen={editOpen}
+        data={selectedTask}
+        setData={setSelectedTask}
+        setOpen={handleEditClose as any}
       />
     </div>
   );

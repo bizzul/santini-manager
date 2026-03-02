@@ -15,7 +15,7 @@ export const list = async (
     const supabase = createClient();
 
     let query = supabase
-      .from("client")
+      .from("Client")
       .select("*", { count: "exact" });
 
     if (filters.q) {
