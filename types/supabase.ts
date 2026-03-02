@@ -75,6 +75,9 @@ export interface Task {
     // Project folder URLs
     cloud_folder_url?: string | null;
     project_files_url?: string | null;
+    // Source offer code (when task is duplicated from offer to work kanban)
+    source_offer_code?: string | null;
+    sourceOfferCode?: string | null; // Alternative property name
 }
 
 // Client related types
@@ -631,4 +634,40 @@ export interface Inventory {
     location?: string;
     created_at?: string;
     updated_at?: string;
+}
+
+// ==========================================
+// USER PERMISSIONS TYPES
+// ==========================================
+
+// User module permission
+export interface UserModulePermission {
+    id: number;
+    user_id: string;
+    site_id: string;
+    module_name: string;
+    created_at?: string;
+}
+
+// User kanban permission
+export interface UserKanbanPermission {
+    id: number;
+    user_id: string;
+    kanban_id: number;
+    created_at?: string;
+}
+
+// User kanban category permission
+export interface UserKanbanCategoryPermission {
+    id: number;
+    user_id: string;
+    kanban_category_id: number;
+    created_at?: string;
+}
+
+// Combined user permissions for API responses
+export interface UserPermissions {
+    modules: string[];
+    kanbans: number[];
+    kanban_categories: number[];
 }

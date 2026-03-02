@@ -31,11 +31,13 @@ import {
   PowerOff,
   Briefcase,
   Shield,
+  Lock,
 } from "lucide-react";
 import { Collaborator } from "./columns";
 import { EditCollaboratorDialog } from "./edit-collaborator-dialog";
 import { RoleManagementDialog } from "./role-management-dialog";
 import { SystemRoleDialog } from "./system-role-dialog";
+import { UserPermissionsDialog } from "@/components/permissions/user-permissions-dialog";
 import {
   removeCollaboratorFromSite,
   sendPasswordResetEmail,
@@ -60,6 +62,7 @@ export function CollaboratorActions({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isRolesOpen, setIsRolesOpen] = useState(false);
   const [isSystemRoleOpen, setIsSystemRoleOpen] = useState(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState(false);
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [isToggleStatusOpen, setIsToggleStatusOpen] = useState(false);
@@ -72,6 +75,9 @@ export function CollaboratorActions({
   // Check if current user can change system roles (only admin and superadmin)
   const canChangeSystemRole =
     currentUserRole === "admin" || currentUserRole === "superadmin";
+
+  // Check if collaborator is a regular user (not admin/superadmin) - permissions only apply to regular users
+  const isRegularUser = collaborator.role === "user" || !collaborator.role;
 
   if (!isAdmin) {
     return null;
@@ -199,6 +205,12 @@ export function CollaboratorActions({
               Ruolo di Sistema
             </DropdownMenuItem>
           )}
+          {isRegularUser && (
+            <DropdownMenuItem onClick={() => setIsPermissionsOpen(true)}>
+              <Lock className="h-4 w-4 mr-2" />
+              Permessi Accesso
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setIsPasswordResetOpen(true)}>
             <Key className="h-4 w-4 mr-2" />
             Reset Password
@@ -258,6 +270,18 @@ export function CollaboratorActions({
           currentUserRole={currentUserRole || "user"}
           isOpen={isSystemRoleOpen}
           onClose={() => setIsSystemRoleOpen(false)}
+        />
+      )}
+
+      {/* User Permissions Dialog - Only for regular users */}
+      {isRegularUser && collaborator.authId && (
+        <UserPermissionsDialog
+          isOpen={isPermissionsOpen}
+          onClose={() => setIsPermissionsOpen(false)}
+          userId={collaborator.authId}
+          userName={fullName}
+          domain={domain}
+          siteId={siteId}
         />
       )}
 

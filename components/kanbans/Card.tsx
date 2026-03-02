@@ -24,7 +24,10 @@ import {
   Wrench, 
   Package,
   Tag,
-  LucideIcon
+  LucideIcon,
+  Copy,
+  Trash2,
+  Archive
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
@@ -75,10 +78,24 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "../../components/ui/context-menu";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
+
 import { archiveItem } from "@/app/sites/[domain]/kanban/actions/archived-item-action";
+import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
+import { duplicateItem } from "@/app/sites/[domain]/kanban/actions/duplicate-item.action";
 
 type Supplier = {
   id: number;
@@ -121,6 +138,9 @@ export default function Card({
   const [currentValue, setCurrentValue] = useState(0);
   const { toast } = useToast();
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
 
   // Determina se la card deve essere small in base a display_mode
   const displayMode = data.display_mode || data.displayMode || "normal";
@@ -272,6 +292,62 @@ export default function Card({
       toast({
         description: `${data.unique_code} è stato archiviato.`,
       });
+    }
+  }
+
+  async function handleDelete() {
+    setIsDeleting(true);
+    try {
+      const result = await removeItem(id, domain);
+      if (result && typeof result === 'object' && 'error' in result) {
+        toast({
+          variant: "destructive",
+          description: result.message || "Errore nella cancellazione",
+        });
+      } else {
+        toast({
+          description: `${data.unique_code} è stato cancellato.`,
+        });
+        if (onTaskDeleted) {
+          onTaskDeleted();
+        }
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: "Errore nella cancellazione del progetto",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    setIsDuplicating(true);
+    try {
+      const result = await duplicateItem(id, domain);
+      if (result.error) {
+        toast({
+          variant: "destructive",
+          description: result.message || "Errore nella duplicazione",
+        });
+      } else {
+        toast({
+          description: result.message || `Progetto duplicato con successo`,
+        });
+        if (onTaskDeleted) {
+          // Reuse the same callback to refresh the kanban
+          onTaskDeleted();
+        }
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: "Errore nella duplicazione del progetto",
+      });
+    } finally {
+      setIsDuplicating(false);
     }
   }
 
@@ -662,13 +738,61 @@ export default function Card({
           <ContextMenuItem
             onClick={(e) => {
               e.stopPropagation();
+              handleDuplicate();
+            }}
+            disabled={isDuplicating}
+            className="flex items-center gap-2"
+          >
+            <Copy className="h-4 w-4" />
+            {isDuplicating ? "Duplicando..." : "Duplica progetto"}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
               handleArchive(data);
             }}
+            className="flex items-center gap-2"
           >
-            Archivia progetto
+            <Archive className="h-4 w-4" />
+            {data.archived ? "Ripristina progetto" : "Archivia progetto"}
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteConfirm(true);
+            }}
+            className="flex items-center gap-2 text-red-600 focus:text-red-600 focus:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            Cancella progetto
           </ContextMenuItem>
         </ContextMenuContent>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma cancellazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler cancellare il progetto <strong>{data.unique_code}</strong>?
+              <br />
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? "Cancellando..." : "Cancella"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ContextMenu>
   );
 }

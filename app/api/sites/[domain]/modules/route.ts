@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { AVAILABLE_MODULES } from "@/lib/module-config";
+import { getUserContext } from "@/lib/auth-utils";
+import { isAdminOrSuperadmin } from "@/lib/permissions";
 
 export async function GET(
     request: NextRequest,
@@ -18,12 +20,17 @@ export async function GET(
         }
 
         const supabase = await createClient();
+        const siteId = response.data.id;
+
+        // Get user context for permission filtering
+        const userContext = await getUserContext();
+        const isAdmin = userContext && isAdminOrSuperadmin(userContext.role);
 
         // Get enabled modules for this site
         const { data: siteModules, error } = await supabase
             .from("site_modules")
             .select("module_name, is_enabled")
-            .eq("site_id", response.data.id);
+            .eq("site_id", siteId);
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
@@ -34,12 +41,42 @@ export async function GET(
             siteModules?.map((sm) => [sm.module_name, sm.is_enabled]) || [],
         );
 
+        // Get user-specific module permissions (only for non-admin users)
+        let userModulePermissions: Set<string> | null = null;
+        if (!isAdmin && userContext?.userId) {
+            const { data: userModules } = await supabase
+                .from("user_module_permissions")
+                .select("module_name")
+                .eq("user_id", userContext.userId)
+                .eq("site_id", siteId);
+
+            userModulePermissions = new Set(
+                userModules?.map((m) => m.module_name) || []
+            );
+        }
+
         // Return all available modules with their enabled status
-        const modulesWithStatus = AVAILABLE_MODULES.map((module) => ({
-            ...module,
-            isEnabled: enabledModules.get(module.name) ??
-                module.enabledByDefault,
-        }));
+        // For non-admin users, also check user permissions
+        const modulesWithStatus = AVAILABLE_MODULES.map((module) => {
+            const siteEnabled = enabledModules.get(module.name) ?? module.enabledByDefault;
+            
+            // Admin users: only check site-level enabling
+            if (isAdmin) {
+                return {
+                    ...module,
+                    isEnabled: siteEnabled,
+                };
+            }
+            
+            // Non-admin users: must have both site-level AND user-level permission
+            // If user has no permissions at all, show nothing
+            const userHasPermission = userModulePermissions?.has(module.name) ?? false;
+            
+            return {
+                ...module,
+                isEnabled: siteEnabled && userHasPermission,
+            };
+        });
 
         return NextResponse.json({ modules: modulesWithStatus });
     } catch (error) {

@@ -181,61 +181,141 @@ export async function POST(req: NextRequest) {
         const targetWorkKanbanId = task?.kanban?.target_work_kanban_id;
         if (targetWorkKanbanId && siteId) {
           try {
-            // Trova la prima colonna della kanban destinazione
-            const { data: firstColumn } = await supabase
-              .from("KanbanColumn")
-              .select("id")
+            // Verifica se esiste già un lavoro collegato a questa offerta
+            const { data: existingWork } = await supabase
+              .from("Task")
+              .select("id, unique_code")
+              .eq("parent_task_id", task.id)
               .eq("kanbanId", targetWorkKanbanId)
-              .order("position", { ascending: true })
-              .limit(1)
+              .eq("archived", false)
               .single();
 
-            if (firstColumn) {
-              // Genera nuovo codice per il lavoro
-              const newCode = await generateTaskCode(siteId, "LAVORO");
+            if (existingWork) {
+              // Lavoro già esistente, non duplicare
+              logger.debug(
+                "Work task already exists for this offer, skipping duplication:",
+                existingWork.id,
+                existingWork.unique_code,
+              );
+              duplicatedTask = existingWork;
+            } else {
+              // Deriva il codice lavoro dal codice offerta
+              // Supporta sia 26-007-OFF (suffisso) che 26-OFF-007 (prefisso)
+              const offerCode = task.unique_code || "";
+              const hasOffSuffix = offerCode.endsWith("-OFF");
+              const hasOffPrefix = offerCode.includes("-OFF-");
+              const hasOff = hasOffSuffix || hasOffPrefix;
+              
+              let newCode = offerCode;
+              if (hasOffSuffix) {
+                // 26-007-OFF -> 26-007
+                newCode = offerCode.replace("-OFF", "");
+              } else if (hasOffPrefix) {
+                // 26-OFF-007 -> 26-007
+                newCode = offerCode.replace("-OFF-", "-");
+              }
 
-              // Crea la copia del task
-              const { data: newTask, error: createError } = await supabase
+              logger.debug("Duplication: deriving work code", {
+                offerCode,
+                newCode,
+                hasOff,
+              });
+
+              // Verifica se esiste già un task con questo codice nella kanban lavori target
+              const { data: existingByCode } = await supabase
                 .from("Task")
-                .insert({
-                  // Copia i dati rilevanti
-                  title: task.title,
-                  name: task.name,
-                  unique_code: newCode,
-                  clientId: task.clientId,
-                  sellProductId: task.sellProductId,
-                  sellPrice: task.sellPrice,
-                  deliveryDate: task.deliveryDate,
-                  positions: task.positions,
-                  other: task.other,
-                  site_id: siteId,
-                  // Nuovi campi
-                  kanbanId: targetWorkKanbanId,
-                  kanbanColumnId: firstColumn.id,
-                  parent_task_id: task.id,
-                  task_type: "LAVORO",
-                  display_mode: "normal",
-                  percentStatus: 0,
-                  archived: false,
-                  locked: false,
-                  material: false,
-                  metalli: false,
-                  ferramenta: false,
-                })
-                .select()
+                .select("id, unique_code, parent_task_id")
+                .eq("unique_code", newCode)
+                .eq("kanbanId", targetWorkKanbanId)
+                .eq("site_id", siteId)
+                .eq("archived", false)
                 .single();
 
-              if (createError) {
-                logger.error("Error creating work task:", createError);
-              } else {
-                duplicatedTask = newTask;
+              if (existingByCode) {
+                // Task con questo codice esiste già nella kanban lavori
                 logger.debug(
-                  "Created work task:",
-                  newTask?.id,
-                  newTask?.unique_code,
+                  "Task with code already exists in target kanban:",
+                  existingByCode.id,
+                  existingByCode.unique_code,
                 );
+                
+                // Se non ha parent_task_id, collegalo a questa offerta
+                if (!existingByCode.parent_task_id) {
+                  await supabase
+                    .from("Task")
+                    .update({ 
+                      parent_task_id: task.id,
+                      source_offer_code: hasOff ? offerCode : null,
+                    })
+                    .eq("id", existingByCode.id);
+                  logger.debug("Linked existing task to offer:", existingByCode.id);
+                }
+                
+                duplicatedTask = existingByCode;
+              } else if (hasOff) {
+                // Crea nuovo lavoro solo se l'offerta ha ancora -OFF (prefisso o suffisso)
+                // Trova la prima colonna della kanban destinazione
+                const { data: firstColumn } = await supabase
+                  .from("KanbanColumn")
+                  .select("id")
+                  .eq("kanbanId", targetWorkKanbanId)
+                  .order("position", { ascending: true })
+                  .limit(1)
+                  .single();
+
+                if (firstColumn) {
+                  // Crea la copia del task con tutti i campi rilevanti
+                  const { data: newTask, error: createError } = await supabase
+                    .from("Task")
+                    .insert({
+                      // Copia i dati rilevanti
+                      title: task.title,
+                      name: task.name,
+                      unique_code: newCode,
+                      source_offer_code: task.unique_code,
+                      clientId: task.clientId,
+                      sellProductId: task.sellProductId,
+                      sellPrice: task.sellPrice,
+                      deliveryDate: task.deliveryDate,
+                      positions: task.positions,
+                      other: task.other,
+                      luogo: task.luogo,
+                      description: task.description,
+                      numero_pezzi: task.numero_pezzi,
+                      cloud_folder_url: task.cloud_folder_url,
+                      project_files_url: task.project_files_url,
+                      site_id: siteId,
+                      // Nuovi campi
+                      kanbanId: targetWorkKanbanId,
+                      kanbanColumnId: firstColumn.id,
+                      parent_task_id: task.id,
+                      task_type: "LAVORO",
+                      display_mode: "normal",
+                      percentStatus: 0,
+                      archived: false,
+                      locked: false,
+                      material: false,
+                      metalli: false,
+                      ferramenta: false,
+                    })
+                    .select()
+                    .single();
+
+                    if (createError) {
+                      logger.error("Error creating work task:", createError);
+                    } else {
+                      duplicatedTask = newTask;
+                      logger.debug(
+                        "Created work task:",
+                        newTask?.id,
+                        newTask?.unique_code,
+                        "from offer:",
+                        task.unique_code,
+                      );
+                    }
+                  }
+                }
               }
-            }
           } catch (dupError) {
             logger.error("Error in duplication process:", dupError);
           }

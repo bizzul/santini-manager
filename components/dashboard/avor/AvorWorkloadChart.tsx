@@ -34,7 +34,10 @@ export default function AvorWorkloadChart({
   columnNames,
 }: AvorWorkloadChartProps) {
   const globalMax = Math.max(
-    ...data.flatMap((d) => d.columns.map((c) => c.count)),
+    ...data.flatMap((d) => [
+      ...d.columns.map((c) => c.count),
+      d.elementi,
+    ]),
     1
   );
 
@@ -49,7 +52,7 @@ export default function AvorWorkloadChart({
             Carico di lavoro per tipologia
           </h3>
           <p className="text-xs text-muted-foreground">
-            Pratiche per categoria e colonna
+            Pratiche ed elementi per categoria
           </p>
         </div>
       </div>
@@ -63,6 +66,8 @@ export default function AvorWorkloadChart({
           {data.map((cat) => {
             const Icon = getCategoryIcon(cat.category);
             const total = cat.columns.reduce((sum, c) => sum + c.count, 0);
+            const praticaPct = (total / globalMax) * 100;
+            const elementiPct = (cat.elementi / globalMax) * 100;
             return (
               <div key={cat.category} className="flex items-center gap-2.5">
                 <div
@@ -77,54 +82,48 @@ export default function AvorWorkloadChart({
                 <span className="text-xs font-medium w-24 truncate shrink-0">
                   {cat.category}
                 </span>
-                <div className="flex-1 flex items-center gap-1.5">
-                  <div className="flex-1 h-5 bg-slate-800/50 rounded-full overflow-hidden flex">
-                    {cat.columns.map((col) => {
-                      if (col.count === 0) return null;
-                      const pct = (col.count / globalMax) * 100;
-                      return (
-                        <div
-                          key={col.columnName}
-                          className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
-                          style={{
-                            width: `${Math.max(pct, 2)}%`,
-                            backgroundColor: cat.color,
-                            opacity:
-                              0.4 +
-                              0.6 *
-                                (1 -
-                                  columnNames.indexOf(col.columnName) /
-                                    Math.max(columnNames.length - 1, 1)),
-                          }}
-                          title={`${col.columnName}: ${col.count}`}
-                        />
-                      );
-                    })}
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-3.5 bg-slate-800/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.max(praticaPct, 3)}%`,
+                          backgroundColor: cat.color,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold w-6 text-right tabular-nums">
+                      {total}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold w-6 text-right tabular-nums">
-                    {total}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-3.5 bg-slate-800/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500 opacity-60"
+                        style={{
+                          width: `${Math.max(elementiPct, 3)}%`,
+                          backgroundColor: cat.color,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold w-6 text-right tabular-nums">
+                      {cat.elementi}
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
-          <div className="flex items-center gap-3 pt-1 pl-[122px] flex-wrap">
-            {columnNames.map((name, i) => (
-              <div key={name} className="flex items-center gap-1.5">
-                <div
-                  className="w-3 h-2 rounded-sm"
-                  style={{
-                    backgroundColor: "#64748b",
-                    opacity:
-                      0.4 +
-                      0.6 * (1 - i / Math.max(columnNames.length - 1, 1)),
-                  }}
-                />
-                <span className="text-[10px] text-muted-foreground">
-                  {name}
-                </span>
-              </div>
-            ))}
+          <div className="flex items-center gap-4 pt-1 pl-[122px]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm bg-slate-500" />
+              <span className="text-[10px] text-muted-foreground">Pratiche</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm bg-slate-500 opacity-60" />
+              <span className="text-[10px] text-muted-foreground">Elementi</span>
+            </div>
           </div>
         </div>
       )}

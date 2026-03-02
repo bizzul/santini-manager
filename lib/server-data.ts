@@ -2288,10 +2288,13 @@ export const fetchVenditaDashboardData = cache(
                     (1000 * 60 * 60 * 24),
             );
 
+            const clientName = task.Client?.businessName || "";
+            const clientPrefix = clientName ? `${clientName} - ` : "";
+
             if (daysUntilExpiry <= 1 && daysUntilExpiry >= 0) {
                 alerts.push({
                     id: task.id,
-                    message: `Offerta #${
+                    message: `${clientPrefix}Offerta #${
                         task.unique_code || task.id
                     } in scadenza ${daysUntilExpiry === 0 ? "oggi" : "domani"}`,
                     time: daysUntilExpiry === 0 ? "oggi" : "1g",
@@ -2300,7 +2303,7 @@ export const fetchVenditaDashboardData = cache(
             } else if (daysUntilExpiry < 0) {
                 alerts.push({
                     id: task.id,
-                    message: `Offerta #${
+                    message: `${clientPrefix}Offerta #${
                         task.unique_code || task.id
                     } scaduta da ${Math.abs(daysUntilExpiry)}g`,
                     time: `${Math.abs(daysUntilExpiry)}g`,
@@ -2384,6 +2387,7 @@ export interface AvorWorkloadData {
         columnName: string;
         count: number;
     }>;
+    elementi: number;
 }
 
 export interface AvorWeeklyTrend {
@@ -2493,6 +2497,8 @@ export const fetchAvorDashboardData = cache(
                     created_at,
                     updated_at,
                     archived,
+                    positions,
+                    Client:clientId(id, businessName),
                     SellProduct:sellProductId(id, name, category:category_id(id, name, color))
                 `,
                         )
@@ -2538,7 +2544,7 @@ export const fetchAvorDashboardData = cache(
         // 2. Calculate workload by category and column
         const categoryWorkloadMap = new Map<
             string,
-            { color: string; columns: Map<string, number> }
+            { color: string; columns: Map<string, number>; elementi: number }
         >();
 
         // Initialize with existing categories
@@ -2548,6 +2554,7 @@ export const fetchAvorDashboardData = cache(
             categoryWorkloadMap.set(cat.name, {
                 color: cat.color || "#6b7280",
                 columns: colMap,
+                elementi: 0,
             });
         });
 
@@ -2558,6 +2565,7 @@ export const fetchAvorDashboardData = cache(
             categoryWorkloadMap.set("Senza Categoria", {
                 color: "#6b7280",
                 columns: colMap,
+                elementi: 0,
             });
         }
 
@@ -2572,6 +2580,7 @@ export const fetchAvorDashboardData = cache(
                 "Senza Categoria";
             const categoryColor = task.SellProduct?.category?.color ||
                 "#6b7280";
+            const positionsCount = task.positions?.length || 1;
 
             if (!categoryWorkloadMap.has(categoryName)) {
                 const colMap = new Map<string, number>();
@@ -2579,6 +2588,7 @@ export const fetchAvorDashboardData = cache(
                 categoryWorkloadMap.set(categoryName, {
                     color: categoryColor,
                     columns: colMap,
+                    elementi: 0,
                 });
             }
 
@@ -2587,6 +2597,7 @@ export const fetchAvorDashboardData = cache(
                 columnName,
                 (catData.columns.get(columnName) || 0) + 1,
             );
+            catData.elementi += positionsCount;
         });
 
         // Convert to array format — only matching production categories, in sidebar order
@@ -2605,6 +2616,7 @@ export const fetchAvorDashboardData = cache(
                     columnName: name,
                     count: data.columns.get(name) || 0,
                 })),
+                elementi: data.elementi,
             }))
             .sort((a, b) => {
                 const orderA = categoryOrderMap.get(a.category.toLowerCase()) ?? 999;
@@ -2662,9 +2674,12 @@ export const fetchAvorDashboardData = cache(
                     (1000 * 60 * 60 * 24),
             );
 
+            const clientName = task.Client?.businessName || "";
+            const clientPrefix = clientName ? `${clientName} - ` : "";
+
             alerts.push({
                 id: task.id,
-                message: `Pratica #${
+                message: `${clientPrefix}Pratica #${
                     task.unique_code || task.id
                 } in ritardo di ${daysOverdue} giorni`,
                 type: "delayed",
@@ -2688,9 +2703,12 @@ export const fetchAvorDashboardData = cache(
                     (a) => a.id === task.id && a.type === "delayed",
                 );
                 if (!isAlreadyDelayed) {
+                    const clientName = task.Client?.businessName || "";
+                    const clientPrefix = clientName ? `${clientName} - ` : "";
+
                     alerts.push({
                         id: task.id,
-                        message: `Pratica #${
+                        message: `${clientPrefix}Pratica #${
                             task.unique_code || task.id
                         } ferma da ${daysSinceUpdate} giorni`,
                         type: "stale",
@@ -2708,9 +2726,12 @@ export const fetchAvorDashboardData = cache(
                 // Check if not already in alerts
                 const exists = alerts.some((a) => a.id === task.id);
                 if (!exists) {
+                    const clientName = task.Client?.businessName || "";
+                    const clientPrefix = clientName ? `${clientName} - ` : "";
+
                     alerts.push({
                         id: task.id,
-                        message: `Pratica #${
+                        message: `${clientPrefix}Pratica #${
                             task.unique_code || task.id
                         } senza categoria articoli`,
                         type: "missing_data",

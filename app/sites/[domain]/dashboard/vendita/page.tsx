@@ -6,7 +6,6 @@ import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import OfferStatusCards from "@/components/dashboard/vendita/OfferStatusCards";
 import CategorieOfferteChart from "@/components/dashboard/vendita/CategorieOfferteChart";
 import PipelineTrendChart from "@/components/dashboard/vendita/PipelineTrendChart";
-import VenditaKPICards from "@/components/dashboard/vendita/VenditaKPICards";
 import AlertOfferte from "@/components/dashboard/vendita/AlertOfferte";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
@@ -73,13 +72,8 @@ export default async function VenditaDashboardPage({
             <PipelineTrendChart data={dashboardData.pipelineTrend} />
           </div>
 
-          {/* KPI Cards + Alert Row */}
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="md:col-span-2">
-              <VenditaKPICards data={dashboardData.kpis} />
-            </div>
-            <AlertOfferte data={dashboardData.alerts} />
-          </div>
+          {/* Alert Offerte */}
+          <AlertOfferte data={dashboardData.alerts} />
         </div>
       </PageContent>
     </PageLayout>
