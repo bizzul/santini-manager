@@ -48,6 +48,7 @@ export function matchesCalendarType(
   const name = (kanban.title || kanban.identifier || "").toLowerCase();
   const identifier = (kanban.identifier || "").toLowerCase();
   const categoryIdentifier = (kanban.category?.identifier || "").toLowerCase();
+  const categoryName = ((kanban.category as any)?.name || "").toLowerCase();
   
   switch (type) {
     case "production":
@@ -55,6 +56,7 @@ export function matchesCalendarType(
       if (kanban.is_production_kanban) return true;
       // Check if kanban category is "produzione"
       if (categoryIdentifier === "produzione" || categoryIdentifier === "production") return true;
+      if (categoryName.includes("produzione") || categoryName.includes("production")) return true;
       // Fallback: check name/identifier patterns
       return (
         name.includes("produzione") ||
@@ -65,26 +67,30 @@ export function matchesCalendarType(
         identifier === "produzione"
       );
     case "installation":
-      // Check category first
-      if (categoryIdentifier === "installazione" || categoryIdentifier === "installation") return true;
-      // Fallback: check name/identifier patterns
+      // Check category first (identifier or name)
+      if (categoryIdentifier === "installazione" || categoryIdentifier === "installation" || categoryIdentifier === "posa") return true;
+      if (categoryName.includes("installazione") || categoryName.includes("installation") || categoryName.includes("posa")) return true;
+      // Fallback: check kanban name/identifier patterns
       return (
         name.includes("install") ||
         name.includes("montaggio") ||
         name.includes("cantiere") ||
         name.includes("posa") ||
         identifier === "installation" ||
-        identifier === "installazione"
+        identifier === "installazione" ||
+        identifier === "posa"
       );
     case "service":
-      // Check category first
+      // Check category first (identifier or name)
       if (categoryIdentifier === "service" || categoryIdentifier === "assistenza") return true;
-      // Fallback: check name/identifier patterns
+      if (categoryName.includes("service") || categoryName.includes("assistenza")) return true;
+      // Fallback: check kanban name/identifier patterns
       return (
         name.includes("service") ||
         name.includes("assistenza") ||
         name.includes("manutenzione") ||
-        identifier === "service"
+        identifier === "service" ||
+        identifier === "assistenza"
       );
     default:
       return true;

@@ -1,6 +1,6 @@
 import React from "react";
 import { Task, Kanban } from "@/types/supabase";
-import CalendarTimeView from "@/components/calendar/CalendarTimeView";
+import CalendarComponent from "@/components/calendar/calendarComponent";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
@@ -19,10 +19,9 @@ export type TaskWithKanban = Task & {
 };
 
 async function getData(siteId: string): Promise<TaskWithKanban[]> {
-  // Fetch data from your API here.
   const supabase = await createClient();
   
-  // First, fetch tasks with delivery dates
+  // Fetch tasks with delivery dates
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
     .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
@@ -43,11 +42,12 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   const kanbanIds = Array.from(new Set(tasks.map(t => t.kanbanId || t.kanban_id).filter(Boolean)));
   
   // Fetch kanbans separately (including category for proper filtering)
+  // Use left join (no !) so kanbans without category are still included
   let kanbansMap: Record<number, any> = {};
   if (kanbanIds.length > 0) {
     const { data: kanbans, error: kanbansError } = await supabase
       .from("Kanban")
-      .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory!category_id(id, name, identifier)")
+      .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory(id, name, identifier)")
       .in("id", kanbanIds);
     
     if (!kanbansError && kanbans) {
@@ -81,8 +81,6 @@ async function Page({
   const userContext = await getUserContext();
 
   if (!userContext || !userContext.user) {
-    // Handle the absence of a session. Redirect or return an error.
-    // For example, you might redirect to the login page:
     return redirect("/login");
   }
 
@@ -90,12 +88,11 @@ async function Page({
   const siteContext = await requireServerSiteContext(domain);
   const { siteId } = siteContext;
 
-  //get initial data filtered by siteId
   const data = await getData(siteId);
 
   return (
-    <div className="container w-full mx-auto relative ">
-      <CalendarTimeView tasks={data as TaskWithKanban[]} calendarType="service" domain={domain} />
+    <div className="container w-full mx-auto relative">
+      <CalendarComponent tasks={data as TaskWithKanban[]} calendarType="service" domain={domain} />
     </div>
   );
 }

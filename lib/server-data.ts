@@ -1188,6 +1188,8 @@ export async function fetchTimetrackingData(siteId: string) {
  * Fetch data for projects page
  */
 export const fetchProjectsData = cache(async (siteId: string) => {
+    const supabase = await createClient();
+    
     const [clients, products, kanbans, tasks, categories] = await Promise.all([
         fetchClients(siteId),
         fetchSellProducts(siteId),
@@ -1195,6 +1197,29 @@ export const fetchProjectsData = cache(async (siteId: string) => {
         fetchTasksWithRelations(siteId),
         fetchSellProductCategories(siteId),
     ]);
+
+    // Get file counts for all tasks
+    if (tasks && tasks.length > 0) {
+        const taskIds = tasks.map((t: any) => t.id);
+        const { data: fileCounts } = await supabase
+            .from("File")
+            .select("taskId")
+            .in("taskId", taskIds);
+
+        // Create a map of taskId -> file count
+        const fileCountMap = new Map<number, number>();
+        if (fileCounts) {
+            for (const file of fileCounts) {
+                const count = fileCountMap.get(file.taskId) || 0;
+                fileCountMap.set(file.taskId, count + 1);
+            }
+        }
+
+        // Add file count to each task
+        for (const task of tasks) {
+            (task as any).fileCount = fileCountMap.get(task.id) || 0;
+        }
+    }
 
     return { clients, activeProducts: products, kanbans, tasks, categories };
 });

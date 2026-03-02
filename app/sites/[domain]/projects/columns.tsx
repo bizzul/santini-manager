@@ -80,6 +80,7 @@ type ProjectRow = {
       given_name?: string | null;
     };
   }>;
+  fileCount?: number;
   [key: string]: any;
 };
 
@@ -391,37 +392,6 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       },
     },
     {
-      id: "cloud_folder",
-      header: () => (
-        <div className="flex items-center justify-center w-full">
-          <Folder className="h-4 w-4" />
-        </div>
-      ),
-      size: 50,
-      minSize: 40,
-      maxSize: 60,
-      enableResizing: false,
-      cell: ({ row }) => {
-        const folderUrl = row.original.cloud_folder_url;
-        return (
-          <div className="flex items-center justify-center w-full h-full">
-            {folderUrl ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => window.open(folderUrl, "_blank")}
-              >
-                <Folder className="h-4 w-4 text-primary" />
-              </Button>
-            ) : (
-              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
-            )}
-          </div>
-        );
-      },
-    },
-    {
       id: "reports",
       header: () => (
         <div className="flex items-center justify-center w-full">
@@ -541,7 +511,7 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       id: "project_files",
       header: () => (
         <div className="flex items-center justify-center w-full">
-          <File className="h-4 w-4" />
+          <Folder className="h-4 w-4" />
         </div>
       ),
       size: 50,
@@ -550,7 +520,10 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: false,
       cell: ({ row }) => {
         const projectId = row.original.id;
+        const fileCount = row.original.fileCount || 0;
         const currentDomain = domain || window.location.pathname.split("/")[2];
+        const hasFiles = fileCount > 0;
+        
         return (
           <div className="flex items-center justify-center w-full h-full">
             <TooltipProvider>
@@ -564,11 +537,15 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
                       window.location.href = `/sites/${currentDomain}/progetti/${projectId}`;
                     }}
                   >
-                    <File className="h-4 w-4 text-primary" />
+                    {hasFiles ? (
+                      <Folder className="h-4 w-4 text-primary fill-primary/20" />
+                    ) : (
+                      <Folder className="h-4 w-4 text-muted-foreground/40" />
+                    )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Documenti di progetto</p>
+                  <p>{hasFiles ? `${fileCount} documento/i` : "Nessun documento"}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -24,9 +24,10 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   
   // For production calendar, we need tasks from production kanbans
   // First get all kanbans that are in the "produzione" category or marked as production
+  // Use left join (no !) so kanbans without category are still included
   const { data: productionKanbans, error: kanbanError } = await supabase
     .from("Kanban")
-    .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory!category_id(id, name, identifier)")
+    .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory(id, name, identifier)")
     .eq("site_id", siteId);
   
   if (kanbanError) {
