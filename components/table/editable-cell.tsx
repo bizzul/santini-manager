@@ -282,6 +282,7 @@ export function EditableCell<T = any>({
         className
       )}
       onDoubleClick={handleDoubleClick}
+      data-editable={editable ? "true" : undefined}
       title={editable ? "Doppio click per modificare" : undefined}
     >
       {isLoading ? (

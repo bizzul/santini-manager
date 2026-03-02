@@ -48,6 +48,7 @@ const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) =
         columns={columns} 
         data={data.tasks} 
         categories={data.categories}
+        domain={domain}
       />
       
       <DialogEdit

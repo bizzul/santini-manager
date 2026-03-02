@@ -47,7 +47,12 @@ type ProjectRow = {
   updated_at?: string;
   cloud_folder_url?: string | null;
   project_files_url?: string | null;
+  clientId?: number | null;
+  sellProductId?: number | null;
+  kanbanId?: number | null;
+  kanbanColumnId?: number | null;
   Client?: {
+    id?: number;
     businessName?: string | null;
     individualFirstName?: string | null;
     individualLastName?: string | null;
@@ -56,13 +61,16 @@ type ProjectRow = {
     city?: string | null;
   } | null;
   SellProduct?: {
+    id?: number;
     name?: string | null;
     type?: string | null;
   } | null;
   Kanban?: {
+    id?: number;
     title?: string | null;
   } | null;
   KanbanColumn?: {
+    id?: number;
     title?: string | null;
   } | null;
   Action?: Array<{
@@ -82,11 +90,17 @@ const createProjectEditHandler = (domain?: string) => {
     field: string,
     newValue: string | number | boolean | null
   ): Promise<{ success?: boolean; error?: string }> => {
-    // Build formData with all required fields
+    // Build formData with all required fields for validation
     const formData: any = {
       unique_code: rowData.unique_code,
       other: rowData.other,
-      sellPrice: rowData.sellPrice,
+      sellPrice: rowData.sellPrice ?? 0,
+      productId: rowData.sellProductId ?? rowData.SellProduct?.id ?? null,
+      kanbanId: rowData.kanbanId ?? rowData.Kanban?.id,
+      kanbanColumnId: rowData.kanbanColumnId ?? rowData.KanbanColumn?.id,
+      clientId: rowData.clientId ?? rowData.Client?.id,
+      name: rowData.name ?? rowData.title,
+      luogo: rowData.luogo,
       [field]: newValue,
     };
 
@@ -535,22 +549,29 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       maxSize: 60,
       enableResizing: false,
       cell: ({ row }) => {
-        const filesUrl = row.original.project_files_url;
         const projectId = row.original.id;
+        const currentDomain = domain || window.location.pathname.split("/")[2];
         return (
           <div className="flex items-center justify-center w-full h-full">
-            {filesUrl ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                onClick={() => window.open(filesUrl, "_blank")}
-              >
-                <File className="h-4 w-4 text-primary" />
-              </Button>
-            ) : (
-              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
-            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      window.location.href = `/sites/${currentDomain}/progetti/${projectId}`;
+                    }}
+                  >
+                    <File className="h-4 w-4 text-primary" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Documenti di progetto</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         );
       },

@@ -28,7 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus, CalendarIcon, Trash2, User, Phone, MapPin, Info, Loader2 } from "lucide-react";
+import { Plus, CalendarIcon, Trash2, User, Phone, MapPin, Info, Loader2, Folder } from "lucide-react";
+import { ProjectDocuments, ProjectFile } from "@/components/project/project-documents";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
   AlertDialog,
@@ -113,6 +114,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [history, setHistory] = useState<Action[]>([]);
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
 
   const getHeaders = (): HeadersInit => {
     const headers: HeadersInit = {};
@@ -181,6 +183,21 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       }
     };
 
+    const getProjectFiles = async () => {
+      try {
+        const response = await fetch(`/api/tasks/${resource.id}/files`, {
+          headers: getHeaders(),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setProjectFiles(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        logger.error("Error fetching project files:", error);
+        setProjectFiles([]);
+      }
+    };
+
     const initializeForm = async () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue(
@@ -213,6 +230,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
         getProducts(),
         getKanbans(),
         getHistory(),
+        getProjectFiles(),
         initializeForm(),
       ]);
       setIsLoading(false);
@@ -1098,6 +1116,21 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
               </Button>
             </div>
           </div>
+
+          {/* Project Documents Section */}
+          {siteId && (
+            <div className="space-y-2 pt-4 border-t">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Folder className="h-4 w-4" />
+                Documenti di Progetto
+              </h3>
+              <ProjectDocuments
+                projectId={resource.id}
+                siteId={siteId}
+                initialFiles={projectFiles}
+              />
+            </div>
+          )}
 
           <div className="flex gap-2 justify-between pt-4 border-t">
             <Button

@@ -28,18 +28,22 @@ import { cn } from "@/lib/utils";
 import { SellProductCategory } from "@/types/supabase";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   categories?: SellProductCategory[];
+  domain?: string;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   categories = [],
+  domain,
 }: DataTableProps<TData, TValue>) {
+  const router = useRouter();
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
   // Global filter state
@@ -49,6 +53,32 @@ export function DataTable<TData, TValue>({
   // Category filter state - now supports multiple selections
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
+
+  const handleRowClick = useCallback(
+    (row: any, e: React.MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Don't navigate if clicking on interactive elements
+      if (
+        target.closest("button") ||
+        target.closest("input") ||
+        target.closest("textarea") ||
+        target.closest('[role="checkbox"]') ||
+        target.closest("a") ||
+        target.closest('[data-editable="true"]') ||
+        target.classList.contains("cursor-text") ||
+        target.closest(".cursor-text")
+      ) {
+        return;
+      }
+      
+      const projectId = row.original?.id;
+      if (projectId && domain) {
+        router.push(`/sites/${domain}/progetti/${projectId}`);
+      }
+    },
+    [domain, router]
+  );
 
   // Filter data by selected categories and global filter
   const filteredData = useMemo(() => {
@@ -279,6 +309,8 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
+                    onClick={(e) => handleRowClick(row, e)}
+                    className="cursor-pointer hover:bg-muted/50"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell

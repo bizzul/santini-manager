@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const body = await req.json();
 
-    const { name, url, storage_path } = body;
+    const { name, url, storage_path, taskId, errortrackingId } = body;
 
     if (!name || !url || !storage_path) {
       return NextResponse.json(
@@ -15,13 +15,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const insertData: {
+      name: string;
+      url: string;
+      storage_path: string;
+      taskId?: number;
+      errortrackingId?: number;
+    } = {
+      name,
+      url,
+      storage_path,
+    };
+
+    if (taskId) {
+      insertData.taskId = taskId;
+    }
+
+    if (errortrackingId) {
+      insertData.errortrackingId = errortrackingId;
+    }
+
     const { data: result, error } = await supabase
       .from("File")
-      .insert({
-        name,
-        url,
-        storage_path,
-      })
+      .insert(insertData)
       .select()
       .single();
 

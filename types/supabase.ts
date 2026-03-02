@@ -426,6 +426,10 @@ export interface File {
     url?: string;
     type?: string;
     size?: number;
+    storage_path?: string;
+    taskId?: number;
+    errortrackingId?: number;
+    cloudinaryId?: string;
     created_at?: string;
     updated_at?: string;
 }

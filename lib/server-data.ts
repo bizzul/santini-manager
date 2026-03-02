@@ -1199,6 +1199,37 @@ export const fetchProjectsData = cache(async (siteId: string) => {
     return { clients, activeProducts: products, kanbans, tasks, categories };
 });
 
+/**
+ * Fetch files/documents for a specific project (task)
+ */
+export const fetchProjectFiles = cache(async (taskId: number, siteId: string) => {
+    const supabase = await createClient();
+
+    const { data: task, error: taskError } = await supabase
+        .from("Task")
+        .select("id")
+        .eq("id", taskId)
+        .eq("site_id", siteId)
+        .single();
+
+    if (taskError || !task) {
+        return [];
+    }
+
+    const { data: files, error: filesError } = await supabase
+        .from("File")
+        .select("*")
+        .eq("taskId", taskId)
+        .order("id", { ascending: false });
+
+    if (filesError) {
+        console.error("Error fetching project files:", filesError);
+        return [];
+    }
+
+    return files || [];
+});
+
 // ============================================
 // DASHBOARD DATA
 // ============================================

@@ -3,7 +3,12 @@ import { createClient } from "@/utils/server";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
-import { requireServerSiteContext } from "@/lib/server-data";
+import { requireServerSiteContext, fetchProjectFiles } from "@/lib/server-data";
+import { ProjectDocuments } from "@/components/project/project-documents";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Calendar, Package, Folder } from "lucide-react";
+import Link from "next/link";
 
 async function getData(id: number, siteId: string): Promise<any> {
   const supabase = await createClient();
@@ -40,63 +45,130 @@ export default async function Page({
     return redirect("/login");
   }
 
-  // Get site context (required for multi-tenant)
   const siteContext = await requireServerSiteContext(domain);
   const { siteId } = siteContext;
 
-  //get initial data filtered by siteId
-  const data = await getData(id, siteId);
-  // console.log(data);
+  const [data, files] = await Promise.all([
+    getData(id, siteId),
+    fetchProjectFiles(id, siteId),
+  ]);
+
   const update = new Date(data.updated_at);
   const created = new Date(data.created_at);
-  const deliveryDate = new Date(data.deliveryDate ?? "");
+  const deliveryDate = data.deliveryDate ? new Date(data.deliveryDate) : null;
 
   logger.debug(data);
+  
   return (
-    <div className="bg-black min-h-screen text-white flex flex-col justify-center items-center w-full align-middle pt-4 text-sm md:text-lg">
-      <div className="flex justify-center items-center w-full">
-        {/* <Image src={brand} alt="brand" className="block mx-auto" /> */}
-      </div>
-      <h1 className="pb-4 flex md:w-1/2 w-full px-4">
-        Dati Progetto #{data.unique_code}
-      </h1>
-      <div className="grid grid-cols-2 text-left md:w-1/2 w-full px-4">
-        <h2>PRODOTTO:</h2>
-        <h2 className="font-bold">{data.sellProduct?.name ?? "-"}</h2>
+    <div className="min-h-screen bg-background">
+      <div className="container max-w-4xl mx-auto py-6 px-4">
+        <div className="mb-6">
+          <Link 
+            href={`/sites/${domain}/projects`}
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Torna ai progetti
+          </Link>
+        </div>
 
-        <h2>CLIENTE:</h2>
-        <h2 className="font-bold">{data.client?.businessName ?? "-"}</h2>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Progetto #{data.unique_code}
+            </h1>
+            <p className="text-muted-foreground">
+              {data.title || data.name || "Senza nome"}
+            </p>
+          </div>
+          <Badge variant={data.archived ? "secondary" : "default"}>
+            {data.archived ? "Archiviato" : "Attivo"}
+          </Badge>
+        </div>
 
-        <h2>NOME PROGETTO:</h2>
-        <h2 className="font-bold">{data.title || data.name || "-"}</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Dettagli Progetto
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Prodotto</span>
+                <span className="font-medium">{data.sellProduct?.name ?? "-"}</span>
+                
+                <span className="text-muted-foreground">Cliente</span>
+                <span className="font-medium">{data.client?.businessName ?? "-"}</span>
+                
+                <span className="text-muted-foreground">Fase</span>
+                <span className="font-medium">{data.column?.title ?? "-"}</span>
+                
+                <span className="text-muted-foreground">Valore</span>
+                <span className="font-medium">
+                  {data.sellPrice ? `${data.sellPrice.toLocaleString("it-CH")} CHF` : "-"}
+                </span>
+                
+                <span className="text-muted-foreground">Numero Pezzi</span>
+                <span className="font-medium">{data.numero_pezzi ?? "-"}</span>
+              </div>
+            </CardContent>
+          </Card>
 
-        <h2>DATA CONSEGNA:</h2>
-        <h2 className="font-bold">{deliveryDate.toLocaleDateString()}</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Date e Stato
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">Data Consegna</span>
+                <span className="font-medium">
+                  {deliveryDate ? deliveryDate.toLocaleDateString("it-IT") : "-"}
+                </span>
+                
+                <span className="text-muted-foreground">Creazione</span>
+                <span className="font-medium">{created.toLocaleDateString("it-IT")}</span>
+                
+                <span className="text-muted-foreground">Ultimo Aggiornamento</span>
+                <span className="font-medium">{update.toLocaleDateString("it-IT")}</span>
+                
+                <span className="text-muted-foreground">Materiale Disponibile</span>
+                <span className="font-medium">{data.material ? "Sì" : "No"}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        <h2>CREAZIONE:</h2>
-        <h2 className="font-bold">{created.toLocaleDateString()}</h2>
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Folder className="h-5 w-5" />
+              Documenti di Progetto
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProjectDocuments 
+              projectId={id} 
+              siteId={siteId} 
+              initialFiles={files}
+            />
+          </CardContent>
+        </Card>
 
-        <h2>ULTIMO AGGIORN.:</h2>
-        <h2 className="font-bold">{update.toLocaleDateString()}</h2>
-
-        <h2>VALORE:</h2>
-        <h2 className="font-bold">{data.sellPrice ?? "-"}</h2>
-
-        <h2>MATERIALE DISP.:</h2>
-        <h2 className="font-bold">{data.material ? "SI" : "NO"}</h2>
-
-        <h2>FASE:</h2>
-        <h2 className="font-bold">{data.column?.title ?? "-"}</h2>
-
-        <h2>POSIZIONI:</h2>
-        <ul className="font-bold">
-          {(data.positions || []).map((position: any, index: number) => (
-            <li key={index}>{position || "-"}</li>
-          ))}
-        </ul>
-
-        <h2>ARCHIVIATA:</h2>
-        <h2 className="font-bold">{data.archived ? "SI" : "NO"}</h2>
+        {data.other && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Note</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm whitespace-pre-wrap">{data.other}</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
