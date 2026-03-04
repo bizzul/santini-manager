@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { cn, formatLocalDate } from "@/lib/utils";
+import { cn, formatLocalDate, parseLocalDate } from "@/lib/utils";
 import {
   Client,
   SellProduct,
@@ -171,7 +171,7 @@ export default function DraftCompletionWizard({
         luogo: task.luogo || "",
         clientId: task.clientId || task.client_id,
         productId: task.sellProductId || task.sell_product_id,
-        deliveryDate: task.deliveryDate ? new Date(task.deliveryDate) : null,
+        deliveryDate: task.deliveryDate ? parseLocalDate(task.deliveryDate) : null,
         sellPrice: task.sellPrice || 0,
         other: task.other || "",
         position1: task.positions?.[0] || "",

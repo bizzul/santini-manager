@@ -606,13 +606,7 @@ export default function Card({
                             </span>
                             {ts.deliveryDate && (
                               <span className="ml-1 opacity-75">
-                                {new Date(ts.deliveryDate).toLocaleDateString(
-                                  "it-IT",
-                                  {
-                                    day: "2-digit",
-                                    month: "2-digit",
-                                  }
-                                )}
+                                {DateManager.format(ts.deliveryDate, "dd.MM")}
                               </span>
                             )}
                           </div>

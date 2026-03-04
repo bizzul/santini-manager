@@ -15,6 +15,8 @@ import {
 import { CalendarSummaryBar } from "./CalendarSummaryBar";
 import type { TaskWithKanban } from "./calendarComponent";
 import { matchesCalendarType } from "./calendarComponent";
+import { DateManager } from "@/package/utils/dates/date-manager";
+import { parseLocalDate, formatLocalDate } from "@/lib/utils";
 
 const RESOURCES = [
   { id: "squadra-1", title: "Squadra 1" },
@@ -44,11 +46,7 @@ function buildDateTime(date: Date, timeStr: string | null | undefined, defaultHo
 function EventTooltipContent({ task }: { task: TaskWithKanban | null }) {
   if (!task) return null;
   const deliveryStr = task.deliveryDate
-    ? new Date(task.deliveryDate).toLocaleDateString("it-CH", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+    ? DateManager.format(task.deliveryDate, "d MMM yyyy")
     : "-";
   const oraInizio = (task as any).ora_inizio;
   const oraFine = (task as any).ora_fine;
@@ -161,7 +159,7 @@ export default function CalendarTimeView({
   });
 
   const events = filteredTasks.map((task) => {
-    const date = new Date(task.deliveryDate!);
+    const date = parseLocalDate(task.deliveryDate!);
     const oraInizio = (task as any).ora_inizio;
     const oraFine = (task as any).ora_fine;
     const start = buildDateTime(date, oraInizio, 8, 0);

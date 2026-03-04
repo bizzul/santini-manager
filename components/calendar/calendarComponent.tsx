@@ -13,6 +13,8 @@ import {
   getProductCategoryIcon,
 } from "@/lib/calendar-product-styling";
 import { CalendarSummaryBar } from "./CalendarSummaryBar";
+import { DateManager } from "@/package/utils/dates/date-manager";
+import { parseLocalDate, formatLocalDate } from "@/lib/utils";
 
 export interface KanbanCategory {
   id: number;
@@ -101,11 +103,7 @@ export function matchesCalendarType(
 function EventTooltipContent({ task }: { task: TaskWithKanban | null }) {
   if (!task) return null;
   const deliveryStr = task.deliveryDate
-    ? new Date(task.deliveryDate).toLocaleDateString("it-CH", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
+    ? DateManager.format(task.deliveryDate, "d MMM yyyy")
     : "-";
   return (
     <div className="space-y-1.5 p-1 min-w-[200px]">
@@ -302,10 +300,7 @@ export default function CalendarComponent({
       return true;
     })
     .map((task) => {
-      const date = new Date(task.deliveryDate!);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
+      const dateStr = formatLocalDate(parseLocalDate(task.deliveryDate!));
 
       // Get style from product category (like Kanban Posa) or fallback to kanban color
       const kanbanColor = task.Kanban?.color || "#1e293b";
@@ -319,7 +314,7 @@ export default function CalendarComponent({
 
       return {
         title: displayTitle,
-        date: `${year}-${month}-${day}`, // Format as YYYY-MM-DD using local date
+        date: dateStr,
         backgroundColor: style.backgroundColor,
         borderColor: style.borderColor,
         textColor: style.textColor,

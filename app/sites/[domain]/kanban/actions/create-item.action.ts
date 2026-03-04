@@ -6,6 +6,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { generateTaskCode } from "@/lib/code-generator";
+import { formatLocalDate } from "@/lib/utils";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -78,7 +79,7 @@ export async function createItem(props: any, domain?: string) {
         //@ts-ignore
         title: "",
         clientId: result.data.clientId!,
-        deliveryDate: result.data.deliveryDate,
+        deliveryDate: result.data.deliveryDate instanceof Date ? formatLocalDate(result.data.deliveryDate) : result.data.deliveryDate || null,
         unique_code: uniqueCode,
         sellProductId: result.data.productId!,
         kanbanId: result.data.kanbanId, // Use kanbanId from form

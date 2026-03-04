@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Trash2, Edit2, Check, X, UserCheck, UserPlus, Loader2 } from "lucide-react";
 import type { ExtractedProject, MatchedClient } from "@/validation/voice-input/extracted-project";
+import { DateManager } from "@/package/utils/dates/date-manager";
 
 interface ProjectPreviewCardProps {
     project: ExtractedProject;
@@ -345,7 +346,7 @@ export function ProjectPreviewCard({
                     {project.terminePosa && (
                         <p>
                             <span className="font-medium">Posa:</span>{" "}
-                            {new Date(project.terminePosa).toLocaleDateString("it-CH")}
+                            {DateManager.formatEUDate(project.terminePosa)}
                         </p>
                     )}
                 </div>

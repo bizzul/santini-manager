@@ -20,6 +20,7 @@ import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Client, SellProduct, Action } from "@/types/supabase";
 import { DateManager } from "@/package/utils/dates/date-manager";
+import { parseLocalDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -202,12 +203,12 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue(
         "deliveryDate",
-        resource.deliveryDate ? new Date(resource.deliveryDate) : undefined
+        resource.deliveryDate ? parseLocalDate(resource.deliveryDate) : undefined
       );
       form.setValue(
         "termine_produzione",
         resource.termine_produzione
-          ? new Date(resource.termine_produzione)
+          ? parseLocalDate(resource.termine_produzione)
           : undefined
       );
       form.setValue("ora_inizio", resource.ora_inizio ?? null);
