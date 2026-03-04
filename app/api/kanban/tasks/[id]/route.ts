@@ -2,6 +2,7 @@ import { createClient } from "../../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
 import { logger } from "@/lib/logger";
+import { toDateString } from "@/lib/utils";
 
 export async function GET(
   req: NextRequest,
@@ -130,7 +131,12 @@ export async function PATCH(
 
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
-        updateData[field] = body[field];
+        // Convert date fields to YYYY-MM-DD string format to avoid timezone issues
+        if (field === 'deliveryDate' || field === 'termine_produzione') {
+          updateData[field] = toDateString(body[field]);
+        } else {
+          updateData[field] = body[field];
+        }
       }
     }
 

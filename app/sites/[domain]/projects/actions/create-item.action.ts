@@ -7,7 +7,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 import { generateTaskCode, generateInternalTaskCode } from "@/lib/code-generator";
 import { createProjectFolders } from "@/lib/project-folders";
-import { formatLocalDate } from "@/lib/utils";
+import { toDateString } from "@/lib/utils";
 
 export async function createItem(props: any, domain?: string) {
   const result = validation.safeParse(props.data);
@@ -132,8 +132,8 @@ export async function createItem(props: any, domain?: string) {
         name: result.data.name,
         luogo: result.data.luogo || null,
         clientId: result.data.clientId!,
-        deliveryDate: result.data.deliveryDate ? formatLocalDate(result.data.deliveryDate) : null,
-        termine_produzione: result.data.termine_produzione ? formatLocalDate(result.data.termine_produzione) : null,
+        deliveryDate: toDateString(result.data.deliveryDate),
+        termine_produzione: toDateString(result.data.termine_produzione),
         unique_code: uniqueCode,
         sellProductId: result.data.productId!,
         kanbanId: result.data.kanbanId,

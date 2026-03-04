@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
 import { generateTaskCode, generateInternalTaskCode } from "../../../../../lib/code-generator";
 import { createProjectFolders } from "../../../../../lib/project-folders";
-import { formatLocalDate } from "../../../../../lib/utils";
+import { toDateString } from "../../../../../lib/utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -182,12 +182,8 @@ export async function POST(req: NextRequest) {
         const insertData: any = {
           title: "",
           clientId: result.data.clientId,
-          deliveryDate: result.data.deliveryDate instanceof Date 
-            ? formatLocalDate(result.data.deliveryDate) 
-            : result.data.deliveryDate || null,
-          termine_produzione: result.data.termine_produzione instanceof Date
-            ? formatLocalDate(result.data.termine_produzione)
-            : result.data.termine_produzione || null,
+          deliveryDate: toDateString(result.data.deliveryDate),
+          termine_produzione: toDateString(result.data.termine_produzione),
           unique_code: uniqueCode,
           sellProductId: result.data.productId,
           name: result.data.name,

@@ -27,14 +27,40 @@ export function formatLocalDate(date: Date): string {
 export function parseLocalDate(dateStr: string): Date {
   if (!dateStr) return new Date();
 
-  // Handle ISO datetime strings (e.g., "2024-03-05T10:30:00.000Z")
-  if (dateStr.includes("T")) {
-    return new Date(dateStr);
+  // Extract just the date part (YYYY-MM-DD) from any format
+  // This handles: "2024-03-05", "2024-03-05T00:00:00", "2024-03-05T00:00:00.000Z", etc.
+  const datePart = dateStr.split("T")[0];
+  const [year, month, day] = datePart.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Convert any date input (Date object, string, null) to YYYY-MM-DD string for database storage.
+ * This ensures dates are always stored correctly regardless of timezone.
+ *
+ * @param value - Date object, date string, or null
+ * @returns YYYY-MM-DD string or null
+ */
+export function toDateString(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return formatLocalDate(value);
   }
 
-  // Parse date-only strings (e.g., "2024-03-05") as local date
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day);
+  if (typeof value === "string") {
+    // If already in YYYY-MM-DD format, return as-is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return value;
+    }
+    // Otherwise, extract the date part
+    const datePart = value.split("T")[0];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+      return datePart;
+    }
+  }
+
+  return null;
 }
 
 /**
