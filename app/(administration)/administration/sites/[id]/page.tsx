@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { ArrowLeft, ExternalLink, Globe, Settings, Users } from "lucide-react";
 import Image from "next/image";
+import { DateManager } from "@/package/utils/dates/date-manager";
 
 export default async function SiteDetailsPage({
   params,
@@ -173,7 +174,7 @@ export default async function SiteDetailsPage({
               <span className="text-white/60 min-w-[120px]">Created:</span>
               <span className="text-white">
                 {site.created_at
-                  ? new Date(site.created_at).toLocaleDateString()
+                  ? DateManager.formatEUDate(site.created_at)
                   : "Unknown"}
               </span>
             </div>

@@ -33,6 +33,7 @@ import { useParams } from "next/navigation";
 import { logger } from "@/lib/logger";
 import { Briefcase, Wrench } from "lucide-react";
 import { InternalActivity } from "./dialogCreate";
+import { formatLocalDate } from "@/lib/utils";
 
 const CreateProductForm = ({
   handleClose,
@@ -54,7 +55,7 @@ const CreateProductForm = ({
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
-      date: new Date().toISOString().split("T")[0], // Default to today's date (YYYY-MM-DD)
+      date: formatLocalDate(new Date()),
       description: "",
       hours: 0,
       minutes: 0,

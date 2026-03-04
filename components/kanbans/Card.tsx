@@ -15,6 +15,7 @@ import {
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 import { logger } from "@/lib/logger";
+import { formatLocalDate, parseLocalDate, startOfLocalDay } from "@/lib/utils";
 import { 
   FileEdit, 
   MapPin, 
@@ -576,13 +577,13 @@ export default function Card({
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {taskSuppliers.map((ts) => {
-                        const isDeliveryToday =
-                          ts.deliveryDate &&
-                          new Date(ts.deliveryDate).toDateString() ===
-                            new Date().toDateString();
+                        const todayStr = formatLocalDate(new Date());
+                        const deliveryDateStr = ts.deliveryDate
+                          ? formatLocalDate(parseLocalDate(ts.deliveryDate))
+                          : null;
+                        const isDeliveryToday = deliveryDateStr === todayStr;
                         const isDeliveryLate =
-                          ts.deliveryDate &&
-                          new Date(ts.deliveryDate) < new Date();
+                          deliveryDateStr && deliveryDateStr < todayStr;
 
                         return (
                           <div

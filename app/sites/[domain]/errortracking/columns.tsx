@@ -7,6 +7,7 @@ import ImageGallery from "./imageGallery";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
+import { DateManager } from "@/package/utils/dates/date-manager";
 
 type ErrorTrackingRow = {
   id: number;
@@ -141,10 +142,7 @@ export const createColumns = (domain?: string): ColumnDef<ErrorTrackingRow>[] =>
       cell: ({ row }) => {
         const { created_at } = row.original;
         if (!created_at) return "-";
-        const formattedDate =
-          created_at instanceof Date
-            ? created_at.toLocaleDateString()
-            : new Date(created_at as string).toLocaleDateString();
+        const formattedDate = DateManager.formatEUDate(created_at);
         return <div suppressHydrationWarning>{formattedDate}</div>;
       },
     },

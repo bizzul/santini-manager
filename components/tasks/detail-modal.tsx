@@ -28,6 +28,7 @@ import { Modal } from "../../package/components/modal";
 import { DeleteModal } from "./delete-modal";
 import Image from "next/image";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
+import { DateManager } from "@/package/utils/dates/date-manager";
 import { useTask } from "@/hooks/use-api";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -177,7 +178,7 @@ export const DetailModal: FC<Props> = ({
                   )}
                 >
                   {data.deliveryDate
-                    ? new Date(data.deliveryDate).toLocaleDateString()
+                    ? DateManager.formatEUDate(data.deliveryDate)
                     : "N/A"}
                 </span>
               </div>
@@ -323,7 +324,7 @@ export const DetailModal: FC<Props> = ({
                   Creazione
                 </div>
                 {data.created_at
-                  ? new Date(data.created_at).toLocaleDateString()
+                  ? DateManager.formatEUDate(data.created_at)
                   : "N/A"}
               </div>
               <div>
@@ -331,7 +332,7 @@ export const DetailModal: FC<Props> = ({
                   Ultima modifica
                 </div>
                 {data.updated_at
-                  ? new Date(data.updated_at).toLocaleDateString()
+                  ? DateManager.formatEUDate(data.updated_at)
                   : "N/A"}
               </div>
 

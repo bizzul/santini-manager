@@ -8,6 +8,7 @@ import { CheckSquare, XIcon } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
+import { DateManager } from "@/package/utils/dates/date-manager";
 
 interface InternalActivity {
   id: string;
@@ -322,7 +323,7 @@ export const createColumns = (domain?: string, internalActivities: InternalActiv
       cell: ({ row }) => {
         const { created_at } = row.original;
         if (!created_at) return <div>N/A</div>;
-        const formattedDate = new Date(created_at).toLocaleDateString();
+        const formattedDate = DateManager.formatEUDate(created_at);
         return <div suppressHydrationWarning>{formattedDate}</div>;
       },
     },

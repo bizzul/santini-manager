@@ -9,6 +9,7 @@ import {
     AIExtractedProjectSchema,
     VoiceInputRequestSchema,
 } from "@/validation/voice-input/extracted-project";
+import { formatLocalDate } from "@/lib/utils";
 
 // TOON-style schema hint for efficient prompting
 // Note: numeroProgetto is NOT extracted - it's auto-generated at creation time
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Get current date for relative date interpretation
-        const today = new Date().toISOString().split("T")[0];
+        const today = formatLocalDate(new Date());
 
         // Call AI to extract projects (using base schema without client matching fields)
         const { object } = await generateObject({

@@ -9,6 +9,7 @@ import { getSiteData } from "@/lib/fetchers";
 import { Clock, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 
 // Define types to match what CreatePage expects
 interface Roles {
@@ -128,18 +129,9 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
   let allUserEntries: AllUserEntry[] = [];
 
   if (!userError && userData) {
-    // Get start and end of today (in UTC)
-    const today = new Date();
-    const startOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-    const endOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + 1
-    );
+    // Get start and end of today in local timezone
+    const todayStart = startOfLocalDay(new Date());
+    const todayEnd = endOfLocalDay(new Date());
 
     // Fetch today's entries (filtered by site_id)
     const todayQuery = supabase
@@ -160,8 +152,8 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       )
       .eq("employee_id", userData.id)
       .eq("site_id", siteId)
-      .gte("created_at", startOfDay.toISOString())
-      .lt("created_at", endOfDay.toISOString())
+      .gte("created_at", todayStart.toISOString())
+      .lte("created_at", todayEnd.toISOString())
       .order("created_at", { ascending: false });
 
     const { data: timetrackingData, error: timetrackingError } = await todayQuery;

@@ -4,6 +4,7 @@ import ExcelJS from "exceljs";
 import { logger } from "@/lib/logger";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteContextFromDomain } from "@/lib/site-context";
+import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -116,8 +117,8 @@ function prepareTimetrackingsData(
 
 export const POST = async (req: NextRequest) => {
   const dateRange = await req.json();
-  const from = new Date(dateRange.data.from);
-  const to = new Date(dateRange.data.to);
+  const from = startOfLocalDay(dateRange.data.from);
+  const to = endOfLocalDay(dateRange.data.to);
 
   logger.debug("range", from, to);
 

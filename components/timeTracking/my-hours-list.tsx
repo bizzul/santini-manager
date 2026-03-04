@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { InternalActivity } from "./create-page";
+import { parseLocalDate, startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 
 // Types
 interface TimetrackingEntry {
@@ -115,14 +116,12 @@ export const MyHoursList: React.FC<MyHoursListProps> = ({
       // Date filter
       if (dateFrom) {
         const entryDate = new Date(entry.created_at);
-        const fromDate = new Date(dateFrom);
-        fromDate.setHours(0, 0, 0, 0);
+        const fromDate = startOfLocalDay(dateFrom);
         if (entryDate < fromDate) return false;
       }
       if (dateTo) {
         const entryDate = new Date(entry.created_at);
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
+        const toDate = endOfLocalDay(dateTo);
         if (entryDate > toDate) return false;
       }
 

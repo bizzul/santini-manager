@@ -5,6 +5,7 @@ import { createClient } from "@/utils/server";
 import { validation } from "@/validation/timeTracking/createManual";
 import { getSiteData } from "@/lib/fetchers";
 import { z } from "zod";
+import { parseLocalDate } from "@/lib/utils";
 
 export async function createItem(props: z.input<typeof validation>, domain?: string) {
   const result = validation.safeParse(props);
@@ -38,7 +39,7 @@ export async function createItem(props: z.input<typeof validation>, domain?: str
 
       // Build insert data
       const insertData: any = {
-        created_at: new Date(result.data.date),
+        created_at: parseLocalDate(result.data.date),
         description: result.data.description || null,
         description_type: "",
         hours: result.data.hours,

@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Download, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSiteId } from "@/hooks/use-site-id";
+import { formatLocalDate } from "@/lib/utils";
 
 // CSV columns for export
 // ID is included to allow updating existing records on re-import
@@ -115,9 +116,7 @@ function ButtonExportCSV() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `prodotti_export_${
-        new Date().toISOString().split("T")[0]
-      }.csv`;
+      link.download = `prodotti_export_${formatLocalDate(new Date())}.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

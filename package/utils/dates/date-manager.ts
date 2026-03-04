@@ -19,7 +19,18 @@ export class DateManager {
   }
 
   static getWeekNumber(dateStr: string | Date) {
-    const date = new Date(dateStr);
+    let date: Date;
+    if (typeof dateStr === "string") {
+      // Parse date-only strings (YYYY-MM-DD) as local dates to avoid UTC shift
+      if (!dateStr.includes("T")) {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        date = new Date(year, month - 1, day);
+      } else {
+        date = new Date(dateStr);
+      }
+    } else {
+      date = new Date(dateStr);
+    }
     const oneJan = new Date(date.getFullYear(), 0, 1);
     const diff = date.getTime() - oneJan.getTime();
     const week = Math.ceil(diff / (7 * 24 * 60 * 60 * 1000));

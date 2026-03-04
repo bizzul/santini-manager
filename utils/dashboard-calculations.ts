@@ -1,5 +1,6 @@
 import { DateManager } from "@/package/utils/dates/date-manager";
 import { Action, Task } from "@/types/supabase";
+import { parseLocalDate, formatLocalDate, startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 
 // Extended interfaces for the actual data structure used in the application
 interface TaskWithRelations extends Task {
@@ -128,21 +129,19 @@ export const sumAllPositionsLengths = (tasks: TaskWithRelations[]): number => {
 export const countTasksWithTodayDelivery = (
   tasks: TaskWithRelations[],
 ): number => {
-  // Get today's date at midnight in local timezone
-  const today = new Date();
+  const todayStr = formatLocalDate(new Date());
 
   const groupedTasks = groupTasksByBaseNumber(tasks);
 
   const result = Object.values(groupedTasks).filter((taskGroup) => {
     if (!taskGroup[0].deliveryDate) return false;
 
-    // Convert UTC date to local timezone
-    const deliveryDate = new Date(taskGroup[0].deliveryDate);
-    const localDeliveryDate = DateManager.formatEUDate(deliveryDate);
+    // Parse delivery date as local to avoid UTC shift
+    const deliveryDateStr = formatLocalDate(
+      parseLocalDate(taskGroup[0].deliveryDate as string)
+    );
 
-    const localToday = DateManager.formatEUDate(today);
-
-    return localDeliveryDate === localToday;
+    return deliveryDateStr === todayStr;
   }).length;
 
   return result;
@@ -152,9 +151,8 @@ export const countTasksWithDeliveryThisWeek = (
   tasks: TaskWithRelations[],
 ): number => {
   const now = new Date();
-  const firstDayOfWeek = new Date(
-    now.setDate(now.getDate() - ((now.getDay() + 6) % 7)),
-  );
+  const firstDayOfWeek = new Date(now);
+  firstDayOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   firstDayOfWeek.setHours(0, 0, 0, 0);
 
   const lastDayOfWeek = new Date(firstDayOfWeek);
@@ -165,7 +163,8 @@ export const countTasksWithDeliveryThisWeek = (
 
   const result = Object.values(groupedTasks).filter((taskGroup) => {
     if (!taskGroup[0].deliveryDate) return false;
-    const deliveryDate = new Date(taskGroup[0].deliveryDate);
+    // Parse delivery date as local to avoid UTC shift
+    const deliveryDate = parseLocalDate(taskGroup[0].deliveryDate as string);
     return deliveryDate >= firstDayOfWeek && deliveryDate <= lastDayOfWeek;
   }).length;
 

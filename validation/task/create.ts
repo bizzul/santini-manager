@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { parseLocalDate } from "@/lib/utils";
 
 // Define a custom Zod parser for a date string or Date object
+// Uses parseLocalDate to avoid UTC timezone issues with date-only strings
 const parseDate = (value: any) => {
   if (value === null || value === undefined) {
     return value;
@@ -9,7 +11,7 @@ const parseDate = (value: any) => {
     return value;
   }
   if (typeof value === "string") {
-    const date = new Date(value);
+    const date = parseLocalDate(value);
     if (isNaN(date.getTime())) {
       return null;
     }

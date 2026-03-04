@@ -16,6 +16,49 @@ export function formatLocalDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Parse a date string (YYYY-MM-DD or ISO format) as a local date.
+ * This avoids the UTC midnight interpretation that causes day-before bugs
+ * in positive UTC offset timezones (like Europe/Rome CET/CEST).
+ *
+ * @param dateStr - Date string in YYYY-MM-DD or ISO format
+ * @returns Date object in local timezone
+ */
+export function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+
+  // Handle ISO datetime strings (e.g., "2024-03-05T10:30:00.000Z")
+  if (dateStr.includes("T")) {
+    return new Date(dateStr);
+  }
+
+  // Parse date-only strings (e.g., "2024-03-05") as local date
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
+ * Get start of day in local timezone for a given date.
+ * @param date - Date object or date string
+ * @returns Date object set to 00:00:00.000 local time
+ */
+export function startOfLocalDay(date: Date | string): Date {
+  const d = typeof date === "string" ? parseLocalDate(date) : new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Get end of day in local timezone for a given date.
+ * @param date - Date object or date string
+ * @returns Date object set to 23:59:59.999 local time
+ */
+export function endOfLocalDay(date: Date | string): Date {
+  const d = typeof date === "string" ? parseLocalDate(date) : new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 // Standard fetcher for SWR
 export const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
