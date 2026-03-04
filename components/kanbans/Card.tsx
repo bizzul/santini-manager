@@ -203,10 +203,10 @@ export default function Card({
   useEffect(() => {
     // Check if delivery date is past
     if (data.deliveryDate) {
-      const currentTime = new Date();
-      const targetTime = new Date(data.deliveryDate);
+      const todayStr = formatLocalDate(new Date());
+      const deliveryStr = formatLocalDate(parseLocalDate(data.deliveryDate));
       if (
-        currentTime.getTime() > targetTime.getTime() &&
+        todayStr > deliveryStr &&
         data.column?.identifier !== "SPEDITO"
       ) {
         setTimeState("late");

@@ -6,10 +6,18 @@ const TZ = process.env.NEXT_PUBLIC_TIMEZONE
 
 export class DateManager {
   static format = (date: string | Date, format: string) => {
+    let d: Date;
     if (typeof date === "string") {
-      date = new Date(date);
+      // Parse date-only strings (YYYY-MM-DD) as local dates to avoid UTC shift
+      if (!date.includes("T")) {
+        const [year, month, day] = date.split("-").map(Number);
+        d = new Date(year, month - 1, day);
+      } else {
+        d = new Date(date);
+      }
+    } else {
+      d = date;
     }
-    const d: Date = date;
 
     return formatInTimeZone(d, TZ, format);
   };
