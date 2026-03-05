@@ -9,6 +9,7 @@ import {
   getSortedRowModel,
   SortingState,
   ColumnSizingState,
+  RowSelectionState,
 } from "@tanstack/react-table";
 
 import {
@@ -26,9 +27,11 @@ import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { cn } from "@/lib/utils";
 import { SellProductCategory } from "@/types/supabase";
-import { Search, X } from "lucide-react";
+import { Search, X, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { bulkUnarchive } from "./actions/bulk-unarchive.action";
+import { useToast } from "@/components/ui/use-toast";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -44,6 +47,7 @@ export function DataTable<TData, TValue>({
   domain,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
+  const { toast } = useToast();
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
   // Global filter state
@@ -53,6 +57,12 @@ export function DataTable<TData, TValue>({
   // Category filter state - now supports multiple selections
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
+  // Row selection state
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  // Archived filter state
+  const [archivedFilter, setArchivedFilter] = useState<"all" | "archived" | "not_archived">("not_archived");
+  // Loading state for bulk actions
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   const handleRowClick = useCallback(
     (row: any, e: React.MouseEvent) => {
@@ -80,9 +90,16 @@ export function DataTable<TData, TValue>({
     [domain, router]
   );
 
-  // Filter data by selected categories and global filter
+  // Filter data by selected categories, archived status, and global filter
   const filteredData = useMemo(() => {
     let filtered = data;
+
+    // Archived filter
+    if (archivedFilter === "archived") {
+      filtered = filtered.filter((row: any) => row.archived === true);
+    } else if (archivedFilter === "not_archived") {
+      filtered = filtered.filter((row: any) => row.archived !== true);
+    }
 
     // Category filter
     if (!allCategoriesSelected) {
@@ -132,7 +149,7 @@ export function DataTable<TData, TValue>({
     }
 
     return filtered;
-  }, [data, selectedCategories, allCategoriesSelected, globalFilter]);
+  }, [data, selectedCategories, allCategoriesSelected, globalFilter, archivedFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -144,9 +161,12 @@ export function DataTable<TData, TValue>({
     onColumnSizingChange: setColumnSizing,
     columnResizeMode: "onChange",
     enableColumnResizing: true,
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnSizing,
+      rowSelection,
     },
   });
 
@@ -183,12 +203,131 @@ export function DataTable<TData, TValue>({
     setGlobalFilter("");
     setAllCategoriesSelected(true);
     setSelectedCategories([]);
+    setArchivedFilter("not_archived");
   }, []);
+
+  // Handle bulk unarchive
+  const handleBulkUnarchive = useCallback(async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
+    if (selectedRows.length === 0) return;
+
+    const ids = selectedRows.map((row: any) => row.original.id);
+    setBulkActionLoading(true);
+
+    try {
+      const result = await bulkUnarchive(ids);
+      if (result.success) {
+        toast({
+          description: `${result.count} elementi disarchiviati con successo!`,
+        });
+        setRowSelection({});
+      } else {
+        toast({
+          variant: "destructive",
+          description: result.message || "Errore durante la disarchiviazione",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: "Errore durante la disarchiviazione",
+      });
+    } finally {
+      setBulkActionLoading(false);
+    }
+  }, [table, toast]);
+
+  // Count selected rows
+  const selectedCount = table.getFilteredSelectedRowModel().rows.length;
+
+  // Check if any filters are active
+  const hasActiveFilters = globalFilter || !allCategoriesSelected || archivedFilter !== "not_archived";
 
   return (
     <>
+      {/* Bulk Action Bar - shows when items are selected */}
+      {selectedCount > 0 && (
+        <div className="rounded-lg border bg-primary/10 border-primary/20 p-3 mb-4 flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {selectedCount} elemento/i selezionato/i
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkUnarchive}
+              disabled={bulkActionLoading}
+              className="gap-1"
+            >
+              <ArchiveRestore className="h-4 w-4" />
+              {bulkActionLoading ? "Disarchiviando..." : "Disarchivia selezionati"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRowSelection({})}
+            >
+              Deseleziona
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Filter and Search Bar - Contained in rounded border */}
       <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
+        {/* Archived Filter Row */}
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <span className="text-sm font-medium">Stato:</span>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="filter-not-archived"
+                checked={archivedFilter === "not_archived"}
+                onCheckedChange={(checked) => {
+                  if (checked) setArchivedFilter("not_archived");
+                }}
+              />
+              <Label
+                htmlFor="filter-not-archived"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Non archiviate
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="filter-archived"
+                checked={archivedFilter === "archived"}
+                onCheckedChange={(checked) => {
+                  if (checked) setArchivedFilter("archived");
+                }}
+              />
+              <Label
+                htmlFor="filter-archived"
+                className="text-sm font-normal cursor-pointer flex items-center gap-1"
+              >
+                <Archive className="h-3 w-3" />
+                Solo archiviate
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="filter-all"
+                checked={archivedFilter === "all"}
+                onCheckedChange={(checked) => {
+                  if (checked) setArchivedFilter("all");
+                }}
+              />
+              <Label
+                htmlFor="filter-all"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Tutte
+              </Label>
+            </div>
+          </div>
+        </div>
+
         {/* Category Filter Row */}
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <span className="text-sm font-medium">Categoria:</span>
@@ -246,7 +385,7 @@ export function DataTable<TData, TValue>({
               placeholder="Cerca per codice, cliente, oggetto, CAP..."
             />
           </div>
-          {(globalFilter || !allCategoriesSelected) && (
+          {hasActiveFilters && (
             <Button
               variant="outline"
               size="sm"

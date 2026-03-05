@@ -464,8 +464,8 @@ export async function getAutoArchiveSettings(
     .single();
 
   if (error || !data) {
-    // Default: abilitato, 7 giorni
-    return { enabled: true, days: 7 };
+    // Default: disabilitato, 7 giorni
+    return { enabled: false, days: 7 };
   }
 
   return data.setting_value as { enabled: boolean; days: number };

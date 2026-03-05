@@ -181,7 +181,7 @@ export default function CodeTemplatesModal({
   const [templates, setTemplates] =
     useState<Record<string, TemplateConfig>>(DEFAULT_TEMPLATES);
   const [archiveConfig, setArchiveConfig] = useState<AutoArchiveConfig>({
-    enabled: true,
+    enabled: false,
     days: 7,
   });
   // Stato per routing produzione
