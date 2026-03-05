@@ -60,12 +60,27 @@ export function EditableCell<T = any>({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState<string | boolean>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [optimisticValue, setOptimisticValue] = useState<
+    string | number | boolean | null | undefined
+  >(undefined);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const { toast } = useToast();
 
+  // Reset optimistic value when prop value changes (server data refreshed)
+  useEffect(() => {
+    setOptimisticValue(undefined);
+  }, [value]);
+
+  const effectiveValue =
+    optimisticValue !== undefined ? optimisticValue : value;
+
   // Format display value
   const getDisplayValue = useCallback(() => {
-    if (value === null || value === undefined || value === "") {
+    if (
+      effectiveValue === null ||
+      effectiveValue === undefined ||
+      effectiveValue === ""
+    ) {
       return placeholder;
     }
 
@@ -74,30 +89,32 @@ export function EditableCell<T = any>({
     }
 
     if (formatter) {
-      return formatter(value);
+      return formatter(effectiveValue);
     }
 
-    if (type === "number" && typeof value === "number") {
-      const formatted = value.toLocaleString("it-CH", {
+    if (type === "number" && typeof effectiveValue === "number") {
+      const formatted = effectiveValue.toLocaleString("it-CH", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
       });
       return suffix ? `${formatted} ${suffix}` : formatted;
     }
 
-    return suffix ? `${value} ${suffix}` : String(value);
-  }, [value, type, formatter, suffix, placeholder]);
+    return suffix
+      ? `${effectiveValue} ${suffix}`
+      : String(effectiveValue);
+  }, [effectiveValue, type, formatter, suffix, placeholder]);
 
   // Initialize edit value when entering edit mode
   useEffect(() => {
     if (isEditing && type !== "checkbox") {
-      if (value === null || value === undefined) {
+      if (effectiveValue === null || effectiveValue === undefined) {
         setEditValue("");
       } else {
-        setEditValue(String(value));
+        setEditValue(String(effectiveValue));
       }
     }
-  }, [isEditing, value, type]);
+  }, [isEditing, effectiveValue, type]);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -145,19 +162,19 @@ export function EditableCell<T = any>({
       return;
     }
 
+    setOptimisticValue(newValue);
     setIsLoading(true);
     setIsEditing(false);
 
     try {
       const result = await onSave(row.original, field, newValue);
-      // Check for error in various formats (error, message, or no success)
       const errorMessage = result?.error || (result as any)?.message;
       if (errorMessage || (result && !result.success && !result.error)) {
         toast({
           variant: "destructive",
           description: errorMessage || "Errore durante il salvataggio",
         });
-        // Revert to original value on error
+        setOptimisticValue(undefined);
         setEditValue(originalValue != null ? String(originalValue) : "");
       }
     } catch (error: any) {
@@ -166,6 +183,7 @@ export function EditableCell<T = any>({
         variant: "destructive",
         description: error?.message || "Errore durante il salvataggio",
       });
+      setOptimisticValue(undefined);
       setEditValue(originalValue != null ? String(originalValue) : "");
     } finally {
       setIsLoading(false);
@@ -271,7 +289,10 @@ export function EditableCell<T = any>({
 
   // Render display state
   const displayValue = getDisplayValue();
-  const isEmpty = value === null || value === undefined || value === "";
+  const isEmpty =
+    effectiveValue === null ||
+    effectiveValue === undefined ||
+    effectiveValue === "";
 
   return (
     <div

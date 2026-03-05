@@ -7,7 +7,16 @@ import { Data } from "./page";
 import DialogEdit from "./dialogEdit";
 
 const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) => {
-  const columns = useMemo(() => createColumns(domain), [domain]);
+  const columns = useMemo(
+    () =>
+      createColumns({
+        domain,
+        clients: data.clients,
+        products: data.activeProducts,
+        kanbans: data.kanbans,
+      }),
+    [domain, data.clients, data.activeProducts, data.kanbans]
+  );
   const searchParams = useSearchParams();
   const router = useRouter();
   

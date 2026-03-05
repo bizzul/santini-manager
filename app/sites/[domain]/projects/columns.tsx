@@ -12,28 +12,27 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import Link from "next/link";
 import { EditableCell } from "@/components/table/editable-cell";
+import { EditableSelectCell, SelectOption } from "@/components/table/editable-select-cell";
+import { EditableDateCell } from "@/components/table/editable-date-cell";
+import { EditableNotesCell } from "@/components/table/editable-notes-cell";
 import { editItem } from "./actions/edit-item.action";
 import {
-  StickyNote,
   Folder,
   FileText,
   MapPin,
   Settings,
-  File,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Helper function to extract CAP from address string
 function extractCAP(text: string | null | undefined): number | null {
   if (!text) return null;
-  // Try to find a 4-5 digit number (Swiss CAP format)
   const capMatch = text.match(/\b\d{4,5}\b/);
   return capMatch ? parseInt(capMatch[0], 10) : null;
 }
 
-// Project row type
 type ProjectRow = {
   id: number;
   unique_code?: string | null;
@@ -84,26 +83,30 @@ type ProjectRow = {
   [key: string]: any;
 };
 
-// Handler for inline editing projects
 const createProjectEditHandler = (domain?: string) => {
   return async (
     rowData: ProjectRow,
     field: string,
-    newValue: string | number | boolean | null
+    newValue: string | number | boolean | Date | null
   ): Promise<{ success?: boolean; error?: string }> => {
-    // Build formData with all required fields for validation
     const formData: any = {
-      unique_code: rowData.unique_code,
-      other: rowData.other,
+      unique_code: rowData.unique_code || undefined,
+      other: rowData.other || undefined,
       sellPrice: rowData.sellPrice ?? 0,
       productId: rowData.sellProductId ?? rowData.SellProduct?.id ?? null,
       kanbanId: rowData.kanbanId ?? rowData.Kanban?.id,
       kanbanColumnId: rowData.kanbanColumnId ?? rowData.KanbanColumn?.id,
       clientId: rowData.clientId ?? rowData.Client?.id,
-      name: rowData.name ?? rowData.title,
-      luogo: rowData.luogo,
+      name: (rowData.name ?? rowData.title) || undefined,
+      luogo: rowData.luogo || undefined,
+      deliveryDate: rowData.deliveryDate ?? undefined,
       [field]: newValue,
     };
+
+    // When changing kanban, reset column so server assigns the first one
+    if (field === "kanbanId") {
+      formData.kanbanColumnId = null;
+    }
 
     try {
       const result = await editItem(formData, rowData.id, domain);
@@ -112,12 +115,12 @@ const createProjectEditHandler = (domain?: string) => {
       }
       return { success: true };
     } catch (error: any) {
+      console.error("Inline edit error:", error);
       return { error: error.message || "Errore durante il salvataggio" };
     }
   };
 };
 
-// Helper to find all scrollable ancestors and save their scroll positions
 const saveScrollPositions = (
   element: HTMLElement | null
 ): Array<{ el: HTMLElement; scrollTop: number }> => {
@@ -138,10 +141,77 @@ const saveScrollPositions = (
   return positions;
 };
 
-export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
+// --- Column configuration ---
+
+type ColumnsConfig = {
+  domain?: string;
+  clients?: Array<{
+    id: number;
+    businessName?: string | null;
+    individualFirstName?: string | null;
+    individualLastName?: string | null;
+  }>;
+  products?: Array<{
+    id: number;
+    name?: string | null;
+    type?: string | null;
+  }>;
+  kanbans?: Array<{
+    id: number;
+    title?: string | null;
+  }>;
+};
+
+function getClientLabel(c: {
+  businessName?: string | null;
+  individualFirstName?: string | null;
+  individualLastName?: string | null;
+}): string {
+  return (
+    c.businessName ||
+    `${c.individualLastName || ""} ${c.individualFirstName || ""}`.trim() ||
+    "N/A"
+  );
+}
+
+export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] => {
+  const { domain, clients = [], products = [], kanbans = [] } = config;
   const handleProjectEdit = createProjectEditHandler(domain);
 
+  const clientOptions: SelectOption[] = clients.map((c) => ({
+    value: c.id,
+    label: getClientLabel(c),
+  }));
+
+  const productOptions: SelectOption[] = products.map((p) => ({
+    value: p.id,
+    label: [p.name, p.type].filter(Boolean).join(" "),
+  }));
+
+  const kanbanOptions: SelectOption[] = kanbans.map((k) => ({
+    value: k.id,
+    label: k.title || "N/A",
+  }));
+
+  // Async loader for kanban columns (reparto) – fetches columns for the row's current kanban
+  const loadKanbanColumns = async (rowData: ProjectRow): Promise<SelectOption[]> => {
+    const kanbanId = rowData.kanbanId ?? rowData.Kanban?.id;
+    if (!kanbanId) return [];
+    try {
+      const response = await fetch(`/api/kanban-columns/${kanbanId}`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return (data || []).map((col: any) => ({
+        value: col.id,
+        label: col.title || "N/A",
+      }));
+    } catch {
+      return [];
+    }
+  };
+
   return [
+    // --- Select ---
     {
       id: "select",
       header: ({ table }) => (
@@ -149,14 +219,9 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-
-            const scrollPositions = saveScrollPositions(
-              e.currentTarget as HTMLElement
-            );
+            const scrollPositions = saveScrollPositions(e.currentTarget as HTMLElement);
             const windowScrollY = window.scrollY;
-
             table.toggleAllPageRowsSelected(!table.getIsAllPageRowsSelected());
-
             requestAnimationFrame(() => {
               scrollPositions.forEach(({ el, scrollTop }) => {
                 el.scrollTop = scrollTop;
@@ -182,14 +247,9 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();
-
-            const scrollPositions = saveScrollPositions(
-              e.currentTarget as HTMLElement
-            );
+            const scrollPositions = saveScrollPositions(e.currentTarget as HTMLElement);
             const windowScrollY = window.scrollY;
-
             row.toggleSelected(!row.getIsSelected());
-
             requestAnimationFrame(() => {
               scrollPositions.forEach(({ el, scrollTop }) => {
                 el.scrollTop = scrollTop;
@@ -210,6 +270,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableSorting: false,
       enableHiding: false,
     },
+
+    // --- Codice (link to project detail) ---
     {
       accessorKey: "unique_code",
       header: ({ column }) => (
@@ -220,15 +282,17 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       maxSize: 200,
       enableResizing: true,
       cell: ({ row }) => (
-        <EditableCell
-          value={row.original.unique_code}
-          row={row}
-          field="unique_code"
-          type="text"
-          onSave={handleProjectEdit}
-        />
+        <Link
+          href={`/sites/${domain}/progetti/${row.original.id}`}
+          className="font-medium text-primary hover:underline truncate block"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {row.original.unique_code || "-"}
+        </Link>
       ),
     },
+
+    // --- Cliente (dropdown) ---
     {
       accessorKey: "client",
       header: ({ column }) => (
@@ -240,20 +304,25 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: true,
       cell: ({ row }) => {
         const rowData = row.original;
+        const clientName = rowData.Client
+          ? getClientLabel(rowData.Client)
+          : undefined;
 
-        const clientName =
-          rowData.Client?.businessName ||
-          `${rowData.Client?.individualFirstName || ""} ${
-            rowData.Client?.individualLastName || ""
-          }`.trim() ||
-          "N/A";
         return (
-          <span className="truncate block" title={clientName}>
-            {clientName}
-          </span>
+          <EditableSelectCell
+            value={rowData.clientId ?? rowData.Client?.id}
+            displayValue={clientName}
+            row={row}
+            field="clientId"
+            options={clientOptions}
+            onSave={handleProjectEdit}
+            placeholder="Seleziona cliente"
+          />
         );
       },
     },
+
+    // --- Nome oggetto (inline text) ---
     {
       accessorKey: "nome_oggetto",
       header: ({ column }) => (
@@ -263,76 +332,103 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       minSize: 100,
       maxSize: 400,
       enableResizing: true,
-      cell: ({ row }) => {
-        const rowData = row.original;
-        const nomeOggetto = rowData.title || rowData.name || "-";
-        return (
-          <span className="truncate block" title={nomeOggetto}>
-            {nomeOggetto}
-          </span>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.name ?? row.original.title}
+          row={row}
+          field="name"
+          type="text"
+          onSave={handleProjectEdit}
+          placeholder="-"
+        />
+      ),
     },
+
+    // --- Prodotto (dropdown) ---
     {
       accessorKey: "product",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Prodotto" />
       ),
-      size: 130,
+      size: 150,
       minSize: 80,
       maxSize: 400,
       enableResizing: true,
       cell: ({ row }) => {
         const rowData = row.original;
-        const productName = rowData.SellProduct?.name;
-        const productType = rowData.SellProduct?.type;
-
-        if (!productName) {
-          return <span className="text-muted-foreground">-</span>;
-        }
+        const productDisplay = rowData.SellProduct?.name
+          ? [rowData.SellProduct.name, rowData.SellProduct.type]
+              .filter(Boolean)
+              .join(" ")
+          : undefined;
 
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Badge
-                  variant="outline"
-                  className="truncate max-w-full cursor-default"
-                >
-                  {productName}
-                </Badge>
-              </TooltipTrigger>
-              {productType && (
-                <TooltipContent>
-                  <p>{productType}</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <EditableSelectCell
+            value={rowData.sellProductId ?? rowData.SellProduct?.id}
+            displayValue={productDisplay}
+            row={row}
+            field="productId"
+            options={productOptions}
+            onSave={handleProjectEdit}
+            placeholder="Seleziona prodotto"
+          />
         );
       },
     },
+
+    // --- Kanban (dropdown) ---
     {
-      accessorKey: "column",
+      accessorKey: "kanban",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Posizione" />
+        <DataTableColumnHeader column={column} title="Kanban" />
       ),
-      size: 180,
-      minSize: 100,
-      maxSize: 400,
+      size: 130,
+      minSize: 80,
+      maxSize: 300,
       enableResizing: true,
       cell: ({ row }) => {
         const rowData = row.original;
-        const kanbanTitle = rowData.Kanban?.title || "N/A";
-        const columnTitle = rowData.KanbanColumn?.title || "N/A";
-        const fullPosition = `${kanbanTitle} → ${columnTitle}`;
         return (
-          <span className="truncate block" title={fullPosition}>
-            {fullPosition}
-          </span>
+          <EditableSelectCell
+            value={rowData.kanbanId ?? rowData.Kanban?.id}
+            displayValue={rowData.Kanban?.title || undefined}
+            row={row}
+            field="kanbanId"
+            options={kanbanOptions}
+            onSave={handleProjectEdit}
+            placeholder="Seleziona kanban"
+          />
         );
       },
     },
+
+    // --- Reparto / Colonna (dropdown with async loading) ---
+    {
+      accessorKey: "reparto",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Reparto" />
+      ),
+      size: 130,
+      minSize: 80,
+      maxSize: 300,
+      enableResizing: true,
+      cell: ({ row }) => {
+        const rowData = row.original;
+        return (
+          <EditableSelectCell
+            value={rowData.kanbanColumnId ?? rowData.KanbanColumn?.id}
+            displayValue={rowData.KanbanColumn?.title || undefined}
+            row={row}
+            field="kanbanColumnId"
+            getOptions={loadKanbanColumns}
+            onSave={handleProjectEdit}
+            placeholder="Seleziona reparto"
+          />
+        );
+      },
+    },
+
+    // --- CAP ---
     {
       accessorKey: "luogo",
       header: ({ column }) => (
@@ -344,7 +440,6 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       enableResizing: true,
       cell: ({ row }) => {
         const rowData = row.original;
-        // Extract CAP from Client zipCode or from luogo field
         const cap =
           rowData.Client?.zipCode ||
           (rowData.luogo ? extractCAP(rowData.luogo) : null);
@@ -355,42 +450,30 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Note (editable popover) ---
     {
       id: "notes_icon",
       header: () => (
         <div className="flex items-center justify-center w-full">
-          <StickyNote className="h-4 w-4" />
+          <span className="text-xs font-medium">Note</span>
         </div>
       ),
       size: 50,
       minSize: 40,
       maxSize: 60,
       enableResizing: false,
-      cell: ({ row }) => {
-        const hasNotes =
-          !!row.original.other && row.original.other.trim() !== "";
-        return (
-          <div className="flex items-center justify-center w-full h-full">
-            {hasNotes ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="w-6 h-6 flex items-center justify-center">
-                      <StickyNote className="h-4 w-4 text-primary" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs">{row.original.other}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <div className="w-6 h-6 border border-muted-foreground/20 rounded" />
-            )}
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableNotesCell
+          value={row.original.other}
+          row={row}
+          field="other"
+          onSave={handleProjectEdit}
+        />
+      ),
     },
+
+    // --- Reports ---
     {
       id: "reports",
       header: () => (
@@ -415,7 +498,6 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
                     size="sm"
                     className="h-6 w-6 p-0"
                     onClick={() => {
-                      // Navigate to reports page for this project
                       window.location.href = `/sites/${currentDomain}/projects/${projectId}/reports`;
                     }}
                   >
@@ -431,6 +513,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Google Maps ---
     {
       id: "google_maps",
       header: () => (
@@ -445,9 +529,7 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       cell: ({ row }) => {
         const address = row.original.Client?.address || row.original.luogo;
         const googleMapsUrl = address
-          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-              address
-            )}`
+          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
           : null;
         return (
           <div className="flex items-center justify-center w-full h-full">
@@ -467,6 +549,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Consuntivo ---
     {
       id: "consuntivo",
       header: () => (
@@ -491,7 +575,6 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
                     size="sm"
                     className="h-6 w-6 p-0"
                     onClick={() => {
-                      // Navigate to project dashboard/consuntivo
                       window.location.href = `/sites/${currentDomain}/projects/${projectId}/consuntivo`;
                     }}
                   >
@@ -507,6 +590,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Project files ---
     {
       id: "project_files",
       header: () => (
@@ -523,7 +608,7 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         const fileCount = row.original.fileCount || 0;
         const currentDomain = domain || window.location.pathname.split("/")[2];
         const hasFiles = fileCount > 0;
-        
+
         return (
           <div className="flex items-center justify-center w-full h-full">
             <TooltipProvider>
@@ -545,7 +630,11 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{hasFiles ? `${fileCount} documento/i` : "Nessun documento"}</p>
+                  <p>
+                    {hasFiles
+                      ? `${fileCount} documento/i`
+                      : "Nessun documento"}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -553,6 +642,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Consegna (editable date picker) ---
     {
       accessorKey: "deliveryDate",
       header: ({ column }) => (
@@ -562,35 +653,17 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
       minSize: 70,
       maxSize: 150,
       enableResizing: true,
-      cell: ({ row }) => {
-        const { deliveryDate } = row.original;
-
-        let formattedDate = null;
-        if (deliveryDate) {
-          try {
-            const dateObj =
-              deliveryDate instanceof Date
-                ? deliveryDate
-                : new Date(deliveryDate);
-            if (!isNaN(dateObj.getTime())) {
-              formattedDate = dateObj.toLocaleDateString("it-IT", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "2-digit",
-              });
-            }
-          } catch (error) {
-            console.error("Error formatting delivery date:", error);
-          }
-        }
-
-        return (
-          <div suppressHydrationWarning className="whitespace-nowrap">
-            {formattedDate || "-"}
-          </div>
-        );
-      },
+      cell: ({ row }) => (
+        <EditableDateCell
+          value={row.original.deliveryDate}
+          row={row}
+          field="deliveryDate"
+          onSave={handleProjectEdit}
+        />
+      ),
     },
+
+    // --- Valore (editable number) ---
     {
       accessorKey: "sellPrice",
       header: ({ column }) => (
@@ -611,6 +684,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         />
       ),
     },
+
+    // --- Archiviato ---
     {
       accessorKey: "archived",
       header: ({ column }) => (
@@ -632,6 +707,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Ultima modifica ---
     {
       accessorKey: "actions_user",
       header: ({ column }) => (
@@ -702,6 +779,8 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
         );
       },
     },
+
+    // --- Azioni ---
     {
       id: "actions",
       header: "Azioni",
@@ -714,5 +793,4 @@ export const createColumns = (domain?: string): ColumnDef<ProjectRow>[] => {
   ];
 };
 
-// Legacy export for backward compatibility
-export const columns = createColumns();
+export const columns = createColumns({});

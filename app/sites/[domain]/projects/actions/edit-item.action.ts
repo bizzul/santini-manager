@@ -32,7 +32,6 @@ export async function editItem(formData: any, id: number, domain?: string) {
     // Use the authId directly from the session (Supabase Auth user ID)
     userId = session.user.id;
   }
-  // console.log("result", result.error);
   try {
     if (result.success) {
       const supabase = await createClient();
@@ -176,7 +175,12 @@ export async function editItem(formData: any, id: number, domain?: string) {
         }
       }
 
-      return revalidatePath("/projects");
+      if (domain) {
+        revalidatePath(`/sites/${domain}/projects`);
+        revalidatePath(`/sites/${domain}/kanban`);
+      }
+      revalidatePath("/projects");
+      return { success: true };
     } else {
       return { error: true, message: "Validazione elemento fallita!" };
     }
