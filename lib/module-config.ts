@@ -199,6 +199,15 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         enabledByDefault: false,
         category: "tools",
     },
+    {
+        name: "attendance",
+        label: "Presenze",
+        description: "Registro presenze con vista calendario e gestione ferie",
+        icon: "faCalendarCheck",
+        href: "/attendance",
+        enabledByDefault: false,
+        category: "management",
+    },
 ];
 
 export const getModuleByName = (name: string): ModuleConfig | undefined => {

@@ -262,6 +262,16 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
   const { user } = session;
   const data = await getData(siteId, user.id);
 
+  // Check if attendance module is enabled for this site
+  const supabaseForModules = await createClient();
+  const { data: attendanceModule } = await supabaseForModules
+    .from("site_modules")
+    .select("is_enabled")
+    .eq("site_id", siteId)
+    .eq("module_name", "attendance")
+    .maybeSingle();
+  const isAttendanceModuleEnabled = attendanceModule?.is_enabled ?? false;
+
   // Get user profile data
   const userProfile = user?.user_metadata;
   const displayName =
@@ -322,6 +332,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
         allUserEntries={data.allUserEntries}
         domain={domain}
         siteId={siteId}
+        isAttendanceModuleEnabled={isAttendanceModuleEnabled}
       />
     </div>
   );

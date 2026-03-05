@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { MyHoursList } from "./my-hours-list";
 import { VoiceInputButton } from "./VoiceInputButton";
+import { LeaveRequestForm } from "@/components/attendance/LeaveRequestForm";
 
 // Internal activity type from database
 export interface InternalActivity {
@@ -145,6 +146,7 @@ const CreatePage = ({
   allUserEntries = [],
   domain,
   siteId,
+  isAttendanceModuleEnabled = false,
 }: {
   data: { roles: Roles[]; tasks: Task[]; todayEntries?: TodayEntry[] };
   session: Session;
@@ -152,6 +154,7 @@ const CreatePage = ({
   allUserEntries?: AllUserEntry[];
   domain?: string;
   siteId?: string;
+  isAttendanceModuleEnabled?: boolean;
 }) => {
   const [activeTab, setActiveTab] = useState("create");
   const rolesOptions = data.roles;
@@ -631,7 +634,7 @@ const CreatePage = ({
       <div className="max-w-4xl mx-auto px-4 pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
-            <TabsList className="grid flex-1 grid-cols-2">
+            <TabsList className={`grid flex-1 ${isAttendanceModuleEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
               <TabsTrigger value="create" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Registra ore
@@ -645,6 +648,12 @@ const CreatePage = ({
                   </Badge>
                 )}
               </TabsTrigger>
+              {isAttendanceModuleEnabled && (
+                <TabsTrigger value="leave-request" className="gap-2">
+                  <Clock className="h-4 w-4" />
+                  Assenze
+                </TabsTrigger>
+              )}
             </TabsList>
             {domain && siteId && activeTab === "create" && (
               <VoiceInputButton
@@ -1167,6 +1176,13 @@ const CreatePage = ({
           onDelete={handleDeleteEntries}
         />
       </TabsContent>
+
+      {/* Leave Request Tab Content */}
+      {isAttendanceModuleEnabled && domain && (
+        <TabsContent value="leave-request" className="mt-4">
+          <LeaveRequestForm domain={domain} />
+        </TabsContent>
+      )}
     </Tabs>
   </div>
 

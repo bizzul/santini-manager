@@ -248,6 +248,13 @@ const getMenuItems = (
       moduleName: "timetracking",
     },
     {
+      label: "Presenze",
+      icon: "faCalendarCheck",
+      href: `${basePath}/attendance`,
+      alert: false,
+      moduleName: "attendance",
+    },
+    {
       label: "Contatti",
       icon: "faUsers",
       alert: false,
@@ -862,6 +869,7 @@ export function AppSidebar() {
       (item) => item.label === "Progetti"
     );
     const categories = menuItems.filter((item) => item.label === "Categorie");
+    const attendance = menuItems.filter((item) => item.label === "Presenze");
     const others = menuItems.filter(
       (item) =>
         ![
@@ -869,6 +877,7 @@ export function AppSidebar() {
           "Kanban",
           "Calendari",
           "Ore",
+          "Presenze",
           "Contatti",
           "Magazzino",
           "Articoli",
@@ -883,6 +892,7 @@ export function AppSidebar() {
       core,
       projects,
       calendars,
+      attendance,
       contacts,
       warehouse,
       products,
@@ -1421,6 +1431,20 @@ export function AppSidebar() {
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {groupedMenuItems.calendars.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
+            {/* Presenze */}
+            {groupedMenuItems.attendance.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.attendance.map(renderMenuItem)}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
