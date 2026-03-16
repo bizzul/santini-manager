@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { cn, toDateString, parseLocalDate } from "@/lib/utils";
+import { cn, isWeekend, toDateString, parseLocalDate } from "@/lib/utils";
 import {
   Client,
   SellProduct,
@@ -504,6 +504,7 @@ export default function DraftCompletionWizard({
                           mode="single"
                           selected={field.value || undefined}
                           onSelect={field.onChange}
+                          disabled={isWeekend}
                         />
                       </PopoverContent>
                     </Popover>
@@ -544,6 +545,7 @@ export default function DraftCompletionWizard({
                           mode="single"
                           selected={field.value || undefined}
                           onSelect={field.onChange}
+                          disabled={isWeekend}
                         />
                       </PopoverContent>
                     </Popover>

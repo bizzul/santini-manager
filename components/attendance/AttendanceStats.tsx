@@ -33,7 +33,7 @@ export function AttendanceStats({ users, attendance }: AttendanceStatsProps) {
     const totalEntries = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
     return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
             {statusTypes.map((status) => {
                 const config = STATUS_CONFIG[status];
                 const count = statusCounts[status] || 0;

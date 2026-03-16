@@ -5,9 +5,17 @@ export type AttendanceStatus =
     | "infortunio"
     | "smart_working"
     | "formazione"
-    | "assenza_privata";
+    | "assenza_privata"
+    | "ipg";
 
-export type LeaveType = "vacanze" | "malattia" | "infortunio" | "smart_working" | "formazione" | "assenza_privata";
+export type LeaveType =
+    | "vacanze"
+    | "malattia"
+    | "infortunio"
+    | "smart_working"
+    | "formazione"
+    | "assenza_privata"
+    | "ipg";
 export type LeaveRequestStatus = "pending" | "approved" | "rejected";
 
 export interface AttendanceEntry {
@@ -81,9 +89,15 @@ export const STATUS_CONFIG: Record<
     },
     assenza_privata: {
         label: "Assenza privata",
-        color: "#6b7280",
-        bgClass: "bg-gray-600",
-        textClass: "text-gray-700 dark:text-gray-400",
+        color: "#eab308",
+        bgClass: "bg-yellow-500",
+        textClass: "text-yellow-700 dark:text-yellow-400",
+    },
+    ipg: {
+        label: "IPG",
+        color: "#ec4899",
+        bgClass: "bg-pink-500",
+        textClass: "text-pink-700 dark:text-pink-400",
     },
     weekend: {
         label: "Weekend",
@@ -100,6 +114,7 @@ export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
     smart_working: "Smart Working",
     formazione: "Formazione",
     assenza_privata: "Assenza privata",
+    ipg: "IPG",
 };
 
 export const LEAVE_STATUS_LABELS: Record<LeaveRequestStatus, string> = {

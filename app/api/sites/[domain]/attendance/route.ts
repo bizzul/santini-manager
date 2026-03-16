@@ -99,26 +99,68 @@ export async function GET(
             };
         });
 
-        // Fetch all users for this site
+        // Fetch users assigned directly to the site
         const { data: siteUsers } = await supabase
             .from("user_sites")
             .select("user_id")
             .eq("site_id", siteId);
 
-        const userIds = siteUsers?.map((su) => su.user_id) || [];
+        const directSiteUserIds = siteUsers?.map((su) => su.user_id) || [];
 
-        // Fetch user profiles
-        const { data: userProfiles } = await supabase
-            .from("User")
-            .select("authId, given_name, family_name, email, picture")
-            .in("authId", userIds);
+        // Include organization admins, who can access the site without a direct user_sites row
+        const { data: siteInfo } = await supabase
+            .from("sites")
+            .select("organization_id")
+            .eq("id", siteId)
+            .maybeSingle();
 
-        const profiles = (userProfiles || []).map((u) => ({
-            id: u.authId,
-            name: [u.given_name, u.family_name].filter(Boolean).join(" ") || u.email || "Unknown",
-            email: u.email,
-            picture: u.picture,
-        }));
+        let organizationUserIds: string[] = [];
+        if (siteInfo?.organization_id) {
+            const { data: organizationUsers } = await supabase
+                .from("user_organizations")
+                .select("user_id")
+                .eq("organization_id", siteInfo.organization_id);
+
+            organizationUserIds = organizationUsers?.map((user) => user.user_id) || [];
+        }
+
+        const directSiteUserSet = new Set(directSiteUserIds);
+        const organizationUserSet = new Set(organizationUserIds);
+        const candidateUserIds = Array.from(
+            new Set([...directSiteUserIds, ...organizationUserIds])
+        );
+
+        let profiles: {
+            id: string;
+            name: string;
+            email: string | null;
+            picture: string | null;
+        }[] = [];
+
+        if (candidateUserIds.length > 0) {
+            const { data: userProfiles } = await supabase
+                .from("User")
+                .select("authId, given_name, family_name, email, picture, enabled, role")
+                .in("authId", candidateUserIds)
+                .eq("enabled", true)
+                .neq("role", "superadmin")
+                .order("family_name", { ascending: true })
+                .order("given_name", { ascending: true });
+
+            profiles = (userProfiles || [])
+                .filter((user) =>
+                    directSiteUserSet.has(user.authId) ||
+                    (organizationUserSet.has(user.authId) && user.role === "admin")
+                )
+                .map((user) => ({
+                    id: user.authId,
+                    name: [user.given_name, user.family_name].filter(Boolean).join(" ") || user.email || "Unknown",
+                    email: user.email,
+                    picture: user.picture,
+                }));
+        }
+
+        const userIds = profiles.map((user) => user.id);
 
         // Merge: manual entries take priority over auto-detected
         const attendance: Record<string, Record<string, { status: string; notes: string | null; autoDetected: boolean }>> = {};
@@ -188,7 +230,7 @@ export async function POST(
 
         const validStatuses = [
             "presente", "vacanze", "malattia", "infortunio",
-            "smart_working", "formazione", "assenza_privata",
+            "smart_working", "formazione", "assenza_privata", "ipg",
         ];
         if (!validStatuses.includes(status)) {
             return NextResponse.json({ error: "Stato non valido" }, { status: 400 });

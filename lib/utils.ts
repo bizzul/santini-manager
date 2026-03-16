@@ -37,6 +37,11 @@ export function parseLocalDate(dateStr: string): Date {
   return new Date(year, month - 1, day);
 }
 
+export function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
 /**
  * Convert any date input (Date object, string, null) to YYYY-MM-DD string for database storage.
  * This ensures dates are always stored correctly regardless of timezone.

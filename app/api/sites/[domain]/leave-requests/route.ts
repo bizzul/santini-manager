@@ -113,7 +113,15 @@ export async function POST(
             );
         }
 
-        const validTypes = ["vacanze", "malattia", "infortunio", "smart_working", "formazione", "assenza_privata"];
+        const validTypes = [
+            "vacanze",
+            "malattia",
+            "infortunio",
+            "smart_working",
+            "formazione",
+            "assenza_privata",
+            "ipg",
+        ];
         if (!validTypes.includes(leave_type)) {
             return NextResponse.json({ error: "Tipo non valido" }, { status: 400 });
         }

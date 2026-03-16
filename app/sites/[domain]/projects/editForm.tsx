@@ -20,7 +20,7 @@ import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Client, SellProduct, Action } from "@/types/supabase";
 import { DateManager } from "@/package/utils/dates/date-manager";
-import { parseLocalDate } from "@/lib/utils";
+import { isWeekend, parseLocalDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -756,6 +756,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
                         mode="single"
                         selected={field.value || undefined}
                         onSelect={field.onChange}
+                        disabled={isWeekend}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
                         endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -799,6 +800,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
                         mode="single"
                         selected={field.value || undefined}
                         onSelect={field.onChange}
+                        disabled={isWeekend}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
                         endMonth={new Date(new Date().getFullYear() + 5, 11)}

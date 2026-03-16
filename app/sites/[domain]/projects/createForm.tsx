@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Loader2, RefreshCw, Link, Columns } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isWeekend } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
@@ -454,6 +454,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       selected={field.value || undefined}
                       captionLayout="dropdown"
                       onSelect={field.onChange}
+                      disabled={isWeekend}
                       startMonth={new Date(new Date().getFullYear(), 0)}
                       endMonth={new Date(new Date().getFullYear() + 5, 11)}
                     />
@@ -497,6 +498,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       selected={field.value || undefined}
                       captionLayout="dropdown"
                       onSelect={field.onChange}
+                      disabled={isWeekend}
                       startMonth={new Date(new Date().getFullYear(), 0)}
                       endMonth={new Date(new Date().getFullYear() + 5, 11)}
                     />

@@ -20,7 +20,7 @@ import { validation } from "../../validation/task/create";
 import { useToast } from "../../components/ui/use-toast";
 import { Client, SellProduct } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
-import { parseLocalDate } from "@/lib/utils";
+import { isWeekend, parseLocalDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -758,6 +758,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                         mode="single"
                         selected={field.value || undefined}
                         onSelect={field.onChange}
+                        disabled={isWeekend}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
                         endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -801,6 +802,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                         mode="single"
                         selected={field.value || undefined}
                         onSelect={field.onChange}
+                        disabled={isWeekend}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
                         endMonth={new Date(new Date().getFullYear() + 5, 11)}

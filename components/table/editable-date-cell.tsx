@@ -22,6 +22,7 @@ export type EditableDateCellProps<T = any> = {
   ) => Promise<{ success?: boolean; error?: string } | void>;
   placeholder?: string;
   className?: string;
+  disabled?: (date: Date) => boolean;
 };
 
 function formatDate(date: Date): string {
@@ -39,6 +40,7 @@ export function EditableDateCell<T = any>({
   onSave,
   placeholder = "-",
   className,
+  disabled,
 }: EditableDateCellProps<T>) {
   const [open, setOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -120,6 +122,7 @@ export function EditableDateCell<T = any>({
           mode="single"
           selected={displayDate ?? undefined}
           onSelect={handleSelect}
+          disabled={disabled}
           captionLayout="dropdown"
           startMonth={new Date(new Date().getFullYear() - 1, 0)}
           endMonth={new Date(new Date().getFullYear() + 5, 11)}

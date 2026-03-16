@@ -26,6 +26,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isWeekend } from "@/lib/utils";
 
 function extractCAP(text: string | null | undefined): number | null {
   if (!text) return null;
@@ -659,6 +660,7 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
           row={row}
           field="deliveryDate"
           onSave={handleProjectEdit}
+          disabled={isWeekend}
         />
       ),
     },
