@@ -62,7 +62,6 @@ const Column = ({
   kanban,
   domain,
   isOfferKanban,
-  isWorkKanban,
   onMiniCardClick,
   onTaskCreated,
   onTaskDeleted,
@@ -161,57 +160,64 @@ const Column = ({
   // TODO column is used for quick add of draft offers
   const isTodoColumn = column.position === 1 && isOfferKanban;
 
-  // Check if this is the To-do column (first column) in a work kanban
-  const isWorkKanbanTodoColumn = isWorkKanban && column.position === 1;
+  const getSortTimestamp = (card: any, fields: string[]) => {
+    for (const field of fields) {
+      const value = card?.[field];
+      if (!value) continue;
+
+      const timestamp = new Date(value).getTime();
+      if (!Number.isNaN(timestamp)) {
+        return timestamp;
+      }
+    }
+
+    return null;
+  };
+
+  const compareByDate = (a: any, b: any, fields: string[]) => {
+    const timeA = getSortTimestamp(a, fields);
+    const timeB = getSortTimestamp(b, fields);
+
+    if (timeA === null && timeB === null) {
+      return (
+        (a.unique_code || "").localeCompare(b.unique_code || "") ||
+        (a.id || 0) - (b.id || 0)
+      );
+    }
+
+    if (timeA === null) return 1;
+    if (timeB === null) return -1;
+
+    return (
+      timeA - timeB ||
+      (a.unique_code || "").localeCompare(b.unique_code || "") ||
+      (a.id || 0) - (b.id || 0)
+    );
+  };
 
   // Sort function based on column type
   const sortCards = (cardsToSort: any[]) => {
     return [...cardsToSort].sort((a: any, b: any) => {
       // For "Trattativa" column in offer kanban: sort by sent_date (oldest first)
       if (isTrattativaColumn) {
-        const sentA = a.sent_date || a.sentDate;
-        const sentB = b.sent_date || b.sentDate;
-
-        if (!sentA && !sentB) return 0;
-        if (!sentA) return 1; // Cards without sent_date go to the end
-        if (!sentB) return -1;
-
-        // Oldest first (ascending order)
-        return new Date(sentA).getTime() - new Date(sentB).getTime();
-      }
-
-      // For To-do column in work kanban (Avor): sort by termine_produzione
-      if (isWorkKanbanTodoColumn) {
-        const prodA = a.termine_produzione || a.termineProduzione;
-        const prodB = b.termine_produzione || b.termineProduzione;
-
-        // Cards without termine_produzione go to the end
-        if (!prodA && !prodB) return 0;
-        if (!prodA) return 1;
-        if (!prodB) return -1;
-
-        // Earliest deadline first (ascending order)
-        return new Date(prodA).getTime() - new Date(prodB).getTime();
+        return compareByDate(a, b, ["sent_date", "sentDate"]);
       }
 
       // Default sorting logic
-      if (column.identifier.includes("SPED")) {
-        return a.unique_code.localeCompare(b.unique_code);
-      } else {
-        if (a.deliveryDate === null && b.deliveryDate === null) {
-          return 0;
-        }
-        if (a.deliveryDate === null) {
-          return 1;
-        }
-        if (b.deliveryDate === null) {
-          return -1;
-        }
+      if ((column.identifier || "").includes("SPED")) {
         return (
-          new Date(a.deliveryDate).getTime() -
-          new Date(b.deliveryDate).getTime()
+          (a.unique_code || "").localeCompare(b.unique_code || "") ||
+          (a.id || 0) - (b.id || 0)
         );
       }
+
+      // Keep all other kanban cards aligned to the visible "Data di posa".
+      return compareByDate(a, b, [
+        "deliveryDate",
+        "delivery_date",
+        "termine_produzione",
+        "termineProduzione",
+      ]);
     });
   };
 
@@ -503,10 +509,6 @@ function KanbanBoard({
   // Check if this is an offer kanban
   const isOfferKanban =
     kanban?.is_offer_kanban || kanban?.isOfferKanban || false;
-
-  // Check if this is a work kanban (Avor)
-  const isWorkKanban =
-    kanban?.is_work_kanban || kanban?.isWorkKanban || false;
 
   // Handler for mini card click in offer kanban
   const handleMiniCardClick = useCallback((task: Task) => {
@@ -1057,7 +1059,6 @@ function KanbanBoard({
                       kanban={kanban}
                       domain={domain}
                       isOfferKanban={isOfferKanban}
-                      isWorkKanban={isWorkKanban}
                       onMiniCardClick={handleMiniCardClick}
                       onTaskCreated={refetchTasks}
                       onTaskDeleted={refetchTasks}

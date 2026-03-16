@@ -1,9 +1,12 @@
 import { type ClassValue, clsx } from "clsx";
+import { formatInTimeZone } from "date-fns-tz";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const APP_TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Europe/Zurich";
 
 /**
  * Format a Date as YYYY-MM-DD using local timezone.
@@ -45,7 +48,8 @@ export function toDateString(value: Date | string | null | undefined): string | 
   if (!value) return null;
 
   if (value instanceof Date) {
-    return formatLocalDate(value);
+    if (isNaN(value.getTime())) return null;
+    return formatInTimeZone(value, APP_TIMEZONE, "yyyy-MM-dd");
   }
 
   if (typeof value === "string") {
@@ -53,10 +57,10 @@ export function toDateString(value: Date | string | null | undefined): string | 
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       return value;
     }
-    // Otherwise, extract the date part
-    const datePart = value.split("T")[0];
-    if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-      return datePart;
+
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) {
+      return formatInTimeZone(parsed, APP_TIMEZONE, "yyyy-MM-dd");
     }
   }
 

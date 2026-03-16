@@ -255,6 +255,62 @@ describe('Projects - editItem', () => {
     );
   });
 
+  it('should preserve the business date when deliveryDate is serialized in UTC', async () => {
+    const formData = {
+      name: 'Updated Task',
+      kanbanId: 2,
+      kanbanColumnId: 2,
+      deliveryDate: new Date('2026-03-19T23:00:00.000Z'),
+    };
+
+    const mockTask = mockTaskData({ ...formData, id: 1, deliveryDate: '2026-03-20' });
+    const mockColumn = mockKanbanColumnData({
+      id: 2,
+      kanbanId: 2,
+    });
+
+    (validation.safeParse as jest.Mock).mockReturnValue({
+      success: true,
+      data: formData,
+    });
+
+    // Mock for column verification
+    mockSupabase.mockSelect.mockReturnValueOnce({
+      eq: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: mockColumn, error: null }),
+        }),
+      }),
+    });
+
+    // Mock for existing task check
+    mockSupabase.mockSelect.mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: { site_id: 'test-site-id' },
+          error: null
+        }),
+      }),
+    });
+
+    // Mock for update
+    mockSupabase.mockUpdate.mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: mockTask, error: null }),
+        }),
+      }),
+    });
+
+    await editItem(formData, 1, 'test-domain');
+
+    expect(mockSupabase.mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deliveryDate: '2026-03-20',
+      })
+    );
+  });
+
   it('should handle positions array correctly', async () => {
     const formData = {
       name: 'Updated Task',

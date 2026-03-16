@@ -4,7 +4,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import { Sofa, DoorOpen, LayoutGrid, Wrench, Tag } from "lucide-react";
+import { Sofa, DoorOpen, LayoutGrid, Wrench, Settings, Tag } from "lucide-react";
 
 export interface ProductCategoryInfo {
   id?: number;
@@ -36,6 +36,8 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
   porte: DoorOpen,
   serramenti: LayoutGrid,
   accessori: Wrench,
+  service: Settings,
+  assistenza: Settings,
 };
 
 const DEFAULT_CATEGORY_ICON = Tag;

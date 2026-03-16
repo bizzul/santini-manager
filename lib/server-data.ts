@@ -2838,6 +2838,14 @@ export interface ProduzioneWeeklyData {
     }>;
 }
 
+export interface ProduzioneProductWorkload {
+    category: string;
+    categoryId?: number;
+    color: string;
+    pratiche: number;
+    elementi: number;
+}
+
 export interface ProduzioneKanbanStatus {
     kanbanId: number;
     kanbanName: string;
@@ -2851,6 +2859,7 @@ export interface ProduzioneKanbanStatus {
 
 export interface ProduzioneDashboardStats {
     kanbanStatus: ProduzioneKanbanStatus[];
+    productWorkload: ProduzioneProductWorkload[];
     hasProduzionCategory: boolean;
     repartoData: ProduzioneRepartoData[];
     weeklyTrend: ProduzioneWeeklyData[];
@@ -2891,6 +2900,7 @@ export const fetchProduzioneDashboardData = cache(
 
         // Get kanbans under Produzione category (for status cards and carico reparto)
         let kanbanStatus: ProduzioneKanbanStatus[] = [];
+        let productWorkload: ProduzioneProductWorkload[] = [];
         if (produzioneCategory) {
             const produzionKanbans = allKanbans.filter(
                 (k) => k.category_id === produzioneCategory.id,
@@ -2902,24 +2912,70 @@ export const fetchProduzioneDashboardData = cache(
                 // Fetch tasks for all production kanbans (with deliveryDate for ritardo)
                 const { data: prodTasks } = await supabase
                     .from("Task")
-                    .select("id, kanbanId, positions, deliveryDate, archived")
+                    .select(
+                        `
+                        id,
+                        kanbanId,
+                        positions,
+                        numero_pezzi,
+                        deliveryDate,
+                        archived,
+                        SellProduct:sellProductId(
+                            category:category_id(id, name, color)
+                        )
+                    `,
+                    )
                     .in("kanbanId", produzionKanbanIds)
                     .eq("archived", false);
 
                 const tasksPerKanban = new Map<number, { lavori: number; elementi: number; ritardo: number }>();
+                const productWorkloadMap = new Map<
+                    string,
+                    {
+                        categoryId?: number;
+                        color?: string;
+                        pratiche: number;
+                        elementi: number;
+                    }
+                >();
                 produzionKanbans.forEach((k) => {
                     tasksPerKanban.set(k.id, { lavori: 0, elementi: 0, ritardo: 0 });
                 });
 
                 (prodTasks || []).forEach((task: any) => {
+                    const elementiCount = task.positions?.length ||
+                        task.numero_pezzi || 1;
                     const stats = tasksPerKanban.get(task.kanbanId);
                     if (stats) {
                         stats.lavori++;
-                        stats.elementi += task.positions?.length || 1;
+                        stats.elementi += elementiCount;
                         if (task.deliveryDate && new Date(task.deliveryDate) < now) {
                             stats.ritardo++;
                         }
                     }
+
+                    const categoryName = task.SellProduct?.category?.name ||
+                        "Senza categoria";
+                    const categoryId = task.SellProduct?.category?.id;
+                    const categoryColor = task.SellProduct?.category?.color ||
+                        "#64748b";
+
+                    const current = productWorkloadMap.get(categoryName) || {
+                        categoryId,
+                        color: categoryColor,
+                        pratiche: 0,
+                        elementi: 0,
+                    };
+                    current.pratiche += 1;
+                    current.elementi += elementiCount;
+                    if (!current.categoryId && categoryId) {
+                        current.categoryId = categoryId;
+                    }
+                    if ((!current.color || current.color === "#64748b") &&
+                        categoryColor) {
+                        current.color = categoryColor;
+                    }
+                    productWorkloadMap.set(categoryName, current);
                 });
 
                 kanbanStatus = produzionKanbans.map((k) => {
@@ -2935,6 +2991,18 @@ export const fetchProduzioneDashboardData = cache(
                         ritardo: stats.ritardo,
                     };
                 });
+
+                productWorkload = Array.from(productWorkloadMap.entries())
+                    .map(([category, stats]) => ({
+                        category,
+                        categoryId: stats.categoryId,
+                        color: stats.color || "#64748b",
+                        pratiche: stats.pratiche,
+                        elementi: stats.elementi,
+                    }))
+                    .sort((a, b) =>
+                        b.pratiche - a.pratiche || b.elementi - a.elementi
+                    );
             }
         }
 
@@ -2953,6 +3021,7 @@ export const fetchProduzioneDashboardData = cache(
         if (productionKanbans.length === 0) {
             return {
                 kanbanStatus,
+                productWorkload,
                 hasProduzionCategory,
                 repartoData: [],
                 weeklyTrend: [],
@@ -3052,6 +3121,7 @@ export const fetchProduzioneDashboardData = cache(
 
         return {
             kanbanStatus,
+            productWorkload,
             hasProduzionCategory,
             repartoData,
             weeklyTrend,

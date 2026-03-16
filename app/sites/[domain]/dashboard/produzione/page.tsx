@@ -7,7 +7,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import {
-  CaricoRepartoChart,
+  ProduzioneProductWorkloadChart,
   ProduzioneStatusCards,
 } from "@/components/dashboard/produzione";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
@@ -84,11 +84,10 @@ export default async function ProduzioneDashboardPage({
             />
           )}
 
-          {/* Carico per reparto */}
-          {dashboardData.hasProduzionCategory && dashboardData.kanbanStatus.length > 0 && (
-            <CaricoRepartoChart
-              data={dashboardData.kanbanStatus}
-              domain={domain}
+          {/* Carico per tipologia prodotto */}
+          {dashboardData.hasProduzionCategory && (
+            <ProduzioneProductWorkloadChart
+              data={dashboardData.productWorkload}
             />
           )}
         </div>
