@@ -27,6 +27,21 @@ export interface OrganizationAccess {
     canManageOrganization: boolean;
 }
 
+function isRetryableAuthNetworkError(error: any): boolean {
+    if (!error) return false;
+
+    const message = String(error.message || "").toLowerCase();
+    const name = String(error.name || "").toLowerCase();
+    const status = Number(error.status || 0);
+
+    return (
+        name.includes("authretryablefetcherror") ||
+        message.includes("fetch failed") ||
+        message.includes("network") ||
+        status === 0
+    );
+}
+
 /**
  * Internal function to fetch user context
  * OPTIMIZED: Uses Promise.all to run queries in parallel instead of sequential
@@ -42,9 +57,33 @@ async function fetchUserContext(): Promise<UserContext | null> {
         let impersonatedUser: any = undefined;
 
         const supabase = await createClient();
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const {
+            data: { user },
+            error,
+        } = await supabase.auth.getUser();
+        let resolvedUser = user;
 
-        if (error) {
+        if (
+            !resolvedUser &&
+            process.env.NODE_ENV === "development" &&
+            isRetryableAuthNetworkError(error)
+        ) {
+            const {
+                data: { session },
+                error: sessionError,
+            } = await supabase.auth.getSession();
+
+            if (sessionError) {
+                logger.warn("Error getting fallback session from auth:", sessionError);
+            } else if (session?.user) {
+                resolvedUser = session.user;
+                logger.warn(
+                    "Using cookie session fallback in development because auth.getUser() is unreachable.",
+                );
+            }
+        }
+
+        if (error && !resolvedUser) {
             // AuthSessionMissingError is expected when user is not logged in
             // Only log unexpected errors
             if (error.name !== "AuthSessionMissingError") {
@@ -53,7 +92,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
             return null;
         }
 
-        if (impersonationCookie && user) {
+        if (impersonationCookie && resolvedUser) {
             try {
                 const { originalId, targetId } = JSON.parse(
                     impersonationCookie.value,
@@ -69,12 +108,12 @@ async function fetchUserContext(): Promise<UserContext | null> {
             }
         }
 
-        if (!user && !userIdToFetch) {
+        if (!resolvedUser && !userIdToFetch) {
             return null;
         }
 
         // If impersonating, fetch the impersonated user's info
-        let userToUse = user;
+        let userToUse = resolvedUser;
         if (userIdToFetch) {
             try {
                 const { data: impersonatedUserData, error: impErr } =

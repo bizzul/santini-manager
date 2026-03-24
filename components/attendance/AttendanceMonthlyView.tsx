@@ -35,8 +35,9 @@ export function AttendanceMonthlyView({
         const date = new Date(year, month - 1, day);
         const dayOfWeek = date.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isSunday = dayOfWeek === 0;
         const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        return { day, date, isWeekend, dateStr, isToday: dateStr === todayStr };
+        return { day, date, isWeekend, isSunday, dateStr, isToday: dateStr === todayStr };
     });
 
     return (
@@ -89,13 +90,14 @@ export function AttendanceMonthlyView({
                                         </span>
                                     </div>
                                 </td>
-                                {days.map(({ day, date, isWeekend, dateStr, isToday }) => (
+                                {days.map(({ day, date, isWeekend, isSunday, dateStr, isToday }) => (
                                     <td key={day} className="px-0.5 py-1.5 text-center">
                                         <div className="flex justify-center">
                                             <AttendanceDayCell
                                                 date={date}
                                                 entry={userAttendance[dateStr]}
                                                 isWeekend={isWeekend}
+                                                isSunday={isSunday}
                                                 isToday={isToday}
                                                 isAdmin={isAdmin}
                                                 size="md"

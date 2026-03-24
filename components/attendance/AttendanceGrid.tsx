@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, Calendar, LayoutGrid } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, Rows3 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AttendanceMonthlyView } from "./AttendanceMonthlyView";
 import { AttendanceAnnualView } from "./AttendanceAnnualView";
@@ -26,10 +26,16 @@ import {
     AttendanceUser,
     LeaveRequest,
 } from "./attendance-types";
+import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
+import {
+    buildAttendanceCalendarItems,
+    buildTimetrackingCalendarItems,
+} from "@/components/calendar/calendar-utils";
 
 interface AttendanceGridProps {
     domain: string;
     isAdmin: boolean;
+    currentUserId?: string;
 }
 
 const MONTH_NAMES = [
@@ -52,15 +58,15 @@ async function fetchLeaveRequests(domain: string) {
     return response.json();
 }
 
-export function AttendanceGrid({ domain, isAdmin }: AttendanceGridProps) {
+export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGridProps) {
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth() + 1);
-    const [view, setView] = useState<"monthly" | "annual">("monthly");
+    const [view, setView] = useState<"weekly" | "monthly" | "annual">("weekly");
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
-    const queryMonth = view === "monthly" ? month : null;
+    const queryMonth = view === "annual" ? null : month;
 
     const { data: attendanceData, isLoading: loadingAttendance } = useQuery({
         queryKey: ["attendance", domain, year, queryMonth],
@@ -173,7 +179,38 @@ export function AttendanceGrid({ domain, isAdmin }: AttendanceGridProps) {
     const users: AttendanceUser[] = attendanceData?.users || [];
     const attendance: Record<string, Record<string, AttendanceEntry>> =
         attendanceData?.attendance || {};
+    const timetrackingEntries = attendanceData?.timetrackingEntries || [];
     const leaveRequests: LeaveRequest[] = leaveData?.requests || [];
+
+    const weeklyItems = useMemo(() => {
+        const attendanceItems = buildAttendanceCalendarItems(
+            users.flatMap((user) =>
+                Object.entries(attendance[user.id] || {}).flatMap(([date, entry]) => {
+                    if (entry.status === "presente" && entry.autoDetected) {
+                        return [];
+                    }
+
+                    return [
+                        {
+                            userId: user.id,
+                            userName: user.name,
+                            userPicture: user.picture,
+                            status: entry.status,
+                            date,
+                            notes: entry.notes,
+                        },
+                    ];
+                })
+            )
+        );
+
+        const hoursItems = buildTimetrackingCalendarItems(
+            timetrackingEntries,
+            domain
+        );
+
+        return [...attendanceItems, ...hoursItems];
+    }, [attendance, domain, timetrackingEntries, users]);
 
     const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
@@ -182,7 +219,7 @@ export function AttendanceGrid({ domain, isAdmin }: AttendanceGridProps) {
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                    {view === "monthly" && (
+                    {view !== "annual" && (
                         <>
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevMonth}>
                                 <ChevronLeft className="h-4 w-4" />
@@ -219,8 +256,17 @@ export function AttendanceGrid({ domain, isAdmin }: AttendanceGridProps) {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Tabs value={view} onValueChange={(v) => setView(v as "monthly" | "annual")}>
+                    <Tabs
+                        value={view}
+                        onValueChange={(v) =>
+                            setView(v as "weekly" | "monthly" | "annual")
+                        }
+                    >
                         <TabsList className="h-8">
+                            <TabsTrigger value="weekly" className="text-xs h-7 gap-1.5 px-3">
+                                <Rows3 className="h-3.5 w-3.5" />
+                                Settimanale
+                            </TabsTrigger>
                             <TabsTrigger value="monthly" className="text-xs h-7 gap-1.5 px-3">
                                 <Calendar className="h-3.5 w-3.5" />
                                 Mensile
@@ -264,6 +310,21 @@ export function AttendanceGrid({ domain, isAdmin }: AttendanceGridProps) {
                                 Nessun dipendente trovato per questo sito
                             </p>
                         </div>
+                    ) : view === "weekly" ? (
+                        <WeeklyCalendarView
+                            items={weeklyItems}
+                            mode={isAdmin ? "admin" : "personal"}
+                            currentUserId={currentUserId}
+                            targetConfig={
+                                isAdmin
+                                    ? undefined
+                                    : { weekdayMinutes: 540, fridayMinutes: 360 }
+                            }
+                            title="Planner presenze e ore"
+                            description="Vista settimanale unificata tra presenze, assenze e ore registrate."
+                            emptyStateTitle="Nessuna presenza o registrazione trovata"
+                            emptyStateDescription="Cambia periodo o aggiorna i filtri per analizzare la settimana."
+                        />
                     ) : view === "monthly" ? (
                         <AttendanceMonthlyView
                             year={year}

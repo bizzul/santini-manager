@@ -576,7 +576,7 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
                     size="sm"
                     className="h-6 w-6 p-0"
                     onClick={() => {
-                      window.location.href = `/sites/${currentDomain}/projects/${projectId}/consuntivo`;
+                      window.location.href = `/sites/${currentDomain}/progetti/${projectId}`;
                     }}
                   >
                     <Settings className="h-4 w-4 text-primary" />

@@ -25,8 +25,10 @@ import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { logger } from "@/lib/logger";
+import { getProjectLabel } from "@/lib/project-label";
 import {
   Clock,
+  Calendar,
   Plus,
   Trash2,
   Save,
@@ -44,6 +46,8 @@ import {
 import { MyHoursList } from "./my-hours-list";
 import { VoiceInputButton } from "./VoiceInputButton";
 import { LeaveRequestForm } from "@/components/attendance/LeaveRequestForm";
+import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
+import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
 
 // Internal activity type from database
 export interface InternalActivity {
@@ -64,8 +68,11 @@ interface Task {
   id: number;
   unique_code?: string;
   title?: string;
+  name?: string;
   client?: {
     businessName?: string;
+    individualFirstName?: string;
+    individualLastName?: string;
   };
 }
 
@@ -87,11 +94,17 @@ interface TodayEntry {
     name?: string;
   }[];
   created_at: string;
+  start_time?: string;
+  end_time?: string;
+  task_id?: number;
 }
 
 // Extended type for all user entries (includes additional fields)
 interface AllUserEntry extends TodayEntry {
   description_type?: string;
+  start_time?: string;
+  end_time?: string;
+  task_id?: number;
 }
 
 interface Session {
@@ -266,6 +279,30 @@ const CreatePage = ({
 
   const [rows, setRows] = useState<TimeRow[]>([createEmptyRow()]);
 
+  const currentUserDisplayName =
+    session.user.user_metadata?.full_name ||
+    session.user.user_metadata?.name ||
+    [session.user.given_name, session.user.family_name].filter(Boolean).join(" ") ||
+    session.user.email ||
+    "Collaboratore";
+
+  const calendarItems = buildTimetrackingCalendarItems(
+    allUserEntries.map((entry) => ({
+      ...entry,
+      user: {
+        authId: session.user.id,
+        given_name:
+          session.user.given_name || session.user.user_metadata?.name || undefined,
+        family_name:
+          session.user.family_name ||
+          session.user.user_metadata?.full_name?.split(" ").slice(1).join(" ") ||
+          undefined,
+      },
+    })),
+    domain || "",
+    activityLabels
+  );
+
   // Load from localStorage on mount
   useEffect(() => {
     const storedData = localStorage.getItem(`timetracking-${session.user.id}`);
@@ -342,9 +379,7 @@ const CreatePage = ({
     const selectedTask = data.tasks.find((t) => t.id.toString() === value);
     if (selectedTask) {
       const updatedRows = [...rows];
-      const taskLabel = [selectedTask.unique_code, selectedTask.title || selectedTask.client?.businessName]
-        .filter(Boolean)
-        .join(" - ") || selectedTask.unique_code || "";
+      const taskLabel = getProjectLabel(selectedTask);
       updatedRows[index] = {
         ...updatedRows[index],
         task: selectedTask.unique_code || "",
@@ -634,7 +669,7 @@ const CreatePage = ({
       <div className="max-w-4xl mx-auto px-4 pt-4">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
-            <TabsList className={`grid flex-1 ${isAttendanceModuleEnabled ? "grid-cols-3" : "grid-cols-2"}`}>
+            <TabsList className={`grid flex-1 ${isAttendanceModuleEnabled ? "grid-cols-4" : "grid-cols-3"}`}>
               <TabsTrigger value="create" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Registra ore
@@ -647,6 +682,10 @@ const CreatePage = ({
                     {allUserEntries.length}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="week-calendar" className="gap-2">
+                <Calendar className="h-4 w-4" />
+                Settimana
               </TabsTrigger>
               {isAttendanceModuleEnabled && (
                 <TabsTrigger value="leave-request" className="gap-2">
@@ -935,9 +974,7 @@ const CreatePage = ({
                           placeholder="Seleziona progetto..."
                           options={data.tasks.map((t) => ({
                             value: t.id.toString(),
-                            label: [t.unique_code, t.title || t.client?.businessName]
-                              .filter(Boolean)
-                              .join(" - ") || t.unique_code || "",
+                            label: getProjectLabel(t),
                           }))}
                         />
                       </div>
@@ -1174,6 +1211,19 @@ const CreatePage = ({
           entries={allUserEntries}
           internalActivities={internalActivities}
           onDelete={handleDeleteEntries}
+        />
+      </TabsContent>
+
+      <TabsContent value="week-calendar" className="mt-4">
+        <WeeklyCalendarView
+          items={calendarItems}
+          mode="personal"
+          currentUserId={session.user.id}
+          targetConfig={{ weekdayMinutes: 540, fridayMinutes: 360 }}
+          title="Planner ore settimanale"
+          description={`Vista personale di ${currentUserDisplayName} con slot orari, riepiloghi giornalieri e totale per progetto.`}
+          emptyStateTitle="Nessuna registrazione nella settimana selezionata"
+          emptyStateDescription="Registra le ore o spostati su un'altra settimana per vedere la griglia popolata."
         />
       </TabsContent>
 

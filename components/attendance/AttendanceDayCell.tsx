@@ -25,6 +25,7 @@ interface AttendanceDayCellProps {
     date: Date;
     entry?: AttendanceEntry;
     isWeekend: boolean;
+    isSunday: boolean;
     isToday: boolean;
     isAdmin: boolean;
     size?: "sm" | "md";
@@ -35,6 +36,7 @@ export function AttendanceDayCell({
     date,
     entry,
     isWeekend,
+    isSunday,
     isToday,
     isAdmin,
     size = "md",
@@ -44,12 +46,19 @@ export function AttendanceDayCell({
 
     const statusKey = isWeekend ? "weekend" : entry?.status;
     const config = statusKey ? STATUS_CONFIG[statusKey] : null;
+    const displayLabel = isSunday
+        ? "Festivo"
+        : entry
+        ? STATUS_CONFIG[entry.status].label
+        : null;
 
     const sizeClasses = size === "sm" ? "w-3 h-3" : "w-6 h-6";
-    const tooltipText = isWeekend
+    const tooltipText = isSunday
+        ? `${format(date, "EEEE d MMMM", { locale: it })}\nFestivo`
+        : isWeekend
         ? format(date, "EEEE d MMMM", { locale: it })
         : entry
-        ? `${format(date, "EEEE d MMMM", { locale: it })}\n${STATUS_CONFIG[entry.status].label}${entry.notes ? `\n${entry.notes}` : ""}${entry.autoDetected ? " (auto)" : ""}`
+        ? `${format(date, "EEEE d MMMM", { locale: it })}\n${displayLabel}${entry.notes ? `\n${entry.notes}` : ""}${entry.autoDetected ? " (auto)" : ""}`
         : format(date, "EEEE d MMMM", { locale: it });
 
     const cellContent = (

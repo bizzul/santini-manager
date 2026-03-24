@@ -16,6 +16,15 @@ export type TaskWithKanban = Task & {
   Kanban?: Pick<Kanban, "id" | "color" | "title" | "identifier" | "is_production_kanban"> & {
     category?: KanbanCategory | null;
   } | null;
+  Client?: {
+    businessName?: string | null;
+    individualFirstName?: string | null;
+    individualLastName?: string | null;
+  } | null;
+  column?: {
+    title?: string | null;
+    identifier?: string | null;
+  } | null;
 };
 
 async function getData(siteId: string): Promise<TaskWithKanban[]> {
@@ -74,7 +83,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   // Include SellProduct with category for colors/icons per product type
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
-    .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
+    .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color)), Client:clientId(businessName, individualFirstName, individualLastName), column:KanbanColumn!kanbanColumnId(title, identifier)")
     .eq("site_id", siteId)
     .eq("archived", false)
     .in("kanbanId", productionKanbanIds);
@@ -94,7 +103,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     // Also try with kanban_id field (alternative column name)
     const { data: tasksAlt, error: tasksAltError } = await supabase
       .from("Task")
-      .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
+      .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color)), Client:clientId(businessName, individualFirstName, individualLastName), column:KanbanColumn!kanbanColumnId(title, identifier)")
       .eq("site_id", siteId)
       .eq("archived", false)
       .in("kanban_id", productionKanbanIds);

@@ -16,6 +16,15 @@ export type TaskWithKanban = Task & {
   Kanban?: Pick<Kanban, "id" | "color" | "title" | "identifier" | "is_production_kanban"> & {
     category?: KanbanCategory | null;
   } | null;
+  Client?: {
+    businessName?: string | null;
+    individualFirstName?: string | null;
+    individualLastName?: string | null;
+  } | null;
+  column?: {
+    title?: string | null;
+    identifier?: string | null;
+  } | null;
 };
 
 async function getData(siteId: string): Promise<TaskWithKanban[]> {
@@ -24,7 +33,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   // Fetch tasks with delivery dates
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
-    .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color))")
+    .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color)), Client:clientId(businessName, individualFirstName, individualLastName), column:KanbanColumn!kanbanColumnId(title, identifier)")
     .eq("site_id", siteId)
     .eq("archived", false)
     .not("deliveryDate", "is", null);

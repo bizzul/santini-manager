@@ -76,7 +76,7 @@ export const STATUS_CONFIG: Record<
         textClass: "text-orange-700 dark:text-orange-400",
     },
     smart_working: {
-        label: "Smart Working",
+        label: "Festivo",
         color: "#06b6d4",
         bgClass: "bg-cyan-500",
         textClass: "text-cyan-700 dark:text-cyan-400",

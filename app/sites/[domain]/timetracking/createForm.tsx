@@ -34,6 +34,7 @@ import { logger } from "@/lib/logger";
 import { Briefcase, Wrench } from "lucide-react";
 import { InternalActivity } from "./dialogCreate";
 import { formatLocalDate } from "@/lib/utils";
+import { getProjectLabel } from "@/lib/project-label";
 
 const CreateProductForm = ({
   handleClose,
@@ -292,9 +293,7 @@ const CreateProductForm = ({
                       disabled={isSubmitting}
                       options={data.map((t: any) => ({
                         value: t.id.toString(),
-                        label: [t.unique_code, t.title || t.client?.businessName]
-                          .filter(Boolean)
-                          .join(" - ") || t.unique_code || "",
+                        label: getProjectLabel(t),
                       }))}
                       placeholder="Seleziona progetto..."
                     />

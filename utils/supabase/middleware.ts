@@ -9,6 +9,21 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ||
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.STORAGE_NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+function isRetryableAuthNetworkError(error: any): boolean {
+  if (!error) return false;
+
+  const message = String(error.message || "").toLowerCase();
+  const name = String(error.name || "").toLowerCase();
+  const status = Number(error.status || 0);
+
+  return (
+    name.includes("authretryablefetcherror") ||
+    message.includes("fetch failed") ||
+    message.includes("network") ||
+    status === 0
+  );
+}
+
 export async function updateSession(request: NextRequest) {
   // OPTIMIZATION: Check if route is public BEFORE making any auth calls
   // This prevents unnecessary token refresh requests that cause 429 errors
@@ -75,6 +90,27 @@ export async function updateSession(request: NextRequest) {
     data: { user },
     error,
   } = await supabase.auth.getUser();
+  let resolvedUser = user;
+
+  if (
+    !resolvedUser &&
+    process.env.NODE_ENV === "development" &&
+    isRetryableAuthNetworkError(error)
+  ) {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      console.error("[Middleware] Fallback session error:", sessionError.message);
+    } else if (session?.user) {
+      resolvedUser = session.user;
+      console.warn(
+        "[Middleware] Using cookie session fallback in development because auth.getUser() is unreachable.",
+      );
+    }
+  }
 
   // Handle auth errors - but don't redirect, just log and continue
   // This allows the page to handle unauthorized state
@@ -84,7 +120,7 @@ export async function updateSession(request: NextRequest) {
     // The page will handle the redirect if needed
   }
 
-  if (!user && !isPublic) {
+  if (!resolvedUser && !isPublic) {
     // Log for debugging
     console.log("[Middleware] No user found, redirecting to login. Path:", pathname);
     console.log("[Middleware] Cookies present:", request.cookies.getAll().map(c => c.name).join(", "));
@@ -106,7 +142,7 @@ export async function updateSession(request: NextRequest) {
   
   // Log successful auth for debugging site access issues
   if (pathname.includes("/sites/")) {
-    console.log("[Middleware] User authenticated for site path:", pathname, "userId:", user?.id);
+    console.log("[Middleware] User authenticated for site path:", pathname, "userId:", resolvedUser?.id);
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

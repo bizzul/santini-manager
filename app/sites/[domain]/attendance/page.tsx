@@ -39,7 +39,11 @@ export default async function AttendancePage({
                 </div>
             </div>
 
-            <AttendanceGrid domain={domain} isAdmin={isAdmin} />
+            <AttendanceGrid
+                domain={domain}
+                isAdmin={isAdmin}
+                currentUserId={userContext.user.id}
+            />
         </div>
     );
 }

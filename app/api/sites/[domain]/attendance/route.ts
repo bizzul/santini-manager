@@ -53,7 +53,20 @@ export async function GET(
         // Fetch timetracking data to auto-detect "presente" days
         const { data: timetrackingData, error: ttError } = await supabase
             .from("Timetracking")
-            .select("employee_id, created_at, hours, minutes")
+            .select(`
+                id,
+                employee_id,
+                task_id,
+                start_time,
+                end_time,
+                hours,
+                minutes,
+                description,
+                activity_type,
+                internal_activity,
+                created_at,
+                task:task_id(unique_code, title, name, Client:clientId(businessName, individualFirstName, individualLastName))
+            `)
             .eq("site_id", siteId)
             .gte("created_at", `${startDate}T00:00:00`)
             .lte("created_at", `${endDate}T23:59:59`);
@@ -161,6 +174,7 @@ export async function GET(
         }
 
         const userIds = profiles.map((user) => user.id);
+        const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));
 
         // Merge: manual entries take priority over auto-detected
         const attendance: Record<string, Record<string, { status: string; notes: string | null; autoDetected: boolean }>> = {};
@@ -191,9 +205,35 @@ export async function GET(
             }
         }
 
+        const timetrackingEntries = (timetrackingData || [])
+            .map((entry) => {
+                const authId = employeeToAuthMap[entry.employee_id];
+                if (!authId) return null;
+                const profile = profilesById.get(authId);
+                return {
+                    id: entry.id,
+                    userId: authId,
+                    userName: profile?.name || "Collaboratore",
+                    userPicture: profile?.picture || null,
+                    employeeId: entry.employee_id,
+                    task_id: entry.task_id,
+                    start_time: entry.start_time,
+                    end_time: entry.end_time,
+                    hours: entry.hours,
+                    minutes: entry.minutes,
+                    description: entry.description,
+                    activity_type: entry.activity_type,
+                    internal_activity: entry.internal_activity,
+                    created_at: entry.created_at,
+                    task: entry.task,
+                };
+            })
+            .filter(Boolean);
+
         return NextResponse.json({
             attendance,
             users: profiles,
+            timetrackingEntries,
             year,
             month,
         });

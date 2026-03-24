@@ -20,8 +20,12 @@ interface Roles {
 interface Task {
   id: number;
   unique_code?: string;
+  title?: string;
+  name?: string;
   client?: {
     businessName?: string;
+    individualFirstName?: string;
+    individualLastName?: string;
   };
 }
 
@@ -35,6 +39,8 @@ interface TodayEntry {
   internal_activity?: string;
   task?: {
     unique_code?: string;
+    title?: string;
+    name?: string;
     client?: {
       businessName?: string;
     };
@@ -43,6 +49,9 @@ interface TodayEntry {
     name?: string;
   }[];
   created_at: string;
+  start_time?: string;
+  end_time?: string;
+  task_id?: number;
 }
 
 // Type for all user entries (extended from TodayEntry)
@@ -64,7 +73,7 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
   // Filter tasks by site_id
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
-    .select("*, client:Client(businessName)")
+    .select("*, client:Client(businessName, individualFirstName, individualLastName)")
     .eq("site_id", siteId)
     .order("unique_code", { ascending: false });
 
@@ -139,14 +148,17 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       .select(
         `
         id,
+        task_id,
         hours,
         minutes,
         totalTime,
         description,
         activity_type,
         internal_activity,
+        start_time,
+        end_time,
         created_at,
-        task:task_id(unique_code, client:Client(businessName)),
+        task:task_id(unique_code, title, name, client:Client(businessName)),
         roles:_RolesToTimetracking(role:Roles(name))
       `
       )
@@ -169,6 +181,9 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
         description: entry.description,
         activity_type: entry.activity_type,
         internal_activity: entry.internal_activity,
+        start_time: entry.start_time,
+        end_time: entry.end_time,
+        task_id: entry.task_id,
         created_at: entry.created_at,
         task: entry.task,
         roles: entry.roles?.map((r: any) => r.role) || [],
@@ -181,6 +196,7 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
       .select(
         `
         id,
+        task_id,
         hours,
         minutes,
         totalTime,
@@ -188,8 +204,10 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
         description_type,
         activity_type,
         internal_activity,
+        start_time,
+        end_time,
         created_at,
-        task:task_id(unique_code, client:Client(businessName)),
+        task:task_id(unique_code, title, name, client:Client(businessName)),
         roles:_RolesToTimetracking(role:Roles(id, name))
       `
       )
@@ -211,6 +229,9 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
         description_type: entry.description_type,
         activity_type: entry.activity_type,
         internal_activity: entry.internal_activity,
+        start_time: entry.start_time,
+        end_time: entry.end_time,
+        task_id: entry.task_id,
         created_at: entry.created_at,
         task: entry.task,
         roles: entry.roles?.map((r: any) => r.role) || [],
@@ -221,8 +242,14 @@ async function getData(siteId: string, userId: string): Promise<Datas> {
   const transformedTasks: Task[] = (tasks || []).map((task: any) => ({
     id: task.id,
     unique_code: task.unique_code || undefined,
+    title: task.title || undefined,
+    name: task.name || undefined,
     client: task.client
-      ? { businessName: task.client.businessName }
+      ? {
+          businessName: task.client.businessName,
+          individualFirstName: task.client.individualFirstName,
+          individualLastName: task.client.individualLastName,
+        }
       : undefined,
   }));
 

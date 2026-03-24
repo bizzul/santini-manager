@@ -4,6 +4,10 @@ import React, { useMemo } from "react";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { Timetracking, User, Roles, Task } from "@/types/supabase";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, TableProperties } from "lucide-react";
+import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
+import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
 
 interface InternalActivity {
   id: string;
@@ -20,20 +24,70 @@ interface DataWrapperProps {
   tasks: Task[];
   domain?: string;
   internalActivities?: InternalActivity[];
+  mode?: "personal" | "admin";
+  currentUserId?: string;
 }
 
-const DataWrapper = ({ data, users, roles, tasks, domain, internalActivities = [] }: DataWrapperProps) => {
+const DataWrapper = ({
+  data,
+  users,
+  roles,
+  tasks,
+  domain,
+  internalActivities = [],
+  mode = "admin",
+  currentUserId,
+}: DataWrapperProps) => {
   const columns = useMemo(() => createColumns(domain, internalActivities), [domain, internalActivities]);
+  const activityLabels = useMemo(
+    () => new Map(internalActivities.map((activity) => [activity.code, activity.label])),
+    [internalActivities]
+  );
+  const calendarItems = useMemo(
+    () => buildTimetrackingCalendarItems(data as any[], domain || "", activityLabels),
+    [activityLabels, data, domain]
+  );
   
   return (
     <div className="container mx-auto ">
-      <DataTable
-        columns={columns}
-        data={data}
-        users={users}
-        roles={roles}
-        tasks={tasks}
-      />
+      <Tabs defaultValue="week" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="week" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Settimana operativa
+          </TabsTrigger>
+          <TabsTrigger value="table" className="gap-2">
+            <TableProperties className="h-4 w-4" />
+            Tabella
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="week" className="mt-0">
+          <WeeklyCalendarView
+            items={calendarItems}
+            mode={mode}
+            currentUserId={currentUserId}
+            targetConfig={
+              mode === "personal"
+                ? { weekdayMinutes: 540, fridayMinutes: 360 }
+                : undefined
+            }
+            title="Calendario ore e consuntivi"
+            description="Vista unificata amministrativa e personale con slot orari, filtri, conflitti e riepiloghi."
+            emptyStateTitle="Nessuna registrazione ore nella settimana selezionata"
+          />
+        </TabsContent>
+
+        <TabsContent value="table" className="mt-0">
+          <DataTable
+            columns={columns}
+            data={data}
+            users={users}
+            roles={roles}
+            tasks={tasks}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

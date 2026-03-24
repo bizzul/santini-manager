@@ -27,6 +27,7 @@ import { Roles, Task, User, Timetracking } from "@/types/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useParams } from "next/navigation";
 import { logger } from "@/lib/logger";
+import { getProjectLabel } from "@/lib/project-label";
 
 interface RoleEntry {
   role: {
@@ -382,7 +383,7 @@ const EditForm = ({
                       Array.isArray(tasks)
                         ? tasks.map((t: Task) => ({
                             value: t.id.toString(),
-                            label: t.unique_code!,
+                            label: getProjectLabel(t),
                           }))
                         : []
                     }

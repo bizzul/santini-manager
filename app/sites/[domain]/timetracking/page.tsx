@@ -57,6 +57,8 @@ export default async function Page({
           tasks={data.tasks}
           domain={domain}
           internalActivities={data.internalActivities}
+          mode={isRegularUser ? "personal" : "admin"}
+          currentUserId={userContext.user.id}
         />
       ) : (
         <div className="w-full h-full text-center">

@@ -40,8 +40,9 @@ export function AttendanceAnnualView({
             const date = new Date(year, m, day);
             const dayOfWeek = date.getDay();
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isSunday = dayOfWeek === 0;
             const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-            return { day, date, isWeekend, dateStr, isToday: dateStr === todayStr };
+            return { day, date, isWeekend, isSunday, dateStr, isToday: dateStr === todayStr };
         });
         return { month, name: MONTH_NAMES[m], days };
     });
@@ -76,12 +77,13 @@ export function AttendanceAnnualView({
                                             {name}
                                         </p>
                                         <div className="flex flex-wrap gap-[2px]">
-                                            {days.map(({ day, date, isWeekend, dateStr, isToday }) => (
+                                            {days.map(({ day, date, isWeekend, isSunday, dateStr, isToday }) => (
                                                 <AttendanceDayCell
                                                     key={day}
                                                     date={date}
                                                     entry={userAttendance[dateStr]}
                                                     isWeekend={isWeekend}
+                                                    isSunday={isSunday}
                                                     isToday={isToday}
                                                     isAdmin={isAdmin}
                                                     size="sm"
