@@ -1,11 +1,12 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getUserContext } from "@/lib/auth-utils";
+import { Button } from "@/components/ui/button";
 import {
   requireServerSiteContext,
   fetchTimetrackingData,
 } from "@/lib/server-data";
-import DialogCreate from "./dialogCreate";
 import DataWrapper from "./dataWrapper";
 
 export default async function Page({
@@ -43,12 +44,11 @@ export default async function Page({
 
   return (
     <div className="container">
-      <DialogCreate
-        data={data.tasks}
-        users={data.users}
-        roles={data.roles}
-        internalActivities={data.internalActivities}
-      />
+      <div className="flex justify-end pt-12">
+        <Button asChild>
+          <Link href={`/sites/${domain}/timetracking/create`}>Apri consuntivi</Link>
+        </Button>
+      </div>
       {filteredTimetrackings.length > 0 ? (
         <DataWrapper
           data={filteredTimetrackings}
@@ -65,7 +65,7 @@ export default async function Page({
           <h1 className="font-bold text-2xl">
             Nessun rapporto ore registrato!
           </h1>
-          <p>Premi (Aggiungi rapporto) per aggiungere il tuo primo rapporto!</p>
+          <p>Apri i consuntivi per inserire il tuo primo rapporto ore.</p>
         </div>
       )}
     </div>

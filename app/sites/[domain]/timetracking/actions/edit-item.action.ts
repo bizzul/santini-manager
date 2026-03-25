@@ -31,7 +31,52 @@ export async function editItem(props: any, id: number, domain?: string) {
 
   if (result.success) {
     try {
+      if (!session?.user?.id) {
+        return { message: "Utente non autenticato" };
+      }
+
       const supabase = await createClient();
+      const isAdminOrSuperadmin =
+        session?.role === "admin" || session?.role === "superadmin";
+      const { data: currentUserRecord, error: currentUserError } = await supabase
+        .from("User")
+        .select("id")
+        .eq("authId", session.user.id)
+        .maybeSingle();
+
+      if (currentUserError) {
+        console.error("Error fetching current user for edit:", currentUserError);
+        return { message: "Utente non autorizzato" };
+      }
+
+      const currentEmployeeId = currentUserRecord?.id ?? null;
+      const { data: existingEntry, error: existingEntryError } = await supabase
+        .from("Timetracking")
+        .select("id, employee_id")
+        .eq("id", id)
+        .maybeSingle();
+
+      if (existingEntryError) {
+        console.error("Error fetching timetracking entry for edit:", existingEntryError);
+        return { message: "Impossibile verificare il consuntivo da modificare" };
+      }
+
+      if (!existingEntry) {
+        return { message: "Consuntivo non trovato" };
+      }
+
+      if (!isAdminOrSuperadmin && existingEntry.employee_id !== currentEmployeeId) {
+        return { message: "Non puoi modificare le ore di un altro collaboratore" };
+      }
+
+      if (
+        !isAdminOrSuperadmin &&
+        result.data.userId != null &&
+        Number(result.data.userId) !== currentEmployeeId
+      ) {
+        return { message: "Non puoi riassegnare il consuntivo a un altro collaboratore" };
+      }
+
       const totalTimeInHours = result.data.hours + result.data.minutes / 60;
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
 

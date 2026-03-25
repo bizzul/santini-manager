@@ -666,7 +666,12 @@ const CreatePage = ({
   return (
     <div className="min-h-screen pb-24">
       {/* Tabs Navigation */}
-      <div className="max-w-4xl mx-auto px-4 pt-4">
+      <div
+        className={`
+          mx-auto px-4 pt-4
+          ${activeTab === "week-calendar" ? "max-w-[1600px]" : "max-w-4xl"}
+        `}
+      >
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
             <TabsList className={`grid flex-1 ${isAttendanceModuleEnabled ? "grid-cols-4" : "grid-cols-3"}`}>
@@ -1219,6 +1224,11 @@ const CreatePage = ({
           items={calendarItems}
           mode="personal"
           currentUserId={session.user.id}
+          slotStartHour={7}
+          slotEndHour={17}
+          showFiltersBar={false}
+          compactSummaryPanel
+          collapsibleSummaryPanel
           targetConfig={{ weekdayMinutes: 540, fridayMinutes: 360 }}
           title="Planner ore settimanale"
           description={`Vista personale di ${currentUserDisplayName} con slot orari, riepiloghi giornalieri e totale per progetto.`}

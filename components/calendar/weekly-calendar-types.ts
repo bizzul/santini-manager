@@ -1,3 +1,5 @@
+import type { Roles, Task, Timetracking, User } from "@/types/supabase";
+
 export type CalendarLinkType = "project" | "site";
 
 export type CalendarDataMode = "planned" | "actual" | "both";
@@ -36,6 +38,22 @@ export interface WeeklyCalendarItem {
   scheduleDisplay?: CalendarScheduleDisplay;
   notes?: string | null;
   metadata?: Record<string, string | number | boolean | null | undefined>;
+}
+
+export interface WeeklyCalendarTimetrackingEntry extends Timetracking {
+  roles?: Array<{
+    role?: {
+      id?: number;
+      name?: string;
+    };
+  }>;
+}
+
+export interface WeeklyCalendarTimetrackingEditConfig {
+  entries: WeeklyCalendarTimetrackingEntry[];
+  users: User[];
+  roles: Roles[];
+  tasks: Task[];
 }
 
 export interface CalendarFilterOption {

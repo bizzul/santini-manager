@@ -37,6 +37,7 @@ export const DEFAULT_SLOT_END_HOUR = 21;
 const FALLBACK_TASK_START_HOUR = 8;
 const FALLBACK_TASK_START_MINUTE = 0;
 const FALLBACK_TASK_DURATION_MINUTES = 180;
+const FALLBACK_TIMETRACKING_START_HOUR = 7;
 const FALLBACK_ATTENDANCE_START_HOUR = 8;
 const FALLBACK_ATTENDANCE_END_HOUR = 17;
 const MINUTES_PER_HOUR = 60;
@@ -93,6 +94,10 @@ type TimetrackingSource = {
   id: number;
   task_id?: number | null;
   employee_id?: number | null;
+  employeeId?: number | null;
+  userId?: string | number | null;
+  userName?: string | null;
+  userPicture?: string | null;
   start_time?: string | null;
   startTime?: string | null;
   end_time?: string | null;
@@ -255,6 +260,136 @@ function normalizeDurationHours(hours?: number | null, minutes?: number | null):
   return (hours || 0) + (minutes || 0) / MINUTES_PER_HOUR;
 }
 
+function getTimetrackingAssignedUser(entry: TimetrackingSource): CalendarAssignedUser | null {
+  const userId =
+    entry.user?.authId ||
+    entry.user?.id ||
+    entry.userId ||
+    entry.employeeId ||
+    entry.employee_id;
+  if (!userId) return null;
+
+  const userName =
+    entry.userName ||
+    [entry.user?.given_name, entry.user?.family_name].filter(Boolean).join(" ").trim();
+
+  return createAssignedUser(
+    String(userId),
+    userName || "Collaboratore",
+    entry.userPicture || entry.user?.picture || null
+  );
+}
+
+function getTimetrackingReferenceDate(entry: TimetrackingSource): Date | null {
+  return (
+    parseDateValue(entry.start_time || entry.startTime) ||
+    parseDateValue(entry.created_at) ||
+    null
+  );
+}
+
+type WorkdayTimeSlot = {
+  startMinutes: number;
+  endMinutes: number;
+};
+
+type CalendarTimeSegment = {
+  start: Date;
+  end: Date;
+  durationMinutes: number;
+};
+
+function getWorkdayTimeSlots(date: Date): WorkdayTimeSlot[] {
+  const dayOfWeek = date.getDay();
+
+  if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+    return [
+      { startMinutes: 7 * MINUTES_PER_HOUR, endMinutes: 12 * MINUTES_PER_HOUR },
+      { startMinutes: 13 * MINUTES_PER_HOUR, endMinutes: 17 * MINUTES_PER_HOUR },
+    ];
+  }
+
+  if (dayOfWeek === 5) {
+    return [{ startMinutes: 7 * MINUTES_PER_HOUR, endMinutes: 13 * MINUTES_PER_HOUR }];
+  }
+
+  return [
+    {
+      startMinutes: FALLBACK_ATTENDANCE_START_HOUR * MINUTES_PER_HOUR,
+      endMinutes: FALLBACK_ATTENDANCE_END_HOUR * MINUTES_PER_HOUR,
+    },
+  ];
+}
+
+function createDateAtDayMinutes(date: Date, totalMinutes: number): Date {
+  const hours = Math.floor(totalMinutes / MINUTES_PER_HOUR);
+  const minutes = totalMinutes % MINUTES_PER_HOUR;
+  return setMinutes(setHours(startOfDay(date), hours), minutes);
+}
+
+function getWorkdaySegments(date: Date): CalendarTimeSegment[] {
+  return getWorkdayTimeSlots(date).map((slot) => ({
+    start: createDateAtDayMinutes(date, slot.startMinutes),
+    end: createDateAtDayMinutes(date, slot.endMinutes),
+    durationMinutes: slot.endMinutes - slot.startMinutes,
+  }));
+}
+
+function splitDurationAcrossWorkday(
+  date: Date,
+  startMinutes: number,
+  durationMinutes: number
+): { segments: CalendarTimeSegment[]; nextCursorMinutes: number } {
+  const slots = getWorkdayTimeSlots(date);
+  const segments: CalendarTimeSegment[] = [];
+
+  let remainingMinutes = durationMinutes;
+  let cursorMinutes = startMinutes;
+  let slotIndex = 0;
+
+  while (remainingMinutes > 0) {
+    while (slotIndex < slots.length && cursorMinutes >= slots[slotIndex].endMinutes) {
+      slotIndex += 1;
+    }
+
+    if (slotIndex >= slots.length) {
+      segments.push({
+        start: createDateAtDayMinutes(date, cursorMinutes),
+        end: createDateAtDayMinutes(date, cursorMinutes + remainingMinutes),
+        durationMinutes: remainingMinutes,
+      });
+      cursorMinutes += remainingMinutes;
+      remainingMinutes = 0;
+      break;
+    }
+
+    const slot = slots[slotIndex];
+    if (cursorMinutes < slot.startMinutes) {
+      cursorMinutes = slot.startMinutes;
+    }
+
+    const availableMinutes = slot.endMinutes - cursorMinutes;
+    if (availableMinutes <= 0) {
+      slotIndex += 1;
+      continue;
+    }
+
+    const chunkMinutes = Math.min(remainingMinutes, availableMinutes);
+    segments.push({
+      start: createDateAtDayMinutes(date, cursorMinutes),
+      end: createDateAtDayMinutes(date, cursorMinutes + chunkMinutes),
+      durationMinutes: chunkMinutes,
+    });
+    cursorMinutes += chunkMinutes;
+    remainingMinutes -= chunkMinutes;
+  }
+
+  return {
+    segments,
+    nextCursorMinutes: cursorMinutes,
+  };
+}
+
 function getTaskAccentColor(task: ProjectTaskSource): string {
   if (task.is_draft || task.isDraft) return "#f59e0b";
   if (task.display_mode === "small_green" || task.displayMode === "small_green") {
@@ -364,80 +499,130 @@ export function buildTimetrackingCalendarItems(
 ): WeeklyCalendarItem[] {
   const items: WeeklyCalendarItem[] = [];
 
-  entries.forEach((entry) => {
-    const start =
-      parseDateValue(entry.start_time || entry.startTime) ||
-      parseDateValue(entry.created_at) ||
-      null;
+  const groupedEntries = new Map<
+    string,
+    Array<{
+      entry: TimetrackingSource;
+      referenceDate: Date;
+      durationMinutes: number;
+      sortTime: number;
+      orderIndex: number;
+    }>
+  >();
 
-    if (!start) {
+  entries.forEach((entry, orderIndex) => {
+    const referenceDate = getTimetrackingReferenceDate(entry);
+    if (!referenceDate) {
       return;
     }
 
-    const durationHours = normalizeDurationHours(entry.hours, entry.minutes);
-    const end =
-      parseDateValue(entry.end_time || entry.endTime) ||
-      addMinutesSafe(start, Math.max(durationHours * MINUTES_PER_HOUR, 30));
+    const explicitStart = parseDateValue(entry.start_time || entry.startTime);
+    const explicitEnd = parseDateValue(entry.end_time || entry.endTime);
+    const explicitDurationMinutes =
+      explicitStart && explicitEnd && isBefore(explicitStart, explicitEnd)
+        ? differenceInMinutes(explicitEnd, explicitStart)
+        : 0;
+    const durationMinutes = Math.max(
+      30,
+      explicitDurationMinutes ||
+        Math.round(normalizeDurationHours(entry.hours, entry.minutes) * MINUTES_PER_HOUR)
+    );
+    const assignedUserKey = String(
+      entry.user?.authId ||
+        entry.user?.id ||
+        entry.userId ||
+        entry.employeeId ||
+        entry.employee_id ||
+        "unknown"
+    );
+    const dayKey = format(referenceDate, "yyyy-MM-dd");
+    const groupKey = `${assignedUserKey}-${dayKey}`;
+    const group = groupedEntries.get(groupKey) || [];
 
-    const userName = [entry.user?.given_name, entry.user?.family_name]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    const assignedUser =
-      entry.user?.authId || entry.user?.id
-        ? createAssignedUser(
-            String(entry.user?.authId || entry.user?.id),
-            userName || "Collaboratore",
-            entry.user?.picture || null
-          )
-        : null;
+    group.push({
+      entry,
+      referenceDate,
+      durationMinutes,
+      sortTime:
+        parseDateValue(entry.created_at)?.getTime() ||
+        explicitStart?.getTime() ||
+        referenceDate.getTime(),
+      orderIndex,
+    });
 
-    const roleName =
-      entry.roles?.[0]?.role?.name ||
-      entry.roles?.[0]?.name ||
-      internalActivityLabels?.get(entry.internal_activity || "") ||
-      entry.internal_activity ||
-      "Consuntivo";
+    groupedEntries.set(groupKey, group);
+  });
 
-    const projectName =
-      entry.activity_type === "internal"
-        ? internalActivityLabels?.get(entry.internal_activity || "") ||
-          entry.internal_activity ||
-          "Attivita interna"
-        : getProjectObjectName(entry.task || {}) ||
-          getProjectClientName(entry.task || {}) ||
-          "Progetto";
+  groupedEntries.forEach((group) => {
+    const sortedGroup = [...group].sort((left, right) => {
+      if (left.sortTime !== right.sortTime) {
+        return left.sortTime - right.sortTime;
+      }
+      return left.orderIndex - right.orderIndex;
+    });
 
-    const projectNumber =
-      entry.activity_type === "internal"
-        ? "INT"
-        : entry.task?.unique_code || `TT-${entry.id}`;
+    const workdaySlots = getWorkdayTimeSlots(sortedGroup[0].referenceDate);
+    let cursorMinutes =
+      workdaySlots[0]?.startMinutes || FALLBACK_TIMETRACKING_START_HOUR * MINUTES_PER_HOUR;
 
-    items.push({
-      id: `timetracking-${entry.id}`,
-      sourceId: entry.id,
-      projectId: entry.task_id || null,
-      projectNumber,
-      projectName,
-      projectIcon: entry.activity_type === "internal" ? "Attivita interna" : null,
-      status: entry.activity_type === "internal" ? "Consuntivo interno" : roleName,
-      assignedUser,
-      startDatetime: start.toISOString(),
-      endDatetime: end.toISOString(),
-      actualHours:
-        durationHours || Math.max(0.5, differenceInMinutes(end, start) / MINUTES_PER_HOUR),
-      category: roleName,
-      activityType:
-        entry.activity_type === "internal" ? "Attivita interna" : "Consuntivo progetto",
-      color: entry.activity_type === "internal" ? "#f97316" : "#2563eb",
-      linkType: entry.task_id ? "project" : undefined,
-      detailHref: entry.task_id ? `/sites/${domain}/progetti/${entry.task_id}` : null,
-      secondaryHref: entry.task_id ? `/sites/${domain}/projects?edit=${entry.task_id}` : null,
-      sourceMode: "actual",
-      notes: entry.description || null,
-      metadata: {
-        roleName,
-      },
+    sortedGroup.forEach(({ entry, durationMinutes }) => {
+      const roleName =
+        entry.roles?.[0]?.role?.name ||
+        entry.roles?.[0]?.name ||
+        internalActivityLabels?.get(entry.internal_activity || "") ||
+        entry.internal_activity ||
+        "Consuntivo";
+
+      const projectName =
+        entry.activity_type === "internal"
+          ? internalActivityLabels?.get(entry.internal_activity || "") ||
+            entry.internal_activity ||
+            "Attivita interna"
+          : getProjectObjectName(entry.task || {}) ||
+            getProjectClientName(entry.task || {}) ||
+            "Progetto";
+
+      const projectNumber =
+        entry.activity_type === "internal"
+          ? "INT"
+          : entry.task?.unique_code || `TT-${entry.id}`;
+
+      const assignedUser = getTimetrackingAssignedUser(entry);
+      const { segments, nextCursorMinutes } = splitDurationAcrossWorkday(
+        sortedGroup[0].referenceDate,
+        cursorMinutes,
+        durationMinutes
+      );
+
+      segments.forEach((segment, segmentIndex) => {
+        items.push({
+          id: `timetracking-${entry.id}-${segmentIndex}`,
+          sourceId: entry.id,
+          projectId: entry.task_id || null,
+          projectNumber,
+          projectName,
+          projectIcon: entry.activity_type === "internal" ? "Attivita interna" : null,
+          status: entry.activity_type === "internal" ? "Consuntivo interno" : roleName,
+          assignedUser,
+          startDatetime: segment.start.toISOString(),
+          endDatetime: segment.end.toISOString(),
+          actualHours: segment.durationMinutes / MINUTES_PER_HOUR,
+          category: roleName,
+          activityType:
+            entry.activity_type === "internal" ? "Attivita interna" : "Consuntivo progetto",
+          color: entry.activity_type === "internal" ? "#f97316" : "#2563eb",
+          linkType: entry.task_id ? "project" : undefined,
+          detailHref: entry.task_id ? `/sites/${domain}/progetti/${entry.task_id}` : null,
+          secondaryHref: entry.task_id ? `/sites/${domain}/projects?edit=${entry.task_id}` : null,
+          sourceMode: "actual",
+          notes: entry.description || null,
+          metadata: {
+            roleName,
+          },
+        });
+      });
+
+      cursorMinutes = nextCursorMinutes;
     });
   });
 
@@ -447,25 +632,22 @@ export function buildTimetrackingCalendarItems(
 export function buildAttendanceCalendarItems(
   entries: AttendanceCalendarEntry[]
 ): WeeklyCalendarItem[] {
-  return entries.map((entry) => {
-    const start = withTime(
-      entry.date,
-      null,
-      FALLBACK_ATTENDANCE_START_HOUR,
-      0
-    )!;
-    const end = withTime(entry.date, null, FALLBACK_ATTENDANCE_END_HOUR, 0)!;
+  return entries.flatMap((entry) => {
+    const baseDate = parseDateValue(entry.date);
+    if (!baseDate) {
+      return [];
+    }
 
-    return {
-      id: `attendance-${entry.userId}-${entry.date}-${entry.status}`,
+    return getWorkdaySegments(baseDate).map((segment, segmentIndex) => ({
+      id: `attendance-${entry.userId}-${entry.date}-${entry.status}-${segmentIndex}`,
       sourceId: `${entry.userId}-${entry.date}`,
       projectNumber: entry.status.toUpperCase().slice(0, 3),
       projectName: entry.status.replace(/_/g, " "),
       projectIcon: "Presenza",
       status: "Presenza",
       assignedUser: createAssignedUser(entry.userId, entry.userName, entry.userPicture),
-      startDatetime: start.toISOString(),
-      endDatetime: end.toISOString(),
+      startDatetime: segment.start.toISOString(),
+      endDatetime: segment.end.toISOString(),
       category: "Presenze",
       activityType: "Presenze",
       color: getAttendanceColor(entry.status),
@@ -474,7 +656,7 @@ export function buildAttendanceCalendarItems(
       metadata: {
         attendanceStatus: entry.status,
       },
-    } satisfies WeeklyCalendarItem;
+    }) satisfies WeeklyCalendarItem);
   });
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,23 +16,39 @@ import {
   ArrowUpRight,
   BellRing,
   Clock3,
+  Pencil,
   FolderKanban,
   UserRound,
 } from "lucide-react";
 import { formatMinutesAsHours, formatTimeLabel } from "./calendar-utils";
-import type { WeeklyCalendarItem } from "./weekly-calendar-types";
+import DialogEdit from "@/app/sites/[domain]/timetracking/dialogEdit";
+import type { Roles, Task, User } from "@/types/supabase";
+import type {
+  WeeklyCalendarItem,
+  WeeklyCalendarTimetrackingEntry,
+} from "./weekly-calendar-types";
 
 interface ProjectOrSiteDetailDrawerProps {
   item: WeeklyCalendarItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editableTimetrackingEntry?: WeeklyCalendarTimetrackingEntry | null;
+  editUsers?: User[];
+  editRoles?: Roles[];
+  editTasks?: Task[];
 }
 
 export function ProjectOrSiteDetailDrawer({
   item,
   open,
   onOpenChange,
+  editableTimetrackingEntry = null,
+  editUsers = [],
+  editRoles = [],
+  editTasks = [],
 }: ProjectOrSiteDetailDrawerProps) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const noopSetData = () => null;
   const start = item ? new Date(item.startDatetime) : null;
   const end = item ? new Date(item.endDatetime) : null;
   const scheduleDisplay = item?.scheduleDisplay || "timed";
@@ -44,6 +60,12 @@ export function ProjectOrSiteDetailDrawer({
           ? Math.max(0.5, (end.getTime() - start.getTime()) / 3_600_000)
           : 0)
       : 0;
+
+  useEffect(() => {
+    if (!open) {
+      setIsEditOpen(false);
+    }
+  }, [open, item?.id]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -192,6 +214,16 @@ export function ProjectOrSiteDetailDrawer({
 
             <div className="mt-auto border-t p-4">
               <div className="flex flex-col gap-2 sm:flex-row">
+                {editableTimetrackingEntry && (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setIsEditOpen(true)}
+                  >
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Modifica ore
+                  </Button>
+                )}
                 {item.detailHref && (
                   <Button asChild className="flex-1">
                     <Link href={item.detailHref}>
@@ -207,6 +239,17 @@ export function ProjectOrSiteDetailDrawer({
                 )}
               </div>
             </div>
+            {editableTimetrackingEntry && (
+              <DialogEdit
+                isOpen={isEditOpen}
+                data={editableTimetrackingEntry}
+                setData={noopSetData}
+                setOpen={setIsEditOpen}
+                users={editUsers}
+                roles={editRoles}
+                tasks={editTasks}
+              />
+            )}
           </>
         ) : null}
       </SheetContent>

@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, TableProperties } from "lucide-react";
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
+import type { WeeklyCalendarTimetrackingEntry } from "@/components/calendar/weekly-calendar-types";
 
 interface InternalActivity {
   id: string;
@@ -54,7 +55,7 @@ const DataWrapper = ({
         <TabsList>
           <TabsTrigger value="week" className="gap-2">
             <Calendar className="h-4 w-4" />
-            Settimana operativa
+            Calendario ore
           </TabsTrigger>
           <TabsTrigger value="table" className="gap-2">
             <TableProperties className="h-4 w-4" />
@@ -67,13 +68,25 @@ const DataWrapper = ({
             items={calendarItems}
             mode={mode}
             currentUserId={currentUserId}
+            slotStartHour={7}
+            slotEndHour={17}
             targetConfig={
               mode === "personal"
                 ? { weekdayMinutes: 540, fridayMinutes: 360 }
                 : undefined
             }
-            title="Calendario ore e consuntivi"
-            description="Vista unificata amministrativa e personale con slot orari, filtri, conflitti e riepiloghi."
+            timetrackingEditConfig={
+              mode === "admin"
+                ? {
+                    entries: data as WeeklyCalendarTimetrackingEntry[],
+                    users,
+                    roles,
+                    tasks,
+                  }
+                : undefined
+            }
+            title="Calendario ore"
+            description="Vista settimanale delle ore registrate con filtri, conflitti, riepiloghi e modifica rapida per gli amministratori."
             emptyStateTitle="Nessuna registrazione ore nella settimana selezionata"
           />
         </TabsContent>

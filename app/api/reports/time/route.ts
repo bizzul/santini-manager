@@ -8,17 +8,86 @@ import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
+type TimeReportSelection = {
+  from: Date;
+  to: Date;
+  selectedMonths: number[];
+  year?: number;
+};
+
+function normalizeSelectedMonths(months: unknown) {
+  if (!Array.isArray(months)) return [];
+
+  return Array.from(
+    new Set(
+      months
+        .map((month) => Number(month))
+        .filter((month) => Number.isInteger(month) && month >= 1 && month <= 12),
+    ),
+  ).sort((a, b) => a - b);
+}
+
+function buildTimeReportSelection(data: any): TimeReportSelection {
+  const selectedMonths = normalizeSelectedMonths(data?.months);
+  const year = Number(data?.year);
+
+  if (selectedMonths.length > 0 && Number.isInteger(year)) {
+    return {
+      from: startOfLocalDay(new Date(year, selectedMonths[0] - 1, 1)),
+      to: endOfLocalDay(
+        new Date(year, selectedMonths[selectedMonths.length - 1], 0),
+      ),
+      selectedMonths,
+      year,
+    };
+  }
+
+  if (!data?.from || !data?.to) {
+    throw new Error("Intervallo report ore non valido");
+  }
+
+  return {
+    from: startOfLocalDay(data.from),
+    to: endOfLocalDay(data.to),
+    selectedMonths: [],
+  };
+}
+
+function isDateInSelection(
+  date: Date | string,
+  selection: TimeReportSelection,
+) {
+  const currentDate = new Date(date);
+
+  if (selection.selectedMonths.length > 0 && selection.year !== undefined) {
+    return currentDate.getFullYear() === selection.year &&
+      selection.selectedMonths.includes(currentDate.getMonth() + 1);
+  }
+
+  return currentDate >= selection.from && currentDate <= selection.to;
+}
+
+function formatSelectedMonthsForFileName(selection: TimeReportSelection) {
+  if (selection.selectedMonths.length === 0 || selection.year === undefined) {
+    return null;
+  }
+
+  const monthPart = selection.selectedMonths.map((month) =>
+    String(month).padStart(2, "0")
+  ).join("_");
+
+  return `Report_ore_${selection.year}_mesi_${monthPart}.xlsx`;
+}
+
 function filterTimetrackings(
   timeTrackingsData: any[],
   userId: number,
-  from: Date,
-  to: Date,
+  selection: TimeReportSelection,
 ) {
   return timeTrackingsData.filter(
     (item: any) =>
       item.user?.id === userId &&
-      new Date(item.created_at) >= from &&
-      new Date(item.created_at) <= to,
+      isDateInSelection(item.created_at, selection),
   );
 }
 
@@ -36,10 +105,17 @@ function getUserTasks(timetrackings: any[]) {
     const taskId = item.task_id;
 
     if (taskId) {
+      const schedule = getWorkSchedule(item.created_at);
       const task = {
         date: item.created_at,
         description: item.description,
         projectCode: item.task?.unique_code || "nessun codice",
+        siteName: item.task?.name || "",
+        location: item.task?.luogo || "",
+        startTimeMorning: schedule.startTimeMorning,
+        endTimeMorning: schedule.endTimeMorning,
+        startTimeAfternoon: schedule.startTimeAfternoon,
+        endTimeAfternoon: schedule.endTimeAfternoon,
         hours: item.hours,
         minutes: item.minutes,
         totalTime: item.totalTime || 0,
@@ -54,7 +130,9 @@ function getUserTasks(timetrackings: any[]) {
     }
   });
 
-  const taskArray = Array.from(taskMap.values()).flat();
+  const taskArray = Array.from(taskMap.values()).flat().sort(
+    (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
 
   const totalHoursPerDay = new Map();
   taskArray.forEach((task) => {
@@ -74,14 +152,217 @@ function formatDate(date: Date | string) {
   return day + "-" + month + "-" + year;
 }
 
+function getDateKey(date: Date | string) {
+  const d = new Date(date);
+  const day = ("0" + d.getDate()).slice(-2);
+  const month = ("0" + (d.getMonth() + 1)).slice(-2);
+  const year = d.getFullYear();
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthKey(date: Date | string) {
+  return getDateKey(date).slice(0, 7);
+}
+
+function formatMonthKey(monthKey: string) {
+  const [year, month] = monthKey.split("-");
+  return `${month}-${year}`;
+}
+
+function getWeekKey(date: Date | string) {
+  const d = new Date(date);
+  const weekStart = new Date(d);
+  const day = weekStart.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+
+  weekStart.setDate(weekStart.getDate() + diff);
+  weekStart.setHours(0, 0, 0, 0);
+
+  return getDateKey(weekStart);
+}
+
+function getWorkSchedule(date: Date | string) {
+  const day = new Date(date).getDay();
+
+  if (day >= 1 && day <= 4) {
+    return {
+      startTimeMorning: "07:00",
+      endTimeMorning: "12:00",
+      startTimeAfternoon: "13:00",
+      endTimeAfternoon: "17:00",
+    };
+  }
+
+  if (day === 5) {
+    return {
+      startTimeMorning: "07:00",
+      endTimeMorning: "13:00",
+      startTimeAfternoon: "",
+      endTimeAfternoon: "",
+    };
+  }
+
+  return {
+    startTimeMorning: "",
+    endTimeMorning: "",
+    startTimeAfternoon: "",
+    endTimeAfternoon: "",
+  };
+}
+
+function buildDailyRows(dailyTotal: Map<string, number>) {
+  const dailyEntries = Array.from(dailyTotal.entries()).sort(
+    ([dateA], [dateB]) =>
+      new Date(dateA).getTime() - new Date(dateB).getTime(),
+  );
+
+  const rows: Array<{ Data: string; Totale: number | string }> = [];
+
+  let weekTotal = 0;
+  let monthTotal = 0;
+  let weekStartDate: string | null = dailyEntries[0]?.[0] || null;
+
+  dailyEntries.forEach(([date, hours], index) => {
+    const roundedHours = Number(hours.toFixed(2));
+    const nextDate = dailyEntries[index + 1]?.[0] || null;
+    const currentWeekKey = getWeekKey(date);
+    const nextWeekKey = nextDate ? getWeekKey(nextDate) : null;
+    const currentMonthKey = getMonthKey(date);
+    const nextMonthKey = nextDate ? getMonthKey(nextDate) : null;
+
+    rows.push({
+      Data: formatDate(date),
+      Totale: roundedHours,
+    });
+
+    weekTotal += roundedHours;
+    monthTotal += roundedHours;
+
+    const shouldCloseWeek = nextWeekKey !== currentWeekKey ||
+      nextMonthKey !== currentMonthKey;
+    const shouldCloseMonth = nextMonthKey !== currentMonthKey;
+
+    if (shouldCloseWeek && weekStartDate) {
+      rows.push({
+        Data: `Totale settimana ${formatDate(weekStartDate)} - ${formatDate(date)}`,
+        Totale: Number(weekTotal.toFixed(2)),
+      });
+      weekTotal = 0;
+      weekStartDate = nextDate;
+    }
+
+    if (shouldCloseMonth) {
+      rows.push({
+        Data: `Totale mese ${formatMonthKey(currentMonthKey)}`,
+        Totale: Number(monthTotal.toFixed(2)),
+      });
+      monthTotal = 0;
+    }
+  });
+
+  return rows;
+}
+
+function styleWorksheet(
+  worksheet: ExcelJS.Worksheet,
+  options: {
+    numericColumns?: string[];
+    emphasizeProjectHeaders?: boolean;
+  } = {},
+) {
+  const border = {
+    top: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
+    left: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
+    bottom: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
+    right: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
+  };
+
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true };
+  headerRow.height = 22;
+
+  for (let col = 1; col <= worksheet.columnCount; col++) {
+    const cell = headerRow.getCell(col);
+    cell.font = { bold: true };
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+      wrapText: true,
+    };
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFEFEFEF" },
+    };
+    cell.border = border;
+  }
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+
+    for (let col = 1; col <= worksheet.columnCount; col++) {
+      const cell = row.getCell(col);
+      cell.border = border;
+      cell.alignment = {
+        vertical: "middle",
+        wrapText: true,
+        horizontal: typeof cell.value === "number" ? "right" : "left",
+      };
+    }
+
+    const firstCellValue = row.getCell(1).value;
+    const secondCellValue = row.getCell(2).value;
+    const thirdCellValue = row.getCell(3).value;
+    const isTotalRow = typeof firstCellValue === "string" &&
+      firstCellValue.startsWith("Totale");
+    const isProjectHeaderRow = options.emphasizeProjectHeaders &&
+      !!firstCellValue &&
+      !secondCellValue &&
+      !thirdCellValue;
+
+    if (isTotalRow) {
+      row.font = { bold: true };
+      const fill = {
+        type: "pattern" as const,
+        pattern: "solid" as const,
+        fgColor: {
+          argb: firstCellValue.startsWith("Totale mese")
+            ? "FFD9EAD3"
+            : "FFFCE5CD",
+        },
+      };
+      for (let col = 1; col <= worksheet.columnCount; col++) {
+        row.getCell(col).fill = fill;
+      }
+    }
+
+    if (isProjectHeaderRow) {
+      row.font = { bold: true };
+      const fill = {
+        type: "pattern" as const,
+        pattern: "solid" as const,
+        fgColor: { argb: "FFDCE6F1" },
+      };
+      for (let col = 1; col <= worksheet.columnCount; col++) {
+        row.getCell(col).fill = fill;
+      }
+    }
+  });
+
+  options.numericColumns?.forEach((columnKey) => {
+    const column = worksheet.getColumn(columnKey);
+    column.numFmt = "0.00";
+  });
+}
+
 function prepareTimetrackingsData(
   timeTrackingsData: any[],
-  from: Date,
-  to: Date,
+  selection: TimeReportSelection,
 ) {
   const filteredData = timeTrackingsData.filter(
-    (item: any) =>
-      new Date(item.created_at) >= from && new Date(item.created_at) <= to,
+    (item: any) => isDateInSelection(item.created_at, selection),
   );
 
   const sortedTimetrackings = filteredData.sort(
@@ -95,9 +376,14 @@ function prepareTimetrackingsData(
       ? roles[0].role.name
       : "No Ruolo";
     const totalTime = (tracking.hours + tracking.minutes / 60).toFixed(2);
+    const schedule = getWorkSchedule(tracking.created_at);
 
     return {
       Data: formatDate(tracking.created_at),
+      "Ora inizio Mattina": schedule.startTimeMorning,
+      "Ora fine Mattina": schedule.endTimeMorning,
+      "Ora inizio Pomeriggio": schedule.startTimeAfternoon,
+      "Ora fine Pomeriggio": schedule.endTimeAfternoon,
       "Nome Cognome": (tracking.user?.given_name || "") +
         " " +
         (tracking.user?.family_name || ""),
@@ -106,6 +392,8 @@ function prepareTimetrackingsData(
       Minuti: tracking.minutes,
       Totale: Number(totalTime),
       "Codice Progetto": tracking.task?.unique_code || "Nessun codice",
+      Cantiere: tracking.task?.name || "",
+      Luogo: tracking.task?.luogo || "",
       "Attività Interna": tracking.internal_activity || "",
       "Pranzo Fuori Sede": tracking.lunch_offsite ? "Sì" : "",
       "Luogo Pranzo": tracking.lunch_location || "",
@@ -116,9 +404,9 @@ function prepareTimetrackingsData(
 }
 
 export const POST = async (req: NextRequest) => {
-  const dateRange = await req.json();
-  const from = startOfLocalDay(dateRange.data.from);
-  const to = endOfLocalDay(dateRange.data.to);
+  const requestBody = await req.json();
+  const selection = buildTimeReportSelection(requestBody.data);
+  const { from, to } = selection;
 
   logger.debug("range", from, to);
 
@@ -224,8 +512,7 @@ export const POST = async (req: NextRequest) => {
       const userTimetrackings = filterTimetrackings(
         filteredTimetrackings,
         user.id,
-        from,
-        to,
+        selection,
       );
 
       const userTotalHours = getTotalHours(userTimetrackings);
@@ -243,8 +530,7 @@ export const POST = async (req: NextRequest) => {
 
     // Filter timetrackings by date range for project summary
     const dateFilteredTimetrackings = filteredTimetrackings.filter(
-      (t: any) =>
-        new Date(t.created_at) >= from && new Date(t.created_at) <= to,
+      (t: any) => isDateInSelection(t.created_at, selection),
     );
 
     dateFilteredTimetrackings.forEach((tracking: any) => {
@@ -287,35 +573,50 @@ export const POST = async (req: NextRequest) => {
       }
     });
 
-    const fileName = `Report_ore_dal_${from.getFullYear()}-${
-      ("0" + (from.getMonth() + 1)).slice(-2)
-    }-${("0" + from.getDate()).slice(-2)}_al_${to.getFullYear()}-${
-      ("0" + (to.getMonth() + 1)).slice(-2)
-    }-${("0" + to.getDate()).slice(-2)}.xlsx`;
+    const fileName = formatSelectedMonthsForFileName(selection) ||
+      `Report_ore_dal_${from.getFullYear()}-${
+        ("0" + (from.getMonth() + 1)).slice(-2)
+      }-${("0" + from.getDate()).slice(-2)}_al_${to.getFullYear()}-${
+        ("0" + (to.getMonth() + 1)).slice(-2)
+      }-${("0" + to.getDate()).slice(-2)}.xlsx`;
 
     const workbook = new ExcelJS.Workbook();
 
     // Create summary sheet with all timetrackings
     const allTimetrackingsData = prepareTimetrackingsData(
       filteredTimetrackings,
-      from,
-      to,
+      selection,
     );
 
     const allTimetrackingsSheet = workbook.addWorksheet("A_Riassunto");
     allTimetrackingsSheet.columns = [
       { header: "Data", key: "Data", width: 12 },
-      { header: "Nome Cognome", key: "Nome Cognome", width: 20 },
+      { header: "Ora inizio mattina", key: "Ora inizio Mattina", width: 16 },
+      { header: "Ora fine mattina", key: "Ora fine Mattina", width: 16 },
+      {
+        header: "Ora inizio pomeriggio",
+        key: "Ora inizio Pomeriggio",
+        width: 18,
+      },
+      {
+        header: "Ora fine pomeriggio",
+        key: "Ora fine Pomeriggio",
+        width: 18,
+      },
+      { header: "Nome Cognome", key: "Nome Cognome", width: 22 },
       { header: "Reparto", key: "Reparto", width: 15 },
       { header: "Ore", key: "Ore", width: 8 },
       { header: "Minuti", key: "Minuti", width: 10 },
       { header: "Totale", key: "Totale", width: 10 },
       { header: "Codice Progetto", key: "Codice Progetto", width: 18 },
+      { header: "Cantiere", key: "Cantiere", width: 28 },
+      { header: "Luogo", key: "Luogo", width: 26 },
       { header: "Attività Interna", key: "Attività Interna", width: 18 },
       { header: "Pranzo Fuori", key: "Pranzo Fuori Sede", width: 12 },
       { header: "Luogo Pranzo", key: "Luogo Pranzo", width: 20 },
     ];
     allTimetrackingsSheet.addRows(allTimetrackingsData);
+    styleWorksheet(allTimetrackingsSheet, { numericColumns: ["Totale"] });
 
     // Create individual user sheets
     newData.forEach((item: any) => {
@@ -323,8 +624,22 @@ export const POST = async (req: NextRequest) => {
       const summarySheet = workbook.addWorksheet(`${item.user} Sommario`);
       summarySheet.columns = [
         { header: "Data creazione", key: "Data creazione", width: 15 },
+        { header: "Ora inizio mattina", key: "Ora inizio Mattina", width: 16 },
+        { header: "Ora fine mattina", key: "Ora fine Mattina", width: 16 },
+        {
+          header: "Ora inizio pomeriggio",
+          key: "Ora inizio Pomeriggio",
+          width: 18,
+        },
+        {
+          header: "Ora fine pomeriggio",
+          key: "Ora fine Pomeriggio",
+          width: 18,
+        },
         { header: "Codice Progetto", key: "Codice Progetto", width: 18 },
-        { header: "Note", key: "Note", width: 25 },
+        { header: "Cantiere", key: "Cantiere", width: 28 },
+        { header: "Luogo", key: "Luogo", width: 26 },
+        { header: "Note", key: "Note", width: 32 },
         { header: "Ore", key: "Ore", width: 8 },
         { header: "Minuti", key: "Minuti", width: 10 },
         { header: "Tempo totale", key: "Tempo totale", width: 15 },
@@ -333,9 +648,15 @@ export const POST = async (req: NextRequest) => {
       item.tasks.forEach((task: any) => {
         summarySheet.addRow({
           "Data creazione": formatDate(task.date),
+          "Ora inizio Mattina": task.startTimeMorning,
+          "Ora fine Mattina": task.endTimeMorning,
+          "Ora inizio Pomeriggio": task.startTimeAfternoon,
+          "Ora fine Pomeriggio": task.endTimeAfternoon,
           "Codice Progetto": task.projectCode
             ? task.projectCode
             : "Nessun Codice",
+          Cantiere: task.siteName,
+          Luogo: task.location,
           Note: task.description,
           Ore: Number(task.hours),
           Minuti: Number(task.minutes),
@@ -346,12 +667,19 @@ export const POST = async (req: NextRequest) => {
       // Add total row
       summarySheet.addRow({
         "Data creazione": "Totale",
+        "Ora inizio Mattina": "",
+        "Ora fine Mattina": "",
+        "Ora inizio Pomeriggio": "",
+        "Ora fine Pomeriggio": "",
         "Codice Progetto": "",
+        Cantiere: "",
+        Luogo: "",
         Note: "",
         Ore: "",
         Minuti: "",
         "Tempo totale": item.total,
       });
+      styleWorksheet(summarySheet, { numericColumns: ["Tempo totale"] });
 
       // Daily total sheet for each user
       const totalHoursSheet = workbook.addWorksheet(`${item.user} Giorn.`);
@@ -360,12 +688,10 @@ export const POST = async (req: NextRequest) => {
         { header: "Totale ore giornaliero", key: "Totale", width: 25 },
       ];
 
-      Array.from(item.dailyTotal.entries()).forEach(([date, hours]: any) => {
-        totalHoursSheet.addRow({
-          Data: formatDate(date),
-          Totale: Number(hours.toFixed(2)),
-        });
+      buildDailyRows(item.dailyTotal).forEach((row) => {
+        totalHoursSheet.addRow(row);
       });
+      styleWorksheet(totalHoursSheet, { numericColumns: ["Totale"] });
     });
 
     // Create project summary sheet
@@ -402,6 +728,10 @@ export const POST = async (req: NextRequest) => {
 
       // Add an empty row after each project for readability
       projectSheet.addRow({ col1: "", col2: "", col3: "" });
+    });
+    styleWorksheet(projectSheet, {
+      numericColumns: ["col3"],
+      emphasizeProjectHeaders: true,
     });
 
     // Set headers to indicate a file download

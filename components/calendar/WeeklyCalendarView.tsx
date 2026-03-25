@@ -52,6 +52,8 @@ import type {
   CalendarSummaryData,
   WeeklyCalendarFilters,
   WeeklyCalendarItem,
+  WeeklyCalendarTimetrackingEditConfig,
+  WeeklyCalendarTimetrackingEntry,
   WeeklyCalendarTargetConfig,
 } from "./weekly-calendar-types";
 
@@ -71,6 +73,10 @@ interface WeeklyCalendarViewProps {
   slotMinutes?: number;
   emptyStateTitle?: string;
   emptyStateDescription?: string;
+  showFiltersBar?: boolean;
+  compactSummaryPanel?: boolean;
+  collapsibleSummaryPanel?: boolean;
+  timetrackingEditConfig?: WeeklyCalendarTimetrackingEditConfig;
 }
 
 interface CalendarFiltersBarProps {
@@ -98,6 +104,7 @@ interface CalendarTimeGridProps {
 interface HoursSummaryPanelProps {
   summary: CalendarSummaryData;
   mode: "personal" | "admin";
+  compact?: boolean;
 }
 
 export function WeeklyCalendarView({
@@ -112,12 +119,17 @@ export function WeeklyCalendarView({
   slotMinutes = DEFAULT_SLOT_MINUTES,
   emptyStateTitle = "Nessuna attivita pianificata",
   emptyStateDescription = "Prova a cambiare settimana o a regolare i filtri.",
+  showFiltersBar = true,
+  compactSummaryPanel = false,
+  collapsibleSummaryPanel = false,
+  timetrackingEditConfig,
 }: WeeklyCalendarViewProps) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [filters, setFilters] = useState<WeeklyCalendarFilters>(
     createDefaultFilters(mode === "personal")
   );
   const [selectedItem, setSelectedItem] = useState<WeeklyCalendarItem | null>(null);
+  const [isSummaryPanelOpen, setIsSummaryPanelOpen] = useState(true);
 
   const weekItems = useMemo(
     () => filterItemsForWeek(items, weekStart),
@@ -178,6 +190,17 @@ export function WeeklyCalendarView({
   );
 
   const legendItems = useMemo(() => getStatusLegend(filteredItems), [filteredItems]);
+  const selectedTimetrackingEntry = useMemo<WeeklyCalendarTimetrackingEntry | null>(() => {
+    if (!selectedItem?.sourceId || !timetrackingEditConfig) {
+      return null;
+    }
+
+    return (
+      timetrackingEditConfig.entries.find(
+        (entry) => String(entry.id) === String(selectedItem.sourceId)
+      ) || null
+    );
+  }, [selectedItem, timetrackingEditConfig]);
 
   return (
     <div className="space-y-4">
@@ -240,28 +263,57 @@ export function WeeklyCalendarView({
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-fit"
-            onClick={() => setFilters(createDefaultFilters(mode === "personal"))}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset filtri
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {collapsibleSummaryPanel && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-fit"
+                onClick={() => setIsSummaryPanelOpen((current) => !current)}
+              >
+                {isSummaryPanelOpen ? (
+                  <ChevronRight className="mr-2 h-4 w-4" />
+                ) : (
+                  <ChevronLeft className="mr-2 h-4 w-4" />
+                )}
+                {isSummaryPanelOpen ? "Nascondi riepilogo" : "Mostra riepilogo"}
+              </Button>
+            )}
+            {showFiltersBar && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-fit"
+                onClick={() => setFilters(createDefaultFilters(mode === "personal"))}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reset filtri
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      <CalendarFiltersBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        options={filterOptions}
-        currentUserId={currentUserId}
-      />
+      {showFiltersBar && (
+        <CalendarFiltersBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          options={filterOptions}
+          currentUserId={currentUserId}
+        />
+      )}
 
       {legendItems.length > 0 && <CalendarLegend items={legendItems} />}
 
-      <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div
+        className={cn(
+          "grid gap-4",
+          isSummaryPanelOpen &&
+            (compactSummaryPanel
+              ? "2xl:grid-cols-[minmax(0,1fr)_250px]"
+              : "2xl:grid-cols-[minmax(0,1fr)_320px]")
+        )}
+      >
         <CalendarTimeGrid
           items={filteredItems}
           weekStart={weekStart}
@@ -270,7 +322,13 @@ export function WeeklyCalendarView({
           slotMinutes={slotMinutes}
           onItemClick={setSelectedItem}
         />
-        <HoursSummaryPanel summary={summary} mode={mode} />
+        {isSummaryPanelOpen && (
+          <HoursSummaryPanel
+            summary={summary}
+            mode={mode}
+            compact={compactSummaryPanel}
+          />
+        )}
       </div>
 
       {filteredItems.length === 0 && (
@@ -290,6 +348,10 @@ export function WeeklyCalendarView({
       <ProjectOrSiteDetailDrawer
         item={selectedItem}
         open={Boolean(selectedItem)}
+        editableTimetrackingEntry={selectedTimetrackingEntry}
+        editUsers={timetrackingEditConfig?.users}
+        editRoles={timetrackingEditConfig?.roles}
+        editTasks={timetrackingEditConfig?.tasks}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedItem(null);
@@ -642,66 +704,83 @@ export function CalendarTimeGrid({
 export function HoursSummaryPanel({
   summary,
   mode,
+  compact = false,
 }: HoursSummaryPanelProps) {
   const primaryBuckets =
     mode === "admin" ? summary.byCollaborator : summary.byProject;
+  const dayItems = compact ? summary.byDay.slice(0, 5) : summary.byDay.slice(0, 7);
+  const primaryItems = primaryBuckets.slice(0, compact ? 4 : 6);
+  const projectItems = summary.byProject.slice(0, compact ? 4 : 6);
+  const incompleteItems = summary.incompleteDays.slice(0, compact ? 3 : 5);
 
   return (
     <Card className="h-fit">
-      <CardHeader className="space-y-3">
-        <CardTitle className="text-base">Riepilogo ore</CardTitle>
-        <div className="grid grid-cols-2 gap-3">
+      <CardHeader className={cn("space-y-3", compact && "space-y-2 pb-4")}>
+        <CardTitle className={cn("text-base", compact && "text-sm")}>
+          Riepilogo ore
+        </CardTitle>
+        <div className={cn("grid grid-cols-2 gap-3", compact && "gap-2")}>
           <SummaryStat
             label="Pianificate"
             value={formatMinutesAsHours(summary.totalPlannedMinutes)}
+            compact={compact}
           />
           <SummaryStat
             label="Effettive"
             value={formatMinutesAsHours(summary.totalActualMinutes)}
+            compact={compact}
           />
           <SummaryStat
             label="Delta"
             value={formatSignedMinutes(summary.differenceMinutes)}
+            compact={compact}
           />
           <SummaryStat
             label="Conflitti"
             value={String(summary.conflictCount)}
             destructive={summary.conflictCount > 0}
+            compact={compact}
           />
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-5">
+      <CardContent className={cn("space-y-5", compact && "space-y-4 pt-0")}>
         <SummaryList
           title="Ore per giorno"
-          items={summary.byDay.slice(0, 7)}
+          items={dayItems}
           showDelta={true}
+          compact={compact}
         />
         <SummaryList
           title={mode === "admin" ? "Ore per collaboratore" : "Ore per progetto"}
-          items={primaryBuckets.slice(0, 6)}
+          items={primaryItems}
           showDelta={mode === "admin"}
+          compact={compact}
         />
         {mode === "admin" && summary.byProject.length > 0 && (
           <SummaryList
             title="Ore per progetto / cantiere"
-            items={summary.byProject.slice(0, 6)}
+            items={projectItems}
             showDelta={true}
+            compact={compact}
           />
         )}
         {summary.incompleteDays.length > 0 && (
-          <div className="space-y-3">
+          <div className={cn("space-y-3", compact && "space-y-2")}>
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <h3 className="text-sm font-semibold">
+              <h3 className={cn("text-sm font-semibold", compact && "text-xs")}>
                 Slot mancanti o incompleti
               </h3>
             </div>
             <div className="space-y-2">
-              {summary.incompleteDays.slice(0, 5).map((day) => (
+              {incompleteItems.map((day) => (
                 <div
                   key={day.date}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                  className={cn(
+                    "flex items-center justify-between rounded-lg border px-3 py-2 text-sm",
+                    compact && "px-2.5 py-2 text-xs"
+                  )}
                 >
                   <span className="capitalize">{day.label}</span>
                   <Badge variant="secondary">
@@ -721,22 +800,25 @@ function SummaryStat({
   label,
   value,
   destructive = false,
+  compact = false,
 }: {
   label: string;
   value: string;
   destructive?: boolean;
+  compact?: boolean;
 }) {
   return (
     <div
       className={cn(
         "rounded-xl border bg-muted/15 p-3",
+        compact && "rounded-lg p-2.5",
         destructive && "border-red-300 bg-red-500/5"
       )}
     >
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+      <p className={cn("mt-1 text-lg font-semibold", compact && "text-base")}>{value}</p>
     </div>
   );
 }
@@ -745,21 +827,28 @@ function SummaryList({
   title,
   items,
   showDelta = false,
+  compact = false,
 }: {
   title: string;
   items: CalendarSummaryData["byDay"];
   showDelta?: boolean;
+  compact?: boolean;
 }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold">{title}</h3>
+    <div className={cn("space-y-3", compact && "space-y-2")}>
+      <h3 className={cn("text-sm font-semibold", compact && "text-xs")}>{title}</h3>
       <div className="space-y-2">
         {items.map((item) => (
-          <div key={item.label} className="rounded-lg border px-3 py-2.5">
+          <div
+            key={item.label}
+            className={cn("rounded-lg border px-3 py-2.5", compact && "px-2.5 py-2")}
+          >
             <div className="flex items-start justify-between gap-3">
-              <span className="text-sm font-medium">{item.label}</span>
+              <span className={cn("text-sm font-medium", compact && "text-xs")}>
+                {item.label}
+              </span>
               <div className="text-right text-xs">
                 <div className="font-semibold">
                   {formatMinutesAsHours(
@@ -773,7 +862,12 @@ function SummaryList({
                 )}
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <div
+              className={cn(
+                "mt-2 grid grid-cols-2 gap-2 text-xs text-muted-foreground",
+                compact && "mt-1.5 gap-1"
+              )}
+            >
               <span>Pianif.: {formatMinutesAsHours(item.plannedMinutes)}</span>
               <span>Cons.: {formatMinutesAsHours(item.actualMinutes)}</span>
             </div>
