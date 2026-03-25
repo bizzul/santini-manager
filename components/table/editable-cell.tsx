@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-export type EditableCellType = "text" | "number" | "checkbox" | "textarea";
+export type EditableCellType = "text" | "number" | "checkbox" | "textarea" | "date";
 
 export type EditableCellProps<T = any> = {
   /** The current value of the cell */
@@ -34,6 +34,8 @@ export type EditableCellProps<T = any> = {
   className?: string;
   /** Whether the cell is editable (default: true) */
   editable?: boolean;
+  /** Enter edit mode with single click instead of double click */
+  activateOnSingleClick?: boolean;
   /** Min value for number inputs */
   min?: number;
   /** Max value for number inputs */
@@ -53,6 +55,7 @@ export function EditableCell<T = any>({
   placeholder = "-",
   className,
   editable = true,
+  activateOnSingleClick = true,
   min,
   max,
   step,
@@ -73,6 +76,27 @@ export function EditableCell<T = any>({
 
   const effectiveValue =
     optimisticValue !== undefined ? optimisticValue : value;
+
+  const getDateInputValue = useCallback((inputValue: unknown) => {
+    if (!inputValue) return "";
+
+    if (typeof inputValue === "string") {
+      const matchedDate = inputValue.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (matchedDate) {
+        return matchedDate[1];
+      }
+    }
+
+    const parsedDate = inputValue instanceof Date ? inputValue : new Date(String(inputValue));
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "";
+    }
+
+    const year = parsedDate.getFullYear();
+    const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+    const day = String(parsedDate.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }, []);
 
   // Format display value
   const getDisplayValue = useCallback(() => {
@@ -110,11 +134,13 @@ export function EditableCell<T = any>({
     if (isEditing && type !== "checkbox") {
       if (effectiveValue === null || effectiveValue === undefined) {
         setEditValue("");
+      } else if (type === "date") {
+        setEditValue(getDateInputValue(effectiveValue));
       } else {
         setEditValue(String(effectiveValue));
       }
     }
-  }, [isEditing, effectiveValue, type]);
+  }, [isEditing, effectiveValue, type, getDateInputValue]);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -126,8 +152,8 @@ export function EditableCell<T = any>({
     }
   }, [isEditing]);
 
-  // Handle double click to enter edit mode
-  const handleDoubleClick = useCallback(() => {
+  // Enter edit mode via click or double click
+  const handleActivateEdit = useCallback(() => {
     if (!editable || isLoading) return;
     if (type === "checkbox") return; // Checkbox doesn't need double-click
     setIsEditing(true);
@@ -273,8 +299,8 @@ export function EditableCell<T = any>({
     return (
       <Input
         ref={inputRef as React.RefObject<HTMLInputElement>}
-        type={type === "number" ? "text" : "text"}
-        inputMode={type === "number" ? "decimal" : "text"}
+        type={type === "date" ? "date" : "text"}
+        inputMode={type === "number" ? "decimal" : type === "date" ? undefined : "text"}
         value={editValue as string}
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleBlur}
@@ -297,14 +323,22 @@ export function EditableCell<T = any>({
   return (
     <div
       className={cn(
-        "min-h-[32px] flex items-center cursor-default",
-        editable && "cursor-text hover:bg-muted/50 rounded px-1 -mx-1 transition-colors",
+        "group relative min-h-[32px] flex items-center cursor-default",
+        editable &&
+          "cursor-text rounded px-1 -mx-1 pr-6 transition-colors hover:bg-muted/50",
         isLoading && "opacity-50",
         className
       )}
-      onDoubleClick={handleDoubleClick}
+      onClick={activateOnSingleClick ? handleActivateEdit : undefined}
+      onDoubleClick={activateOnSingleClick ? undefined : handleActivateEdit}
       data-editable={editable ? "true" : undefined}
-      title={editable ? "Doppio click per modificare" : undefined}
+      title={
+        editable
+          ? activateOnSingleClick
+            ? "Clicca per modificare"
+            : "Doppio click per modificare"
+          : undefined
+      }
     >
       {isLoading ? (
         <span className="flex items-center gap-2">
@@ -312,9 +346,14 @@ export function EditableCell<T = any>({
           <span className="text-muted-foreground">{displayValue}</span>
         </span>
       ) : (
-        <span className={cn(isEmpty && "text-muted-foreground")}>
-          {displayValue}
-        </span>
+        <>
+          <span className={cn("truncate", isEmpty && "text-muted-foreground")}>
+            {displayValue}
+          </span>
+          {editable && (
+            <Pencil className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+          )}
+        </>
       )}
     </div>
   );

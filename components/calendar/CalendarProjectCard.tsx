@@ -47,7 +47,7 @@ export function CalendarProjectCard({
       onClick={onClick}
       className={cn(
         "group relative w-full overflow-hidden rounded-r-xl rounded-l-sm border-y border-r border-slate-200 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900",
-        compact ? "h-full min-h-0 p-2.5" : "min-h-[116px] p-3"
+        compact ? "h-full min-h-0 p-2" : "min-h-[116px] p-3"
       )}
       style={{
         borderLeftWidth: "4px",
@@ -55,21 +55,46 @@ export function CalendarProjectCard({
         borderLeftColor: item.color || "#64748b",
       }}
     >
-      <div className="flex items-start justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700">
+      <div
+        className={cn(
+          "flex items-start justify-between gap-2 border-b border-slate-200 dark:border-slate-700",
+          compact ? "pb-1.5" : "pb-2"
+        )}
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 shrink-0 text-slate-500 transition-colors group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200" />
-            <span className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
+            <Icon
+              className={cn(
+                "shrink-0 text-slate-500 transition-colors group-hover:text-slate-700 dark:text-slate-400 dark:group-hover:text-slate-200",
+                compact ? "h-3.5 w-3.5" : "h-4 w-4"
+              )}
+            />
+            <span
+              className={cn(
+                "truncate font-bold text-slate-900 dark:text-slate-100",
+                compact ? "text-[13px]" : "text-sm"
+              )}
+            >
               {item.projectNumber || "PRO"}
             </span>
           </div>
-          <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+          <p
+            className={cn(
+              "truncate text-slate-500 dark:text-slate-400",
+              compact ? "mt-0.5 text-[10px]" : "mt-1 text-xs"
+            )}
+          >
             {scheduleLabel}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className={cn("flex shrink-0 flex-col items-end", compact ? "gap-0.5" : "gap-1")}>
           {isTimePending && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full bg-amber-50 font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-200",
+                compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]"
+              )}
+            >
               <BellRing className="h-3 w-3" />
               {compact ? "Da definire" : "Ora da definire"}
             </span>
@@ -77,7 +102,10 @@ export function CalendarProjectCard({
           {item.status && (
             <Badge
               variant="secondary"
-              className="max-w-[48%] shrink-0 truncate rounded-md bg-slate-100 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+              className={cn(
+                "max-w-[48%] shrink-0 truncate rounded-md bg-slate-100 font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+                compact ? "text-[9px]" : "text-[10px]"
+              )}
             >
               {item.status}
             </Badge>
@@ -85,50 +113,75 @@ export function CalendarProjectCard({
         </div>
       </div>
 
-      <div className="mt-2 space-y-2">
+      <div className={cn(compact ? "mt-1.5 space-y-1" : "mt-2 space-y-2")}>
         <p
           className={cn(
             "font-semibold text-slate-800 dark:text-slate-100",
-            compact ? "line-clamp-2 text-sm" : "line-clamp-2 text-[15px]"
+            compact ? "line-clamp-2 text-[13px]" : "line-clamp-2 text-[15px]"
           )}
         >
           {item.projectName}
         </p>
 
         {(item.category || item.activityType) && (
-          <div className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <div
+            className={cn(
+              "inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+              compact ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-[11px]"
+            )}
+          >
             <span className="truncate">{item.category || item.activityType}</span>
           </div>
         )}
       </div>
 
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div className={cn("flex items-center justify-between gap-2", compact ? "mt-2" : "mt-3")}>
         <div className="min-w-0">
           {item.assignedUser ? (
             <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6 border border-slate-200 dark:border-slate-700">
+              <Avatar
+                className={cn(
+                  "border border-slate-200 dark:border-slate-700",
+                  compact ? "h-5 w-5" : "h-6 w-6"
+                )}
+              >
                 <AvatarImage src={item.assignedUser.avatarUrl || undefined} />
                 <AvatarFallback className="text-[10px] font-semibold">
                   {item.assignedUser.initials || "U"}
                 </AvatarFallback>
               </Avatar>
-              <span className="truncate text-xs text-slate-600 dark:text-slate-300">
+              <span
+                className={cn(
+                  "truncate text-slate-600 dark:text-slate-300",
+                  compact ? "text-[10px]" : "text-xs"
+                )}
+              >
                 {item.assignedUser.name}
               </span>
             </div>
           ) : (
-            <span className="text-xs text-slate-400 dark:text-slate-500">
+            <span className={cn("text-slate-400 dark:text-slate-500", compact ? "text-[10px]" : "text-xs")}>
               Nessun collaboratore
             </span>
           )}
         </div>
 
         {durationHours !== null ? (
-          <div className="shrink-0 rounded-md bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
+          <div
+            className={cn(
+              "shrink-0 rounded-md bg-slate-50 font-semibold text-slate-700 dark:bg-slate-800/80 dark:text-slate-200",
+              compact ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-[11px]"
+            )}
+          >
             {formatMinutesAsHours(Math.round(durationHours * 60))}
           </div>
         ) : (
-          <div className="shrink-0 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+          <div
+            className={cn(
+              "shrink-0 font-medium text-slate-400 dark:text-slate-500",
+              compact ? "text-[10px]" : "text-[11px]"
+            )}
+          >
             {scheduleDisplay === "date-only" ? "Solo giorno" : "Da pianificare"}
           </div>
         )}

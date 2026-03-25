@@ -32,6 +32,8 @@ import type {
   CalendarFilterOption,
   WeeklyCalendarFilters,
   WeeklyCalendarItem,
+  WeeklyCalendarTimetrackingEditConfig,
+  WeeklyCalendarTimetrackingEntry,
 } from "./weekly-calendar-types";
 
 interface MonthlyCalendarViewProps {
@@ -43,6 +45,7 @@ interface MonthlyCalendarViewProps {
   calendarType?: ProjectCalendarType;
   emptyStateTitle?: string;
   emptyStateDescription?: string;
+  timetrackingEditConfig?: WeeklyCalendarTimetrackingEditConfig;
 }
 
 export function MonthlyCalendarView({
@@ -54,6 +57,7 @@ export function MonthlyCalendarView({
   calendarType = "installation",
   emptyStateTitle = "Nessun progetto pianificato nel mese",
   emptyStateDescription = "Le card compariranno qui appena i progetti avranno una data pianificata.",
+  timetrackingEditConfig,
 }: MonthlyCalendarViewProps) {
   const [monthStart, setMonthStart] = useState(() => startOfMonth(new Date()));
   const [filters, setFilters] = useState<WeeklyCalendarFilters>(
@@ -120,6 +124,10 @@ export function MonthlyCalendarView({
     [filteredItems]
   );
   const weeks = useMemo(() => getBusinessMonthWeeks(monthStart), [monthStart]);
+  const desktopGridHeight = useMemo(
+    () => `min(calc(100dvh - 20rem), ${Math.max(weeks.length * 10.5, 32)}rem)`,
+    [weeks.length]
+  );
   const itemsByDay = useMemo(() => {
     const grouped = new Map<string, WeeklyCalendarItem[]>();
 
@@ -134,6 +142,17 @@ export function MonthlyCalendarView({
 
     return grouped;
   }, [filteredItems]);
+  const selectedTimetrackingEntry = useMemo<WeeklyCalendarTimetrackingEntry | null>(() => {
+    if (!selectedItem?.sourceId || !timetrackingEditConfig) {
+      return null;
+    }
+
+    return (
+      timetrackingEditConfig.entries.find(
+        (entry) => String(entry.id) === String(selectedItem.sourceId)
+      ) || null
+    );
+  }, [selectedItem, timetrackingEditConfig]);
 
   const isProductionCalendar = calendarType === "production" || calendarType === "all";
   const monthLabel = capitalize(format(monthStart, "MMMM yyyy", { locale: it }));
@@ -235,30 +254,30 @@ export function MonthlyCalendarView({
               ))}
             </div>
 
-            <div className="bg-border">
-              {weeks.map((week) => (
-                <div
-                  key={week[0]?.toISOString()}
-                  className="grid grid-cols-5 gap-px border-b last:border-b-0"
-                >
-                  {week.map((day) => {
-                    const dayKey = format(day, "yyyy-MM-dd");
-                    const dayItems = itemsByDay.get(dayKey) || [];
-                    const isCurrentMonth = isSameMonth(day, monthStart);
+            <div
+              className="grid gap-px bg-border"
+              style={{
+                gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+                gridTemplateRows: `repeat(${weeks.length}, minmax(0, 1fr))`,
+                height: desktopGridHeight,
+              }}
+            >
+              {weeks.flat().map((day) => {
+                const dayKey = format(day, "yyyy-MM-dd");
+                const dayItems = itemsByDay.get(dayKey) || [];
+                const isCurrentMonth = isSameMonth(day, monthStart);
 
-                    return (
-                      <MonthDayCell
-                        key={dayKey}
-                        day={day}
-                        items={dayItems}
-                        isCurrentMonth={isCurrentMonth}
-                        showPlaceholder={isCurrentMonth}
-                        onItemClick={setSelectedItem}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
+                return (
+                  <MonthDayCell
+                    key={dayKey}
+                    day={day}
+                    items={dayItems}
+                    isCurrentMonth={isCurrentMonth}
+                    showPlaceholder={isCurrentMonth}
+                    onItemClick={setSelectedItem}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -298,6 +317,10 @@ export function MonthlyCalendarView({
       <ProjectOrSiteDetailDrawer
         item={selectedItem}
         open={Boolean(selectedItem)}
+        editableTimetrackingEntry={selectedTimetrackingEntry}
+        editUsers={timetrackingEditConfig?.users}
+        editRoles={timetrackingEditConfig?.roles}
+        editTasks={timetrackingEditConfig?.tasks}
         onOpenChange={(open) => {
           if (!open) {
             setSelectedItem(null);
@@ -324,22 +347,22 @@ function MonthDayCell({
   return (
     <div
       className={cn(
-        "min-h-[240px] bg-card p-3",
+        "flex h-full min-h-0 flex-col bg-card p-2 xl:p-2.5",
         !isCurrentMonth && "bg-muted/15 text-muted-foreground"
       )}
     >
       <div
         className={cn(
-          "mb-3 flex items-center justify-between rounded-xl border px-3 py-2",
+          "mb-2 flex items-center justify-between rounded-lg border px-2.5 py-1.5",
           isToday(day) && "border-primary/40 bg-primary/5",
           !isCurrentMonth && "border-dashed bg-transparent"
         )}
       >
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
             {format(day, "EEE", { locale: it })}
           </p>
-          <p className={cn("text-base font-semibold", !isCurrentMonth && "opacity-70")}>
+          <p className={cn("text-sm font-semibold", !isCurrentMonth && "opacity-70")}>
             {format(day, "d MMM", { locale: it })}
           </p>
         </div>
@@ -350,7 +373,7 @@ function MonthDayCell({
       </div>
 
       {items.length > 0 ? (
-        <div className="max-h-[280px] space-y-2 overflow-y-auto pr-1">
+        <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
           {items.map((item) => (
             <CalendarProjectCard
               key={item.id}
@@ -361,7 +384,7 @@ function MonthDayCell({
           ))}
         </div>
       ) : showPlaceholder ? (
-        <div className="rounded-xl border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed px-2 py-3 text-center text-xs text-muted-foreground">
           Nessun progetto pianificato
         </div>
       ) : null}

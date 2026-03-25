@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -149,11 +149,12 @@ export function EditableSelectCell<T = any>({
       <PopoverTrigger asChild>
         <div
           className={cn(
-            "min-h-[32px] flex items-center cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors",
+            "group relative min-h-[32px] flex items-center rounded px-1 -mx-1 pr-6 transition-colors hover:bg-muted/50",
             isSaving && "opacity-50",
             className
           )}
           data-editable="true"
+          title="Clicca per modificare"
         >
           {isSaving ? (
             <span className="flex items-center gap-2">
@@ -171,6 +172,9 @@ export function EditableSelectCell<T = any>({
             >
               {currentLabel}
             </span>
+          )}
+          {!isSaving && (
+            <Pencil className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
           )}
         </div>
       </PopoverTrigger>

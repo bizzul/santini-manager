@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { StickyNote, Loader2 } from "lucide-react";
+import { StickyNote, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -85,7 +85,7 @@ export function EditableNotesCell<T = any>({
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <div
-            className="w-6 h-6 flex items-center justify-center cursor-pointer rounded hover:bg-muted/50 transition-colors"
+            className="group relative flex h-8 min-w-[32px] items-center justify-center rounded px-1 transition-colors hover:bg-muted/50"
             data-editable="true"
             title={hasNotes ? value! : "Clicca per aggiungere nota"}
           >
@@ -94,7 +94,10 @@ export function EditableNotesCell<T = any>({
             ) : hasNotes ? (
               <StickyNote className="h-4 w-4 text-primary" />
             ) : (
-              <div className="w-6 h-6 border border-muted-foreground/20 rounded hover:border-muted-foreground/40 transition-colors" />
+              <div className="h-6 w-6 rounded border border-muted-foreground/20 transition-colors group-hover:border-muted-foreground/40" />
+            )}
+            {!isSaving && (
+              <Pencil className="pointer-events-none absolute right-0.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             )}
           </div>
         </PopoverTrigger>

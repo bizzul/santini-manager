@@ -49,25 +49,16 @@ export default async function Page({
           <Link href={`/sites/${domain}/timetracking/create`}>Apri consuntivi</Link>
         </Button>
       </div>
-      {filteredTimetrackings.length > 0 ? (
-        <DataWrapper
-          data={filteredTimetrackings}
-          users={data.users}
-          roles={data.roles}
-          tasks={data.tasks}
-          domain={domain}
-          internalActivities={data.internalActivities}
-          mode={isRegularUser ? "personal" : "admin"}
-          currentUserId={userContext.user.id}
-        />
-      ) : (
-        <div className="w-full h-full text-center">
-          <h1 className="font-bold text-2xl">
-            Nessun rapporto ore registrato!
-          </h1>
-          <p>Apri i consuntivi per inserire il tuo primo rapporto ore.</p>
-        </div>
-      )}
+      <DataWrapper
+        data={filteredTimetrackings}
+        users={data.users}
+        roles={data.roles}
+        tasks={data.tasks}
+        domain={domain}
+        internalActivities={data.internalActivities}
+        mode={isRegularUser ? "personal" : "admin"}
+        currentUserId={userContext.user.id}
+      />
     </div>
   );
 }
