@@ -47,6 +47,7 @@ export async function GET(
             .lte("date", endDate);
 
         if (attendanceError) {
+            console.error("Attendance GET attendance_entries error:", attendanceError);
             return NextResponse.json({ error: attendanceError.message }, { status: 500 });
         }
 
@@ -72,6 +73,7 @@ export async function GET(
             .lte("created_at", `${endDate}T23:59:59`);
 
         if (ttError) {
+            console.error("Attendance GET timetracking error:", ttError);
             return NextResponse.json({ error: ttError.message }, { status: 500 });
         }
 
@@ -254,7 +256,11 @@ export async function GET(
         });
     } catch (error) {
         console.error("Error fetching attendance:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+        const message =
+            process.env.NODE_ENV === "development" && error instanceof Error
+                ? error.message
+                : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
