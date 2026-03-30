@@ -76,6 +76,7 @@ interface WeeklyCalendarViewProps {
   showFiltersBar?: boolean;
   compactSummaryPanel?: boolean;
   collapsibleSummaryPanel?: boolean;
+  visibleWeekDays?: number;
   timetrackingEditConfig?: WeeklyCalendarTimetrackingEditConfig;
 }
 
@@ -95,6 +96,7 @@ interface CalendarFiltersBarProps {
 interface CalendarTimeGridProps {
   items: WeeklyCalendarItem[];
   weekStart: Date;
+  visibleWeekDays?: number;
   slotStartHour: number;
   slotEndHour: number;
   slotMinutes: number;
@@ -122,6 +124,7 @@ export function WeeklyCalendarView({
   showFiltersBar = true,
   compactSummaryPanel = false,
   collapsibleSummaryPanel = false,
+  visibleWeekDays = 5,
   timetrackingEditConfig,
 }: WeeklyCalendarViewProps) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
@@ -317,6 +320,7 @@ export function WeeklyCalendarView({
         <CalendarTimeGrid
           items={filteredItems}
           weekStart={weekStart}
+          visibleWeekDays={visibleWeekDays}
           slotStartHour={slotStartHour}
           slotEndHour={slotEndHour}
           slotMinutes={slotMinutes}
@@ -515,12 +519,16 @@ export function CalendarLegend({
 export function CalendarTimeGrid({
   items,
   weekStart,
+  visibleWeekDays = 5,
   slotStartHour,
   slotEndHour,
   slotMinutes,
   onItemClick,
 }: CalendarTimeGridProps) {
-  const weekDays = useMemo(() => getWeekDays(weekStart).slice(0, 5), [weekStart]);
+  const weekDays = useMemo(
+    () => getWeekDays(weekStart).slice(0, visibleWeekDays),
+    [visibleWeekDays, weekStart]
+  );
   const positionedItems = useMemo(
     () =>
       buildPositionedCalendarItems(

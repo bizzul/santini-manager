@@ -43,8 +43,10 @@ export function AttendanceDayCell({
     onStatusChange,
 }: AttendanceDayCellProps) {
     const [open, setOpen] = React.useState(false);
+    const showWeekendState = isSunday || (isWeekend && !entry);
+    const canEdit = isAdmin && !isSunday;
 
-    const statusKey = isWeekend ? "weekend" : entry?.status;
+    const statusKey = showWeekendState ? "weekend" : entry?.status;
     const config = statusKey ? STATUS_CONFIG[statusKey] : null;
     const displayLabel = isSunday
         ? "Festivo"
@@ -68,13 +70,13 @@ export function AttendanceDayCell({
                 "rounded-sm transition-all cursor-default",
                 config?.bgClass || "bg-gray-100 dark:bg-gray-800",
                 isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background",
-                !isWeekend && isAdmin && "cursor-pointer hover:opacity-80",
-                !isWeekend && !entry && !isAdmin && "bg-gray-100 dark:bg-gray-800"
+                canEdit && "cursor-pointer hover:opacity-80",
+                !isSunday && !entry && !isAdmin && "bg-gray-100 dark:bg-gray-800"
             )}
         />
     );
 
-    if (isAdmin && !isWeekend) {
+    if (canEdit) {
         return (
             <Popover open={open} onOpenChange={setOpen}>
                 <Tooltip>

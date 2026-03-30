@@ -315,6 +315,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                             items={weeklyItems}
                             mode={isAdmin ? "admin" : "personal"}
                             currentUserId={currentUserId}
+                            visibleWeekDays={6}
                             slotStartHour={7}
                             slotEndHour={17}
                             targetConfig={
