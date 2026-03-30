@@ -62,7 +62,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth() + 1);
-    const [view, setView] = useState<"weekly" | "monthly" | "annual">("weekly");
+    const [view, setView] = useState<"weekly" | "monthly" | "annual">("monthly");
     const { toast } = useToast();
     const queryClient = useQueryClient();
 

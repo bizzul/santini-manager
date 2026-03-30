@@ -91,57 +91,57 @@ function filterTimetrackings(
   );
 }
 
+function getTimetrackingTotalTime(item: any) {
+  const storedTotalTime = Number(item.totalTime);
+  if (Number.isFinite(storedTotalTime) && storedTotalTime > 0) {
+    return storedTotalTime;
+  }
+
+  const hours = Number(item.hours || 0);
+  const minutes = Number(item.minutes || 0);
+  return Number((hours + minutes / 60).toFixed(2));
+}
+
 function getTotalHours(timetrackings: any[]) {
   const total = timetrackings.reduce((acc, cur) => {
-    return acc + Number(cur.totalTime || 0);
+    return acc + getTimetrackingTotalTime(cur);
   }, 0);
 
   return Number(total.toFixed(2));
 }
 
-function getUserTasks(timetrackings: any[]) {
-  const taskMap = new Map();
-  timetrackings.forEach((item) => {
-    const taskId = item.task_id;
-
-    if (taskId) {
+function getUserEntries(timetrackings: any[]) {
+  const entryArray = [...timetrackings]
+    .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    .map((item: any) => {
       const schedule = getWorkSchedule(item.created_at);
-      const task = {
+      return {
         date: item.created_at,
         description: item.description,
-        projectCode: item.task?.unique_code || "nessun codice",
+        projectCode: item.task?.unique_code || "",
         siteName: item.task?.name || "",
         location: item.task?.luogo || "",
+        internalActivity: item.internal_activity || "",
+        lunchOffsite: item.lunch_offsite ? "Si" : "",
+        lunchLocation: item.lunch_location || "",
         startTimeMorning: schedule.startTimeMorning,
         endTimeMorning: schedule.endTimeMorning,
         startTimeAfternoon: schedule.startTimeAfternoon,
         endTimeAfternoon: schedule.endTimeAfternoon,
         hours: item.hours,
         minutes: item.minutes,
-        totalTime: item.totalTime || 0,
+        totalTime: getTimetrackingTotalTime(item),
       };
-
-      const tasks = taskMap.get(taskId);
-      if (tasks) {
-        tasks.push(task);
-      } else {
-        taskMap.set(taskId, [task]);
-      }
-    }
-  });
-
-  const taskArray = Array.from(taskMap.values()).flat().sort(
-    (a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
+    });
 
   const totalHoursPerDay = new Map();
-  taskArray.forEach((task) => {
-    const dateKey = new Date(task.date).toDateString();
+  entryArray.forEach((entry) => {
+    const dateKey = new Date(entry.date).toDateString();
     const currentHours = totalHoursPerDay.get(dateKey) || 0;
-    totalHoursPerDay.set(dateKey, currentHours + task.totalTime);
+    totalHoursPerDay.set(dateKey, currentHours + entry.totalTime);
   });
 
-  return { tasks: taskArray, totalHoursPerDay };
+  return { entries: entryArray, totalHoursPerDay };
 }
 
 function formatDate(date: Date | string) {
@@ -375,7 +375,7 @@ function prepareTimetrackingsData(
     const roleName = roles.length > 0 && roles[0]?.role?.name
       ? roles[0].role.name
       : "No Ruolo";
-    const totalTime = (tracking.hours + tracking.minutes / 60).toFixed(2);
+    const totalTime = getTimetrackingTotalTime(tracking);
     const schedule = getWorkSchedule(tracking.created_at);
 
     return {
@@ -390,7 +390,7 @@ function prepareTimetrackingsData(
       Reparto: roleName,
       Ore: tracking.hours,
       Minuti: tracking.minutes,
-      Totale: Number(totalTime),
+      Totale: Number(totalTime.toFixed(2)),
       "Codice Progetto": tracking.task?.unique_code || "Nessun codice",
       Cantiere: tracking.task?.name || "",
       Luogo: tracking.task?.luogo || "",
@@ -517,11 +517,11 @@ export const POST = async (req: NextRequest) => {
 
       const userTotalHours = getTotalHours(userTimetrackings);
 
-      const userTasks = getUserTasks(userTimetrackings);
+      const userEntries = getUserEntries(userTimetrackings);
       return {
         user: user.family_name || user.given_name || "Utente",
-        tasks: userTasks.tasks,
-        dailyTotal: userTasks.totalHoursPerDay,
+        entries: userEntries.entries,
+        dailyTotal: userEntries.totalHoursPerDay,
         total: userTotalHours,
       };
     });
@@ -553,7 +553,7 @@ export const POST = async (req: NextRequest) => {
             totalHours: 0,
           };
 
-          employeeRoleEntry.totalHours += tracking.totalTime || 0;
+          employeeRoleEntry.totalHours += getTimetrackingTotalTime(tracking);
           projectEntry.set(employeeRoleKey, employeeRoleEntry);
         });
       } else {
@@ -568,7 +568,7 @@ export const POST = async (req: NextRequest) => {
           totalHours: 0,
         };
 
-        employeeRoleEntry.totalHours += tracking.totalTime || 0;
+        employeeRoleEntry.totalHours += getTimetrackingTotalTime(tracking);
         projectEntry.set(employeeRoleKey, employeeRoleEntry);
       }
     });
@@ -639,28 +639,32 @@ export const POST = async (req: NextRequest) => {
         { header: "Codice Progetto", key: "Codice Progetto", width: 18 },
         { header: "Cantiere", key: "Cantiere", width: 28 },
         { header: "Luogo", key: "Luogo", width: 26 },
+        { header: "Attivita Interna", key: "Attivita Interna", width: 20 },
+        { header: "Pranzo Fuori", key: "Pranzo Fuori", width: 14 },
+        { header: "Luogo Pranzo", key: "Luogo Pranzo", width: 20 },
         { header: "Note", key: "Note", width: 32 },
         { header: "Ore", key: "Ore", width: 8 },
         { header: "Minuti", key: "Minuti", width: 10 },
         { header: "Tempo totale", key: "Tempo totale", width: 15 },
       ];
 
-      item.tasks.forEach((task: any) => {
+      item.entries.forEach((entry: any) => {
         summarySheet.addRow({
-          "Data creazione": formatDate(task.date),
-          "Ora inizio Mattina": task.startTimeMorning,
-          "Ora fine Mattina": task.endTimeMorning,
-          "Ora inizio Pomeriggio": task.startTimeAfternoon,
-          "Ora fine Pomeriggio": task.endTimeAfternoon,
-          "Codice Progetto": task.projectCode
-            ? task.projectCode
-            : "Nessun Codice",
-          Cantiere: task.siteName,
-          Luogo: task.location,
-          Note: task.description,
-          Ore: Number(task.hours),
-          Minuti: Number(task.minutes),
-          "Tempo totale": Number(task.totalTime.toFixed(2)),
+          "Data creazione": formatDate(entry.date),
+          "Ora inizio Mattina": entry.startTimeMorning,
+          "Ora fine Mattina": entry.endTimeMorning,
+          "Ora inizio Pomeriggio": entry.startTimeAfternoon,
+          "Ora fine Pomeriggio": entry.endTimeAfternoon,
+          "Codice Progetto": entry.projectCode,
+          Cantiere: entry.siteName,
+          Luogo: entry.location,
+          "Attivita Interna": entry.internalActivity,
+          "Pranzo Fuori": entry.lunchOffsite,
+          "Luogo Pranzo": entry.lunchLocation,
+          Note: entry.description,
+          Ore: Number(entry.hours),
+          Minuti: Number(entry.minutes),
+          "Tempo totale": Number(entry.totalTime.toFixed(2)),
         });
       });
 
@@ -674,6 +678,9 @@ export const POST = async (req: NextRequest) => {
         "Codice Progetto": "",
         Cantiere: "",
         Luogo: "",
+        "Attivita Interna": "",
+        "Pranzo Fuori": "",
+        "Luogo Pranzo": "",
         Note: "",
         Ore: "",
         Minuti: "",

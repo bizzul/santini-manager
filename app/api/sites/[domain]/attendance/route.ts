@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { getUserContext } from "@/lib/auth-utils";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
@@ -16,11 +16,11 @@ export async function GET(
         }
 
         const siteId = siteResponse.data.id;
-        const supabase = await createClient();
         const userContext = await getUserContext();
         if (!userContext) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+        const supabase = createServiceClient();
 
         const { searchParams } = new URL(request.url);
         const year = parseInt(searchParams.get("year") || new Date().getFullYear().toString());
@@ -112,15 +112,13 @@ export async function GET(
             };
         });
 
-        // Fetch users assigned directly to the site
         const { data: siteUsers } = await supabase
             .from("user_sites")
             .select("user_id")
             .eq("site_id", siteId);
 
-        const directSiteUserIds = siteUsers?.map((su) => su.user_id) || [];
+        const directSiteUserIds = siteUsers?.map((entry) => entry.user_id) || [];
 
-        // Include organization admins, who can access the site without a direct user_sites row
         const { data: siteInfo } = await supabase
             .from("sites")
             .select("organization_id")
@@ -134,44 +132,61 @@ export async function GET(
                 .select("user_id")
                 .eq("organization_id", siteInfo.organization_id);
 
-            organizationUserIds = organizationUsers?.map((user) => user.user_id) || [];
+            organizationUserIds = organizationUsers?.map((entry) => entry.user_id) || [];
         }
 
         const directSiteUserSet = new Set(directSiteUserIds);
         const organizationUserSet = new Set(organizationUserIds);
+        const attendanceUserIds = attendanceData?.map((entry) => entry.user_id).filter(Boolean) || [];
+        const timetrackingUserIds = Object.values(employeeToAuthMap).filter(Boolean);
         const candidateUserIds = Array.from(
-            new Set([...directSiteUserIds, ...organizationUserIds])
+            new Set([
+                ...directSiteUserIds,
+                ...organizationUserIds,
+                ...attendanceUserIds,
+                ...timetrackingUserIds,
+            ])
         );
 
-        let profiles: {
+        let userProfiles: any[] = [];
+        if (candidateUserIds.length > 0) {
+            const { data: authIdProfiles } = await supabase
+                .from("User")
+                .select("authId, given_name, family_name, email, picture, enabled, role")
+                .in("authId", candidateUserIds);
+
+            userProfiles = authIdProfiles || [];
+        }
+
+        const profiles: {
             id: string;
             name: string;
             email: string | null;
             picture: string | null;
-        }[] = [];
+        }[] = userProfiles
+            .filter((user: any) => {
+                if (!user?.enabled || user.role === "superadmin") {
+                    return false;
+                }
 
-        if (candidateUserIds.length > 0) {
-            const { data: userProfiles } = await supabase
-                .from("User")
-                .select("authId, given_name, family_name, email, picture, enabled, role")
-                .in("authId", candidateUserIds)
-                .eq("enabled", true)
-                .neq("role", "superadmin")
-                .order("family_name", { ascending: true })
-                .order("given_name", { ascending: true });
-
-            profiles = (userProfiles || [])
-                .filter((user) =>
-                    directSiteUserSet.has(user.authId) ||
-                    (organizationUserSet.has(user.authId) && user.role === "admin")
-                )
-                .map((user) => ({
-                    id: user.authId,
-                    name: [user.given_name, user.family_name].filter(Boolean).join(" ") || user.email || "Unknown",
-                    email: user.email,
-                    picture: user.picture,
-                }));
-        }
+                const authUserId = user.authId || "";
+                return (
+                    directSiteUserSet.has(authUserId) ||
+                    (organizationUserSet.has(authUserId) && user.role === "admin") ||
+                    attendanceUserIds.includes(authUserId) ||
+                    timetrackingUserIds.includes(authUserId)
+                );
+            })
+            .map((user: any) => ({
+                id: user.authId || "",
+                name:
+                    [user.given_name, user.family_name].filter(Boolean).join(" ") ||
+                    user.email ||
+                    "Unknown",
+                email: user.email || null,
+                picture: user.picture || null,
+            }))
+            .filter((user) => Boolean(user.id));
 
         const userIds = profiles.map((user) => user.id);
         const profilesById = new Map(profiles.map((profile) => [profile.id, profile]));

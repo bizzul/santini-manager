@@ -145,6 +145,11 @@ function formatTrackedTime(hours?: number | null, minutes?: number | null): stri
   return `${hours || 0} h ${minutes || 0} m`;
 }
 
+const saveActionButtonClassName =
+  "h-8 w-8 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700";
+const cancelActionButtonClassName =
+  "h-8 w-8 text-red-600 hover:bg-red-500/10 hover:text-red-700";
+
 function TimetrackingHoursCell({
   rowData,
   editable,
@@ -244,7 +249,7 @@ function TimetrackingHoursCell({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8"
+          className={saveActionButtonClassName}
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -254,7 +259,7 @@ function TimetrackingHoursCell({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8"
+          className={cancelActionButtonClassName}
           onClick={handleCancel}
           disabled={isSaving}
         >
@@ -364,7 +369,7 @@ function TimetrackingProjectCell({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8 shrink-0"
+          className={`${saveActionButtonClassName} shrink-0`}
           onClick={handleSave}
           disabled={isSaving || !selectedTaskId}
         >
@@ -374,7 +379,7 @@ function TimetrackingProjectCell({
           type="button"
           size="icon"
           variant="ghost"
-          className="h-8 w-8 shrink-0"
+          className={`${cancelActionButtonClassName} shrink-0`}
           onClick={() => {
             setSelectedTaskId(currentTaskId);
             setIsEditing(false);

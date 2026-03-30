@@ -129,6 +129,7 @@ const DataWrapper = ({
             roles={roles}
             tasks={tasks}
             domain={domain}
+            internalActivities={internalActivities}
             mode={mode}
           />
         </TabsContent>

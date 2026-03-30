@@ -32,15 +32,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { DataTableRowActions } from "./data-table-row-actions";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Briefcase, Loader2, Plus, Trash2, Wrench } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { createItem } from "./actions/create-item.action";
 import { SearchSelect } from "@/components/ui/search-select";
 import { getProjectLabel } from "@/lib/project-label";
 import { formatLocalDate } from "@/lib/utils";
+
+interface InternalActivity {
+  code: string;
+  label: string;
+}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -49,6 +57,7 @@ interface DataTableProps<TData, TValue> {
   roles?: any[];
   tasks?: any[];
   domain?: string;
+  internalActivities?: InternalActivity[];
   mode?: "personal" | "admin";
 }
 
@@ -59,6 +68,7 @@ export function DataTable<TData, TValue>({
   roles = [],
   tasks = [],
   domain,
+  internalActivities = [],
   mode = "admin",
 }: DataTableProps<TData, TValue>) {
   const { toast } = useToast();
@@ -279,6 +289,7 @@ export function DataTable<TData, TValue>({
                 users={users}
                 tasks={tasks}
                 domain={domain}
+              internalActivities={internalActivities}
               />
             )}
             {table.getRowModel().rows?.length ? (
@@ -324,11 +335,13 @@ function QuickCreateTimetrackingRow({
   users,
   tasks,
   domain,
+  internalActivities,
 }: {
   colSpan: number;
   users: any[];
   tasks: any[];
   domain?: string;
+  internalActivities: InternalActivity[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -340,10 +353,14 @@ function QuickCreateTimetrackingRow({
   const [form, setForm] = useState({
     userId: "",
     roleId: "",
+    activityType: "project" as "project" | "internal",
     taskId: "",
+    internalActivity: "",
     hours: "",
     minutes: "",
     date: formatLocalDate(new Date()),
+    lunchOffsite: false,
+    lunchLocation: "",
   });
 
   const taskOptions = tasks.map((task: any) => ({
@@ -403,10 +420,26 @@ function QuickCreateTimetrackingRow({
     const hours = parseInt(form.hours.replace(/\D/g, "") || "0", 10);
     const minutes = parseInt(form.minutes.replace(/\D/g, "") || "0", 10);
 
-    if (!form.userId || !form.taskId || !form.date) {
+    if (!form.userId || !form.date) {
       toast({
         variant: "destructive",
-        description: "Seleziona collaboratore, progetto e data.",
+        description: "Seleziona collaboratore e data.",
+      });
+      return;
+    }
+
+    if (form.activityType === "project" && !form.taskId) {
+      toast({
+        variant: "destructive",
+        description: "Seleziona un progetto.",
+      });
+      return;
+    }
+
+    if (form.activityType === "internal" && !form.internalActivity) {
+      toast({
+        variant: "destructive",
+        description: "Seleziona un'attività interna.",
       });
       return;
     }
@@ -419,10 +452,18 @@ function QuickCreateTimetrackingRow({
       return;
     }
 
-    if (!form.roleId) {
+    if (form.activityType === "project" && !form.roleId) {
       toast({
         variant: "destructive",
         description: "Seleziona un reparto per il collaboratore.",
+      });
+      return;
+    }
+
+    if (form.lunchOffsite && !form.lunchLocation.trim()) {
+      toast({
+        variant: "destructive",
+        description: "Inserisci il luogo del pranzo.",
       });
       return;
     }
@@ -435,13 +476,14 @@ function QuickCreateTimetrackingRow({
           description: "",
           hours,
           minutes,
-          task: form.taskId,
+          task: form.activityType === "project" ? form.taskId : "",
           userId: form.userId,
-          roles: form.roleId,
-          activityType: "project",
-          internalActivity: undefined,
-          lunchOffsite: false,
-          lunchLocation: "",
+          roles: form.activityType === "project" ? form.roleId : "",
+          activityType: form.activityType,
+          internalActivity:
+            form.activityType === "internal" ? form.internalActivity : undefined,
+          lunchOffsite: form.lunchOffsite,
+          lunchLocation: form.lunchOffsite ? form.lunchLocation.trim() : "",
         },
         domain
       );
@@ -457,9 +499,12 @@ function QuickCreateTimetrackingRow({
       setForm((current) => ({
         ...current,
         taskId: "",
+        internalActivity: "",
         hours: "",
         minutes: "",
         date: formatLocalDate(new Date()),
+        lunchOffsite: false,
+        lunchLocation: "",
       }));
       router.refresh();
     } catch (error: any) {
@@ -486,101 +531,224 @@ function QuickCreateTimetrackingRow({
             </div>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.2fr)_220px_minmax(0,1.5fr)_120px_120px_150px_130px]">
-            <Select
-              value={form.userId}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, userId: value }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Collaboratore" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={String(user.id)}>
-                    {(user.given_name || "") + " " + (user.family_name || "")}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={form.roleId}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, roleId: value }))
-              }
-              disabled={!form.userId || loadingUserRoles}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    !form.userId
-                      ? "Reparto"
-                      : loadingUserRoles
-                      ? "Caricamento reparti..."
-                      : "Seleziona reparto"
+          <div className="space-y-3">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,320px)]">
+              <div className="rounded-md border border-border/60 bg-background/50 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Tipo attivita
+                </p>
+                <RadioGroup
+                  value={form.activityType}
+                  onValueChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      activityType: value as "project" | "internal",
+                      taskId: value === "project" ? current.taskId : "",
+                      internalActivity:
+                        value === "internal" ? current.internalActivity : "",
+                    }))
                   }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {userAssignedRoles.map((role) => (
-                  <SelectItem key={role.id} value={role.id}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  className="mt-3 flex flex-col gap-2 sm:flex-row sm:gap-4"
+                  disabled={isSubmitting}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="project" id="quick-project" />
+                    <Label
+                      htmlFor="quick-project"
+                      className="flex cursor-pointer items-center gap-1"
+                    >
+                      <Briefcase className="h-4 w-4" />
+                      Progetto
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="internal" id="quick-internal" />
+                    <Label
+                      htmlFor="quick-internal"
+                      className="flex cursor-pointer items-center gap-1"
+                    >
+                      <Wrench className="h-4 w-4" />
+                      Attivita interna
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </div>
 
-            <SearchSelect
-              value={form.taskId}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, taskId: String(value) }))
-              }
-              options={taskOptions}
-              placeholder="Seleziona progetto..."
-            />
+              <div className="rounded-md border border-border/60 bg-background/50 p-3">
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="quick-lunch-offsite"
+                    checked={form.lunchOffsite}
+                    onCheckedChange={(checked) =>
+                      setForm((current) => ({
+                        ...current,
+                        lunchOffsite: Boolean(checked),
+                        lunchLocation: checked ? current.lunchLocation : "",
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                  <div className="space-y-1 leading-none">
+                    <Label htmlFor="quick-lunch-offsite" className="cursor-pointer">
+                      Pranzo fuori sede
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Attiva il campo luogo pranzo nel modulo sotto.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <Input
-              value={form.hours}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  hours: event.target.value.replace(/\D/g, ""),
-                }))
-              }
-              inputMode="numeric"
-              placeholder="Ore"
-            />
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <Select
+                value={form.userId}
+                onValueChange={(value) =>
+                  setForm((current) => ({ ...current, userId: value }))
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Collaboratore" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={String(user.id)}>
+                      {(user.given_name || "") + " " + (user.family_name || "")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <Input
-              value={form.minutes}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  minutes: event.target.value.replace(/\D/g, ""),
-                }))
-              }
-              inputMode="numeric"
-              placeholder="Minuti"
-            />
-
-            <Input
-              type="date"
-              value={form.date}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, date: event.target.value }))
-              }
-            />
-
-            <Button onClick={handleCreate} disabled={isSubmitting} className="w-full">
-              {isSubmitting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {form.activityType === "project" ? (
+                <Select
+                  value={form.roleId}
+                  onValueChange={(value) =>
+                    setForm((current) => ({ ...current, roleId: value }))
+                  }
+                  disabled={isSubmitting || !form.userId || loadingUserRoles}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        !form.userId
+                          ? "Reparto"
+                          : loadingUserRoles
+                          ? "Caricamento reparti..."
+                          : "Seleziona reparto"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userAssignedRoles.map((role) => (
+                      <SelectItem key={role.id} value={role.id}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : (
-                <Plus className="mr-2 h-4 w-4" />
+                <div className="flex h-10 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">
+                  Reparto non richiesto
+                </div>
               )}
-              Salva report
-            </Button>
+
+              <div className="md:col-span-2 xl:col-span-2">
+                {form.activityType === "project" ? (
+                  <SearchSelect
+                    value={form.taskId}
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, taskId: String(value) }))
+                    }
+                    options={taskOptions}
+                    placeholder="Seleziona progetto..."
+                    disabled={isSubmitting}
+                  />
+                ) : (
+                  <Select
+                    value={form.internalActivity}
+                    onValueChange={(value) =>
+                      setForm((current) => ({ ...current, internalActivity: value }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona attivita interna" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {internalActivities.map((activity) => (
+                        <SelectItem key={activity.code} value={activity.code}>
+                          {activity.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {form.lunchOffsite && (
+                <Input
+                  value={form.lunchLocation}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      lunchLocation: event.target.value,
+                    }))
+                  }
+                  placeholder="Luogo pranzo"
+                  disabled={isSubmitting}
+                  className="md:col-span-2 xl:col-span-2"
+                />
+              )}
+
+              <Input
+                value={form.hours}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    hours: event.target.value.replace(/\D/g, ""),
+                  }))
+                }
+                inputMode="numeric"
+                placeholder="Ore"
+                disabled={isSubmitting}
+              />
+
+              <Input
+                value={form.minutes}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    minutes: event.target.value.replace(/\D/g, ""),
+                  }))
+                }
+                inputMode="numeric"
+                placeholder="Minuti"
+                disabled={isSubmitting}
+              />
+
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, date: event.target.value }))
+                }
+                disabled={isSubmitting}
+              />
+
+              <Button
+                onClick={handleCreate}
+                disabled={isSubmitting}
+                className="w-full md:col-span-2 xl:col-span-1"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="mr-2 h-4 w-4" />
+                )}
+                Salva report
+              </Button>
+            </div>
           </div>
         </div>
       </TableCell>
