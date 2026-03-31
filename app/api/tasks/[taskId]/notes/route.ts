@@ -61,7 +61,24 @@ export async function POST(
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
-    const { data: task, error: taskError } = await taskQuery.single();
+    let { data: task, error: taskError } = await taskQuery.single();
+
+    if (
+      taskError &&
+      (taskError.code === "42703" ||
+        taskError.message?.includes("offer_followups"))
+    ) {
+      let fallbackTaskQuery = supabase
+        .from("Task")
+        .select("id, other")
+        .eq("id", parseInt(taskId));
+
+      if (siteId) {
+        fallbackTaskQuery = fallbackTaskQuery.eq("site_id", siteId);
+      }
+
+      ({ data: task, error: taskError } = await fallbackTaskQuery.single());
+    }
 
     if (taskError || !task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -84,22 +101,35 @@ export async function POST(
     const updatedFollowUps = [followUpEntry, ...existingFollowUps];
 
     // Update the task with the new note
-    let updateQuery = supabase
-      .from("Task")
-      .update({
+    const runUpdate = async (payload: Record<string, any>) => {
+      let updateQuery = supabase
+        .from("Task")
+        .update(payload)
+        .eq("id", parseInt(taskId));
+
+      if (siteId) {
+        updateQuery = updateQuery.eq("site_id", siteId);
+      }
+
+      return updateQuery.select().single();
+    };
+
+    let { data: updatedTask, error: updateError } = await runUpdate({
+      other: updatedNotes,
+      offer_followups: updatedFollowUps,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (
+      updateError &&
+      (updateError.code === "42703" ||
+        updateError.message?.includes("offer_followups"))
+    ) {
+      ({ data: updatedTask, error: updateError } = await runUpdate({
         other: updatedNotes,
-        offer_followups: updatedFollowUps,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", parseInt(taskId));
-
-    if (siteId) {
-      updateQuery = updateQuery.eq("site_id", siteId);
+      }));
     }
-
-    const { data: updatedTask, error: updateError } = await updateQuery
-      .select()
-      .single();
 
     if (updateError) {
       logger.error("Error updating task with note:", updateError);
@@ -189,7 +219,24 @@ export async function GET(
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
-    const { data: task, error: taskError } = await taskQuery.single();
+    let { data: task, error: taskError } = await taskQuery.single();
+
+    if (
+      taskError &&
+      (taskError.code === "42703" ||
+        taskError.message?.includes("offer_followups"))
+    ) {
+      let fallbackTaskQuery = supabase
+        .from("Task")
+        .select("id, other")
+        .eq("id", parseInt(taskId));
+
+      if (siteId) {
+        fallbackTaskQuery = fallbackTaskQuery.eq("site_id", siteId);
+      }
+
+      ({ data: task, error: taskError } = await fallbackTaskQuery.single());
+    }
 
     if (taskError || !task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });

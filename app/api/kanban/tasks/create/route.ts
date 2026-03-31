@@ -227,11 +227,31 @@ export async function POST(req: NextRequest) {
           insertData.site_id = siteId;
         }
 
-        const { data: createdTask, error: error } = await supabase
+        let { data: createdTask, error: error } = await supabase
           .from("Task")
           .insert(insertData)
           .select()
           .single();
+
+        if (
+          error &&
+          (error.code === "42703" ||
+            error.message?.includes("offer_send_date") ||
+            error.message?.includes("offer_products") ||
+            error.message?.includes("offer_loss_reason") ||
+            error.message?.includes("offer_loss_competitor_name"))
+        ) {
+          delete insertData.offer_send_date;
+          delete insertData.offer_products;
+          delete insertData.offer_loss_reason;
+          delete insertData.offer_loss_competitor_name;
+
+          ({ data: createdTask, error } = await supabase
+            .from("Task")
+            .insert(insertData)
+            .select()
+            .single());
+        }
 
         taskError = error;
         

@@ -678,21 +678,36 @@ export async function POST(req: NextRequest) {
     }
 
     // Update task with site_id filtering if available
-    let updateQuery = supabase
-      .from("Task")
-      .update(updateData)
-      .eq("id", id);
+    const executeTaskUpdate = async (payload: Record<string, any>) => {
+      let updateQuery = supabase
+        .from("Task")
+        .update(payload)
+        .eq("id", id);
 
-    if (siteId) {
-      updateQuery = updateQuery.eq("site_id", siteId);
+      if (siteId) {
+        updateQuery = updateQuery.eq("site_id", siteId);
+      }
+
+      return updateQuery
+        .select(`
+          *,
+          kanban_columns:kanbanColumnId(*)
+        `)
+        .single();
+    };
+
+    let { data: response, error: updateError } = await executeTaskUpdate(updateData);
+
+    if (
+      updateError &&
+      (updateError.code === "42703" ||
+        updateError.message?.includes("offer_loss_reason") ||
+        updateError.message?.includes("offer_loss_competitor_name"))
+    ) {
+      delete updateData.offer_loss_reason;
+      delete updateData.offer_loss_competitor_name;
+      ({ data: response, error: updateError } = await executeTaskUpdate(updateData));
     }
-
-    const { data: response, error: updateError } = await updateQuery
-      .select(`
-        *,
-        kanban_columns:kanbanColumnId(*)
-      `)
-      .single();
 
     if (updateError) throw updateError;
 

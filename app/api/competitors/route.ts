@@ -29,6 +29,12 @@ export async function GET(req: NextRequest) {
     .order("offer_loss_competitor_name", { ascending: true });
 
   if (error) {
+    if (
+      error.code === "42703" ||
+      error.message?.includes("offer_loss_competitor_name")
+    ) {
+      return NextResponse.json({ competitors: [] });
+    }
     return NextResponse.json(
       { error: "Impossibile caricare i competitor" },
       { status: 500 },

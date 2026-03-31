@@ -167,12 +167,32 @@ export async function PATCH(
     // Add updated_at timestamp
     updateData.updated_at = new Date().toISOString();
 
-    const { data: taskData, error: updateError } = await supabase
-      .from("Task")
-      .update(updateData)
-      .eq("id", Number(taskId))
-      .select()
-      .single();
+    const runUpdate = async (payload: Record<string, any>) =>
+      supabase
+        .from("Task")
+        .update(payload)
+        .eq("id", Number(taskId))
+        .select()
+        .single();
+
+    let { data: taskData, error: updateError } = await runUpdate(updateData);
+
+    if (
+      updateError &&
+      (updateError.code === "42703" ||
+        updateError.message?.includes("offer_send_date") ||
+        updateError.message?.includes("offer_products") ||
+        updateError.message?.includes("offer_followups") ||
+        updateError.message?.includes("offer_loss_reason") ||
+        updateError.message?.includes("offer_loss_competitor_name"))
+    ) {
+      delete updateData.offer_send_date;
+      delete updateData.offer_products;
+      delete updateData.offer_followups;
+      delete updateData.offer_loss_reason;
+      delete updateData.offer_loss_competitor_name;
+      ({ data: taskData, error: updateError } = await runUpdate(updateData));
+    }
 
     if (updateError) throw updateError;
 

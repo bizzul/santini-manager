@@ -51,6 +51,13 @@ import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.acti
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { OFFER_LOSS_REASON_OPTIONS } from "@/lib/offers";
 
 const Column = ({
@@ -501,6 +508,7 @@ function KanbanBoard({
   const [selectedOfferTask, setSelectedOfferTask] = useState<Task | null>(null);
   const [lostReason, setLostReason] = useState<string>("");
   const [lostCompetitorName, setLostCompetitorName] = useState<string>("");
+  const [useCustomCompetitor, setUseCustomCompetitor] = useState(false);
   const [competitorSuggestions, setCompetitorSuggestions] = useState<string[]>([]);
 
   // State for draft completion dialog
@@ -555,9 +563,9 @@ function KanbanBoard({
         const response = await fetch("/api/competitors", { headers });
         if (!response.ok) return;
         const data = await response.json();
-        setCompetitorSuggestions(
-          Array.isArray(data?.competitors) ? data.competitors : []
-        );
+        const suggestions = Array.isArray(data?.competitors) ? data.competitors : [];
+        setCompetitorSuggestions(suggestions);
+        setUseCustomCompetitor(suggestions.length === 0);
       } catch (error) {
         logger.error("Error loading competitors:", error);
       }
@@ -932,6 +940,7 @@ function KanbanBoard({
       setPendingMove(null);
       setLostReason("");
       setLostCompetitorName("");
+      setUseCustomCompetitor(false);
     }
   };
 
@@ -940,6 +949,7 @@ function KanbanBoard({
     setPendingMove(null);
     setLostReason("");
     setLostCompetitorName("");
+    setUseCustomCompetitor(false);
   };
 
   // Get confirmation message based on type
@@ -1206,17 +1216,45 @@ function KanbanBoard({
                 <label className="text-sm font-medium">
                   Competitor
                 </label>
-                <Input
-                  list="competitor-suggestions"
-                  value={lostCompetitorName}
-                  onChange={(e) => setLostCompetitorName(e.target.value)}
-                  placeholder="Se il lavoro è andato alla concorrenza, indica il competitor"
-                />
-                <datalist id="competitor-suggestions">
-                  {competitorSuggestions.map((competitor) => (
-                    <option key={competitor} value={competitor} />
-                  ))}
-                </datalist>
+                {competitorSuggestions.length > 0 && (
+                  <Select
+                    value={useCustomCompetitor ? "__custom__" : lostCompetitorName || "__none__"}
+                    onValueChange={(value) => {
+                      if (value === "__custom__") {
+                        setUseCustomCompetitor(true);
+                        setLostCompetitorName("");
+                        return;
+                      }
+                      if (value === "__none__") {
+                        setUseCustomCompetitor(false);
+                        setLostCompetitorName("");
+                        return;
+                      }
+                      setUseCustomCompetitor(false);
+                      setLostCompetitorName(value);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona competitor..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nessun competitor</SelectItem>
+                      {competitorSuggestions.map((competitor) => (
+                        <SelectItem key={competitor} value={competitor}>
+                          {competitor}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="__custom__">Inserisci competitor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {(useCustomCompetitor || competitorSuggestions.length === 0) && (
+                  <Input
+                    value={lostCompetitorName}
+                    onChange={(e) => setLostCompetitorName(e.target.value)}
+                    placeholder="Inserisci il competitor se non presente in elenco"
+                  />
+                )}
               </div>
             </div>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { 
   Upload, 
   X, 
@@ -76,6 +76,10 @@ export function ProjectDocuments({
   const [fileToDelete, setFileToDelete] = useState<ProjectFile | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setFiles(initialFiles);
+  }, [initialFiles]);
 
   const uploadFile = useCallback(
     async (file: File) => {

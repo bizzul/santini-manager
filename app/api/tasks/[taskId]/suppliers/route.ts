@@ -64,34 +64,58 @@ export async function POST(
         updateData.notes = notes;
       }
 
-      const { data: updatedSupplier, error: updateError } = await supabase
+      const runUpdate = async (payload: Record<string, any>) =>
+        supabase
+          .from("TaskSupplier")
+          .update(payload)
+          .eq("id", existingSupplier.id)
+          .select(`
+            *,
+            supplier:Supplier(*)
+          `)
+          .single();
+
+      let { data: updatedSupplier, error: updateError } = await runUpdate(updateData);
+
+      if (
+        updateError &&
+        (updateError.code === "42703" || updateError.message?.includes("orderDate"))
+      ) {
+        delete updateData.orderDate;
+        ({ data: updatedSupplier, error: updateError } = await runUpdate(updateData));
+      }
+
+      if (updateError) throw updateError;
+      return NextResponse.json(updatedSupplier);
+    }
+
+    const insertData: Record<string, any> = {
+      taskId: parseInt(taskId),
+      supplierId: supplierId,
+      deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+      orderDate: orderDate ? new Date(orderDate) : null,
+      notes: notes || null,
+    };
+
+    const runInsert = async (payload: Record<string, any>) =>
+      supabase
         .from("TaskSupplier")
-        .update(updateData)
-        .eq("id", existingSupplier.id)
+        .insert(payload)
         .select(`
           *,
           supplier:Supplier(*)
         `)
         .single();
 
-      if (updateError) throw updateError;
-      return NextResponse.json(updatedSupplier);
-    }
+    let { data: taskSupplier, error: createError } = await runInsert(insertData);
 
-    const { data: taskSupplier, error: createError } = await supabase
-      .from("TaskSupplier")
-      .insert({
-        taskId: parseInt(taskId),
-        supplierId: supplierId,
-        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-        orderDate: orderDate ? new Date(orderDate) : null,
-        notes: notes || null,
-      })
-      .select(`
-        *,
-        supplier:Supplier(*)
-      `)
-      .single();
+    if (
+      createError &&
+      (createError.code === "42703" || createError.message?.includes("orderDate"))
+    ) {
+      delete insertData.orderDate;
+      ({ data: taskSupplier, error: createError } = await runInsert(insertData));
+    }
 
     if (createError) throw createError;
 

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -32,7 +32,17 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Button } from "../ui/button";
-import { Plus, CalendarIcon, Trash2, User, Phone, MapPin, Info } from "lucide-react";
+import {
+  Plus,
+  CalendarIcon,
+  Trash2,
+  User,
+  Phone,
+  MapPin,
+  Info,
+  Download,
+  Loader2,
+} from "lucide-react";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
   AlertDialog,
@@ -63,6 +73,7 @@ import {
   ProjectDocuments,
   ProjectFile,
 } from "@/components/project/project-documents";
+import { downloadOfferPdf } from "@/lib/offer-pdf";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -79,6 +90,7 @@ type Supplier = {
   id: number;
   name: string;
   short_name: string | null;
+  supplier_image?: string | null;
 };
 
 type TaskSupplier = {
@@ -139,6 +151,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   // Helper to build headers with siteId
   const getHeaders = (): HeadersInit => {
@@ -146,8 +159,35 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     if (siteId) {
       headers["x-site-id"] = siteId;
     }
+    if (domain) {
+      headers["x-site-domain"] = domain;
+    }
     return headers;
   };
+
+  const isOfferTask =
+    resource?.task_type === "OFFERTA" ||
+    resource?.taskType === "OFFERTA" ||
+    Boolean(resource?.offer_send_date || resource?.offerSendDate);
+
+  const loadTaskDetails = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/kanban/tasks/${resource.id}`, {
+        headers: getHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch task details");
+      const data = await response.json();
+      const task = data?.task;
+      setProjectFiles(Array.isArray(task?.files) ? task.files : []);
+      if (task) {
+        setOfferProducts(normalizeOfferProducts(task));
+        setProductionRequired(Boolean(task.termine_produzione));
+      }
+    } catch (error) {
+      logger.error("Error fetching task details:", error);
+      setProjectFiles([]);
+    }
+  }, [resource.id, siteId, domain]);
 
   useEffect(() => {
     if (!resource) return;
@@ -240,38 +280,19 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       setProductionRequired(Boolean(resource.termine_produzione));
     };
 
-    const getTaskDetails = async () => {
-      try {
-        const response = await fetch(`/api/kanban/tasks/${resource.id}`, {
-          headers: getHeaders(),
-        });
-        if (!response.ok) throw new Error("Failed to fetch task details");
-        const data = await response.json();
-        const task = data?.task;
-        setProjectFiles(Array.isArray(task?.files) ? task.files : []);
-        if (task) {
-          setOfferProducts(normalizeOfferProducts(task));
-          setProductionRequired(Boolean(task.termine_produzione));
-        }
-      } catch (error) {
-        logger.error("Error fetching task details:", error);
-        setProjectFiles([]);
-      }
-    };
-
     const loadData = async () => {
       await Promise.all([
         getClients(),
         getProducts(),
         getKanbans(),
         initializeForm(),
-        getTaskDetails(),
+        loadTaskDetails(),
       ]);
       setIsLoading(false);
     };
 
     loadData();
-  }, [resource, form.setValue, siteId, siteIdError, domain]);
+  }, [resource, form.setValue, siteId, siteIdError, domain, loadTaskDetails]);
 
   // Load columns when kanban changes
   useEffect(() => {
@@ -485,7 +506,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        ...getHeaders(),
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         supplierId: parseInt(newSupplier),
         orderDate: newOrderDate || null,
@@ -511,6 +535,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
         `/api/tasks/${resource.id}/suppliers/${supplierId}`,
         {
           method: "DELETE",
+          headers: getHeaders(),
         }
       );
 
@@ -555,6 +580,40 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!siteId) {
+      toast({
+        variant: "destructive",
+        description: "Contesto sito non disponibile per generare il PDF",
+      });
+      return;
+    }
+
+    setIsDownloadingPdf(true);
+    try {
+      await downloadOfferPdf({
+        taskId: resource.id,
+        siteId,
+        saveToProjectDocuments: true,
+      });
+      await loadTaskDetails();
+      toast({
+        description: "PDF scaricato e salvato nei documenti di progetto",
+      });
+    } catch (error) {
+      logger.error("Error downloading offer PDF:", error);
+      toast({
+        variant: "destructive",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Errore durante il download del PDF",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -722,6 +781,55 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                 </div>
               </li>
             </ol>
+          )}
+        </div>
+
+        <div className="w-72 min-h-[320px] rounded-lg border bg-muted/20 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium">Documenti progetto</h3>
+            {isOfferTask ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={!siteId || isDownloadingPdf}
+                className="h-8"
+              >
+                {isDownloadingPdf ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    PDF offerta
+                  </>
+                )}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Elenco e caricamento file
+              </span>
+            )}
+          </div>
+          {isOfferTask && (
+            <p className="text-xs text-muted-foreground">
+              Il PDF viene scaricato e salvato automaticamente nei documenti del
+              progetto.
+            </p>
+          )}
+          {siteId ? (
+            <ProjectDocuments
+              projectId={resource.id}
+              siteId={siteId}
+              initialFiles={projectFiles}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+              Caricamento documenti disponibile appena il contesto sito e pronto.
+            </div>
           )}
         </div>
       </div>
@@ -1171,7 +1279,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             )}
           />
 
-          <div className="grid grid-cols-2 gap-6 items-start">
+          <div className="space-y-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Ordini fornitori</h3>
@@ -1221,7 +1329,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                                   `/api/tasks/${resource.id}/suppliers`,
                                   {
                                     method: "POST",
-                                    headers: { "Content-Type": "application/json" },
+                                    headers: {
+                                      ...getHeaders(),
+                                      "Content-Type": "application/json",
+                                    },
                                     body: JSON.stringify({
                                       supplierId: ts.supplierId,
                                       notes: newNotes,
@@ -1259,7 +1370,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                                 `/api/tasks/${resource.id}/suppliers`,
                                 {
                                   method: "POST",
-                                  headers: { "Content-Type": "application/json" },
+                                  headers: {
+                                    ...getHeaders(),
+                                    "Content-Type": "application/json",
+                                  },
                                   body: JSON.stringify({
                                     supplierId: ts.supplierId,
                                     orderDate: e.target.value,
@@ -1298,7 +1412,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                                 `/api/tasks/${resource.id}/suppliers`,
                                 {
                                   method: "POST",
-                                  headers: { "Content-Type": "application/json" },
+                                  headers: {
+                                    ...getHeaders(),
+                                    "Content-Type": "application/json",
+                                  },
                                   body: JSON.stringify({
                                     supplierId: ts.supplierId,
                                     deliveryDate: e.target.value,
@@ -1384,25 +1501,6 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Documenti progetto</h3>
-                <span className="text-xs text-muted-foreground">
-                  Elenco e caricamento file
-                </span>
-              </div>
-              {siteId ? (
-                <ProjectDocuments
-                  projectId={resource.id}
-                  siteId={siteId}
-                  initialFiles={projectFiles}
-                />
-              ) : (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  Caricamento documenti disponibile appena il contesto sito è pronto.
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="flex gap-2 justify-between pt-4 border-t">

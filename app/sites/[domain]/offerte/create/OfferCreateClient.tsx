@@ -6,6 +6,7 @@ import OfferWizard from "@/components/kanbans/OfferWizard";
 import { Client, SellProduct, Task } from "@/types/supabase";
 import { Badge } from "@/components/ui/badge";
 import { FileEdit } from "lucide-react";
+import { downloadOfferPdf } from "@/lib/offer-pdf";
 
 interface OfferCreateClientProps {
   domain: string;
@@ -30,33 +31,6 @@ export default function OfferCreateClient({
   const { toast } = useToast();
   
   const isCompletingDraft = !!draftTask;
-
-  const downloadOfferPdf = async (taskId: number) => {
-    const response = await fetch("/api/offers/pdf", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-site-id": siteId,
-      },
-      body: JSON.stringify({ taskId }),
-    });
-
-    if (!response.ok) {
-      throw new Error("Impossibile esportare il PDF");
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    const disposition = response.headers.get("Content-Disposition");
-    const filenameMatch = disposition?.match(/filename="(.+)"/);
-    anchor.href = url;
-    anchor.download = filenameMatch?.[1] || "offerta.pdf";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    window.URL.revokeObjectURL(url);
-  };
 
   const handleComplete = async (offerData: any) => {
     try {
@@ -118,7 +92,7 @@ export default function OfferCreateClient({
       }
 
       if (offerData.downloadPdf && taskId) {
-        await downloadOfferPdf(taskId);
+        await downloadOfferPdf({ taskId, siteId, saveToProjectDocuments: true });
       }
 
       // Redirect back to kanban
