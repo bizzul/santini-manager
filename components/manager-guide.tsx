@@ -589,3 +589,58 @@ export function ManagerGuideButton({
   );
 }
 
+export function ManagerGuideAvatar({
+  stepId,
+  label = "Apri guida manager",
+  className,
+}: {
+  stepId?: GuideStep["id"];
+  label?: string;
+  className?: string;
+}) {
+  const context = useContext(ManagerGuideContext);
+
+  if (!context) {
+    return null;
+  }
+
+  const { openGuide } = context;
+
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      className={cn(
+        "guide-assistant-float group relative flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-sky-500 via-violet-500 to-fuchsia-500 shadow-sm transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        className
+      )}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        openGuide(stepId);
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 rounded-full bg-primary/20 opacity-70 blur-md transition-opacity duration-300 group-hover:opacity-100"
+      />
+      <span
+        aria-hidden
+        className="relative flex h-[26px] w-[26px] items-center justify-center rounded-full bg-slate-950/80 ring-1 ring-white/20"
+      >
+        <span className="guide-assistant-eye absolute left-[7px] top-[9px] h-1.5 w-1.5 rounded-full bg-white" />
+        <span className="guide-assistant-eye guide-assistant-eye-delay absolute right-[7px] top-[9px] h-1.5 w-1.5 rounded-full bg-white" />
+        <span className="absolute bottom-[6px] h-1 w-3 rounded-full bg-white/90" />
+      </span>
+      <span
+        aria-hidden
+        className="guide-assistant-sparkle absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background/90 text-primary shadow-sm ring-1 ring-border"
+      >
+        <Sparkles className="h-2.5 w-2.5" />
+      </span>
+    </button>
+  );
+}
+

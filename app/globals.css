@@ -221,3 +221,54 @@ body:has(.home-gradient-bg) {
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes guideAssistantFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes guideAssistantBlink {
+  0%,
+  44%,
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  47%,
+  51% {
+    transform: scaleY(0.2);
+    opacity: 0.7;
+  }
+}
+
+@keyframes guideAssistantSparkle {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-2px) scale(1.08);
+  }
+}
+
+.guide-assistant-float {
+  animation: guideAssistantFloat 2.8s ease-in-out infinite;
+}
+
+.guide-assistant-eye {
+  animation: guideAssistantBlink 4.2s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.guide-assistant-eye-delay {
+  animation-delay: 0.2s;
+}
+
+.guide-assistant-sparkle {
+  animation: guideAssistantSparkle 1.8s ease-in-out infinite;
+}
