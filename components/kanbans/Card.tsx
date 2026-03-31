@@ -491,6 +491,7 @@ export default function Card({
                       stepId="offer-details"
                       variant="ghost"
                       size="icon"
+                      showMascot={false}
                       className="h-7 w-7 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     />
                     {data.deliveryDate && (
@@ -660,6 +661,7 @@ export default function Card({
                       stepId="offer-details"
                       variant="ghost"
                       size="icon"
+                      showMascot={false}
                       className="h-6 w-6 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     />
                     {data.deliveryDate && (

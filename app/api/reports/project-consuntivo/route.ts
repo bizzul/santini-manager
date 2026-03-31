@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import sharp from "sharp";
 import {
   PDFDocument,
   StandardFonts,
   rgb,
-  type PDFFont,
   type PDFPage,
 } from "@pdfme/pdf-lib";
 import { getUserContext } from "@/lib/auth-utils";
@@ -18,18 +16,27 @@ import {
 } from "@/lib/project-consuntivo";
 import { createServiceClient } from "@/utils/supabase/server";
 import { projectConsuntivoReportValidation } from "@/validation/task/consuntivo";
+import {
+  BOTTOM_MARGIN,
+  BRAND,
+  BRAND_MUTED,
+  PAGE_HEIGHT,
+  PAGE_MARGIN,
+  PAGE_WIDTH,
+  SOFT_BORDER,
+  SOFT_FILL,
+  TOP_HEADER_HEIGHT,
+  drawPdfFooter,
+  drawPdfReportHeader,
+  formatReportDate,
+  getPdfLogoBuffer,
+  sanitizeReportFilename,
+  wrapPdfText,
+} from "@/lib/pdf-report-branding";
 
 export const dynamic = "force-dynamic";
 
-const PAGE_WIDTH = 595.28;
-const PAGE_HEIGHT = 841.89;
-const PAGE_MARGIN = 40;
-const TOP_HEADER_HEIGHT = 92;
-const BOTTOM_MARGIN = 46;
-const BRAND = rgb(0.09, 0.13, 0.22);
-const BRAND_MUTED = rgb(0.35, 0.4, 0.5);
-const SOFT_BORDER = rgb(0.85, 0.88, 0.92);
-const SOFT_FILL = rgb(0.96, 0.97, 0.99);
+const SOFT_FILL_ALT = rgb(0.96, 0.97, 0.99);
 const GREEN = rgb(0.04, 0.64, 0.42);
 const RED = rgb(0.82, 0.17, 0.17);
 
@@ -41,69 +48,6 @@ type TimeEntryReportRow = {
   rate: number;
   totalCost: number;
 };
-
-function formatDate(value?: string | null): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("it-IT");
-}
-
-function sanitizeFilename(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-function wrapText(
-  text: string,
-  font: PDFFont,
-  fontSize: number,
-  maxWidth: number,
-): string[] {
-  if (!text) return [""];
-
-  const paragraphs = text.split(/\n+/);
-  const lines: string[] = [];
-
-  paragraphs.forEach((paragraph) => {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
-      lines.push("");
-      return;
-    }
-
-    let currentLine = words[0];
-    for (let index = 1; index < words.length; index += 1) {
-      const candidate = `${currentLine} ${words[index]}`;
-      if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
-        currentLine = candidate;
-      } else {
-        lines.push(currentLine);
-        currentLine = words[index];
-      }
-    }
-
-    lines.push(currentLine);
-  });
-
-  return lines.length > 0 ? lines : [text];
-}
-
-async function getLogoBuffer(logoUrl?: string | null): Promise<Buffer | null> {
-  if (!logoUrl) return null;
-
-  try {
-    const response = await fetch(logoUrl);
-    if (!response.ok) return null;
-    const arrayBuffer = await response.arrayBuffer();
-    return await sharp(Buffer.from(arrayBuffer)).png().toBuffer();
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: NextRequest) {
   const userContext = await getUserContext();
@@ -273,7 +217,7 @@ export async function POST(req: NextRequest) {
   const pdfDoc = await PDFDocument.create();
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const logoBuffer = await getLogoBuffer(siteContext.siteData?.logo);
+  const logoBuffer = await getPdfLogoBuffer(siteContext.siteData?.logo);
   const logoImage = logoBuffer ? await pdfDoc.embedPng(logoBuffer) : null;
 
   const pages: PDFPage[] = [];
@@ -282,52 +226,18 @@ export async function POST(req: NextRequest) {
   let detailSectionActive = false;
 
   const drawTopHeader = (currentPage: PDFPage, isFirstPage: boolean) => {
-    currentPage.drawRectangle({
-      x: 0,
-      y: PAGE_HEIGHT - TOP_HEADER_HEIGHT,
-      width: PAGE_WIDTH,
-      height: TOP_HEADER_HEIGHT,
-      color: BRAND,
-    });
-
-    if (logoImage) {
-      const maxHeight = 38;
-      const scale = maxHeight / logoImage.height;
-      const width = logoImage.width * scale;
-      currentPage.drawImage(logoImage, {
-        x: PAGE_MARGIN,
-        y: PAGE_HEIGHT - 60,
-        width,
-        height: maxHeight,
-      });
-    }
-
-    currentPage.drawText(siteName, {
-      x: logoImage ? PAGE_MARGIN + 72 : PAGE_MARGIN,
-      y: PAGE_HEIGHT - 38,
-      size: 20,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-    currentPage.drawText(
-      isFirstPage ? "Report consuntivo progetto" : "Report consuntivo progetto - dettaglio",
-      {
-        x: logoImage ? PAGE_MARGIN + 72 : PAGE_MARGIN,
-        y: PAGE_HEIGHT - 58,
-        size: 10,
-        font: fontRegular,
-        color: rgb(0.9, 0.93, 0.98),
-      },
-    );
-
     const projectCode = task.unique_code ? `#${task.unique_code}` : `#${task.id}`;
-    const projectCodeWidth = fontBold.widthOfTextAtSize(projectCode, 14);
-    currentPage.drawText(projectCode, {
-      x: PAGE_WIDTH - PAGE_MARGIN - projectCodeWidth,
-      y: PAGE_HEIGHT - 42,
-      size: 14,
-      font: fontBold,
-      color: rgb(1, 1, 1),
+    drawPdfReportHeader({
+      page: currentPage,
+      fontRegular,
+      fontBold,
+      siteName,
+      title: isFirstPage
+        ? "Report consuntivo progetto"
+        : "Report consuntivo progetto - dettaglio",
+      documentCode: projectCode,
+      logoImage,
+      subtitle: "Layout standard report Santini Manager",
     });
   };
 
@@ -359,7 +269,7 @@ export async function POST(req: NextRequest) {
       font: fontBold,
       color: BRAND_MUTED,
     });
-    const lines = wrapText(value || "-", fontBold, 12, width);
+    const lines = wrapPdfText(value || "-", fontBold, 12, width);
     lines.forEach((line, index) => {
       currentPage.drawText(line, {
         x,
@@ -388,7 +298,7 @@ export async function POST(req: NextRequest) {
       height: 54,
       borderWidth: 1,
       borderColor: SOFT_BORDER,
-      color: SOFT_FILL,
+      color: SOFT_FILL_ALT,
     });
     currentPage.drawText(label.toUpperCase(), {
       x: x + 12,
@@ -513,7 +423,7 @@ export async function POST(req: NextRequest) {
     PAGE_MARGIN + 280,
     rightBottomB - 4,
     "Consegna",
-    formatDate(task.deliveryDate),
+    formatReportDate(task.deliveryDate),
     220,
   );
 
@@ -706,7 +616,7 @@ export async function POST(req: NextRequest) {
     y -= 18;
   } else {
     detailRows.forEach((row, index) => {
-      const descriptionLines = wrapText(
+      const descriptionLines = wrapPdfText(
         row.description,
         fontRegular,
         9,
@@ -725,7 +635,7 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      page.drawText(formatDate(row.createdAt), {
+      page.drawText(formatReportDate(row.createdAt), {
         x: PAGE_MARGIN + 8,
         y,
         size: 9,
@@ -777,27 +687,17 @@ export async function POST(req: NextRequest) {
 
   pages.push(page);
   pages.forEach((currentPage, index) => {
-    const footerText = `Pagina ${index + 1} / ${pages.length}`;
-    const footerWidth = fontRegular.widthOfTextAtSize(footerText, 9);
-    currentPage.drawText(footerText, {
-      x: PAGE_WIDTH - PAGE_MARGIN - footerWidth,
-      y: 20,
-      size: 9,
-      font: fontRegular,
-      color: BRAND_MUTED,
-    });
-    currentPage.drawText(`Generato il ${formatDate(new Date().toISOString())}`, {
-      x: PAGE_MARGIN,
-      y: 20,
-      size: 9,
-      font: fontRegular,
-      color: BRAND_MUTED,
+    drawPdfFooter({
+      page: currentPage,
+      pageNumber: index + 1,
+      totalPages: pages.length,
+      fontRegular,
     });
   });
 
   const pdfBytes = await pdfDoc.save();
-  const filenameBase = sanitizeFilename(
-    task.unique_code || task.name || `consuntivo-${task.id}`,
+  const filenameBase = sanitizeReportFilename(
+    `report-consuntivo-${task.unique_code || task.name || task.id}`,
   );
 
   return new NextResponse(Buffer.from(pdfBytes), {

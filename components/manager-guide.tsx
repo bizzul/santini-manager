@@ -55,6 +55,11 @@ type GuideStep = {
   tip: string;
 };
 
+type ManagerGuideMascotProps = {
+  className?: string;
+  size?: "sm" | "md" | "lg";
+};
+
 type ManagerGuideContextValue = {
   openGuide: (stepId?: GuideStep["id"]) => void;
   showOnLogin: boolean;
@@ -363,6 +368,7 @@ export function ManagerGuideProvider({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <ManagerGuideMascot size="sm" />
                   <BookOpen className="h-4 w-4" />
                   Guida all'utilizzo del manager
                 </div>
@@ -548,6 +554,7 @@ export function ManagerGuideButton({
   className,
   iconClassName,
   showLabel = false,
+  showMascot = true,
   variant = "outline",
   size = "icon",
 }: {
@@ -557,10 +564,12 @@ export function ManagerGuideButton({
   className?: string;
   iconClassName?: string;
   showLabel?: boolean;
+  showMascot?: boolean;
   variant?: React.ComponentProps<typeof Button>["variant"];
   size?: React.ComponentProps<typeof Button>["size"];
 }) {
   const context = useContext(ManagerGuideContext);
+  const mascotSize = size === "icon" ? "sm" : "md";
 
   if (!context) {
     return null;
@@ -575,45 +584,11 @@ export function ManagerGuideButton({
       size={size}
       title={title ?? label}
       aria-label={label}
-      className={className}
-      onPointerDown={(event) => event.stopPropagation()}
-      onMouseDown={(event) => event.stopPropagation()}
-      onClick={(event) => {
-        event.stopPropagation();
-        openGuide(stepId);
-      }}
-    >
-      <BookOpen className={cn("h-4 w-4", iconClassName)} />
-      {showLabel && <span>{label}</span>}
-    </Button>
-  );
-}
-
-export function ManagerGuideAvatar({
-  stepId,
-  label = "Apri guida manager",
-  className,
-}: {
-  stepId?: GuideStep["id"];
-  label?: string;
-  className?: string;
-}) {
-  const context = useContext(ManagerGuideContext);
-
-  if (!context) {
-    return null;
-  }
-
-  const { openGuide } = context;
-
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
       className={cn(
-        "guide-assistant-float group relative flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-gradient-to-br from-sky-500 via-violet-500 to-fuchsia-500 shadow-sm transition-transform duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        className
+        className,
+        size === "icon" &&
+          showMascot &&
+          "w-auto gap-1.5 px-1.5 has-[>svg]:px-1.5"
       )}
       onPointerDown={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
@@ -622,25 +597,79 @@ export function ManagerGuideAvatar({
         openGuide(stepId);
       }}
     >
+      {showMascot && <ManagerGuideMascot size={mascotSize} />}
+      <BookOpen className={cn("h-4 w-4", iconClassName)} />
+      {showLabel && <span>{label}</span>}
+    </Button>
+  );
+}
+
+export function ManagerGuideMascot({
+  className,
+  size = "md",
+}: ManagerGuideMascotProps) {
+  const sizeClasses = {
+    sm: {
+      root: "h-5 w-5",
+      face: "scale-[0.72]",
+      sparkle: "scale-75",
+    },
+    md: {
+      root: "h-6 w-6",
+      face: "scale-[0.86]",
+      sparkle: "scale-90",
+    },
+    lg: {
+      root: "h-8 w-8",
+      face: "scale-100",
+      sparkle: "scale-100",
+    },
+  } as const;
+
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "guide-assistant-float group relative inline-flex shrink-0 items-center justify-center rounded-full border border-amber-200/80 bg-gradient-to-br from-amber-100 via-orange-100 to-rose-100 shadow-sm",
+        sizeClasses[size].root,
+        className
+      )}
+    >
       <span
         aria-hidden
-        className="absolute inset-0 rounded-full bg-primary/20 opacity-70 blur-md transition-opacity duration-300 group-hover:opacity-100"
+        className="absolute inset-0 rounded-full bg-orange-200/60 opacity-70 blur-md transition-opacity duration-300 group-hover:opacity-100"
       />
       <span
         aria-hidden
-        className="relative flex h-[26px] w-[26px] items-center justify-center rounded-full bg-slate-950/80 ring-1 ring-white/20"
+        className={cn(
+          "relative h-[26px] w-[26px] origin-center overflow-hidden rounded-full bg-[#f5c39b] ring-1 ring-amber-50/80",
+          sizeClasses[size].face
+        )}
       >
-        <span className="guide-assistant-eye absolute left-[7px] top-[9px] h-1.5 w-1.5 rounded-full bg-white" />
-        <span className="guide-assistant-eye guide-assistant-eye-delay absolute right-[7px] top-[9px] h-1.5 w-1.5 rounded-full bg-white" />
-        <span className="absolute bottom-[6px] h-1 w-3 rounded-full bg-white/90" />
+        <span className="absolute inset-x-0 top-0 h-[9px] rounded-t-full bg-[#6b4a36]" />
+        <span className="absolute left-[3px] top-[6px] h-[7px] w-[3px] rounded-full bg-[#6b4a36]" />
+        <span className="absolute right-[3px] top-[6px] h-[7px] w-[3px] rounded-full bg-[#6b4a36]" />
+        <span className="guide-assistant-eye absolute left-[7px] top-[10px] h-1.5 w-1.5 rounded-full bg-[#2f241d]" />
+        <span className="guide-assistant-eye guide-assistant-eye-delay absolute right-[7px] top-[10px] h-1.5 w-1.5 rounded-full bg-[#2f241d]" />
+        <span className="absolute left-[5px] top-[14px] h-1.5 w-1.5 rounded-full bg-rose-300/70" />
+        <span className="absolute right-[5px] top-[14px] h-1.5 w-1.5 rounded-full bg-rose-300/70" />
+        <span className="absolute left-1/2 top-[13px] h-2 w-[1.5px] -translate-x-1/2 rounded-full bg-[#d79a73]" />
+        <span className="guide-assistant-mustache absolute left-[7px] top-[16px] h-[3px] w-[6px] rounded-full bg-[#4f3628]" />
+        <span className="guide-assistant-mustache guide-assistant-mustache-delay absolute right-[7px] top-[16px] h-[3px] w-[6px] rounded-full bg-[#4f3628]" />
+        <span className="absolute left-1/2 top-[18px] h-[1.5px] w-[3px] -translate-x-1/2 rounded-full bg-[#4f3628]" />
+        <span className="absolute left-1/2 top-[20px] h-[2px] w-[6px] -translate-x-1/2 rounded-full border-b border-[#8a4a38]" />
+        <span className="absolute bottom-0 left-1/2 h-[6px] w-[14px] -translate-x-1/2 rounded-t-[999px] bg-[#60a5fa]" />
       </span>
       <span
         aria-hidden
-        className="guide-assistant-sparkle absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background/90 text-primary shadow-sm ring-1 ring-border"
+        className={cn(
+          "guide-assistant-wave absolute -right-0.5 top-0.5 text-[10px] leading-none",
+          sizeClasses[size].sparkle
+        )}
       >
-        <Sparkles className="h-2.5 w-2.5" />
+        <Sparkles className="h-3 w-3 text-amber-500" />
       </span>
-    </button>
+    </span>
   );
 }
 

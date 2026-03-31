@@ -3,6 +3,11 @@ import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
 import { DateManager } from "../../../../package/utils/dates/date-manager";
 import { logger } from "@/lib/logger";
+import {
+  addWorkbookReportHeader,
+  setWorkbookDefaults,
+  styleWorkbookTable,
+} from "@/lib/workbook-report-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -34,11 +39,12 @@ export const GET = async () => {
 
     const date = new Date();
     const fileName =
-      `Rapporto_imballaggio_qc_interno_al_${date.getFullYear()}-${
-        date.getMonth() + 1
-      }-${date.getDate()}.xlsx`;
+      `Report_imballaggio_qc_al_${date.getFullYear()}-${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}.xlsx`;
 
     const workbook = new ExcelJS.Workbook();
+    setWorkbookDefaults(workbook, "Report imballaggio e quality control");
 
     // Build QC Excel data
     const buildQcWorksheet = (data: any) => {
@@ -88,6 +94,13 @@ export const GET = async () => {
 
         worksheet.addRow(rowData);
       });
+
+      addWorkbookReportHeader(worksheet, {
+        title: "Report quality control",
+        subtitle: "Storico controlli qualita",
+        generatedAt: date,
+      });
+      styleWorkbookTable(worksheet, { headerRowNumber: 5 });
 
       return worksheet;
     };
@@ -140,6 +153,13 @@ export const GET = async () => {
 
         worksheet.addRow(rowData);
       });
+
+      addWorkbookReportHeader(worksheet, {
+        title: "Report imballaggio",
+        subtitle: "Storico controlli imballaggio",
+        generatedAt: date,
+      });
+      styleWorkbookTable(worksheet, { headerRowNumber: 5 });
 
       return worksheet;
     };

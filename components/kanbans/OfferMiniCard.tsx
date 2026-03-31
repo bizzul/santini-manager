@@ -139,6 +139,7 @@ export default function OfferMiniCard({
             stepId="follow-up"
             variant="ghost"
             size="icon"
+            showMascot={false}
             className="h-6 w-6 text-white/80 hover:bg-white/10 hover:text-white"
           />
         </div>

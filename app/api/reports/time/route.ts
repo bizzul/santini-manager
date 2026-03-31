@@ -5,6 +5,11 @@ import { logger } from "@/lib/logger";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteContextFromDomain } from "@/lib/site-context";
 import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
+import {
+  addWorkbookReportHeader,
+  setWorkbookDefaults,
+  styleWorkbookTable,
+} from "@/lib/workbook-report-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +82,16 @@ function formatSelectedMonthsForFileName(selection: TimeReportSelection) {
   ).join("_");
 
   return `Report_ore_${selection.year}_mesi_${monthPart}.xlsx`;
+}
+
+function formatSelectionLabel(selection: TimeReportSelection) {
+  if (selection.selectedMonths.length > 0 && selection.year !== undefined) {
+    return `Anno ${selection.year} | Mesi ${selection.selectedMonths
+      .map((month) => String(month).padStart(2, "0"))
+      .join(", ")}`;
+  }
+
+  return `Periodo ${formatDate(selection.from)} - ${formatDate(selection.to)}`;
 }
 
 function filterTimetrackings(
@@ -261,100 +276,6 @@ function buildDailyRows(dailyTotal: Map<string, number>) {
   });
 
   return rows;
-}
-
-function styleWorksheet(
-  worksheet: ExcelJS.Worksheet,
-  options: {
-    numericColumns?: string[];
-    emphasizeProjectHeaders?: boolean;
-  } = {},
-) {
-  const border = {
-    top: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
-    left: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
-    bottom: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
-    right: { style: "thin" as const, color: { argb: "FFD9D9D9" } },
-  };
-
-  worksheet.views = [{ state: "frozen", ySplit: 1 }];
-
-  const headerRow = worksheet.getRow(1);
-  headerRow.font = { bold: true };
-  headerRow.height = 22;
-
-  for (let col = 1; col <= worksheet.columnCount; col++) {
-    const cell = headerRow.getCell(col);
-    cell.font = { bold: true };
-    cell.alignment = {
-      horizontal: "center",
-      vertical: "middle",
-      wrapText: true,
-    };
-    cell.fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFEFEFEF" },
-    };
-    cell.border = border;
-  }
-
-  worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
-
-    for (let col = 1; col <= worksheet.columnCount; col++) {
-      const cell = row.getCell(col);
-      cell.border = border;
-      cell.alignment = {
-        vertical: "middle",
-        wrapText: true,
-        horizontal: typeof cell.value === "number" ? "right" : "left",
-      };
-    }
-
-    const firstCellValue = row.getCell(1).value;
-    const secondCellValue = row.getCell(2).value;
-    const thirdCellValue = row.getCell(3).value;
-    const isTotalRow = typeof firstCellValue === "string" &&
-      firstCellValue.startsWith("Totale");
-    const isProjectHeaderRow = options.emphasizeProjectHeaders &&
-      !!firstCellValue &&
-      !secondCellValue &&
-      !thirdCellValue;
-
-    if (isTotalRow) {
-      row.font = { bold: true };
-      const fill = {
-        type: "pattern" as const,
-        pattern: "solid" as const,
-        fgColor: {
-          argb: firstCellValue.startsWith("Totale mese")
-            ? "FFD9EAD3"
-            : "FFFCE5CD",
-        },
-      };
-      for (let col = 1; col <= worksheet.columnCount; col++) {
-        row.getCell(col).fill = fill;
-      }
-    }
-
-    if (isProjectHeaderRow) {
-      row.font = { bold: true };
-      const fill = {
-        type: "pattern" as const,
-        pattern: "solid" as const,
-        fgColor: { argb: "FFDCE6F1" },
-      };
-      for (let col = 1; col <= worksheet.columnCount; col++) {
-        row.getCell(col).fill = fill;
-      }
-    }
-  });
-
-  options.numericColumns?.forEach((columnKey) => {
-    const column = worksheet.getColumn(columnKey);
-    column.numFmt = "0.00";
-  });
 }
 
 function prepareTimetrackingsData(
@@ -581,6 +502,7 @@ export const POST = async (req: NextRequest) => {
       }-${("0" + to.getDate()).slice(-2)}.xlsx`;
 
     const workbook = new ExcelJS.Workbook();
+    setWorkbookDefaults(workbook, "Report ore");
 
     // Create summary sheet with all timetrackings
     const allTimetrackingsData = prepareTimetrackingsData(
@@ -616,7 +538,17 @@ export const POST = async (req: NextRequest) => {
       { header: "Luogo Pranzo", key: "Luogo Pranzo", width: 20 },
     ];
     allTimetrackingsSheet.addRows(allTimetrackingsData);
-    styleWorksheet(allTimetrackingsSheet, { numericColumns: ["Totale"] });
+    addWorkbookReportHeader(allTimetrackingsSheet, {
+      title: "Report ore - riepilogo generale",
+      subtitle: isRegularUser
+        ? "Dettaglio delle ore lavorate dall'utente"
+        : "Dettaglio delle ore lavorate da tutti i collaboratori",
+      metaLines: [formatSelectionLabel(selection)],
+    });
+    styleWorkbookTable(allTimetrackingsSheet, {
+      headerRowNumber: 5,
+      numericColumns: ["Totale"],
+    });
 
     // Create individual user sheets
     newData.forEach((item: any) => {
@@ -686,7 +618,15 @@ export const POST = async (req: NextRequest) => {
         Minuti: "",
         "Tempo totale": item.total,
       });
-      styleWorksheet(summarySheet, { numericColumns: ["Tempo totale"] });
+      addWorkbookReportHeader(summarySheet, {
+        title: `Report ore - ${item.user}`,
+        subtitle: "Dettaglio registrazioni del collaboratore",
+        metaLines: [formatSelectionLabel(selection)],
+      });
+      styleWorkbookTable(summarySheet, {
+        headerRowNumber: 5,
+        numericColumns: ["Tempo totale"],
+      });
 
       // Daily total sheet for each user
       const totalHoursSheet = workbook.addWorksheet(`${item.user} Giorn.`);
@@ -698,7 +638,15 @@ export const POST = async (req: NextRequest) => {
       buildDailyRows(item.dailyTotal).forEach((row) => {
         totalHoursSheet.addRow(row);
       });
-      styleWorksheet(totalHoursSheet, { numericColumns: ["Totale"] });
+      addWorkbookReportHeader(totalHoursSheet, {
+        title: `Report giornaliero - ${item.user}`,
+        subtitle: "Totali giornalieri, settimanali e mensili",
+        metaLines: [formatSelectionLabel(selection)],
+      });
+      styleWorkbookTable(totalHoursSheet, {
+        headerRowNumber: 5,
+        numericColumns: ["Totale"],
+      });
     });
 
     // Create project summary sheet
@@ -736,7 +684,13 @@ export const POST = async (req: NextRequest) => {
       // Add an empty row after each project for readability
       projectSheet.addRow({ col1: "", col2: "", col3: "" });
     });
-    styleWorksheet(projectSheet, {
+    addWorkbookReportHeader(projectSheet, {
+      title: "Sommario progetti",
+      subtitle: "Ore aggregate per progetto, collaboratore e ruolo",
+      metaLines: [formatSelectionLabel(selection)],
+    });
+    styleWorkbookTable(projectSheet, {
+      headerRowNumber: 5,
       numericColumns: ["col3"],
       emphasizeProjectHeaders: true,
     });

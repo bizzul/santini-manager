@@ -28,6 +28,7 @@ import {
   Task,
 } from "@/types/supabase";
 import { logger } from "@/lib/logger";
+import { downloadResponseFile } from "@/lib/download-response-file";
 function GridReports({
   suppliers,
   imb,
@@ -86,6 +87,11 @@ function GridReports({
     { value: "12", label: "Dicembre" },
   ];
 
+  const formatDateForFilename = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+      date.getDate(),
+    ).padStart(2, "0")}`;
+
   const inventoryExcel = async () => {
     try {
       setLoadingInventory(true);
@@ -100,22 +106,11 @@ function GridReports({
       });
 
       if (res.ok) {
-        // Create a blob from the response
-        const blob = await res.blob();
-        // Create a link and set the URL to the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
         const date = new Date();
-        const fileName = `Rapporto_inventario_al_${date.getFullYear()}-${
-          date.getMonth() + 1
-        }-${date.getDate()}`;
-        const fileExtension = ".xlsx";
-        link.setAttribute("download", `${fileName}${fileExtension}`); // Set filename for download
-        document.body.appendChild(link);
-        link.click();
-        //@ts-ignore
-        link.parentNode.removeChild(link);
+        await downloadResponseFile(
+          res,
+          `Report_inventario_al_${formatDateForFilename(date)}.xlsx`,
+        );
         setLoadingInventory(false);
       } else {
         setLoadingInventory(false);
@@ -140,22 +135,11 @@ function GridReports({
       });
 
       if (res.ok) {
-        // Create a blob from the response
-        const blob = await res.blob();
-        // Create a link and set the URL to the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
         const date = new Date();
-        const fileName = `Rapporto_progetti_al_${date.getFullYear()}-${
-          date.getMonth() + 1
-        }-${date.getDate()}`;
-        const fileExtension = ".xlsx";
-        link.setAttribute("download", `${fileName}${fileExtension}`); // Set filename for download
-        document.body.appendChild(link);
-        link.click();
-        //@ts-ignore
-        link.parentNode.removeChild(link);
+        await downloadResponseFile(
+          res,
+          `Report_progetti_al_${formatDateForFilename(date)}.xlsx`,
+        );
       } else {
         logger.error("Failed to download file");
       }
@@ -217,23 +201,13 @@ function GridReports({
       });
 
       if (res.ok) {
-        // Create a blob from the response
-        const blob = await res.blob();
-        // Create a link and set the URL to the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
         const monthPart = sortedMonths.map((month) =>
           String(month).padStart(2, "0")
         ).join("_");
-        const fileName =
-          `Report_ore_${selectedTimeReportYear}_mesi_${monthPart}`;
-        const fileExtension = ".xlsx";
-        link.setAttribute("download", `${fileName}${fileExtension}`); // Set filename for download
-        document.body.appendChild(link);
-        link.click();
-        //@ts-ignore
-        link.parentNode.removeChild(link);
+        await downloadResponseFile(
+          res,
+          `Report_ore_${selectedTimeReportYear}_mesi_${monthPart}.xlsx`,
+        );
       } else {
         logger.error("Failed to download file");
       }
@@ -247,9 +221,10 @@ function GridReports({
     supplier: string | undefined
   ) => {
     try {
-      let supplierName = null;
-      if (supplier) {
-        supplierName = suppliers.filter((sup) => sup.id == Number(supplier));
+      let supplierName: string | null = null;
+      if (supplier && supplier !== "all") {
+        supplierName =
+          suppliers.find((sup) => sup.id == Number(supplier))?.name || null;
       }
 
       const res = await fetch("/api/reports/errors", {
@@ -263,12 +238,6 @@ function GridReports({
       });
 
       if (res.ok) {
-        // Create a blob from the response
-        const blob = await res.blob();
-        // Create a link and set the URL to the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
         const fileName = `Report_errori_dal_${value.from!.getFullYear()}-${(
           "0" +
           (value.from!.getMonth() + 1)
@@ -278,14 +247,9 @@ function GridReports({
           "0" +
           (value.to!.getMonth() + 1)
         ).slice(-2)}-${("0" + value.to!.getDate()).slice(-2)}${
-          supplierName !== null ? "_" + supplierName[0].name : ""
+          supplierName ? "_" + supplierName : ""
         }`;
-        const fileExtension = ".xlsx";
-        link.setAttribute("download", `${fileName}${fileExtension}`); // Set filename for download
-        document.body.appendChild(link);
-        link.click();
-        //@ts-ignore
-        link.parentNode.removeChild(link);
+        await downloadResponseFile(res, `${fileName}.xlsx`);
       } else {
         logger.error("Failed to download file");
       }
@@ -306,6 +270,7 @@ function GridReports({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-site-domain": domain,
         },
         body: JSON.stringify({
           data: { imballaggioData, task },
@@ -313,19 +278,7 @@ function GridReports({
       });
 
       if (res.ok) {
-        // Create a blob from the response
-        const blob = await res.blob();
-        // Create a link and set the URL to the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        const fileName = `Imballaggio_Progetto_${task}`;
-        const fileExtension = ".pdf";
-        link.setAttribute("download", `${fileName}${fileExtension}`); // Set filename for download
-        document.body.appendChild(link);
-        link.click();
-        //@ts-ignore
-        link.parentNode.removeChild(link);
+        await downloadResponseFile(res, `report-imballaggio-${task}.pdf`);
       } else {
         logger.error("Failed to download file");
       }
@@ -345,19 +298,10 @@ function GridReports({
 
       if (res.ok) {
         const date = new Date();
-        // Create a blob from the response
-        const blob = await res.blob();
-        // Create a link and set the URL to the blob
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        const fileName = `Report_imballaggio_QC_al_${date.getFullYear()}`;
-        const fileExtension = ".xlsx";
-        link.setAttribute("download", `${fileName}${fileExtension}`); // Set filename for download
-        document.body.appendChild(link);
-        link.click();
-        //@ts-ignore
-        link.parentNode.removeChild(link);
+        await downloadResponseFile(
+          res,
+          `Report_imballaggio_qc_al_${formatDateForFilename(date)}.xlsx`,
+        );
       } else {
         logger.error("Failed to download file");
       }

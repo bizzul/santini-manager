@@ -3,6 +3,11 @@ import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
 import { calculateCurrentValue } from "../../../../package/utils/various/calculateCurrentValue";
 import { logger } from "@/lib/logger";
+import {
+  addWorkbookReportHeader,
+  setWorkbookDefaults,
+  styleWorkbookTable,
+} from "@/lib/workbook-report-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -36,11 +41,12 @@ export const GET = async () => {
 
     const filteredTasks = filterOpenProjects(tasks);
 
-    const fileName = `Rapporto_inventario_al_${date.getFullYear()}-${
-      date.getMonth() + 1
-    }-${date.getDate()}.xlsx`;
+    const fileName = `Report_progetti_al_${date.getFullYear()}-${String(
+      date.getMonth() + 1,
+    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}.xlsx`;
 
     const workbook = new ExcelJS.Workbook();
+    setWorkbookDefaults(workbook, "Report progetti");
 
     // Create task worksheet
     const taskWorksheet = workbook.addWorksheet("Progetti aperti");
@@ -94,6 +100,16 @@ export const GET = async () => {
     });
 
     taskWorksheet.addRows(taskDataSubset);
+    addWorkbookReportHeader(taskWorksheet, {
+      title: "Report progetti",
+      subtitle: "Situazione dei progetti aperti",
+      metaLines: [`Totale progetti: ${taskDataSubset.length}`],
+      generatedAt: date,
+    });
+    styleWorkbookTable(taskWorksheet, {
+      headerRowNumber: 5,
+      numericColumns: ["Percentuale", "Prezzo di vendita", "Valore"],
+    });
 
     // Create summary worksheet
     const summaryWorksheet = workbook.addWorksheet("Riepilogo");
@@ -107,6 +123,15 @@ export const GET = async () => {
         (acc: number, task: any) => acc + task["Prezzo di vendita"],
         0,
       ),
+    });
+    addWorkbookReportHeader(summaryWorksheet, {
+      title: "Riepilogo progetti",
+      subtitle: "Sintesi economica dei progetti aperti",
+      generatedAt: date,
+    });
+    styleWorkbookTable(summaryWorksheet, {
+      headerRowNumber: 5,
+      numericColumns: ["valore"],
     });
 
     // Set headers to indicate a file download

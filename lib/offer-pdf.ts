@@ -1,5 +1,7 @@
 "use client";
 
+import { downloadResponseFile } from "@/lib/download-response-file";
+
 type DownloadOfferPdfParams = {
   taskId: number;
   siteId: string;
@@ -34,19 +36,10 @@ export async function downloadOfferPdf({
     throw new Error(errorMessage);
   }
 
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  const disposition = response.headers.get("Content-Disposition");
-  const filenameMatch = disposition?.match(/filename="(.+)"/);
-  const filename = filenameMatch?.[1] || `offerta-${taskId}.pdf`;
-
-  anchor.href = url;
-  anchor.download = filename;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.URL.revokeObjectURL(url);
+  const filename = await downloadResponseFile(
+    response,
+    `offerta-${taskId}.pdf`,
+  );
 
   return filename;
 }

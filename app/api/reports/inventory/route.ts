@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
 import { logger } from "@/lib/logger";
+import {
+  addWorkbookReportHeader,
+  setWorkbookDefaults,
+  styleWorkbookTable,
+} from "@/lib/workbook-report-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -64,11 +69,12 @@ export const GET = async () => {
       .flatMap(([_, inventories]) => inventories);
 
     const date = new Date();
-    const fileName = `Rapporto_inventario_al_${date.getFullYear()}-${
-      date.getMonth() + 1
-    }-${date.getDate()}.xlsx`;
+    const fileName = `Report_inventario_al_${date.getFullYear()}-${String(
+      date.getMonth() + 1,
+    ).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}.xlsx`;
 
     const workbook = new ExcelJS.Workbook();
+    setWorkbookDefaults(workbook, "Report inventario");
 
     // Create inventory worksheet
     const inventoryWorksheet = workbook.addWorksheet("Inventario");
@@ -104,6 +110,16 @@ export const GET = async () => {
     });
 
     inventoryWorksheet.addRows(inventoryDataSubset);
+    addWorkbookReportHeader(inventoryWorksheet, {
+      title: "Report inventario",
+      subtitle: "Disponibilita e valorizzazione materiali",
+      metaLines: [`Articoli esportati: ${inventoryDataSubset.length}`],
+      generatedAt: date,
+    });
+    styleWorkbookTable(inventoryWorksheet, {
+      headerRowNumber: 5,
+      numericColumns: ["Altezza", "Lunghezza", "Profondita", "Quantita", "Prezzo", "Prezzo Totale"],
+    });
 
     // Create category values worksheet
     const categoryValueWorksheet = workbook.addWorksheet("Totale per Categoria");
@@ -112,6 +128,15 @@ export const GET = async () => {
       { header: "Valore Totale", key: "value", width: 20 },
     ];
     categoryValueWorksheet.addRows(categoryValues);
+    addWorkbookReportHeader(categoryValueWorksheet, {
+      title: "Riepilogo categorie",
+      subtitle: "Valore totale dell'inventario per categoria",
+      generatedAt: date,
+    });
+    styleWorkbookTable(categoryValueWorksheet, {
+      headerRowNumber: 5,
+      numericColumns: ["value"],
+    });
 
     // Set headers to indicate a file download
     const headers = new Headers();

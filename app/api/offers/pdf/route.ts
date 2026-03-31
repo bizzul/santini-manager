@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import sharp from "sharp";
 import {
   PDFDocument,
   StandardFonts,
   rgb,
-  type PDFFont,
 } from "@pdfme/pdf-lib";
 import { createServiceClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
@@ -13,23 +11,23 @@ import {
   normalizeOfferProducts,
   sumOfferProductsTotal,
 } from "@/lib/offers";
+import {
+  BRAND,
+  BRAND_MUTED,
+  PAGE_HEIGHT,
+  PAGE_MARGIN,
+  PAGE_WIDTH,
+  SOFT_BORDER,
+  SOFT_FILL,
+  TOP_HEADER_HEIGHT,
+  drawPdfReportHeader,
+  formatReportDate,
+  getPdfLogoBuffer,
+  sanitizeReportFilename,
+  wrapPdfText,
+} from "@/lib/pdf-report-branding";
 
 export const dynamic = "force-dynamic";
-
-const PAGE_WIDTH = 595.28;
-const PAGE_HEIGHT = 841.89;
-const PAGE_MARGIN = 40;
-const BRAND = rgb(0.09, 0.13, 0.22);
-const BRAND_MUTED = rgb(0.35, 0.4, 0.5);
-const SOFT_BORDER = rgb(0.85, 0.88, 0.92);
-const SOFT_FILL = rgb(0.97, 0.98, 0.99);
-
-function formatDate(value?: string | null): string {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("it-IT");
-}
 
 function formatMoney(value?: number | null): string {
   const safeValue = Number(value || 0);
@@ -37,14 +35,6 @@ function formatMoney(value?: number | null): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function sanitizeFilename(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 async function savePdfToProjectDocuments(params: {
@@ -108,47 +98,6 @@ async function savePdfToProjectDocuments(params: {
 
   if (insertFileError) {
     throw new Error(insertFileError.message);
-  }
-}
-
-function wrapText(
-  text: string,
-  font: PDFFont,
-  fontSize: number,
-  maxWidth: number,
-): string[] {
-  if (!text) return [""];
-
-  const words = text.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return [""];
-
-  const lines: string[] = [];
-  let currentLine = words[0];
-
-  for (let index = 1; index < words.length; index += 1) {
-    const candidate = `${currentLine} ${words[index]}`;
-    if (font.widthOfTextAtSize(candidate, fontSize) <= maxWidth) {
-      currentLine = candidate;
-    } else {
-      lines.push(currentLine);
-      currentLine = words[index];
-    }
-  }
-
-  lines.push(currentLine);
-  return lines;
-}
-
-async function getLogoBuffer(logoUrl?: string | null): Promise<Buffer | null> {
-  if (!logoUrl) return null;
-
-  try {
-    const response = await fetch(logoUrl);
-    if (!response.ok) return null;
-    const arrayBuffer = await response.arrayBuffer();
-    return await sharp(Buffer.from(arrayBuffer)).png().toBuffer();
-  } catch {
-    return null;
   }
 }
 
@@ -249,54 +198,22 @@ export async function POST(req: NextRequest) {
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
 
-  const logoBuffer = await getLogoBuffer(siteContext.siteData?.logo);
+  const logoBuffer = await getPdfLogoBuffer(siteContext.siteData?.logo);
   const logoImage = logoBuffer ? await pdfDoc.embedPng(logoBuffer) : null;
 
-  page.drawRectangle({
-    x: 0,
-    y: PAGE_HEIGHT - 92,
-    width: PAGE_WIDTH,
-    height: 92,
-    color: BRAND,
-  });
-
-  if (logoImage) {
-    const maxHeight = 38;
-    const scale = maxHeight / logoImage.height;
-    page.drawImage(logoImage, {
-      x: PAGE_MARGIN,
-      y: PAGE_HEIGHT - 60,
-      width: logoImage.width * scale,
-      height: maxHeight,
-    });
-  }
-
-  page.drawText(siteName, {
-    x: logoImage ? PAGE_MARGIN + 72 : PAGE_MARGIN,
-    y: PAGE_HEIGHT - 38,
-    size: 20,
-    font: fontBold,
-    color: rgb(1, 1, 1),
-  });
-  page.drawText("Offerta commerciale", {
-    x: logoImage ? PAGE_MARGIN + 72 : PAGE_MARGIN,
-    y: PAGE_HEIGHT - 58,
-    size: 10,
-    font: fontRegular,
-    color: rgb(0.9, 0.93, 0.98),
-  });
-
   const offerCode = task.unique_code || `offerta-${task.id}`;
-  const offerCodeWidth = fontBold.widthOfTextAtSize(offerCode, 14);
-  page.drawText(offerCode, {
-    x: PAGE_WIDTH - PAGE_MARGIN - offerCodeWidth,
-    y: PAGE_HEIGHT - 42,
-    size: 14,
-    font: fontBold,
-    color: rgb(1, 1, 1),
+  drawPdfReportHeader({
+    page,
+    fontRegular,
+    fontBold,
+    siteName,
+    title: "Offerta commerciale",
+    documentCode: offerCode,
+    logoImage,
+    subtitle: "Layout standard report Santini Manager",
   });
 
-  let y = PAGE_HEIGHT - 122;
+  let y = PAGE_HEIGHT - TOP_HEADER_HEIGHT - 30;
 
   const drawField = (label: string, value: string, x: number, width: number) => {
     page.drawText(label.toUpperCase(), {
@@ -306,7 +223,7 @@ export async function POST(req: NextRequest) {
       font: fontBold,
       color: BRAND_MUTED,
     });
-    const linesForValue = wrapText(value || "-", fontBold, 12, width);
+    const linesForValue = wrapPdfText(value || "-", fontBold, 12, width);
     linesForValue.forEach((line, index) => {
       page.drawText(line, {
         x,
@@ -324,7 +241,7 @@ export async function POST(req: NextRequest) {
   drawField("Luogo", task.luogo || "-", PAGE_MARGIN, 220);
   drawField(
     "Data consegna indicativa",
-    formatDate(task.deliveryDate),
+    formatReportDate(task.deliveryDate),
     PAGE_MARGIN + 250,
     200,
   );
@@ -373,7 +290,7 @@ export async function POST(req: NextRequest) {
   y -= 30;
 
   lines.forEach((line) => {
-    const descriptionLines = wrapText(line.description, fontRegular, 9, 180);
+    const descriptionLines = wrapPdfText(line.description, fontRegular, 9, 180);
     const rowHeight = Math.max(30, descriptionLines.length * 11 + 8);
 
     page.drawRectangle({
@@ -442,7 +359,7 @@ export async function POST(req: NextRequest) {
       font: fontBold,
       color: BRAND,
     });
-    const noteLines = wrapText(task.other, fontRegular, 10, tableWidth - 16);
+    const noteLines = wrapPdfText(task.other, fontRegular, 10, tableWidth - 16);
     page.drawRectangle({
       x: PAGE_MARGIN,
       y: y - 20 - noteLines.length * 14,
@@ -487,7 +404,7 @@ export async function POST(req: NextRequest) {
   });
 
   const pdfBytes = await pdfDoc.save();
-  const filename = `${sanitizeFilename(offerCode || "offerta")}.pdf`;
+  const filename = `${sanitizeReportFilename(offerCode || "offerta")}.pdf`;
 
   if (saveToProjectDocuments) {
     await savePdfToProjectDocuments({

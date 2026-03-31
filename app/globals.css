@@ -256,6 +256,26 @@ body:has(.home-gradient-bg) {
   }
 }
 
+@keyframes guideAssistantMustache {
+  0%,
+  100% {
+    transform: rotate(var(--guide-mustache-rotation)) translateY(0);
+  }
+  50% {
+    transform: rotate(var(--guide-mustache-rotation-mid)) translateY(0.5px);
+  }
+}
+
+@keyframes guideAssistantWave {
+  0%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+  50% {
+    transform: rotate(10deg) translateY(-1px);
+  }
+}
+
 .guide-assistant-float {
   animation: guideAssistantFloat 2.8s ease-in-out infinite;
 }
@@ -271,4 +291,22 @@ body:has(.home-gradient-bg) {
 
 .guide-assistant-sparkle {
   animation: guideAssistantSparkle 1.8s ease-in-out infinite;
+}
+
+.guide-assistant-mustache {
+  --guide-mustache-rotation: 18deg;
+  --guide-mustache-rotation-mid: 14deg;
+  animation: guideAssistantMustache 2.4s ease-in-out infinite;
+  transform-origin: right center;
+}
+
+.guide-assistant-mustache-delay {
+  --guide-mustache-rotation: -18deg;
+  --guide-mustache-rotation-mid: -14deg;
+  animation-delay: 0.12s;
+  transform-origin: left center;
+}
+
+.guide-assistant-wave {
+  animation: guideAssistantWave 1.8s ease-in-out infinite;
 }

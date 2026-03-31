@@ -31,7 +31,7 @@ import { UserContext } from "@/lib/auth-utils";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
 import { useSiteId } from "@/hooks/use-site-id";
-import { useManagerGuide } from "@/components/manager-guide";
+import { ManagerGuideMascot, useManagerGuide } from "@/components/manager-guide";
 
 export const NavUser = memo(function NavUser({
   user,
@@ -149,6 +149,7 @@ export const NavUser = memo(function NavUser({
                 onClick={() => openGuide()}
                 className="cursor-pointer"
               >
+                <ManagerGuideMascot size="sm" />
                 <BookOpen />
                 Guida manager
               </DropdownMenuItem>

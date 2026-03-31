@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useToast } from "../ui/use-toast";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -48,6 +48,7 @@ import { VoiceInputButton } from "./VoiceInputButton";
 import { LeaveRequestForm } from "@/components/attendance/LeaveRequestForm";
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
+import { TimetrackingInstructionsCard } from "./timetracking-instructions";
 
 // Internal activity type from database
 export interface InternalActivity {
@@ -359,6 +360,51 @@ const CreatePage = ({
   }, [rows, savedTodayMinutes]);
 
   const totals = calculateTotals();
+
+  const currentInstructionRow = useMemo(() => {
+    return (
+      rows.find((row) => {
+        const hasSelectedActivity =
+          row.activityType === "project" ? Boolean(row.task) : Boolean(row.internalActivity);
+        const hasRequiredRole =
+          row.activityType === "project"
+            ? Boolean(row.roles && Object.keys(row.roles).length > 0)
+            : true;
+        const hasTrackedTime =
+          (parseInt(row.hours || "0", 10) || 0) > 0 ||
+          (parseInt(row.minutes || "0", 10) || 0) > 0;
+        const hasLunchLocation = !row.lunchOffsite || Boolean(row.lunchLocation.trim());
+
+        return !(hasSelectedActivity && hasRequiredRole && hasTrackedTime && hasLunchLocation);
+      }) ??
+      rows[rows.length - 1] ??
+      null
+    );
+  }, [rows]);
+
+  const currentInstructionRowSnapshot = currentInstructionRow
+    ? {
+        activityType: currentInstructionRow.activityType,
+        label:
+          currentInstructionRow.activityType === "project"
+            ? currentInstructionRow.taskLabel || currentInstructionRow.task
+            : activityLabels.get(currentInstructionRow.internalActivity || "") ||
+              currentInstructionRow.internalActivity ||
+              "",
+        hasProject: Boolean(currentInstructionRow.task),
+        hasRole: Boolean(
+          currentInstructionRow.roles &&
+            Object.keys(currentInstructionRow.roles).length > 0
+        ),
+        hasInternalActivity: Boolean(currentInstructionRow.internalActivity),
+        hasTime:
+          (parseInt(currentInstructionRow.hours || "0", 10) || 0) > 0 ||
+          (parseInt(currentInstructionRow.minutes || "0", 10) || 0) > 0,
+        hasComment: Boolean(currentInstructionRow.description.trim()),
+        lunchOffsite: currentInstructionRow.lunchOffsite,
+        hasLunchLocation: Boolean(currentInstructionRow.lunchLocation.trim()),
+      }
+    : null;
 
   // Get completed entries (rows with task or internal activity filled)
   const completedEntries = rows.filter((row) =>
@@ -708,6 +754,28 @@ const CreatePage = ({
                 onAddEntry={handleAddFromVoice}
               />
             )}
+          </div>
+
+          <div className="mt-4">
+            <TimetrackingInstructionsCard
+              view={
+                activeTab === "create"
+                  ? "create"
+                  : activeTab === "my-hours"
+                    ? "my-hours"
+                    : activeTab === "week-calendar"
+                      ? "personal-week"
+                      : "leave-request"
+              }
+              mode="personal"
+              entryCount={allUserEntries.length}
+              completedEntries={completedEntries}
+              savedEntriesCount={todayEntries.length}
+              totalMinutes={totals.totalInMinutes}
+              targetMinutes={getWorkHoursTarget() * 60}
+              currentRow={currentInstructionRowSnapshot}
+              voiceAvailable={Boolean(domain && siteId)}
+            />
           </div>
 
           {/* Create Tab Content */}

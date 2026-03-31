@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { downloadResponseFile } from "@/lib/download-response-file";
 import {
   buildProjectCostSnapshot,
   DEFAULT_PROJECT_HOURLY_RATE,
@@ -218,15 +219,7 @@ export function ProjectConsuntivoSummary({
         throw new Error(errorPayload?.error || "Impossibile generare il PDF");
       }
 
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = blobUrl;
-      anchor.download = `consuntivo-progetto-${taskId}.pdf`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      await downloadResponseFile(response, `report-consuntivo-${taskId}.pdf`);
     } catch (error) {
       toast({
         variant: "destructive",

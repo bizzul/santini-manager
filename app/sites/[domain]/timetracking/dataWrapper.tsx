@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { Timetracking, User, Roles, Task } from "@/types/supabase";
@@ -10,6 +10,7 @@ import { MonthlyCalendarView } from "@/components/calendar/MonthlyCalendarView";
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
 import type { WeeklyCalendarTimetrackingEntry } from "@/components/calendar/weekly-calendar-types";
+import { TimetrackingInstructionsCard } from "@/components/timeTracking/timetracking-instructions";
 
 interface InternalActivity {
   id: string;
@@ -40,6 +41,7 @@ const DataWrapper = ({
   mode = "admin",
   currentUserId,
 }: DataWrapperProps) => {
+  const [activeView, setActiveView] = useState<"week" | "month" | "table">("week");
   const columns = useMemo(
     () => createColumns(domain, internalActivities, tasks, mode === "admin"),
     [domain, internalActivities, mode, tasks]
@@ -55,7 +57,11 @@ const DataWrapper = ({
   
   return (
     <div className="container mx-auto ">
-      <Tabs defaultValue="week" className="space-y-4">
+      <Tabs
+        value={activeView}
+        onValueChange={(value) => setActiveView(value as "week" | "month" | "table")}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="week" className="gap-2">
             <Calendar className="h-4 w-4" />
@@ -70,6 +76,13 @@ const DataWrapper = ({
             Tabella
           </TabsTrigger>
         </TabsList>
+
+        <TimetrackingInstructionsCard
+          view={activeView}
+          mode={mode}
+          entryCount={data.length}
+          userCount={users.length}
+        />
 
         <TabsContent value="week" className="mt-0">
           <WeeklyCalendarView

@@ -121,6 +121,7 @@ export async function PATCH(
       'unique_code', 'title', 'name', 'luogo', 'description',
       'clientId', 'sellProductId', 'sellPrice',
       'deliveryDate', 'termine_produzione', 'offer_send_date',
+      'ora_inizio', 'ora_fine', 'squadra',
       'other', 'positions', 'numero_pezzi',
       'kanbanColumnId', 'kanbanId',
       'is_draft', 'task_type', 'display_mode',

@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "../../../../utils/supabase/server";
 import ExcelJS from "exceljs";
+import {
+  addWorkbookReportHeader,
+  setWorkbookDefaults,
+  styleWorkbookTable,
+} from "@/lib/workbook-report-branding";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +15,27 @@ function filterErrorsTimeRange(errors: any[], from: Date, to: Date) {
   );
 }
 
+function formatDateForFilename(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+    date.getDate(),
+  ).padStart(2, "0")}`;
+}
+
+function sanitizeFilenamePart(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-zA-Z0-9_-]+/g, "")
+    .replace(/-+/g, "-");
+}
+
 export const POST = async (req: NextRequest) => {
   const inputData = await req.json();
   const from = new Date(inputData.data.value.from);
   const to = new Date(inputData.data.value.to);
-  const supplierId = inputData.data.supplier;
+  const rawSupplierId = inputData.data.supplier;
+  const supplierId =
+    rawSupplierId && rawSupplierId !== "all" ? Number(rawSupplierId) : null;
 
   try {
     const supabase = await createClient();
@@ -37,7 +58,7 @@ export const POST = async (req: NextRequest) => {
       const { data: supplierData, error: supplierError } = await supabase
         .from("suppliers")
         .select("*")
-        .eq("id", Number(supplierId))
+        .eq("id", supplierId)
         .single();
 
       if (supplierError) throw supplierError;
@@ -65,11 +86,12 @@ export const POST = async (req: NextRequest) => {
     }
 
     const date = new Date();
-    const fileName = `Rapporto_errori_al_${date.getFullYear()}-${
-      date.getMonth() + 1
-    }-${date.getDate()}.xlsx`;
+    const fileName = `Report_errori_dal_${formatDateForFilename(from)}_al_${formatDateForFilename(to)}${
+      supplier?.name ? `_${sanitizeFilenamePart(supplier.name)}` : ""
+    }.xlsx`;
 
     const workbook = new ExcelJS.Workbook();
+    setWorkbookDefaults(workbook, "Report errori");
 
     // Create errors worksheet
     const taskWorksheet = workbook.addWorksheet("Errori");
@@ -107,6 +129,15 @@ export const POST = async (req: NextRequest) => {
     });
 
     taskWorksheet.addRows(taskDataSubset);
+    addWorkbookReportHeader(taskWorksheet, {
+      title: "Report errori",
+      subtitle: "Elenco anomalie filtrate per periodo e fornitore",
+      metaLines: [
+        supplier?.name ? `Fornitore: ${supplier.name}` : "Fornitore: tutti",
+      ],
+      generatedAt: date,
+    });
+    styleWorkbookTable(taskWorksheet, { headerRowNumber: 5 });
 
     // Create summary worksheet
     const summaryWorksheet = workbook.addWorksheet("Riepilogo");
@@ -116,6 +147,12 @@ export const POST = async (req: NextRequest) => {
     summaryWorksheet.addRow({
       totale: taskDataSubset.length,
     });
+    addWorkbookReportHeader(summaryWorksheet, {
+      title: "Riepilogo errori",
+      subtitle: "Conteggio complessivo del report esportato",
+      generatedAt: date,
+    });
+    styleWorkbookTable(summaryWorksheet, { headerRowNumber: 5 });
 
     // Set headers to indicate a file download
     const headers = new Headers();
