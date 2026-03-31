@@ -3,6 +3,7 @@
 import {
   BadgeCheck,
   Bell,
+  BookOpen,
   ChevronsUpDown,
   LogOut,
   ShieldCheck,
@@ -12,6 +13,7 @@ import { memo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
@@ -29,6 +31,7 @@ import { UserContext } from "@/lib/auth-utils";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
 import { useSiteId } from "@/hooks/use-site-id";
+import { useManagerGuide } from "@/components/manager-guide";
 
 export const NavUser = memo(function NavUser({
   user,
@@ -40,6 +43,7 @@ export const NavUser = memo(function NavUser({
   const { isMobile } = useSidebar();
   const { logout } = useLogout();
   const { siteId } = useSiteId(domain);
+  const { openGuide, showOnLogin, setShowOnLogin } = useManagerGuide();
 
   // Extract user information from the context
   const userData = user.user;
@@ -141,6 +145,16 @@ export const NavUser = memo(function NavUser({
                 <Bell />
                 Notifiche
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={openGuide} className="cursor-pointer">
+                <BookOpen />
+                Guida manager
+              </DropdownMenuItem>
+              <DropdownMenuCheckboxItem
+                checked={showOnLogin}
+                onCheckedChange={(checked) => setShowOnLogin(checked === true)}
+              >
+                Mostra guida all'accesso
+              </DropdownMenuCheckboxItem>
               {(user.role === "admin" || user.role === "superadmin") && (
                 <DropdownMenuItem asChild>
                   <Link

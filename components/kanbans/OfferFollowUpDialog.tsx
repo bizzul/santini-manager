@@ -178,15 +178,6 @@ export default function OfferFollowUpDialog({
       return;
     }
 
-    if (!note.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: "Inserisci almeno una nota di follow-up",
-      });
-      return;
-    }
-
     if (moveAfterSave && !selectedColumnId) {
       toast({
         variant: "destructive",
@@ -203,9 +194,12 @@ export default function OfferFollowUpDialog({
     setIsSubmitting(true);
 
     try {
+      const trimmedNote = note.trim();
       const fullNote = `[${format(contactDate, "dd/MM/yyyy", {
         locale: it,
-      })}] ${OFFER_CONTACT_TYPE_LABELS[contactType]}: ${note}`;
+      })}] ${OFFER_CONTACT_TYPE_LABELS[contactType]}${
+        trimmedNote ? `: ${trimmedNote}` : ""
+      }`;
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -494,10 +488,10 @@ export default function OfferFollowUpDialog({
 
             {/* Note */}
             <div className="space-y-2">
-              <Label htmlFor="note">Note</Label>
+              <Label htmlFor="note">Note (opzionale)</Label>
               <Textarea
                 id="note"
-                placeholder="Inserisci le informazioni del contatto..."
+                placeholder="Inserisci eventuali dettagli del contatto..."
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={4}

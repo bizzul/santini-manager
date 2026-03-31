@@ -9,6 +9,8 @@ import Image from "next/image";
 import { LogIn, UserX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
+const GUIDE_PENDING_LOGIN_KEY = "santini-manager-guide-pending-login";
+
 function LoginContent() {
   const [isPending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
@@ -27,10 +29,21 @@ function LoginContent() {
 
   const handleSubmit = async (formData: FormData) => {
     setError(null);
+    try {
+      window.sessionStorage.setItem(GUIDE_PENDING_LOGIN_KEY, "1");
+    } catch {
+      // Ignore storage errors: login should still work even without auto-guide.
+    }
+
     startTransition(async () => {
       try {
         const result = await signIn(formData);
         if (result && "error" in result) {
+          try {
+            window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
+          } catch {
+            // Ignore storage errors.
+          }
           setError(result.error);
         }
       } catch (err) {
@@ -38,6 +51,11 @@ function LoginContent() {
         const errorMessage = err instanceof Error ? err.message : String(err);
         if (errorMessage.includes("NEXT_REDIRECT")) {
           throw err; // Re-throw to allow Next.js to handle the redirect
+        }
+        try {
+          window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
+        } catch {
+          // Ignore storage errors.
         }
         setError(
           err instanceof Error ? err.message : "An unexpected error occurred"

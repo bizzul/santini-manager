@@ -23,7 +23,12 @@ import {
   SellProduct,
 } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
-import { isWeekend, parseLocalDate } from "@/lib/utils";
+import {
+  cn,
+  formatLocalDate,
+  isWeekend,
+  parseLocalDate,
+} from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -62,7 +67,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
   normalizeOfferProducts,
@@ -98,9 +102,43 @@ type TaskSupplier = {
   supplierId: number;
   supplier: Supplier;
   orderDate: string | null;
+  supplyDays: number | null;
   deliveryDate: string | null;
   notes: string | null;
 };
+
+function parseSupplyDaysValue(
+  value: string | number | null | undefined
+): number | null {
+  if (value === "" || value === null || value === undefined) {
+    return null;
+  }
+
+  const parsedValue =
+    typeof value === "number" ? value : Number.parseInt(value, 10);
+
+  if (Number.isNaN(parsedValue)) {
+    return null;
+  }
+
+  return Math.max(parsedValue, 0);
+}
+
+function calculateOrderDateFromDelivery(
+  deliveryDate: string,
+  supplyDays: string | number | null | undefined
+): string | null {
+  const normalizedSupplyDays = parseSupplyDaysValue(supplyDays);
+
+  if (!deliveryDate || normalizedSupplyDays === null) {
+    return null;
+  }
+
+  const calculatedDate = parseLocalDate(deliveryDate);
+  calculatedDate.setDate(calculatedDate.getDate() - normalizedSupplyDays);
+
+  return formatLocalDate(calculatedDate);
+}
 
 const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const router = useRouter();
@@ -140,6 +178,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   );
   const [newSupplier, setNewSupplier] = useState<string>("");
   const [newOrderDate, setNewOrderDate] = useState<string>("");
+  const [newSupplyDays, setNewSupplyDays] = useState<string>("");
   const [newDeliveryDate, setNewDeliveryDate] = useState<string>("");
   const [kanbans, setKanbans] = useState<any[]>([]);
   const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(
@@ -504,6 +543,12 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     if (!newSupplier) return;
 
+    const normalizedSupplyDays = parseSupplyDaysValue(newSupplyDays);
+    const calculatedOrderDate =
+      newDeliveryDate && normalizedSupplyDays !== null
+        ? calculateOrderDateFromDelivery(newDeliveryDate, normalizedSupplyDays)
+        : null;
+
     const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
       method: "POST",
       headers: {
@@ -512,8 +557,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       },
       body: JSON.stringify({
         supplierId: parseInt(newSupplier),
-        orderDate: newOrderDate || null,
-        deliveryDate: newDeliveryDate,
+        orderDate: (calculatedOrderDate ?? newOrderDate) || null,
+        supplyDays: normalizedSupplyDays,
+        deliveryDate: newDeliveryDate || null,
       }),
     });
 
@@ -522,6 +568,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       setTaskSuppliers([...taskSuppliers, newTaskSupplier]);
       setNewSupplier("");
       setNewOrderDate("");
+      setNewSupplyDays("");
       setNewDeliveryDate("");
       toast({
         description: "Fornitore aggiunto con successo",
@@ -1295,7 +1342,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                       key={ts.id}
                       className="rounded-lg border bg-muted/30 p-3 space-y-3"
                     >
-                      <div className="grid grid-cols-[72px_minmax(0,1fr)_140px_140px_auto] gap-3 items-start">
+                      <div className="grid grid-cols-[72px_minmax(0,1fr)_140px_110px_140px_auto] gap-3 items-start">
                         <div className="h-[72px] w-[72px] rounded-md border bg-background flex items-center justify-center overflow-hidden">
                           {ts.supplier?.supplier_image ? (
                             <Image
@@ -1400,14 +1447,26 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
                         <div className="space-y-2">
                           <label className="text-xs text-muted-foreground">
-                            Data consegna
+                            Giorni fornitura
                           </label>
                           <Input
-                            type="date"
-                            value={
-                              ts.deliveryDate ? ts.deliveryDate.split("T")[0] : ""
-                            }
-                            onChange={async (e) => {
+                            type="number"
+                            min="0"
+                            defaultValue={ts.supplyDays ?? ""}
+                            onBlur={async (e) => {
+                              const nextSupplyDays = parseSupplyDaysValue(
+                                e.target.value
+                              );
+                              const nextDeliveryDate =
+                                ts.deliveryDate?.split("T")[0] || "";
+                              const nextOrderDate =
+                                nextSupplyDays !== null && nextDeliveryDate
+                                  ? calculateOrderDateFromDelivery(
+                                      nextDeliveryDate,
+                                      nextSupplyDays
+                                    )
+                                  : undefined;
+
                               const response = await fetch(
                                 `/api/tasks/${resource.id}/suppliers`,
                                 {
@@ -1418,15 +1477,73 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                                   },
                                   body: JSON.stringify({
                                     supplierId: ts.supplierId,
-                                    deliveryDate: e.target.value,
+                                    supplyDays: nextSupplyDays,
+                                    ...(nextOrderDate !== undefined
+                                      ? { orderDate: nextOrderDate }
+                                      : {}),
                                   }),
                                 }
                               );
 
                               if (response.ok) {
                                 const updatedSupplier = await response.json();
-                                setTaskSuppliers(
-                                  taskSuppliers.map((supplier) =>
+                                setTaskSuppliers((currentSuppliers) =>
+                                  currentSuppliers.map((supplier) =>
+                                    supplier.id === updatedSupplier.id
+                                      ? updatedSupplier
+                                      : supplier
+                                  )
+                                );
+                                toast({
+                                  description: "Giorni di fornitura aggiornati",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">
+                            Data consegna
+                          </label>
+                          <Input
+                            type="date"
+                            value={
+                              ts.deliveryDate ? ts.deliveryDate.split("T")[0] : ""
+                            }
+                            onChange={async (e) => {
+                              const nextDeliveryDate = e.target.value;
+                              const nextOrderDate =
+                                ts.supplyDays !== null
+                                  ? nextDeliveryDate
+                                    ? calculateOrderDateFromDelivery(
+                                        nextDeliveryDate,
+                                        ts.supplyDays
+                                      )
+                                    : null
+                                  : undefined;
+                              const response = await fetch(
+                                `/api/tasks/${resource.id}/suppliers`,
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    ...getHeaders(),
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    supplierId: ts.supplierId,
+                                    deliveryDate: nextDeliveryDate,
+                                    ...(nextOrderDate !== undefined
+                                      ? { orderDate: nextOrderDate }
+                                      : {}),
+                                  }),
+                                }
+                              );
+
+                              if (response.ok) {
+                                const updatedSupplier = await response.json();
+                                setTaskSuppliers((currentSuppliers) =>
+                                  currentSuppliers.map((supplier) =>
                                     supplier.id === updatedSupplier.id
                                       ? updatedSupplier
                                       : supplier
@@ -1453,7 +1570,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                   ))}
               </div>
 
-              <div className="grid grid-cols-[minmax(0,1fr)_140px_140px_auto] gap-3 items-end">
+              <div className="grid grid-cols-[minmax(0,1fr)_140px_110px_140px_auto] gap-3 items-end">
                 <Select value={newSupplier} onValueChange={setNewSupplier}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleziona fornitore" />
@@ -1485,9 +1602,50 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                 />
 
                 <Input
+                  type="number"
+                  min="0"
+                  value={newSupplyDays}
+                  onChange={(e) => {
+                    const nextSupplyDays = e.target.value;
+                    setNewSupplyDays(nextSupplyDays);
+
+                    if (!nextSupplyDays) {
+                      return;
+                    }
+
+                    const calculatedOrderDate = calculateOrderDateFromDelivery(
+                      newDeliveryDate,
+                      nextSupplyDays
+                    );
+
+                    if (calculatedOrderDate) {
+                      setNewOrderDate(calculatedOrderDate);
+                    }
+                  }}
+                  placeholder="Giorni"
+                />
+
+                <Input
                   type="date"
                   value={newDeliveryDate}
-                  onChange={(e) => setNewDeliveryDate(e.target.value)}
+                  onChange={(e) => {
+                    const nextDeliveryDate = e.target.value;
+                    setNewDeliveryDate(nextDeliveryDate);
+
+                    if (!nextDeliveryDate && newSupplyDays) {
+                      setNewOrderDate("");
+                      return;
+                    }
+
+                    const calculatedOrderDate = calculateOrderDateFromDelivery(
+                      nextDeliveryDate,
+                      newSupplyDays
+                    );
+
+                    if (calculatedOrderDate) {
+                      setNewOrderDate(calculatedOrderDate);
+                    }
+                  }}
                 />
 
                 <Button

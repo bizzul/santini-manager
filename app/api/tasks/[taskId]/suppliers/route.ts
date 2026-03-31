@@ -1,6 +1,35 @@
 import { createClient } from "../../../../../utils/supabase/server";
 import { NextResponse } from "next/server";
 
+function normalizeSupplyDays(value: unknown): number | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (value === null || value === "") {
+    return null;
+  }
+
+  const parsedValue =
+    typeof value === "number" ? value : Number.parseInt(String(value), 10);
+
+  if (Number.isNaN(parsedValue)) {
+    return null;
+  }
+
+  return Math.max(parsedValue, 0);
+}
+
+function isMissingColumnError(
+  error: { code?: string; message?: string } | null,
+  columnName: string
+) {
+  return Boolean(
+    error &&
+      (error.code === "42703" || error.message?.includes(columnName))
+  );
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ taskId: string }> },
@@ -36,7 +65,9 @@ export async function POST(
   try {
     const supabase = await createClient();
     const { taskId } = await params;
-    const { supplierId, deliveryDate, orderDate, notes } = await request.json();
+    const { supplierId, deliveryDate, orderDate, notes, supplyDays } =
+      await request.json();
+    const normalizedSupplyDays = normalizeSupplyDays(supplyDays);
 
     const { data: existingSupplier, error: findError } = await supabase
       .from("TaskSupplier")
@@ -49,11 +80,7 @@ export async function POST(
 
     if (existingSupplier) {
       // Build update object with only provided fields
-      const updateData: {
-        deliveryDate?: Date | null;
-        orderDate?: Date | null;
-        notes?: string;
-      } = {};
+      const updateData: Record<string, any> = {};
       if (deliveryDate !== undefined) {
         updateData.deliveryDate = deliveryDate ? new Date(deliveryDate) : null;
       }
@@ -62,6 +89,9 @@ export async function POST(
       }
       if (notes !== undefined) {
         updateData.notes = notes;
+      }
+      if (normalizedSupplyDays !== undefined) {
+        updateData.supplyDays = normalizedSupplyDays;
       }
 
       const runUpdate = async (payload: Record<string, any>) =>
@@ -77,11 +107,12 @@ export async function POST(
 
       let { data: updatedSupplier, error: updateError } = await runUpdate(updateData);
 
-      if (
-        updateError &&
-        (updateError.code === "42703" || updateError.message?.includes("orderDate"))
-      ) {
-        delete updateData.orderDate;
+      for (const columnName of ["orderDate", "supplyDays"] as const) {
+        if (!isMissingColumnError(updateError, columnName)) {
+          continue;
+        }
+
+        delete updateData[columnName];
         ({ data: updatedSupplier, error: updateError } = await runUpdate(updateData));
       }
 
@@ -94,6 +125,7 @@ export async function POST(
       supplierId: supplierId,
       deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
       orderDate: orderDate ? new Date(orderDate) : null,
+      supplyDays: normalizedSupplyDays ?? null,
       notes: notes || null,
     };
 
@@ -109,11 +141,12 @@ export async function POST(
 
     let { data: taskSupplier, error: createError } = await runInsert(insertData);
 
-    if (
-      createError &&
-      (createError.code === "42703" || createError.message?.includes("orderDate"))
-    ) {
-      delete insertData.orderDate;
+    for (const columnName of ["orderDate", "supplyDays"] as const) {
+      if (!isMissingColumnError(createError, columnName)) {
+        continue;
+      }
+
+      delete insertData[columnName];
       ({ data: taskSupplier, error: createError } = await runInsert(insertData));
     }
 
