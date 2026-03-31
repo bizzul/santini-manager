@@ -31,8 +31,36 @@ export default function OfferCreateClient({
   
   const isCompletingDraft = !!draftTask;
 
+  const downloadOfferPdf = async (taskId: number) => {
+    const response = await fetch("/api/offers/pdf", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-site-id": siteId,
+      },
+      body: JSON.stringify({ taskId }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Impossibile esportare il PDF");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    const disposition = response.headers.get("Content-Disposition");
+    const filenameMatch = disposition?.match(/filename="(.+)"/);
+    anchor.href = url;
+    anchor.download = filenameMatch?.[1] || "offerta.pdf";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleComplete = async (offerData: any) => {
     try {
+      let taskId: number | null = null;
       if (isCompletingDraft && draftTask) {
         // Update existing draft task and remove draft flag
         const response = await fetch(`/api/kanban/tasks/${draftTask.id}`, {
@@ -43,6 +71,8 @@ export default function OfferCreateClient({
           },
           body: JSON.stringify({
             ...offerData,
+            sellProductId: offerData.productId,
+            offer_products: offerData.offerProducts,
             is_draft: false,
             // Move to target column if specified
             ...(targetColumnId && { kanbanColumnId: targetColumnId }),
@@ -52,6 +82,8 @@ export default function OfferCreateClient({
         if (!response.ok) {
           throw new Error("Failed to update offer");
         }
+
+        taskId = draftTask.id;
 
         toast({
           title: "Offerta completata",
@@ -77,11 +109,16 @@ export default function OfferCreateClient({
         }
 
         const result = await response.json();
+        taskId = result.data?.id || null;
 
         toast({
           title: "Offerta creata",
           description: `Offerta ${result.data?.unique_code || ""} creata con successo`,
         });
+      }
+
+      if (offerData.downloadPdf && taskId) {
+        await downloadOfferPdf(taskId);
       }
 
       // Redirect back to kanban
@@ -145,18 +182,10 @@ export default function OfferCreateClient({
         onComplete={handleComplete}
         onCancel={handleCancel}
         domain={domain}
+        clients={clients}
+        products={products}
+        draftTask={draftTask}
       />
-      
-      {/* Note for development */}
-      <div className="mt-8 p-4 bg-muted rounded-lg text-sm text-muted-foreground text-center">
-        <p>
-          <strong>Nota:</strong> Questo wizard è una struttura placeholder.
-        </p>
-        <p>
-          I passaggi specifici del configuratore saranno implementati quando
-          riceverò i dettagli della scheda.
-        </p>
-      </div>
     </div>
   );
 }

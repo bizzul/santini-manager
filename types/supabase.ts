@@ -15,6 +15,30 @@ export interface User {
 // Task related types
 export type TaskType = "OFFERTA" | "LAVORO" | "FATTURA";
 export type DisplayMode = "normal" | "small_green" | "small_red";
+export type OfferContactType = "call" | "email" | "other";
+export type OfferLossReason =
+    | "price"
+    | "delivery_time"
+    | "site_on_hold"
+    | "other";
+
+export interface OfferProductLine {
+    productId?: number | null;
+    productName?: string | null;
+    description?: string | null;
+    quantity?: number | null;
+    unitPrice?: number | null;
+    totalPrice?: number | null;
+}
+
+export interface OfferFollowUpEntry {
+    id: string;
+    contactType: OfferContactType;
+    contactDate: string;
+    note?: string | null;
+    createdAt?: string;
+    createdBy?: string | null;
+}
 
 export interface Task {
     id: number;
@@ -66,12 +90,26 @@ export interface Task {
     // Campo per tracking invio offerta
     sent_date?: string;
     sentDate?: string; // Alternative property name
+    // Data indicativa di invio offerta
+    offer_send_date?: string | null;
+    offerSendDate?: string | null;
     // Flag per bozze offerta (quick add)
     is_draft?: boolean;
     isDraft?: boolean; // Alternative property name
     // Category IDs selected during draft creation (for filtering products when completing)
     draft_category_ids?: number[];
     draftCategoryIds?: number[]; // Alternative property name
+    // Righe prodotti dell'offerta
+    offer_products?: OfferProductLine[] | null;
+    offerProducts?: OfferProductLine[] | null;
+    // Storico follow-up offerta
+    offer_followups?: OfferFollowUpEntry[] | null;
+    offerFollowups?: OfferFollowUpEntry[] | null;
+    // Motivazione perdita offerta
+    offer_loss_reason?: OfferLossReason | null;
+    offerLossReason?: OfferLossReason | null;
+    offer_loss_competitor_name?: string | null;
+    offerLossCompetitorName?: string | null;
     // Project folder URLs
     cloud_folder_url?: string | null;
     project_files_url?: string | null;

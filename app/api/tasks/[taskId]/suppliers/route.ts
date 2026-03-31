@@ -36,7 +36,7 @@ export async function POST(
   try {
     const supabase = await createClient();
     const { taskId } = await params;
-    const { supplierId, deliveryDate, notes } = await request.json();
+    const { supplierId, deliveryDate, orderDate, notes } = await request.json();
 
     const { data: existingSupplier, error: findError } = await supabase
       .from("TaskSupplier")
@@ -49,9 +49,16 @@ export async function POST(
 
     if (existingSupplier) {
       // Build update object with only provided fields
-      const updateData: { deliveryDate?: Date; notes?: string } = {};
+      const updateData: {
+        deliveryDate?: Date | null;
+        orderDate?: Date | null;
+        notes?: string;
+      } = {};
       if (deliveryDate !== undefined) {
-        updateData.deliveryDate = new Date(deliveryDate);
+        updateData.deliveryDate = deliveryDate ? new Date(deliveryDate) : null;
+      }
+      if (orderDate !== undefined) {
+        updateData.orderDate = orderDate ? new Date(orderDate) : null;
       }
       if (notes !== undefined) {
         updateData.notes = notes;
@@ -76,7 +83,8 @@ export async function POST(
       .insert({
         taskId: parseInt(taskId),
         supplierId: supplierId,
-        deliveryDate: new Date(deliveryDate),
+        deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
+        orderDate: orderDate ? new Date(orderDate) : null,
         notes: notes || null,
       })
       .select(`

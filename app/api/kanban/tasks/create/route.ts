@@ -5,6 +5,11 @@ import { getSiteData } from "../../../../../lib/fetchers";
 import { generateTaskCode, generateInternalTaskCode } from "../../../../../lib/code-generator";
 import { createProjectFolders } from "../../../../../lib/project-folders";
 import { toDateString } from "../../../../../lib/utils";
+import {
+  sanitizeOfferProducts,
+  sumOfferPieces,
+  sumOfferProductsTotal,
+} from "@/lib/offers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -151,12 +156,21 @@ export async function POST(req: NextRequest) {
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
+      const offerProducts = sanitizeOfferProducts(result.data.offerProducts || []);
+      const firstOfferProductId =
+        offerProducts.find((item) => item.productId)?.productId || null;
+      const totalOfferPieces = sumOfferPieces(offerProducts);
+      const computedOfferTotal = sumOfferProductsTotal(offerProducts);
+
       // Determine task type - internal categories use "INTERNO"
       let taskType: string;
       if (isInternalCategory) {
         taskType = "INTERNO";
       } else {
-        taskType = body.task_type || (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
+        taskType =
+          body.task_type ||
+          body.taskType ||
+          (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
       }
 
       // Generate unique code using atomic sequence (always incremental)
@@ -184,14 +198,17 @@ export async function POST(req: NextRequest) {
           clientId: result.data.clientId,
           deliveryDate: toDateString(result.data.deliveryDate),
           termine_produzione: toDateString(result.data.termine_produzione),
+          offer_send_date: toDateString(result.data.offerSendDate),
           unique_code: uniqueCode,
-          sellProductId: result.data.productId,
+          sellProductId: result.data.productId || firstOfferProductId,
           name: result.data.name,
           luogo: result.data.luogo || null,
           kanbanId: kanban.id,
           kanbanColumnId: column.id,
-          sellPrice: result.data.sellPrice,
-          numero_pezzi: result.data.numero_pezzi || null,
+          sellPrice:
+            result.data.sellPrice ||
+            (computedOfferTotal > 0 ? computedOfferTotal : 0),
+          numero_pezzi: result.data.numero_pezzi || totalOfferPieces || null,
           other: result.data.other,
           positions: positions,
           // Draft and task type fields
@@ -199,6 +216,10 @@ export async function POST(req: NextRequest) {
           task_type: taskType,
           // Category IDs for draft offers (used to filter products when completing)
           draft_category_ids: result.data.draftCategoryIds || null,
+          offer_products: offerProducts,
+          offer_loss_reason: result.data.offerLossReason || null,
+          offer_loss_competitor_name:
+            result.data.offerLossCompetitorName?.trim() || null,
         };
 
         // Add site_id if available

@@ -15,10 +15,13 @@ import {
 import { Input } from "../../components/ui/input";
 import { SearchSelect } from "../../components/ui/search-select";
 import { Textarea } from "../../components/ui/textarea";
-import { editItem } from "@/app/sites/[domain]/projects/actions/edit-item.action";
 import { validation } from "../../validation/task/create";
 import { useToast } from "../../components/ui/use-toast";
-import { Client, SellProduct } from "@/types/supabase";
+import {
+  Client,
+  OfferProductLine,
+  SellProduct,
+} from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { isWeekend, parseLocalDate } from "@/lib/utils";
 import {
@@ -50,6 +53,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import {
+  normalizeOfferProducts,
+  sanitizeOfferProducts,
+  sumOfferPieces,
+} from "@/lib/offers";
+import {
+  ProjectDocuments,
+  ProjectFile,
+} from "@/components/project/project-documents";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -72,11 +85,13 @@ type TaskSupplier = {
   id: number;
   supplierId: number;
   supplier: Supplier;
+  orderDate: string | null;
   deliveryDate: string | null;
   notes: string | null;
 };
 
 const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
+  const router = useRouter();
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,7 +121,13 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const [products, setProducts] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
+  const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [offerProducts, setOfferProducts] = useState<OfferProductLine[]>([]);
+  const [productionRequired, setProductionRequired] = useState(
+    Boolean(resource?.termine_produzione)
+  );
   const [newSupplier, setNewSupplier] = useState<string>("");
+  const [newOrderDate, setNewOrderDate] = useState<string>("");
   const [newDeliveryDate, setNewDeliveryDate] = useState<string>("");
   const [kanbans, setKanbans] = useState<any[]>([]);
   const [selectedKanbanId, setSelectedKanbanId] = useState<number | null>(
@@ -215,6 +236,27 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       form.setValue("unique_code", resource.unique_code!);
       form.setValue("kanbanId", resource.kanbanId);
       form.setValue("kanbanColumnId", resource.kanbanColumnId);
+      setOfferProducts(normalizeOfferProducts(resource));
+      setProductionRequired(Boolean(resource.termine_produzione));
+    };
+
+    const getTaskDetails = async () => {
+      try {
+        const response = await fetch(`/api/kanban/tasks/${resource.id}`, {
+          headers: getHeaders(),
+        });
+        if (!response.ok) throw new Error("Failed to fetch task details");
+        const data = await response.json();
+        const task = data?.task;
+        setProjectFiles(Array.isArray(task?.files) ? task.files : []);
+        if (task) {
+          setOfferProducts(normalizeOfferProducts(task));
+          setProductionRequired(Boolean(task.termine_produzione));
+        }
+      } catch (error) {
+        logger.error("Error fetching task details:", error);
+        setProjectFiles([]);
+      }
     };
 
     const loadData = async () => {
@@ -223,6 +265,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
         getProducts(),
         getKanbans(),
         initializeForm(),
+        getTaskDetails(),
       ]);
       setIsLoading(false);
     };
@@ -294,19 +337,56 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   logger.debug("Form errors:", errors);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    // Add kanbanId and kanbanColumnId to the data
-    const dataWithKanban = {
-      ...d,
-      kanbanId: selectedKanbanId,
-      kanbanColumnId: selectedColumnId,
+    if (productionRequired && !d.termine_produzione) {
+      toast({
+        variant: "destructive",
+        description: "Inserisci la data di produzione oppure disattiva Produzione.",
+      });
+      return;
+    }
+
+    const sanitizedProducts = sanitizeOfferProducts(offerProducts);
+    const firstProductId =
+      sanitizedProducts.find((item) => item.productId)?.productId || null;
+    const totalPieces = sumOfferPieces(sanitizedProducts);
+    const headers: HeadersInit = {
+      ...getHeaders(),
+      "Content-Type": "application/json",
     };
 
-    const response = await editItem(dataWithKanban, resource?.id);
-    if (response && typeof response === "object" && "error" in response) {
+    const response = await fetch(`/api/kanban/tasks/${resource.id}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({
+        unique_code: d.unique_code || null,
+        name: d.name || null,
+        luogo: d.luogo || null,
+        clientId: d.clientId || null,
+        sellProductId: firstProductId,
+        sellPrice: d.sellPrice ? Number(d.sellPrice) : 0,
+        numero_pezzi: totalPieces,
+        deliveryDate: d.deliveryDate || null,
+        termine_produzione: productionRequired ? d.termine_produzione || null : null,
+        other: d.other || null,
+        kanbanId: selectedKanbanId || resource?.kanbanId || null,
+        kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
+        offer_products: sanitizedProducts,
+      }),
+    });
+
+    const responseData = await response.json();
+
+    if (!response.ok || responseData?.status >= 400 || responseData?.error) {
       toast({
-        description: `Errore! ${response.error}`,
+        variant: "destructive",
+        description: `Errore! ${
+          responseData?.error ||
+          responseData?.message ||
+          "Salvataggio non riuscito"
+        }`,
       });
     } else {
+      router.refresh();
       handleClose(false);
       toast({
         description: `Elemento ${d.unique_code} aggiornato correttamente!`,
@@ -341,17 +421,74 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     return normalizedLuogo !== normalizedClientAddr && normalizedLuogo !== "";
   }, [currentLuogo, selectedClient?.address]);
 
+  const productOptions = useMemo(
+    () =>
+      Array.isArray(products)
+        ? products.map((product: SellProduct) => ({
+            value: product.id,
+            label: [product.name, product.type].filter(Boolean).join(" "),
+          }))
+        : [],
+    [products]
+  );
+
+  const handleOfferProductChange = (
+    index: number,
+    patch: Partial<OfferProductLine>
+  ) => {
+    setOfferProducts((current) =>
+      current.map((line, lineIndex) => {
+        if (lineIndex !== index) return line;
+
+        const updatedLine = { ...line, ...patch };
+
+        if (patch.productId !== undefined) {
+          const selectedProduct = products.find(
+            (product: SellProduct) => product.id === patch.productId
+          );
+          updatedLine.productName =
+            selectedProduct?.name || selectedProduct?.type || null;
+          if (!updatedLine.description) {
+            updatedLine.description = selectedProduct?.description || null;
+          }
+        }
+
+        return updatedLine;
+      })
+    );
+  };
+
+  const handleAddOfferProduct = () => {
+    if (offerProducts.length >= 5) return;
+    setOfferProducts((current) => [
+      ...current,
+      {
+        productId: null,
+        productName: null,
+        description: null,
+        quantity: 1,
+        unitPrice: null,
+        totalPrice: null,
+      },
+    ]);
+  };
+
+  const handleRemoveOfferProduct = (index: number) => {
+    setOfferProducts((current) => current.filter((_, lineIndex) => lineIndex !== index));
+  };
+
   const handleAddSupplier = async (e: React.MouseEvent) => {
     // Aggiungi questo per prevenire il comportamento di default del form
     e.preventDefault();
 
-    if (!newSupplier || !newDeliveryDate) return;
+    if (!newSupplier) return;
 
     const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         supplierId: parseInt(newSupplier),
+        orderDate: newOrderDate || null,
         deliveryDate: newDeliveryDate,
       }),
     });
@@ -360,6 +497,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       const newTaskSupplier = await response.json();
       setTaskSuppliers([...taskSuppliers, newTaskSupplier]);
       setNewSupplier("");
+      setNewOrderDate("");
       setNewDeliveryDate("");
       toast({
         description: "Fornitore aggiunto con successo",
@@ -668,60 +806,94 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             />
           </div>
 
-          {/* Row 3: Prodotto + Numero pezzi */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              name="productId"
-              control={form.control}
-              render={({ field }) => {
-                const productOptions = Array.isArray(products)
-                  ? products.map((p: SellProduct) => ({
-                      value: p.id,
-                      label: p.name + " " + p.type,
-                    }))
-                  : [];
+          {/* Row 3: Prodotti multipli */}
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium">Prodotti</h3>
+                <p className="text-xs text-muted-foreground">
+                  Puoi inserire fino a 5 prodotti con relativo numero pezzi.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddOfferProduct}
+                disabled={isSubmitting || offerProducts.length >= 5}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Aggiungi prodotto
+              </Button>
+            </div>
 
-                return (
-                  <FormItem>
-                    <FormLabel>Prodotto</FormLabel>
-                    <FormControl>
+            {offerProducts.length === 0 ? (
+              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                Nessun prodotto selezionato.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {offerProducts.map((line, index) => (
+                  <div
+                    key={`${line.productId || "new"}-${index}`}
+                    className="grid grid-cols-[minmax(0,1fr)_130px_auto] gap-3 items-end"
+                  >
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Prodotto {index + 1}
+                      </label>
                       <SearchSelect
-                        value={field.value || undefined}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                        }}
+                        value={line.productId || undefined}
+                        onValueChange={(value) =>
+                          handleOfferProductChange(index, {
+                            productId: value ? Number(value) : null,
+                          })
+                        }
                         disabled={isSubmitting}
                         options={productOptions}
+                        placeholder="Seleziona prodotto"
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-            <FormField
-              name="numero_pezzi"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Numero pezzi</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="number"
-                      value={field.value ?? ""}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value ? Number(e.target.value) : null
-                        )
-                      }
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Numero pezzi</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={line.quantity ?? ""}
+                        onChange={(e) =>
+                          handleOfferProductChange(index, {
+                            quantity: e.target.value ? Number(e.target.value) : null,
+                          })
+                        }
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveOfferProduct(index)}
                       disabled={isSubmitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Data invio offerta</label>
+              <div className="h-10 rounded-md border px-3 flex items-center text-sm">
+                {resource.offer_send_date || resource.offerSendDate
+                  ? DateManager.formatEUDate(
+                      resource.offer_send_date || resource.offerSendDate
+                    )
+                  : "Non impostata"}
+              </div>
+            </div>
           </div>
 
           {/* Date Fields Grid */}
@@ -731,7 +903,23 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
               control={form.control}
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Termine di produzione</FormLabel>
+                  <div className="flex items-center justify-between">
+                    <FormLabel>Produzione</FormLabel>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={productionRequired}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setProductionRequired(checked);
+                          if (!checked) {
+                            form.setValue("termine_produzione", undefined);
+                          }
+                        }}
+                      />
+                      Richiede data
+                    </label>
+                  </div>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -741,11 +929,13 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                             "w-full pl-3 text-left font-normal",
                             !field.value && "text-muted-foreground"
                           )}
-                          disabled={isSubmitting}
+                          disabled={isSubmitting || !productionRequired}
                         >
-                          {field.value
+                          {productionRequired && field.value
                             ? field.value.toLocaleDateString("it-IT")
-                            : "Seleziona data"}
+                            : productionRequired
+                              ? "Seleziona data"
+                              : "Produzione non richiesta"}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
@@ -757,7 +947,11 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                       <Calendar
                         mode="single"
                         selected={field.value || undefined}
-                        onSelect={field.onChange}
+                        onSelect={(date) => {
+                          if (productionRequired) {
+                            field.onChange(date);
+                          }
+                        }}
                         disabled={isWeekend}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
@@ -977,150 +1171,237 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             )}
           />
 
-          <div className="space-y-4">
-            {/* Headers row */}
-            <div className="grid grid-cols-[1fr_auto_auto_1fr] gap-4 items-center">
-              <h3 className="text-lg font-medium">Ordini fornitori</h3>
-              <span className="text-sm font-medium text-muted-foreground w-40 text-center"></span>
-              <span className="w-10"></span>
-              <h3 className="text-lg font-medium">Note</h3>
-            </div>
+          <div className="grid grid-cols-2 gap-6 items-start">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Ordini fornitori</h3>
+                <span className="text-xs text-muted-foreground">
+                  Logo, ordinazione e consegna
+                </span>
+              </div>
 
-            <div className="space-y-2">
-              {Array.isArray(taskSuppliers) &&
-                taskSuppliers.map((ts) => (
-                  <div
-                    key={ts.id}
-                    className="grid grid-cols-[1fr_auto_auto_1fr] gap-4 items-center p-2 bg-gray-50 dark:bg-gray-800 rounded-sm"
-                  >
-                    <span className="font-medium">
-                      {ts.supplier?.short_name ||
-                        ts.supplier?.name ||
-                        "Unknown Supplier"}
-                    </span>
-                    <Input
-                      type="date"
-                      value={
-                        ts.deliveryDate
-                          ? ts.deliveryDate.split("T")[0]
-                          : ""
-                      }
-                      onChange={async (e) => {
-                        const response = await fetch(
-                          `/api/tasks/${resource.id}/suppliers`,
-                          {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              supplierId: ts.supplierId,
-                              deliveryDate: e.target.value,
-                            }),
-                          }
-                        );
-
-                        if (response.ok) {
-                          const updatedSupplier = await response.json();
-                          setTaskSuppliers(
-                            taskSuppliers.map((supplier) =>
-                              supplier.id === updatedSupplier.id
-                                ? updatedSupplier
-                                : supplier
-                            )
-                          );
-                          toast({
-                            description: "Data di consegna aggiornata",
-                          });
-                        }
-                      }}
-                      className="w-40"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      type="button"
-                      onClick={() => handleDeleteSupplier(ts.supplierId)}
+              <div className="space-y-3">
+                {Array.isArray(taskSuppliers) &&
+                  taskSuppliers.map((ts) => (
+                    <div
+                      key={ts.id}
+                      className="rounded-lg border bg-muted/30 p-3 space-y-3"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                    <Input
-                      type="text"
-                      placeholder="Aggiungi nota..."
-                      defaultValue={ts.notes || ""}
-                      onBlur={async (e) => {
-                        const newNotes = e.target.value;
-                        if (newNotes !== (ts.notes || "")) {
-                          const response = await fetch(
-                            `/api/tasks/${resource.id}/suppliers`,
-                            {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                supplierId: ts.supplierId,
-                                notes: newNotes,
-                              }),
-                            }
-                          );
+                      <div className="grid grid-cols-[72px_minmax(0,1fr)_140px_140px_auto] gap-3 items-start">
+                        <div className="h-[72px] w-[72px] rounded-md border bg-background flex items-center justify-center overflow-hidden">
+                          {ts.supplier?.supplier_image ? (
+                            <Image
+                              src={ts.supplier.supplier_image}
+                              alt={ts.supplier?.name || "Supplier logo"}
+                              width={72}
+                              height={72}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground text-center px-2">
+                              Logo
+                            </span>
+                          )}
+                        </div>
 
-                          if (response.ok) {
-                            const updatedSupplier = await response.json();
-                            setTaskSuppliers(
-                              taskSuppliers.map((supplier) =>
-                                supplier.id === updatedSupplier.id
-                                  ? updatedSupplier
-                                  : supplier
-                              )
-                            );
-                            toast({
-                              description: "Nota aggiornata",
-                            });
-                          }
-                        }
-                      }}
-                    />
-                  </div>
-                ))}
+                        <div className="space-y-2">
+                          <div className="font-medium">
+                            {ts.supplier?.short_name ||
+                              ts.supplier?.name ||
+                              "Unknown Supplier"}
+                          </div>
+                          <Input
+                            type="text"
+                            placeholder="Aggiungi nota..."
+                            defaultValue={ts.notes || ""}
+                            onBlur={async (e) => {
+                              const newNotes = e.target.value;
+                              if (newNotes !== (ts.notes || "")) {
+                                const response = await fetch(
+                                  `/api/tasks/${resource.id}/suppliers`,
+                                  {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                      supplierId: ts.supplierId,
+                                      notes: newNotes,
+                                    }),
+                                  }
+                                );
+
+                                if (response.ok) {
+                                  const updatedSupplier = await response.json();
+                                  setTaskSuppliers(
+                                    taskSuppliers.map((supplier) =>
+                                      supplier.id === updatedSupplier.id
+                                        ? updatedSupplier
+                                        : supplier
+                                    )
+                                  );
+                                  toast({
+                                    description: "Nota aggiornata",
+                                  });
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">
+                            Data ordinazione
+                          </label>
+                          <Input
+                            type="date"
+                            value={ts.orderDate ? ts.orderDate.split("T")[0] : ""}
+                            onChange={async (e) => {
+                              const response = await fetch(
+                                `/api/tasks/${resource.id}/suppliers`,
+                                {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    supplierId: ts.supplierId,
+                                    orderDate: e.target.value,
+                                  }),
+                                }
+                              );
+
+                              if (response.ok) {
+                                const updatedSupplier = await response.json();
+                                setTaskSuppliers(
+                                  taskSuppliers.map((supplier) =>
+                                    supplier.id === updatedSupplier.id
+                                      ? updatedSupplier
+                                      : supplier
+                                  )
+                                );
+                                toast({
+                                  description: "Data di ordinazione aggiornata",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs text-muted-foreground">
+                            Data consegna
+                          </label>
+                          <Input
+                            type="date"
+                            value={
+                              ts.deliveryDate ? ts.deliveryDate.split("T")[0] : ""
+                            }
+                            onChange={async (e) => {
+                              const response = await fetch(
+                                `/api/tasks/${resource.id}/suppliers`,
+                                {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    supplierId: ts.supplierId,
+                                    deliveryDate: e.target.value,
+                                  }),
+                                }
+                              );
+
+                              if (response.ok) {
+                                const updatedSupplier = await response.json();
+                                setTaskSuppliers(
+                                  taskSuppliers.map((supplier) =>
+                                    supplier.id === updatedSupplier.id
+                                      ? updatedSupplier
+                                      : supplier
+                                  )
+                                );
+                                toast({
+                                  description: "Data di consegna aggiornata",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          type="button"
+                          onClick={() => handleDeleteSupplier(ts.supplierId)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              <div className="grid grid-cols-[minmax(0,1fr)_140px_140px_auto] gap-3 items-end">
+                <Select value={newSupplier} onValueChange={setNewSupplier}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona fornitore" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.isArray(suppliers) &&
+                      suppliers
+                        .filter(
+                          (supplier) =>
+                            !taskSuppliers.some(
+                              (ts) => ts.supplierId === supplier.id
+                            )
+                        )
+                        .map((supplier) => (
+                          <SelectItem
+                            key={supplier.id}
+                            value={supplier.id.toString()}
+                          >
+                            {supplier.short_name || supplier.name}
+                          </SelectItem>
+                        ))}
+                  </SelectContent>
+                </Select>
+
+                <Input
+                  type="date"
+                  value={newOrderDate}
+                  onChange={(e) => setNewOrderDate(e.target.value)}
+                />
+
+                <Input
+                  type="date"
+                  value={newDeliveryDate}
+                  onChange={(e) => setNewDeliveryDate(e.target.value)}
+                />
+
+                <Button
+                  type="button"
+                  onClick={handleAddSupplier}
+                  disabled={!newSupplier}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Aggiungi
+                </Button>
+              </div>
             </div>
 
-            <div className="flex gap-4 items-center">
-              <Select value={newSupplier} onValueChange={setNewSupplier}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.isArray(suppliers) &&
-                    suppliers
-                      .filter(
-                        (supplier) =>
-                          !taskSuppliers.some(
-                            (ts) => ts.supplierId === supplier.id
-                          )
-                      )
-                      .map((supplier) => (
-                        <SelectItem
-                          key={supplier.id}
-                          value={supplier.id.toString()}
-                        >
-                          {supplier.short_name || supplier.name}
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-
-              <Input
-                type="date"
-                value={newDeliveryDate}
-                onChange={(e) => setNewDeliveryDate(e.target.value)}
-                className="w-40"
-              />
-
-              <Button
-                type="button" // Aggiungi questo per evitare il submit del form
-                onClick={handleAddSupplier}
-                disabled={!newSupplier || !newDeliveryDate}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi
-              </Button>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Documenti progetto</h3>
+                <span className="text-xs text-muted-foreground">
+                  Elenco e caricamento file
+                </span>
+              </div>
+              {siteId ? (
+                <ProjectDocuments
+                  projectId={resource.id}
+                  siteId={siteId}
+                  initialFiles={projectFiles}
+                />
+              ) : (
+                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                  Caricamento documenti disponibile appena il contesto sito è pronto.
+                </div>
+              )}
             </div>
           </div>
 

@@ -24,8 +24,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { cn, toDateString } from "@/lib/utils";
+import { addDaysToToday, OFFER_SEND_OPTIONS } from "@/lib/offers";
 import { Client, SellProductCategory } from "@/types/supabase";
 
 // Validation schema for quick add form
@@ -33,7 +41,12 @@ const quickAddSchema = z.object({
   clientId: z.number({
     required_error: "Seleziona un cliente",
   }),
+  name: z.string().optional(),
+  luogo: z.string().optional(),
   categoryIds: z.array(z.number()).min(1, "Seleziona almeno una categoria"),
+  offerSendDays: z.number({
+    required_error: "Seleziona la data di invio indicativa",
+  }),
   deliveryDate: z.date().optional().nullable(),
   other: z.string().optional(),
 });
@@ -69,7 +82,10 @@ export default function OfferQuickAdd({
     resolver: zodResolver(quickAddSchema),
     defaultValues: {
       clientId: undefined,
+      name: "",
+      luogo: "",
       categoryIds: [],
+      offerSendDays: 1,
       deliveryDate: null,
       other: "",
     },
@@ -113,6 +129,9 @@ export default function OfferQuickAdd({
           productIds: [],
           // Store category IDs for filtering products when completing
           draftCategoryIds: data.categoryIds,
+          name: data.name || "",
+          luogo: data.luogo || "",
+          offerSendDate: toDateString(addDaysToToday(data.offerSendDays)),
           deliveryDate: toDateString(data.deliveryDate),
           other: data.other || "",
           kanbanId: kanbanId,
@@ -199,6 +218,44 @@ export default function OfferQuickAdd({
           />
 
           <FormField
+            name="name"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Oggetto</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Ad esempio: Villa delle Rose"
+                    disabled={isSubmitting}
+                    rows={2}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="luogo"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Luogo</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="Indica il luogo del progetto..."
+                    disabled={isSubmitting}
+                    rows={2}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
             name="categoryIds"
             control={form.control}
             render={({ field }) => (
@@ -220,11 +277,40 @@ export default function OfferQuickAdd({
           />
 
           <FormField
+            name="offerSendDays"
+            control={form.control}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data invio offerta</FormLabel>
+                <Select
+                  value={field.value?.toString()}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  disabled={isSubmitting}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona tempistica..." />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {OFFER_SEND_OPTIONS.map((days) => (
+                      <SelectItem key={days} value={days.toString()}>
+                        {days} {days === 1 ? "giorno" : "giorni"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
             name="deliveryDate"
             control={form.control}
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Data consegna prevista</FormLabel>
+                <FormLabel>Data di consegna indicativa</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>

@@ -120,24 +120,48 @@ export async function PATCH(
     const allowedFields = [
       'unique_code', 'title', 'name', 'luogo', 'description',
       'clientId', 'sellProductId', 'sellPrice',
-      'deliveryDate', 'termine_produzione',
+      'deliveryDate', 'termine_produzione', 'offer_send_date',
       'other', 'positions', 'numero_pezzi',
       'kanbanColumnId', 'kanbanId',
       'is_draft', 'task_type', 'display_mode',
       'material', 'metalli', 'ferramenta', 'legno', 'vernice', 'altro', 'stoccato',
       'percent_status', 'archived', 'parent_task_id',
-      'draft_category_ids'
+      'draft_category_ids', 'offer_products', 'offer_followups',
+      'offer_loss_reason', 'offer_loss_competitor_name'
     ];
 
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         // Convert date fields to YYYY-MM-DD string format to avoid timezone issues
-        if (field === 'deliveryDate' || field === 'termine_produzione') {
+        if (
+          field === 'deliveryDate' ||
+          field === 'termine_produzione' ||
+          field === 'offer_send_date'
+        ) {
           updateData[field] = toDateString(body[field]);
         } else {
           updateData[field] = body[field];
         }
       }
+    }
+
+    if (body.offerSendDate !== undefined && updateData.offer_send_date === undefined) {
+      updateData.offer_send_date = toDateString(body.offerSendDate);
+    }
+    if (body.offerProducts !== undefined && updateData.offer_products === undefined) {
+      updateData.offer_products = body.offerProducts;
+    }
+    if (body.offerFollowups !== undefined && updateData.offer_followups === undefined) {
+      updateData.offer_followups = body.offerFollowups;
+    }
+    if (body.offerLossReason !== undefined && updateData.offer_loss_reason === undefined) {
+      updateData.offer_loss_reason = body.offerLossReason;
+    }
+    if (
+      body.offerLossCompetitorName !== undefined &&
+      updateData.offer_loss_competitor_name === undefined
+    ) {
+      updateData.offer_loss_competitor_name = body.offerLossCompetitorName;
     }
 
     // Add updated_at timestamp

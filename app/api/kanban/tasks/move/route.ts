@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { id, column, columnName } = body;
+    const { id, column, columnName, lossReason, lossCompetitorName } = body;
     const now = new Date();
 
     // Extract site_id from request headers or domain
@@ -652,6 +652,11 @@ export async function POST(req: NextRequest) {
     if (autoArchiveAt) {
       updateData.auto_archive_at = autoArchiveAt.toISOString();
     }
+    if (columnType === "lost") {
+      updateData.offer_loss_reason = lossReason || null;
+      updateData.offer_loss_competitor_name =
+        lossCompetitorName?.trim() || null;
+    }
 
     // Aggiorna unique_code se è stato cambiato (da OFFERTA a LAVORO)
     if (newUniqueCode) {
@@ -699,6 +704,9 @@ export async function POST(req: NextRequest) {
           taskId: id,
           fromColumn: prevColumn,
           toColumn: response.kanban_columns?.title,
+          lossReason: columnType === "lost" ? lossReason || null : undefined,
+          lossCompetitorName:
+            columnType === "lost" ? lossCompetitorName?.trim() || null : undefined,
         },
         user_id: user.id,
         taskId: id,

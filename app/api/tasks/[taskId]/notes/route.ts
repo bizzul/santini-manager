@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { logger } from "@/lib/logger";
+import { normalizeOfferFollowUps } from "@/lib/offers";
 
 // POST - Add a note to a task
 export async function POST(
@@ -53,7 +54,7 @@ export async function POST(
     // Verify the task exists and belongs to this site
     let taskQuery = supabase
       .from("Task")
-      .select("id, other")
+      .select("id, other, offer_followups")
       .eq("id", parseInt(taskId));
 
     if (siteId) {
@@ -71,12 +72,23 @@ export async function POST(
     const existingNotes = task.other || "";
     const separator = existingNotes ? "\n---\n" : "";
     const updatedNotes = `${existingNotes}${separator}${note}`;
+    const existingFollowUps = normalizeOfferFollowUps(task as any);
+    const followUpEntry = {
+      id: crypto.randomUUID(),
+      contactType: contactType || "other",
+      contactDate: contactDate || new Date().toISOString(),
+      note,
+      createdAt: new Date().toISOString(),
+      createdBy: user.id,
+    };
+    const updatedFollowUps = [followUpEntry, ...existingFollowUps];
 
     // Update the task with the new note
     let updateQuery = supabase
       .from("Task")
       .update({
         other: updatedNotes,
+        offer_followups: updatedFollowUps,
         updated_at: new Date().toISOString(),
       })
       .eq("id", parseInt(taskId));
@@ -119,6 +131,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       data: updatedTask,
+      followUp: followUpEntry,
     });
   } catch (err) {
     logger.error("Error in add note API:", err);
@@ -169,7 +182,7 @@ export async function GET(
     // Get the task's notes
     let taskQuery = supabase
       .from("Task")
-      .select("id, other")
+      .select("id, other, offer_followups")
       .eq("id", parseInt(taskId));
 
     if (siteId) {
@@ -184,6 +197,7 @@ export async function GET(
 
     return NextResponse.json({
       notes: task.other || "",
+      followUps: normalizeOfferFollowUps(task as any),
     });
   } catch (err) {
     logger.error("Error in get notes API:", err);

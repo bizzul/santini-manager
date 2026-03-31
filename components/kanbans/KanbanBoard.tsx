@@ -50,6 +50,8 @@ import KanbanManagementModal from "./KanbanManagementModal";
 import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
+import { Input } from "../ui/input";
+import { OFFER_LOSS_REASON_OPTIONS } from "@/lib/offers";
 
 const Column = ({
   column,
@@ -497,6 +499,9 @@ function KanbanBoard({
   // State for offer follow-up dialog
   const [showFollowUpDialog, setShowFollowUpDialog] = useState(false);
   const [selectedOfferTask, setSelectedOfferTask] = useState<Task | null>(null);
+  const [lostReason, setLostReason] = useState<string>("");
+  const [lostCompetitorName, setLostCompetitorName] = useState<string>("");
+  const [competitorSuggestions, setCompetitorSuggestions] = useState<string[]>([]);
 
   // State for draft completion dialog
   const [showDraftCompletion, setShowDraftCompletion] = useState(false);
@@ -510,14 +515,67 @@ function KanbanBoard({
   const isOfferKanban =
     kanban?.is_offer_kanban || kanban?.isOfferKanban || false;
 
+  const updateTaskInState = useCallback((updatedTask: any) => {
+    if (!updatedTask?.id) return;
+    safeSetTasks(
+      tasks.map((task) =>
+        task.id === updatedTask.id
+          ? {
+              ...task,
+              ...updatedTask,
+              column: updatedTask.kanban_columns || task.column,
+            }
+          : task
+      )
+    );
+    if (selectedOfferTask?.id === updatedTask.id) {
+      setSelectedOfferTask((current) =>
+        current ? { ...current, ...updatedTask } : current
+      );
+    }
+  }, [tasks, selectedOfferTask]);
+
   // Handler for mini card click in offer kanban
   const handleMiniCardClick = useCallback((task: Task) => {
     setSelectedOfferTask(task);
     setShowFollowUpDialog(true);
   }, []);
 
+  useEffect(() => {
+    if (!showMoveConfirm || pendingMove?.confirmationType !== "lost") {
+      return;
+    }
+
+    const loadCompetitors = async () => {
+      try {
+        const headers: HeadersInit = {};
+        if (siteId) {
+          headers["x-site-id"] = siteId;
+        }
+        const response = await fetch("/api/competitors", { headers });
+        if (!response.ok) return;
+        const data = await response.json();
+        setCompetitorSuggestions(
+          Array.isArray(data?.competitors) ? data.competitors : []
+        );
+      } catch (error) {
+        logger.error("Error loading competitors:", error);
+      }
+    };
+
+    loadCompetitors();
+  }, [showMoveConfirm, pendingMove, siteId]);
+
   // Optimize moveCard function
-  const moveCard = async (id: any, column: any, columnName: any) => {
+  const moveCard = async (
+    id: any,
+    column: any,
+    columnName: any,
+    extraData?: {
+      lossReason?: string;
+      lossCompetitorName?: string;
+    }
+  ) => {
     const isPreviewMode =
       tasks?.length > 0 && tasks.some((task) => task.isPreview);
     if (isPreviewMode) {
@@ -574,6 +632,7 @@ function KanbanBoard({
           id: id,
           column: column,
           columnName: columnName,
+          ...extraData,
         }),
         headers,
       });
@@ -849,19 +908,38 @@ function KanbanBoard({
   // Handle move confirmation
   const handleMoveConfirm = async () => {
     if (pendingMove) {
+      if (pendingMove.confirmationType === "lost" && !lostReason) {
+        toast({
+          variant: "destructive",
+          title: "Motivazione richiesta",
+          description: "Seleziona la motivazione della perdita prima di continuare.",
+        });
+        return;
+      }
+
       await moveCard(
         pendingMove.cardId,
         pendingMove.columnId,
-        pendingMove.columnIdentifier
+        pendingMove.columnIdentifier,
+        pendingMove.confirmationType === "lost"
+          ? {
+              lossReason: lostReason,
+              lossCompetitorName: lostCompetitorName,
+            }
+          : undefined
       );
       setShowMoveConfirm(false);
       setPendingMove(null);
+      setLostReason("");
+      setLostCompetitorName("");
     }
   };
 
   const handleMoveCancel = () => {
     setShowMoveConfirm(false);
     setPendingMove(null);
+    setLostReason("");
+    setLostCompetitorName("");
   };
 
   // Get confirmation message based on type
@@ -1106,6 +1184,42 @@ function KanbanBoard({
               {getConfirmationMessage().description}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {pendingMove?.confirmationType === "lost" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Motivazione</label>
+                <select
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  value={lostReason}
+                  onChange={(e) => setLostReason(e.target.value)}
+                >
+                  <option value="">Seleziona motivazione...</option>
+                  {OFFER_LOSS_REASON_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Competitor
+                </label>
+                <Input
+                  list="competitor-suggestions"
+                  value={lostCompetitorName}
+                  onChange={(e) => setLostCompetitorName(e.target.value)}
+                  placeholder="Se il lavoro è andato alla concorrenza, indica il competitor"
+                />
+                <datalist id="competitor-suggestions">
+                  {competitorSuggestions.map((competitor) => (
+                    <option key={competitor} value={competitor} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel onClick={handleMoveCancel}>
               Annulla
@@ -1130,6 +1244,7 @@ function KanbanBoard({
             await refetchTasks();
           }}
           domain={domain}
+          onTaskUpdated={updateTaskInState}
         />
       )}
 

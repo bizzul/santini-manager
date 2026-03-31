@@ -24,14 +24,21 @@ export const validation = z.object({
   // unique_code è opzionale: se non fornito, viene generato automaticamente dal server
   unique_code: z.string().min(1).optional(),
   clientId: z
-    .preprocess((val) => Number(val), z.number())
+    .preprocess(
+      (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+      z.number()
+    )
     .optional()
     .nullable(),
-  productId: z.preprocess((val) => Number(val), z.number()).nullable(),
+  productId: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+    z.number()
+  ).nullable(),
   // Array of product IDs for quick add (multiple products)
   productIds: z.array(z.number()).optional().nullable(),
   deliveryDate: z.preprocess(parseDate, z.date().optional().nullable()),
   termine_produzione: z.preprocess(parseDate, z.date().optional().nullable()),
+  offerSendDate: z.preprocess(parseDate, z.date().optional().nullable()),
   // Posa/Service: ora inizio/fine (HH:mm), squadra (1 o 2)
   ora_inizio: z.preprocess((v) => (v === "" || v == null ? null : v), z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional().nullable()),
   ora_fine: z.preprocess((v) => (v === "" || v == null ? null : v), z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional().nullable()),
@@ -42,6 +49,28 @@ export const validation = z.object({
   numero_pezzi: z.preprocess((val) => (val ? Number(val) : null), z.number())
     .optional().nullable(),
   other: z.string().optional(),
+  offerProducts: z.array(z.object({
+    productId: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+      z.number().nullable()
+    ).optional(),
+    productName: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    quantity: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+      z.number().nullable()
+    ).optional(),
+    unitPrice: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+      z.number().nullable()
+    ).optional(),
+    totalPrice: z.preprocess(
+      (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+      z.number().nullable()
+    ).optional(),
+  })).optional().nullable(),
+  offerLossReason: z.string().optional().nullable(),
+  offerLossCompetitorName: z.string().optional().nullable(),
   fileIds: z.array(z.number()).optional(),
   position1: z.string().optional(),
   position2: z.string().optional(),

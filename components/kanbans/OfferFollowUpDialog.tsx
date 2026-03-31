@@ -6,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,10 +39,20 @@ import {
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Task, KanbanColumn, Client } from "@/types/supabase";
+import {
+  Task,
+  KanbanColumn,
+  Client,
+  OfferContactType,
+  OfferFollowUpEntry,
+} from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { useToast } from "@/components/ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
+import {
+  normalizeOfferFollowUps,
+  OFFER_CONTACT_TYPE_LABELS,
+} from "@/lib/offers";
 
 interface OfferFollowUpDialogProps {
   open: boolean;
@@ -64,9 +73,8 @@ interface OfferFollowUpDialogProps {
     columnIdentifier: string
   ) => Promise<void>;
   domain?: string;
+  onTaskUpdated?: (task: Task) => void;
 }
-
-type ContactType = "call" | "email" | "other";
 
 export default function OfferFollowUpDialog({
   open,
@@ -75,14 +83,16 @@ export default function OfferFollowUpDialog({
   columns,
   onMoveCard,
   domain,
+  onTaskUpdated,
 }: OfferFollowUpDialogProps) {
   const { toast } = useToast();
   const { siteId } = useSiteId(domain);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [contactDate, setContactDate] = useState<Date>(new Date());
-  const [contactType, setContactType] = useState<ContactType>("call");
+  const [contactType, setContactType] = useState<OfferContactType>("call");
   const [note, setNote] = useState("");
   const [selectedColumnId, setSelectedColumnId] = useState<string>("");
+  const [existingFollowUps, setExistingFollowUps] = useState<OfferFollowUpEntry[]>([]);
 
   const destinationColumns = useMemo(() => {
     if (!columns) return [];
@@ -159,11 +169,25 @@ export default function OfferFollowUpDialog({
       setContactType("call");
       setNote("");
       setSelectedColumnId("");
+      setExistingFollowUps(normalizeOfferFollowUps(task));
     }
   }, [open, task?.id]);
 
-  const handleSubmit = async () => {
-    if (!task || !selectedColumnId) {
+  const handleSubmit = async (moveAfterSave: boolean) => {
+    if (!task) {
+      return;
+    }
+
+    if (!note.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Errore",
+        description: "Inserisci almeno una nota di follow-up",
+      });
+      return;
+    }
+
+    if (moveAfterSave && !selectedColumnId) {
       toast({
         variant: "destructive",
         title: "Errore",
@@ -176,27 +200,12 @@ export default function OfferFollowUpDialog({
       (col) => col.id.toString() === selectedColumnId
     );
 
-    if (!selectedColumn) {
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: "Colonna di destinazione non trovata",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      const contactTypeLabels: Record<ContactType, string> = {
-        call: "Chiamata",
-        email: "Email",
-        other: "Altro",
-      };
-
       const fullNote = `[${format(contactDate, "dd/MM/yyyy", {
         locale: it,
-      })}] ${contactTypeLabels[contactType]}: ${note}`;
+      })}] ${OFFER_CONTACT_TYPE_LABELS[contactType]}: ${note}`;
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -216,23 +225,46 @@ export default function OfferFollowUpDialog({
       });
 
       if (!noteResponse.ok) {
-        console.warn("Note API not available, continuing with move");
+        throw new Error("Impossibile salvare il follow-up");
       }
 
-      await onMoveCard(
-        task.id,
-        selectedColumn.id,
-        selectedColumn.identifier || ""
-      );
+      const noteResponseData = await noteResponse.json();
+      if (noteResponseData?.data) {
+        setExistingFollowUps(normalizeOfferFollowUps(noteResponseData.data));
+        onTaskUpdated?.(noteResponseData.data);
+      } else if (noteResponseData?.followUp) {
+        setExistingFollowUps((current) => [
+          noteResponseData.followUp,
+          ...current,
+        ]);
+      }
+
+      if (moveAfterSave && selectedColumn) {
+        await onMoveCard(
+          task.id,
+          selectedColumn.id,
+          selectedColumn.identifier || ""
+        );
+
+        toast({
+          title: "Follow-up salvato",
+          description: `Offerta spostata in "${
+            selectedColumn.title || selectedColumn.identifier
+          }"`,
+        });
+
+        onOpenChange(false);
+        return;
+      }
 
       toast({
         title: "Follow-up salvato",
-        description: `Offerta spostata in "${
-          selectedColumn.title || selectedColumn.identifier
-        }"`,
+        description: "Le informazioni di contatto sono state registrate",
       });
 
-      onOpenChange(false);
+      setContactDate(new Date());
+      setContactType("call");
+      setNote("");
     } catch (error) {
       console.error("Error in follow-up:", error);
       toast({
@@ -510,7 +542,22 @@ export default function OfferFollowUpDialog({
                 Annulla
               </Button>
               <Button
-                onClick={handleSubmit}
+                variant="secondary"
+                onClick={() => handleSubmit(false)}
+                disabled={isSubmitting}
+                className="flex-1"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  "Salva"
+                )}
+              </Button>
+              <Button
+                onClick={() => handleSubmit(true)}
                 disabled={isSubmitting || !selectedColumnId}
                 className="flex-1"
               >
@@ -525,6 +572,34 @@ export default function OfferFollowUpDialog({
               </Button>
             </div>
           </div>
+        </div>
+
+        <div className="border-t pt-4 space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Storico contatti
+          </h3>
+          {existingFollowUps.length === 0 ? (
+            <div className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
+              Nessun contatto registrato.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {existingFollowUps.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="grid grid-cols-[150px_120px_minmax(0,1fr)] gap-3 rounded-lg border bg-muted/20 p-3 text-sm"
+                >
+                  <div className="font-medium">
+                    {DateManager.formatEUDate(entry.contactDate)}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {OFFER_CONTACT_TYPE_LABELS[entry.contactType]}
+                  </div>
+                  <div className="truncate">{entry.note || "-"}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
