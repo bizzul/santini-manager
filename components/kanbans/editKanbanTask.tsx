@@ -1328,9 +1328,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
           <div className="space-y-4">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-lg font-medium">Ordini fornitori</h3>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground sm:text-right">
                   Logo, ordinazione e consegna
                 </span>
               </div>
@@ -1340,10 +1340,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                   taskSuppliers.map((ts) => (
                     <div
                       key={ts.id}
-                      className="rounded-lg border bg-muted/30 p-3 space-y-3"
+                      className="rounded-lg border bg-muted/30 p-3"
                     >
-                      <div className="grid grid-cols-[72px_minmax(0,1fr)_140px_110px_140px_auto] gap-3 items-start">
-                        <div className="h-[72px] w-[72px] rounded-md border bg-background flex items-center justify-center overflow-hidden">
+                      <div className="grid gap-3 xl:grid-cols-[72px_minmax(0,1fr)_minmax(0,420px)] xl:items-start">
+                        <div className="h-[72px] w-[72px] shrink-0 rounded-md border bg-background flex items-center justify-center overflow-hidden">
                           {ts.supplier?.supplier_image ? (
                             <Image
                               src={ts.supplier.supplier_image}
@@ -1359,8 +1359,8 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                           )}
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="font-medium">
+                        <div className="min-w-0 space-y-2">
+                          <div className="truncate font-medium">
                             {ts.supplier?.short_name ||
                               ts.supplier?.name ||
                               "Unknown Supplier"}
@@ -1405,7 +1405,8 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                           />
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[140px_110px_140px_auto] lg:items-end">
+                          <div className="space-y-2">
                           <label className="text-xs text-muted-foreground">
                             Data ordinazione
                           </label>
@@ -1443,219 +1444,249 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                               }
                             }}
                           />
-                        </div>
+                          </div>
 
-                        <div className="space-y-2">
-                          <label className="text-xs text-muted-foreground">
-                            Giorni fornitura
-                          </label>
-                          <Input
-                            type="number"
-                            min="0"
-                            defaultValue={ts.supplyDays ?? ""}
-                            onBlur={async (e) => {
-                              const nextSupplyDays = parseSupplyDaysValue(
-                                e.target.value
-                              );
-                              const nextDeliveryDate =
-                                ts.deliveryDate?.split("T")[0] || "";
-                              const nextOrderDate =
-                                nextSupplyDays !== null && nextDeliveryDate
-                                  ? calculateOrderDateFromDelivery(
-                                      nextDeliveryDate,
-                                      nextSupplyDays
-                                    )
-                                  : undefined;
-
-                              const response = await fetch(
-                                `/api/tasks/${resource.id}/suppliers`,
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    ...getHeaders(),
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({
-                                    supplierId: ts.supplierId,
-                                    supplyDays: nextSupplyDays,
-                                    ...(nextOrderDate !== undefined
-                                      ? { orderDate: nextOrderDate }
-                                      : {}),
-                                  }),
-                                }
-                              );
-
-                              if (response.ok) {
-                                const updatedSupplier = await response.json();
-                                setTaskSuppliers((currentSuppliers) =>
-                                  currentSuppliers.map((supplier) =>
-                                    supplier.id === updatedSupplier.id
-                                      ? updatedSupplier
-                                      : supplier
-                                  )
+                          <div className="space-y-2">
+                            <label className="text-xs text-muted-foreground">
+                              Giorni fornitura
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              defaultValue={ts.supplyDays ?? ""}
+                              onBlur={async (e) => {
+                                const nextSupplyDays = parseSupplyDaysValue(
+                                  e.target.value
                                 );
-                                toast({
-                                  description: "Giorni di fornitura aggiornati",
-                                });
-                              }
-                            }}
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-xs text-muted-foreground">
-                            Data consegna
-                          </label>
-                          <Input
-                            type="date"
-                            value={
-                              ts.deliveryDate ? ts.deliveryDate.split("T")[0] : ""
-                            }
-                            onChange={async (e) => {
-                              const nextDeliveryDate = e.target.value;
-                              const nextOrderDate =
-                                ts.supplyDays !== null
-                                  ? nextDeliveryDate
+                                const nextDeliveryDate =
+                                  ts.deliveryDate?.split("T")[0] || "";
+                                const nextOrderDate =
+                                  nextSupplyDays !== null && nextDeliveryDate
                                     ? calculateOrderDateFromDelivery(
                                         nextDeliveryDate,
-                                        ts.supplyDays
+                                        nextSupplyDays
                                       )
-                                    : null
-                                  : undefined;
-                              const response = await fetch(
-                                `/api/tasks/${resource.id}/suppliers`,
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    ...getHeaders(),
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({
-                                    supplierId: ts.supplierId,
-                                    deliveryDate: nextDeliveryDate,
-                                    ...(nextOrderDate !== undefined
-                                      ? { orderDate: nextOrderDate }
-                                      : {}),
-                                  }),
-                                }
-                              );
+                                    : undefined;
 
-                              if (response.ok) {
-                                const updatedSupplier = await response.json();
-                                setTaskSuppliers((currentSuppliers) =>
-                                  currentSuppliers.map((supplier) =>
-                                    supplier.id === updatedSupplier.id
-                                      ? updatedSupplier
-                                      : supplier
-                                  )
+                                const response = await fetch(
+                                  `/api/tasks/${resource.id}/suppliers`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      ...getHeaders(),
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      supplierId: ts.supplierId,
+                                      supplyDays: nextSupplyDays,
+                                      ...(nextOrderDate !== undefined
+                                        ? { orderDate: nextOrderDate }
+                                        : {}),
+                                    }),
+                                  }
                                 );
-                                toast({
-                                  description: "Data di consegna aggiornata",
-                                });
-                              }
-                            }}
-                          />
-                        </div>
 
-                        <Button
-                          variant="destructive"
-                          size="icon"
-                          type="button"
-                          onClick={() => handleDeleteSupplier(ts.supplierId)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                                if (response.ok) {
+                                  const updatedSupplier = await response.json();
+                                  setTaskSuppliers((currentSuppliers) =>
+                                    currentSuppliers.map((supplier) =>
+                                      supplier.id === updatedSupplier.id
+                                        ? updatedSupplier
+                                        : supplier
+                                    )
+                                  );
+                                  toast({
+                                    description:
+                                      "Giorni di fornitura aggiornati",
+                                  });
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                            <label className="text-xs text-muted-foreground">
+                              Data consegna
+                            </label>
+                            <Input
+                              type="date"
+                              value={
+                                ts.deliveryDate
+                                  ? ts.deliveryDate.split("T")[0]
+                                  : ""
+                              }
+                              onChange={async (e) => {
+                                const nextDeliveryDate = e.target.value;
+                                const nextOrderDate =
+                                  ts.supplyDays !== null
+                                    ? nextDeliveryDate
+                                      ? calculateOrderDateFromDelivery(
+                                          nextDeliveryDate,
+                                          ts.supplyDays
+                                        )
+                                      : null
+                                    : undefined;
+                                const response = await fetch(
+                                  `/api/tasks/${resource.id}/suppliers`,
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      ...getHeaders(),
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      supplierId: ts.supplierId,
+                                      deliveryDate: nextDeliveryDate,
+                                      ...(nextOrderDate !== undefined
+                                        ? { orderDate: nextOrderDate }
+                                        : {}),
+                                    }),
+                                  }
+                                );
+
+                                if (response.ok) {
+                                  const updatedSupplier = await response.json();
+                                  setTaskSuppliers((currentSuppliers) =>
+                                    currentSuppliers.map((supplier) =>
+                                      supplier.id === updatedSupplier.id
+                                        ? updatedSupplier
+                                        : supplier
+                                    )
+                                  );
+                                  toast({
+                                    description: "Data di consegna aggiornata",
+                                  });
+                                }
+                              }}
+                            />
+                          </div>
+
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            type="button"
+                            onClick={() => handleDeleteSupplier(ts.supplierId)}
+                            className="w-full sm:w-10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
               </div>
 
-              <div className="grid grid-cols-[minmax(0,1fr)_140px_110px_140px_auto] gap-3 items-end">
-                <Select value={newSupplier} onValueChange={setNewSupplier}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona fornitore" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.isArray(suppliers) &&
-                      suppliers
-                        .filter(
-                          (supplier) =>
-                            !taskSuppliers.some(
-                              (ts) => ts.supplierId === supplier.id
+              <div className="rounded-lg border border-dashed bg-muted/10 p-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_140px_110px_140px_auto] lg:items-end">
+                  <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                    <label className="text-xs text-muted-foreground">
+                      Fornitore
+                    </label>
+                    <Select value={newSupplier} onValueChange={setNewSupplier}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona fornitore" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.isArray(suppliers) &&
+                          suppliers
+                            .filter(
+                              (supplier) =>
+                                !taskSuppliers.some(
+                                  (ts) => ts.supplierId === supplier.id
+                                )
                             )
-                        )
-                        .map((supplier) => (
-                          <SelectItem
-                            key={supplier.id}
-                            value={supplier.id.toString()}
-                          >
-                            {supplier.short_name || supplier.name}
-                          </SelectItem>
-                        ))}
-                  </SelectContent>
-                </Select>
+                            .map((supplier) => (
+                              <SelectItem
+                                key={supplier.id}
+                                value={supplier.id.toString()}
+                              >
+                                {supplier.short_name || supplier.name}
+                              </SelectItem>
+                            ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <Input
-                  type="date"
-                  value={newOrderDate}
-                  onChange={(e) => setNewOrderDate(e.target.value)}
-                />
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">
+                      Data ordinazione
+                    </label>
+                    <Input
+                      type="date"
+                      value={newOrderDate}
+                      onChange={(e) => setNewOrderDate(e.target.value)}
+                    />
+                  </div>
 
-                <Input
-                  type="number"
-                  min="0"
-                  value={newSupplyDays}
-                  onChange={(e) => {
-                    const nextSupplyDays = e.target.value;
-                    setNewSupplyDays(nextSupplyDays);
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">
+                      Giorni
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newSupplyDays}
+                      onChange={(e) => {
+                        const nextSupplyDays = e.target.value;
+                        setNewSupplyDays(nextSupplyDays);
 
-                    if (!nextSupplyDays) {
-                      return;
-                    }
+                        if (!nextSupplyDays) {
+                          return;
+                        }
 
-                    const calculatedOrderDate = calculateOrderDateFromDelivery(
-                      newDeliveryDate,
-                      nextSupplyDays
-                    );
+                        const calculatedOrderDate =
+                          calculateOrderDateFromDelivery(
+                            newDeliveryDate,
+                            nextSupplyDays
+                          );
 
-                    if (calculatedOrderDate) {
-                      setNewOrderDate(calculatedOrderDate);
-                    }
-                  }}
-                  placeholder="Giorni"
-                />
+                        if (calculatedOrderDate) {
+                          setNewOrderDate(calculatedOrderDate);
+                        }
+                      }}
+                      placeholder="Giorni"
+                    />
+                  </div>
 
-                <Input
-                  type="date"
-                  value={newDeliveryDate}
-                  onChange={(e) => {
-                    const nextDeliveryDate = e.target.value;
-                    setNewDeliveryDate(nextDeliveryDate);
+                  <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                    <label className="text-xs text-muted-foreground">
+                      Data consegna
+                    </label>
+                    <Input
+                      type="date"
+                      value={newDeliveryDate}
+                      onChange={(e) => {
+                        const nextDeliveryDate = e.target.value;
+                        setNewDeliveryDate(nextDeliveryDate);
 
-                    if (!nextDeliveryDate && newSupplyDays) {
-                      setNewOrderDate("");
-                      return;
-                    }
+                        if (!nextDeliveryDate && newSupplyDays) {
+                          setNewOrderDate("");
+                          return;
+                        }
 
-                    const calculatedOrderDate = calculateOrderDateFromDelivery(
-                      nextDeliveryDate,
-                      newSupplyDays
-                    );
+                        const calculatedOrderDate =
+                          calculateOrderDateFromDelivery(
+                            nextDeliveryDate,
+                            newSupplyDays
+                          );
 
-                    if (calculatedOrderDate) {
-                      setNewOrderDate(calculatedOrderDate);
-                    }
-                  }}
-                />
+                        if (calculatedOrderDate) {
+                          setNewOrderDate(calculatedOrderDate);
+                        }
+                      }}
+                    />
+                  </div>
 
-                <Button
-                  type="button"
-                  onClick={handleAddSupplier}
-                  disabled={!newSupplier}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Aggiungi
-                </Button>
+                  <Button
+                    type="button"
+                    onClick={handleAddSupplier}
+                    disabled={!newSupplier}
+                    className="w-full sm:col-span-2 lg:w-auto lg:col-span-1"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi
+                  </Button>
+                </div>
               </div>
             </div>
 
