@@ -145,7 +145,10 @@ export const NavUser = memo(function NavUser({
                 <Bell />
                 Notifiche
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={openGuide} className="cursor-pointer">
+              <DropdownMenuItem
+                onClick={() => openGuide()}
+                className="cursor-pointer"
+              >
                 <BookOpen />
                 Guida manager
               </DropdownMenuItem>
