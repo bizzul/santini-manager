@@ -4,6 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, Client, KanbanColumn } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
+import { ManagerGuideButton } from "@/components/manager-guide";
 
 interface OfferMiniCardProps {
   id: number;
@@ -131,7 +132,16 @@ export default function OfferMiniCard({
     >
       {/* Header: Code & Sent Date */}
       <div className="flex justify-between items-start mb-1">
-        <span className="font-bold text-xs">{data.unique_code}</span>
+        <div className="flex items-center gap-1">
+          <span className="font-bold text-xs">{data.unique_code}</span>
+          <ManagerGuideButton
+            label="Apri guida follow-up offerta"
+            stepId="follow-up"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-white/80 hover:bg-white/10 hover:text-white"
+          />
+        </div>
         <span className="text-xs opacity-80">{sentDateFormatted}</span>
       </div>
 

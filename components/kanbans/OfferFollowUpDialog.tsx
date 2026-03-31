@@ -49,6 +49,7 @@ import {
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { useToast } from "@/components/ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
+import { ManagerGuideButton } from "@/components/manager-guide";
 import {
   normalizeOfferFollowUps,
   OFFER_CONTACT_TYPE_LABELS,
@@ -284,13 +285,22 @@ export default function OfferFollowUpDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span>Follow-up Offerta</span>
-            <span className="text-lg font-bold text-primary">
-              {task.unique_code}
-            </span>
-          </DialogTitle>
+        <DialogHeader className="pr-10">
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle className="flex items-center gap-2">
+              <span>Follow-up Offerta</span>
+              <span className="text-lg font-bold text-primary">
+                {task.unique_code}
+              </span>
+            </DialogTitle>
+            <ManagerGuideButton
+              label="Apri guida follow-up offerta"
+              stepId="follow-up"
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+            />
+          </div>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-2">

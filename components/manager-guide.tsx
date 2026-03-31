@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 const GUIDE_PENDING_LOGIN_KEY = "santini-manager-guide-pending-login";
 const GUIDE_STORAGE_PREFIX = "santini-manager-guide";
 const REQUIRED_LOGIN_AUTO_OPENS = 5;
+const DEFAULT_GUIDE_BUTTON_LABEL = "Apri guida";
 
 type GuidePreferences = {
   showOnLogin: boolean;
@@ -55,7 +56,7 @@ type GuideStep = {
 };
 
 type ManagerGuideContextValue = {
-  openGuide: () => void;
+  openGuide: (stepId?: GuideStep["id"]) => void;
   showOnLogin: boolean;
   setShowOnLogin: (value: boolean) => void;
   remainingRequiredLogins: number;
@@ -315,8 +316,13 @@ export function ManagerGuideProvider({
     }
   }, [preferences.forcedLoginOpens, preferences.showOnLogin, ready, userId]);
 
-  const openGuide = useCallback(() => {
-    setCurrentStepIndex(0);
+  const openGuide = useCallback((stepId?: GuideStep["id"]) => {
+    if (stepId) {
+      const targetStepIndex = GUIDE_STEPS.findIndex((step) => step.id === stepId);
+      setCurrentStepIndex(targetStepIndex >= 0 ? targetStepIndex : 0);
+    } else {
+      setCurrentStepIndex(0);
+    }
     setOpen(true);
   }, []);
 
@@ -533,5 +539,53 @@ export function useManagerGuide() {
   }
 
   return context;
+}
+
+export function ManagerGuideButton({
+  stepId,
+  label = DEFAULT_GUIDE_BUTTON_LABEL,
+  title,
+  className,
+  iconClassName,
+  showLabel = false,
+  variant = "outline",
+  size = "icon",
+}: {
+  stepId?: GuideStep["id"];
+  label?: string;
+  title?: string;
+  className?: string;
+  iconClassName?: string;
+  showLabel?: boolean;
+  variant?: React.ComponentProps<typeof Button>["variant"];
+  size?: React.ComponentProps<typeof Button>["size"];
+}) {
+  const context = useContext(ManagerGuideContext);
+
+  if (!context) {
+    return null;
+  }
+
+  const { openGuide } = context;
+
+  return (
+    <Button
+      type="button"
+      variant={variant}
+      size={size}
+      title={title ?? label}
+      aria-label={label}
+      className={className}
+      onPointerDown={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        openGuide(stepId);
+      }}
+    >
+      <BookOpen className={cn("h-4 w-4", iconClassName)} />
+      {showLabel && <span>{label}</span>}
+    </Button>
+  );
 }
 

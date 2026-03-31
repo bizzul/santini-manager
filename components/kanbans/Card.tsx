@@ -33,6 +33,7 @@ import {
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
 import { useSiteId } from "@/hooks/use-site-id";
+import { ManagerGuideButton } from "@/components/manager-guide";
 
 // Mappatura icone categoria (fallback per categorie senza icona custom)
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -484,14 +485,23 @@ export default function Card({
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
                   <span className="font-bold text-sm">{data.unique_code}</span>
-                  {data.deliveryDate && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                      <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
-                      <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                        S.{DateManager.getWeekNumber(data.deliveryDate)}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <ManagerGuideButton
+                      label="Apri guida card progetto"
+                      stepId="offer-details"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    />
+                    {data.deliveryDate && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                        <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
+                        <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                          S.{DateManager.getWeekNumber(data.deliveryDate)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Badge Categoria Prodotto - Solo se abilitato nelle impostazioni Kanban */}
@@ -644,14 +654,23 @@ export default function Card({
                     )}
                     <span className="font-bold text-sm">{data.unique_code}</span>
                   </div>
-                  {data.deliveryDate && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                      <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
-                      <span className="font-semibold">
-                        S.{DateManager.getWeekNumber(data.deliveryDate)}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <ManagerGuideButton
+                      label="Apri guida card progetto"
+                      stepId="offer-details"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                    />
+                    {data.deliveryDate && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                        <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
+                        <span className="font-semibold">
+                          S.{DateManager.getWeekNumber(data.deliveryDate)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Riga 2: Categoria Prodotto - solo se abilitato nelle impostazioni Kanban */}
@@ -707,8 +726,17 @@ export default function Card({
 
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
             <DialogContent className="max-w-228 max-h-[90%] overflow-scroll">
-              <DialogHeader>
-                <DialogTitle>Modifica {data.unique_code}</DialogTitle>
+              <DialogHeader className="pr-10">
+                <div className="flex items-center justify-between gap-3">
+                  <DialogTitle>Modifica {data.unique_code}</DialogTitle>
+                  <ManagerGuideButton
+                    label="Apri guida dettaglio progetto"
+                    stepId="offer-details"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                  />
+                </div>
               </DialogHeader>
               <EditTaskKanban
                 handleClose={(wasDeleted?: boolean) => {

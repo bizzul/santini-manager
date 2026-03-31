@@ -17,7 +17,7 @@ import { createClient } from "@/utils/supabase/server";
 import { QuickActionsProvider } from "@/components/quick-actions";
 import { logger } from "@/lib/logger";
 import { QueryHydration } from "@/components/QueryHydration";
-import { ManagerGuideProvider } from "@/components/manager-guide";
+import { ManagerGuideButton, ManagerGuideProvider } from "@/components/manager-guide";
 
 /**
  * Check if user has access to a specific site
@@ -208,8 +208,12 @@ export default async function SiteLayout({
             >
               <AppSidebar />
               <SidebarInset className="flex flex-col h-screen overflow-hidden">
-                <header className="flex h-12 shrink-0 items-center border-b px-4">
+                <header className="flex h-12 shrink-0 items-center justify-between border-b px-4">
                   <SidebarTrigger className="-ml-1" />
+                  <ManagerGuideButton
+                    label="Apri guida manager"
+                    className="h-8 w-8"
+                  />
                 </header>
                 <div className="flex-1 overflow-auto">{children}</div>
               </SidebarInset>
