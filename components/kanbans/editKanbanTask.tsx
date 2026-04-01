@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -135,7 +135,39 @@ function calculateOrderDateFromDelivery(
   }
 
   const calculatedDate = parseLocalDate(deliveryDate);
-  calculatedDate.setDate(calculatedDate.getDate() - normalizedSupplyDays);
+
+  let remainingDays = normalizedSupplyDays;
+  while (remainingDays > 0) {
+    calculatedDate.setDate(calculatedDate.getDate() - 1);
+
+    if (!isWeekend(calculatedDate)) {
+      remainingDays -= 1;
+    }
+  }
+
+  return formatLocalDate(calculatedDate);
+}
+
+function calculateDeliveryDateFromOrder(
+  orderDate: string,
+  supplyDays: string | number | null | undefined
+): string | null {
+  const normalizedSupplyDays = parseSupplyDaysValue(supplyDays);
+
+  if (!orderDate || normalizedSupplyDays === null) {
+    return null;
+  }
+
+  const calculatedDate = parseLocalDate(orderDate);
+
+  let remainingDays = normalizedSupplyDays;
+  while (remainingDays > 0) {
+    calculatedDate.setDate(calculatedDate.getDate() + 1);
+
+    if (!isWeekend(calculatedDate)) {
+      remainingDays -= 1;
+    }
+  }
 
   return formatLocalDate(calculatedDate);
 }
@@ -145,6 +177,9 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
   const [isLoading, setIsLoading] = useState(true);
+  const newOrderDateInputRef = useRef<HTMLInputElement>(null);
+  const newDeliveryDateInputRef = useRef<HTMLInputElement>(null);
+  const pendingSupplierUpdatesRef = useRef(new Set<Promise<void>>());
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -208,6 +243,28 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     resource?.task_type === "OFFERTA" ||
     resource?.taskType === "OFFERTA" ||
     Boolean(resource?.offer_send_date || resource?.offerSendDate);
+
+  const openNativeDatePicker = (input: HTMLInputElement | null) => {
+    if (!input) {
+      return;
+    }
+
+    input.focus();
+
+    const pickerInput = input as HTMLInputElement & {
+      showPicker?: () => void;
+    };
+
+    if (typeof pickerInput.showPicker === "function") {
+      pickerInput.showPicker();
+      return;
+    }
+
+    input.click();
+  };
+
+  const supplierDateInputClassName =
+    "pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-10";
 
   const loadTaskDetails = useCallback(async () => {
     try {
@@ -405,6 +462,10 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       return;
     }
 
+    if (pendingSupplierUpdatesRef.current.size > 0) {
+      await Promise.allSettled(Array.from(pendingSupplierUpdatesRef.current));
+    }
+
     const sanitizedProducts = sanitizeOfferProducts(offerProducts);
     const firstProductId =
       sanitizedProducts.find((item) => item.productId)?.productId || null;
@@ -545,8 +606,12 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     const normalizedSupplyDays = parseSupplyDaysValue(newSupplyDays);
     const calculatedOrderDate =
-      newDeliveryDate && normalizedSupplyDays !== null
+      !newOrderDate && newDeliveryDate && normalizedSupplyDays !== null
         ? calculateOrderDateFromDelivery(newDeliveryDate, normalizedSupplyDays)
+        : null;
+    const calculatedDeliveryDate =
+      !newDeliveryDate && newOrderDate && normalizedSupplyDays !== null
+        ? calculateDeliveryDateFromOrder(newOrderDate, normalizedSupplyDays)
         : null;
 
     const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
@@ -559,7 +624,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
         supplierId: parseInt(newSupplier),
         orderDate: (calculatedOrderDate ?? newOrderDate) || null,
         supplyDays: normalizedSupplyDays,
-        deliveryDate: newDeliveryDate || null,
+        deliveryDate: (calculatedDeliveryDate ?? newDeliveryDate) || null,
       }),
     });
 
@@ -574,6 +639,55 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
         description: "Fornitore aggiunto con successo",
       });
     }
+  };
+
+  const updateTaskSupplierLocally = (
+    supplierId: number,
+    updates: Partial<TaskSupplier>
+  ) => {
+    setTaskSuppliers((currentSuppliers) =>
+      currentSuppliers.map((supplier) =>
+        supplier.supplierId === supplierId ? { ...supplier, ...updates } : supplier
+      )
+    );
+  };
+
+  const persistTaskSupplierUpdate = async (
+    supplierId: number,
+    updates: Record<string, unknown>,
+    successMessage: string
+  ) => {
+    const request = (async () => {
+      const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
+        method: "POST",
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          supplierId,
+          ...updates,
+        }),
+      });
+
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          description: "Errore durante il salvataggio del fornitore",
+        });
+        return;
+      }
+
+      await response.json();
+      toast({
+        description: successMessage,
+      });
+    })();
+
+    pendingSupplierUpdatesRef.current.add(request);
+    await request.finally(() => {
+      pendingSupplierUpdatesRef.current.delete(request);
+    });
   };
 
   const handleDeleteSupplier = async (supplierId: number) => {
@@ -1328,11 +1442,8 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
           <div className="space-y-4">
             <div className="space-y-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Ordini fornitori</h3>
-                <span className="text-xs text-muted-foreground sm:text-right">
-                  Logo, ordinazione e consegna
-                </span>
               </div>
 
               <div className="space-y-3">
@@ -1342,108 +1453,65 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                       key={ts.id}
                       className="rounded-lg border bg-muted/30 p-3"
                     >
-                      <div className="grid gap-3 xl:grid-cols-[72px_minmax(0,1fr)_minmax(0,420px)] xl:items-start">
-                        <div className="h-[72px] w-[72px] shrink-0 rounded-md border bg-background flex items-center justify-center overflow-hidden">
-                          {ts.supplier?.supplier_image ? (
-                            <Image
-                              src={ts.supplier.supplier_image}
-                              alt={ts.supplier?.name || "Supplier logo"}
-                              width={72}
-                              height={72}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-xs text-muted-foreground text-center px-2">
-                              Logo
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 space-y-2">
-                          <div className="truncate font-medium">
-                            {ts.supplier?.short_name ||
-                              ts.supplier?.name ||
-                              "Unknown Supplier"}
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">
+                              {ts.supplier?.short_name ||
+                                ts.supplier?.name ||
+                                "Unknown Supplier"}
+                            </div>
                           </div>
-                          <Input
-                            type="text"
-                            placeholder="Aggiungi nota..."
-                            defaultValue={ts.notes || ""}
-                            onBlur={async (e) => {
-                              const newNotes = e.target.value;
-                              if (newNotes !== (ts.notes || "")) {
-                                const response = await fetch(
-                                  `/api/tasks/${resource.id}/suppliers`,
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      ...getHeaders(),
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      supplierId: ts.supplierId,
-                                      notes: newNotes,
-                                    }),
-                                  }
-                                );
-
-                                if (response.ok) {
-                                  const updatedSupplier = await response.json();
-                                  setTaskSuppliers(
-                                    taskSuppliers.map((supplier) =>
-                                      supplier.id === updatedSupplier.id
-                                        ? updatedSupplier
-                                        : supplier
-                                    )
-                                  );
-                                  toast({
-                                    description: "Nota aggiornata",
-                                  });
-                                }
-                              }
-                            }}
-                          />
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            type="button"
+                            onClick={() => handleDeleteSupplier(ts.supplierId)}
+                            className="shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[140px_110px_140px_auto] lg:items-end">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[160px_96px_minmax(0,160px)] lg:items-end">
                           <div className="space-y-2">
-                          <label className="text-xs text-muted-foreground">
-                            Data ordinazione
-                          </label>
-                          <Input
-                            type="date"
-                            value={ts.orderDate ? ts.orderDate.split("T")[0] : ""}
-                            onChange={async (e) => {
-                              const response = await fetch(
-                                `/api/tasks/${resource.id}/suppliers`,
-                                {
-                                  method: "POST",
-                                  headers: {
-                                    ...getHeaders(),
-                                    "Content-Type": "application/json",
-                                  },
-                                  body: JSON.stringify({
-                                    supplierId: ts.supplierId,
-                                    orderDate: e.target.value,
-                                  }),
-                                }
-                              );
+                            <label className="text-xs text-muted-foreground">
+                              Data ordinazione
+                            </label>
+                            <Input
+                              type="date"
+                              value={ts.orderDate ? ts.orderDate.split("T")[0] : ""}
+                              onChange={async (e) => {
+                                const nextOrderDate = e.target.value;
+                                const nextDeliveryDate =
+                                  ts.supplyDays !== null
+                                    ? nextOrderDate
+                                      ? calculateDeliveryDateFromOrder(
+                                          nextOrderDate,
+                                          ts.supplyDays
+                                        )
+                                      : null
+                                    : undefined;
 
-                              if (response.ok) {
-                                const updatedSupplier = await response.json();
-                                setTaskSuppliers(
-                                  taskSuppliers.map((supplier) =>
-                                    supplier.id === updatedSupplier.id
-                                      ? updatedSupplier
-                                      : supplier
-                                  )
-                                );
-                                toast({
-                                  description: "Data di ordinazione aggiornata",
+                                updateTaskSupplierLocally(ts.supplierId, {
+                                  orderDate: nextOrderDate || null,
+                                  ...(nextDeliveryDate !== undefined
+                                    ? { deliveryDate: nextDeliveryDate }
+                                    : {}),
                                 });
-                              }
-                            }}
-                          />
+
+                                await persistTaskSupplierUpdate(
+                                  ts.supplierId,
+                                  {
+                                    orderDate: nextOrderDate || null,
+                                    ...(nextDeliveryDate !== undefined
+                                      ? { deliveryDate: nextDeliveryDate }
+                                      : {}),
+                                  },
+                                  "Data di ordinazione aggiornata"
+                                );
+                              }}
+                            />
                           </div>
 
                           <div className="space-y-2">
@@ -1453,53 +1521,64 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                             <Input
                               type="number"
                               min="0"
-                              defaultValue={ts.supplyDays ?? ""}
+                              value={ts.supplyDays ?? ""}
+                              onChange={(e) => {
+                                updateTaskSupplierLocally(ts.supplierId, {
+                                  supplyDays: parseSupplyDaysValue(e.target.value),
+                                });
+                              }}
                               onBlur={async (e) => {
                                 const nextSupplyDays = parseSupplyDaysValue(
                                   e.target.value
                                 );
+                                const currentSupplier =
+                                  taskSuppliers.find(
+                                    (supplier) => supplier.id === ts.id
+                                  ) ?? ts;
+                                const existingOrderDate =
+                                  currentSupplier.orderDate?.split("T")[0] || "";
+                                const existingDeliveryDate =
+                                  currentSupplier.deliveryDate?.split("T")[0] || "";
                                 const nextDeliveryDate =
-                                  ts.deliveryDate?.split("T")[0] || "";
+                                  nextSupplyDays !== null && existingOrderDate
+                                    ? calculateDeliveryDateFromOrder(
+                                        existingOrderDate,
+                                        nextSupplyDays
+                                      )
+                                    : undefined;
                                 const nextOrderDate =
-                                  nextSupplyDays !== null && nextDeliveryDate
+                                  nextSupplyDays !== null &&
+                                  !existingOrderDate &&
+                                  existingDeliveryDate
                                     ? calculateOrderDateFromDelivery(
-                                        nextDeliveryDate,
+                                        existingDeliveryDate,
                                         nextSupplyDays
                                       )
                                     : undefined;
 
-                                const response = await fetch(
-                                  `/api/tasks/${resource.id}/suppliers`,
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      ...getHeaders(),
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      supplierId: ts.supplierId,
-                                      supplyDays: nextSupplyDays,
-                                      ...(nextOrderDate !== undefined
-                                        ? { orderDate: nextOrderDate }
-                                        : {}),
-                                    }),
-                                  }
-                                );
+                                updateTaskSupplierLocally(ts.supplierId, {
+                                  supplyDays: nextSupplyDays,
+                                  ...(nextDeliveryDate !== undefined
+                                    ? { deliveryDate: nextDeliveryDate }
+                                    : {}),
+                                  ...(nextOrderDate !== undefined
+                                    ? { orderDate: nextOrderDate }
+                                    : {}),
+                                });
 
-                                if (response.ok) {
-                                  const updatedSupplier = await response.json();
-                                  setTaskSuppliers((currentSuppliers) =>
-                                    currentSuppliers.map((supplier) =>
-                                      supplier.id === updatedSupplier.id
-                                        ? updatedSupplier
-                                        : supplier
-                                    )
-                                  );
-                                  toast({
-                                    description:
-                                      "Giorni di fornitura aggiornati",
-                                  });
-                                }
+                                await persistTaskSupplierUpdate(
+                                  ts.supplierId,
+                                  {
+                                    supplyDays: nextSupplyDays,
+                                    ...(nextDeliveryDate !== undefined
+                                      ? { deliveryDate: nextDeliveryDate }
+                                      : {}),
+                                    ...(nextOrderDate !== undefined
+                                      ? { orderDate: nextOrderDate }
+                                      : {}),
+                                  },
+                                  "Giorni di fornitura aggiornati"
+                                );
                               }}
                             />
                           </div>
@@ -1526,60 +1605,37 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                                         )
                                       : null
                                     : undefined;
-                                const response = await fetch(
-                                  `/api/tasks/${resource.id}/suppliers`,
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      ...getHeaders(),
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      supplierId: ts.supplierId,
-                                      deliveryDate: nextDeliveryDate,
-                                      ...(nextOrderDate !== undefined
-                                        ? { orderDate: nextOrderDate }
-                                        : {}),
-                                    }),
-                                  }
-                                );
 
-                                if (response.ok) {
-                                  const updatedSupplier = await response.json();
-                                  setTaskSuppliers((currentSuppliers) =>
-                                    currentSuppliers.map((supplier) =>
-                                      supplier.id === updatedSupplier.id
-                                        ? updatedSupplier
-                                        : supplier
-                                    )
-                                  );
-                                  toast({
-                                    description: "Data di consegna aggiornata",
-                                  });
-                                }
+                                updateTaskSupplierLocally(ts.supplierId, {
+                                  deliveryDate: nextDeliveryDate || null,
+                                  ...(nextOrderDate !== undefined
+                                    ? { orderDate: nextOrderDate }
+                                    : {}),
+                                });
+
+                                await persistTaskSupplierUpdate(
+                                  ts.supplierId,
+                                  {
+                                    deliveryDate: nextDeliveryDate || null,
+                                    ...(nextOrderDate !== undefined
+                                      ? { orderDate: nextOrderDate }
+                                      : {}),
+                                  },
+                                  "Data di consegna aggiornata"
+                                );
                               }}
                             />
                           </div>
-
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            type="button"
-                            onClick={() => handleDeleteSupplier(ts.supplierId)}
-                            className="w-full sm:w-10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
                     </div>
                   ))}
               </div>
 
-              <div className="rounded-lg border border-dashed bg-muted/10 p-3">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_140px_110px_140px_auto] lg:items-end">
-                  <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                    <label className="text-xs text-muted-foreground">
+              <div className="rounded-lg border border-dashed bg-muted/10 p-3 space-y-3">
+                <div className="flex flex-wrap gap-3">
+                  <div className="min-w-[220px] flex-[1.6_1_220px] rounded-md border bg-background/70 p-3 space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
                       Fornitore
                     </label>
                     <Select value={newSupplier} onValueChange={setNewSupplier}>
@@ -1607,19 +1663,52 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground">
-                      Data ordinazione
+                  <div className="min-w-[180px] flex-[1_1_180px] rounded-md border bg-background/70 p-3 space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Ordinazione
                     </label>
-                    <Input
-                      type="date"
-                      value={newOrderDate}
-                      onChange={(e) => setNewOrderDate(e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        ref={newOrderDateInputRef}
+                        type="date"
+                        value={newOrderDate}
+                        onChange={(e) => {
+                          const nextOrderDate = e.target.value;
+                          setNewOrderDate(nextOrderDate);
+
+                          if (!nextOrderDate && newSupplyDays) {
+                            setNewDeliveryDate("");
+                            return;
+                          }
+
+                          const calculatedDeliveryDate =
+                            calculateDeliveryDateFromOrder(
+                              nextOrderDate,
+                              newSupplyDays
+                            );
+
+                          if (calculatedDeliveryDate) {
+                            setNewDeliveryDate(calculatedDeliveryDate);
+                          }
+                        }}
+                        className={supplierDateInputClassName}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+                        onClick={() =>
+                          openNativeDatePicker(newOrderDateInputRef.current)
+                        }
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground">
+                  <div className="w-[88px] shrink-0 rounded-md border bg-background/70 p-3 space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
                       Giorni
                     </label>
                     <Input
@@ -1634,11 +1723,23 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                           return;
                         }
 
+                        const calculatedDeliveryDate = newOrderDate
+                          ? calculateDeliveryDateFromOrder(
+                              newOrderDate,
+                              nextSupplyDays
+                            )
+                          : null;
                         const calculatedOrderDate =
-                          calculateOrderDateFromDelivery(
-                            newDeliveryDate,
-                            nextSupplyDays
-                          );
+                          !newOrderDate && newDeliveryDate
+                            ? calculateOrderDateFromDelivery(
+                                newDeliveryDate,
+                                nextSupplyDays
+                              )
+                            : null;
+
+                        if (calculatedDeliveryDate) {
+                          setNewDeliveryDate(calculatedDeliveryDate);
+                        }
 
                         if (calculatedOrderDate) {
                           setNewOrderDate(calculatedOrderDate);
@@ -1648,40 +1749,57 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                     />
                   </div>
 
-                  <div className="space-y-2 sm:col-span-2 lg:col-span-1">
-                    <label className="text-xs text-muted-foreground">
-                      Data consegna
+                  <div className="min-w-[180px] flex-[1_1_180px] rounded-md border bg-background/70 p-3 space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Fornitura
                     </label>
-                    <Input
-                      type="date"
-                      value={newDeliveryDate}
-                      onChange={(e) => {
-                        const nextDeliveryDate = e.target.value;
-                        setNewDeliveryDate(nextDeliveryDate);
+                    <div className="relative">
+                      <Input
+                        ref={newDeliveryDateInputRef}
+                        type="date"
+                        value={newDeliveryDate}
+                        onChange={(e) => {
+                          const nextDeliveryDate = e.target.value;
+                          setNewDeliveryDate(nextDeliveryDate);
 
-                        if (!nextDeliveryDate && newSupplyDays) {
-                          setNewOrderDate("");
-                          return;
+                          if (!nextDeliveryDate && newSupplyDays) {
+                            setNewOrderDate("");
+                            return;
+                          }
+
+                          const calculatedOrderDate =
+                            calculateOrderDateFromDelivery(
+                              nextDeliveryDate,
+                              newSupplyDays
+                            );
+
+                          if (calculatedOrderDate) {
+                            setNewOrderDate(calculatedOrderDate);
+                          }
+                        }}
+                        className={supplierDateInputClassName}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
+                        onClick={() =>
+                          openNativeDatePicker(newDeliveryDateInputRef.current)
                         }
-
-                        const calculatedOrderDate =
-                          calculateOrderDateFromDelivery(
-                            nextDeliveryDate,
-                            newSupplyDays
-                          );
-
-                        if (calculatedOrderDate) {
-                          setNewOrderDate(calculatedOrderDate);
-                        }
-                      }}
-                    />
+                      >
+                        <CalendarIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
+                </div>
 
+                <div className="flex justify-end">
                   <Button
                     type="button"
                     onClick={handleAddSupplier}
                     disabled={!newSupplier}
-                    className="w-full sm:col-span-2 lg:w-auto lg:col-span-1"
+                    className="w-full sm:w-auto"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Aggiungi

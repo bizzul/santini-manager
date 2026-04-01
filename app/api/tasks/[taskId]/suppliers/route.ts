@@ -30,6 +30,10 @@ function isMissingColumnError(
   );
 }
 
+function getFirstRow<T>(rows: T[] | null): T | null {
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ taskId: string }> },
@@ -69,14 +73,16 @@ export async function POST(
       await request.json();
     const normalizedSupplyDays = normalizeSupplyDays(supplyDays);
 
-    const { data: existingSupplier, error: findError } = await supabase
+    const { data: existingSuppliers, error: findError } = await supabase
       .from("TaskSupplier")
       .select("*")
       .eq("taskId", parseInt(taskId))
       .eq("supplierId", supplierId)
-      .single();
+      .limit(1);
 
-    if (findError && findError.code !== "PGRST116") throw findError;
+    if (findError) throw findError;
+
+    const existingSupplier = getFirstRow(existingSuppliers);
 
     if (existingSupplier) {
       // Build update object with only provided fields
@@ -102,10 +108,9 @@ export async function POST(
           .select(`
             *,
             supplier:Supplier(*)
-          `)
-          .single();
+          `);
 
-      let { data: updatedSupplier, error: updateError } = await runUpdate(updateData);
+      let { data: updatedSuppliers, error: updateError } = await runUpdate(updateData);
 
       for (const columnName of ["orderDate", "supplyDays"] as const) {
         if (!isMissingColumnError(updateError, columnName)) {
@@ -113,10 +118,12 @@ export async function POST(
         }
 
         delete updateData[columnName];
-        ({ data: updatedSupplier, error: updateError } = await runUpdate(updateData));
+        ({ data: updatedSuppliers, error: updateError } = await runUpdate(updateData));
       }
 
       if (updateError) throw updateError;
+
+      const updatedSupplier = getFirstRow(updatedSuppliers);
       return NextResponse.json(updatedSupplier);
     }
 
@@ -136,10 +143,9 @@ export async function POST(
         .select(`
           *,
           supplier:Supplier(*)
-        `)
-        .single();
+        `);
 
-    let { data: taskSupplier, error: createError } = await runInsert(insertData);
+    let { data: taskSuppliers, error: createError } = await runInsert(insertData);
 
     for (const columnName of ["orderDate", "supplyDays"] as const) {
       if (!isMissingColumnError(createError, columnName)) {
@@ -147,10 +153,12 @@ export async function POST(
       }
 
       delete insertData[columnName];
-      ({ data: taskSupplier, error: createError } = await runInsert(insertData));
+      ({ data: taskSuppliers, error: createError } = await runInsert(insertData));
     }
 
     if (createError) throw createError;
+
+    const taskSupplier = getFirstRow(taskSuppliers);
 
     return NextResponse.json(taskSupplier);
   } catch (error) {
