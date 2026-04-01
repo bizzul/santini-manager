@@ -6,7 +6,7 @@ import { SessionMonitor } from "@/components/session-monitor";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { GlobalVoiceAssistant } from "@/components/voice-assistant/GlobalVoiceAssistant";
 
 // Query keys that should be persisted to localStorage
@@ -79,7 +79,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ModalProvider>
           <ThemeProviders>
             <SessionMonitor />
-            <GlobalVoiceAssistant />
+            <Suspense>
+              <GlobalVoiceAssistant />
+            </Suspense>
             {children}
           </ThemeProviders>
         </ModalProvider>
@@ -109,7 +111,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ModalProvider>
         <ThemeProviders>
           <SessionMonitor />
-          <GlobalVoiceAssistant />
+          <Suspense>
+            <GlobalVoiceAssistant />
+          </Suspense>
           {children}
         </ThemeProviders>
       </ModalProvider>

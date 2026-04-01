@@ -195,7 +195,7 @@ function pickBestMatch<T>(
         .map((item) => {
             const score = getTexts(item)
                 .map((text) => scoreTextMatch(normalizeText(text), normalizedQuery))
-                .reduce((best, current) => Math.max(best, current), 0);
+                .reduce<number>((best, current) => Math.max(best, current), 0);
 
             return { item, score };
         })
@@ -234,7 +234,7 @@ function buildColumnsMap(columns: ColumnRecord[]) {
         map.set(column.kanbanId, existing);
     }
 
-    for (const [kanbanId, kanbanColumns] of map.entries()) {
+    for (const [kanbanId, kanbanColumns] of Array.from(map.entries())) {
         map.set(
             kanbanId,
             [...kanbanColumns].sort(
