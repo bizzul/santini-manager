@@ -513,141 +513,163 @@ export const fetchInventoryWarehouses = cache(async (siteId: string) => {
 // ============================================
 
 /**
- * Fetch kanban with full data (tasks, columns, etc.)
- * Optimized with parallel queries
+ * Fetch kanban page data.
+ * When a kanban identifier is provided, load only the current board tasks.
  */
-export const fetchKanbanWithTasks = cache(async (siteId: string) => {
-    const supabase = await createClient();
+export const fetchKanbanWithTasks = cache(
+    async (siteId: string, kanbanIdentifier?: string) => {
+        const supabase = await createClient();
 
-    // Phase 1: Fetch kanbans and tasks in parallel
-    const [
-        kanbansResult,
-        tasksResult,
-        clientsResult,
-        productsResult,
-        categoriesResult,
-    ] = await Promise.all([
-        supabase.from("Kanban").select("*").eq("site_id", siteId),
-        supabase
+        const [kanban, clientsResult, productsResult, categoriesResult] =
+            await Promise.all([
+                kanbanIdentifier
+                    ? fetchSingleKanban(siteId, kanbanIdentifier)
+                    : Promise.resolve(null),
+                supabase.from("Client").select("*").eq("site_id", siteId),
+                supabase
+                    .from("SellProduct")
+                    .select("*, category:sellproduct_categories(*)")
+                    .eq("site_id", siteId)
+                    .eq("active", true),
+                supabase
+                    .from("sellproduct_categories")
+                    .select("*")
+                    .eq("site_id", siteId)
+                    .order("name", { ascending: true }),
+            ]);
+
+        const clients = clientsResult.data || [];
+        const products = productsResult.data || [];
+        const categories = categoriesResult.data || [];
+
+        if (!kanban) {
+            return {
+                kanbans: [],
+                tasks: [],
+                clients,
+                products,
+                categories,
+                history: [],
+            };
+        }
+
+        const { data: tasks, error: tasksError } = await supabase
             .from("Task")
             .select("*")
             .eq("site_id", siteId)
-            .eq("archived", false),
-        supabase.from("Client").select("*").eq("site_id", siteId),
-        supabase.from("SellProduct").select(
-            "*, category:sellproduct_categories(*)",
-        ).eq("site_id", siteId).eq("active", true),
-        supabase.from("sellproduct_categories").select("*").eq(
-            "site_id",
-            siteId,
-        ).order("name", { ascending: true }),
-    ]);
+            .eq("archived", false)
+            .eq("kanbanId", kanban.id);
 
-    const kanbans = kanbansResult.data || [];
-    const tasks = tasksResult.data || [];
-    const clients = clientsResult.data || [];
-    const products = productsResult.data || [];
-    const categories = categoriesResult.data || [];
+        if (tasksError) {
+            log.error("Error fetching kanban tasks:", tasksError);
+            return {
+                kanbans: [kanban],
+                tasks: [],
+                clients,
+                products,
+                categories,
+                history: [],
+            };
+        }
 
-    if (tasks.length === 0) {
-        return { kanbans, tasks: [], clients, products, categories };
-    }
+        if (!tasks || tasks.length === 0) {
+            return {
+                kanbans: [kanban],
+                tasks: [],
+                clients,
+                products,
+                categories,
+                history: [],
+            };
+        }
 
-    // Phase 2: Fetch related data
-    const kanbanIds = kanbans.map((k) => k.id);
-    const taskIds = tasks.map((t) => t.id);
+        const taskIds = tasks.map((task) => task.id);
 
-    const [
-        columnsResult,
-        filesResult,
-        qcResult,
-        packingResult,
-        historyResult,
-        taskSuppliersResult,
-    ] =
-        await Promise.all([
-            kanbanIds.length > 0
-                ? supabase
-                    .from("KanbanColumn")
-                    .select("*")
-                    .in("kanbanId", kanbanIds)
-                : Promise.resolve({ data: [] }),
+        const [
+            filesResult,
+            qcResult,
+            packingResult,
+            historyResult,
+            taskSuppliersResult,
+        ] = await Promise.all([
             supabase.from("File").select("*").in("taskId", taskIds),
             supabase.from("QualityControl").select("*").in("taskId", taskIds),
             supabase.from("PackingControl").select("*").in("taskId", taskIds),
-            supabase.from("Action").select(
-                "*, User(id, picture, given_name, family_name)",
-            ).eq("site_id", siteId),
+            supabase
+                .from("Action")
+                .select("*, User(id, picture, given_name, family_name)")
+                .eq("site_id", siteId),
             supabase
                 .from("TaskSupplier")
                 .select("*, supplier:Supplier(*)")
                 .in("taskId", taskIds),
         ]);
 
-    const columns = columnsResult.data || [];
-    const files = filesResult.data || [];
-    const qc = qcResult.data || [];
-    const packing = packingResult.data || [];
-    const history = historyResult.data || [];
-    const taskSuppliers = taskSuppliersResult.data || [];
+        const files = filesResult.data || [];
+        const qc = qcResult.data || [];
+        const packing = packingResult.data || [];
+        const taskSuppliers = taskSuppliersResult.data || [];
+        const taskIdSet = new Set(taskIds);
+        const history = (historyResult.data || []).filter((action) =>
+            taskIdSet.has(action.taskId ?? action.task_id),
+        );
 
-    // Create lookup maps for O(1) access
-    const columnMap = new Map(columns.map((c) => [c.id, c]));
-    const clientMap = new Map(clients.map((c) => [c.id, c]));
-    const kanbanMap = new Map(kanbans.map((k) => [k.id, k]));
-    const productMap = new Map(products.map((p) => [p.id, p]));
+        const columnMap = new Map(
+            (kanban.columns || []).map((c: any) => [c.id, c]),
+        );
+        const clientMap = new Map(clients.map((c) => [c.id, c]));
+        const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Group related data by taskId
-    const filesByTask = new Map<number, typeof files>();
-    files.forEach((f) => {
-        const arr = filesByTask.get(f.taskId) || [];
-        arr.push(f);
-        filesByTask.set(f.taskId, arr);
-    });
+        const filesByTask = new Map<number, typeof files>();
+        files.forEach((item) => {
+            const arr = filesByTask.get(item.taskId) || [];
+            arr.push(item);
+            filesByTask.set(item.taskId, arr);
+        });
 
-    const qcByTask = new Map<number, typeof qc>();
-    qc.forEach((item) => {
-        const arr = qcByTask.get(item.taskId) || [];
-        arr.push(item);
-        qcByTask.set(item.taskId, arr);
-    });
+        const qcByTask = new Map<number, typeof qc>();
+        qc.forEach((item) => {
+            const arr = qcByTask.get(item.taskId) || [];
+            arr.push(item);
+            qcByTask.set(item.taskId, arr);
+        });
 
-    const packingByTask = new Map<number, typeof packing>();
-    packing.forEach((item) => {
-        const arr = packingByTask.get(item.taskId) || [];
-        arr.push(item);
-        packingByTask.set(item.taskId, arr);
-    });
+        const packingByTask = new Map<number, typeof packing>();
+        packing.forEach((item) => {
+            const arr = packingByTask.get(item.taskId) || [];
+            arr.push(item);
+            packingByTask.set(item.taskId, arr);
+        });
 
-    const suppliersByTask = new Map<number, typeof taskSuppliers>();
-    taskSuppliers.forEach((item) => {
-        const arr = suppliersByTask.get(item.taskId) || [];
-        arr.push(item);
-        suppliersByTask.set(item.taskId, arr);
-    });
+        const suppliersByTask = new Map<number, typeof taskSuppliers>();
+        taskSuppliers.forEach((item) => {
+            const arr = suppliersByTask.get(item.taskId) || [];
+            arr.push(item);
+            suppliersByTask.set(item.taskId, arr);
+        });
 
-    // Build tasks with relations
-    const tasksWithRelations = tasks.map((task) => ({
-        ...task,
-        column: columnMap.get(task.kanbanColumnId),
-        client: clientMap.get(task.clientId),
-        kanban: kanbanMap.get(task.kanbanId),
-        sellProduct: productMap.get(task.sellProductId),
-        files: filesByTask.get(task.id) || [],
-        taskSuppliers: suppliersByTask.get(task.id) || [],
-        QualityControl: qcByTask.get(task.id) || [],
-        PackingControl: packingByTask.get(task.id) || [],
-    }));
+        const tasksWithRelations = tasks.map((task) => ({
+            ...task,
+            column: columnMap.get(task.kanbanColumnId),
+            client: clientMap.get(task.clientId),
+            kanban,
+            sellProduct: productMap.get(task.sellProductId),
+            files: filesByTask.get(task.id) || [],
+            taskSuppliers: suppliersByTask.get(task.id) || [],
+            QualityControl: qcByTask.get(task.id) || [],
+            PackingControl: packingByTask.get(task.id) || [],
+        }));
 
-    return {
-        kanbans,
-        tasks: tasksWithRelations,
-        clients,
-        products,
-        categories,
-        history,
-    };
-});
+        return {
+            kanbans: [kanban],
+            tasks: tasksWithRelations,
+            clients,
+            products,
+            categories,
+            history,
+        };
+    },
+);
 
 /**
  * Fetch a single kanban with columns

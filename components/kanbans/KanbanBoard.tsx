@@ -417,7 +417,6 @@ interface KanbanBoardTypes {
   history: Action;
   initialTasks?: any[];
   kanban: any;
-  snapshots: any[];
   domain: string;
 }
 
@@ -429,7 +428,6 @@ function KanbanBoard({
   history,
   initialTasks = [],
   kanban,
-  snapshots,
   domain,
 }: KanbanBoardTypes) {
   const router = useRouter();
@@ -453,18 +451,23 @@ function KanbanBoard({
   // Function to refetch tasks from the API
   const refetchTasks = useCallback(async () => {
     try {
+      if (!kanban?.id) {
+        safeSetTasks([]);
+        return;
+      }
+
       const headers: HeadersInit = {};
       if (siteId) {
         headers["x-site-id"] = siteId;
       }
-      const response = await fetch("/api/kanban/tasks", { headers });
+
+      const response = await fetch(`/api/kanban/tasks?kanbanId=${kanban.id}`, {
+        headers,
+      });
+
       if (response.ok) {
         const data = await response.json();
-        // Filter tasks for current kanban
-        const kanbanTasks = Array.isArray(data)
-          ? data.filter((t: any) => t.kanbanId === kanban?.id)
-          : [];
-        setTasks(kanbanTasks);
+        safeSetTasks(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       logger.error("Error refetching tasks:", error);
@@ -473,8 +476,20 @@ function KanbanBoard({
 
   // 🔄 Subscribe to realtime updates - when another user moves a card, we see it
   useRealtimeKanban(siteId, (payload) => {
+    const currentKanbanId = Number(kanban?.id);
+    const affectedKanbanIds = [payload.new?.kanbanId, payload.old?.kanbanId]
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+
+    if (
+      Number.isFinite(currentKanbanId) &&
+      affectedKanbanIds.length > 0 &&
+      !affectedKanbanIds.includes(currentKanbanId)
+    ) {
+      return;
+    }
+
     logger.debug("Received realtime update:", payload.eventType);
-    // Refetch tasks when we receive an update from another user
     refetchTasks();
   });
   const [openModal, setOpenModal] = useState<string | null>(null);
@@ -794,6 +809,73 @@ function KanbanBoard({
     initialTasks?.length > 0 && initialTasks.some((task) => task.isPreview);
 
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
+  const [snapshots, setSnapshots] = useState<
+    { timestamp: Date; taskCount: number }[]
+  >([]);
+  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
+  const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false);
+
+  useEffect(() => {
+    setSnapshots([]);
+    setHasLoadedSnapshots(false);
+    setIsTimelineOpen(false);
+  }, [siteId]);
+
+  useEffect(() => {
+    if (!isTimelineOpen || !siteId || hasLoadedSnapshots) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadSnapshots = async () => {
+      try {
+        setIsLoadingSnapshots(true);
+        const response = await fetch("/api/kanban/available-snapshots", {
+          headers: {
+            "x-site-id": siteId,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch snapshots");
+        }
+
+        const data = await response.json();
+        if (!isCancelled) {
+          setSnapshots(
+            Array.isArray(data)
+              ? data.map((snapshot) => ({
+                  ...snapshot,
+                  timestamp: new Date(snapshot.timestamp),
+                }))
+              : []
+          );
+          setHasLoadedSnapshots(true);
+        }
+      } catch (error) {
+        logger.error("Error fetching snapshots:", error);
+        if (!isCancelled) {
+          setSnapshots([]);
+          toast({
+            variant: "destructive",
+            title: "Errore",
+            description: "Impossibile caricare la timeline del kanban",
+          });
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingSnapshots(false);
+        }
+      }
+    };
+
+    void loadSnapshots();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [hasLoadedSnapshots, isTimelineOpen, siteId, toast]);
 
   const handleSaveKanban = async (kanbanData: any) => {
     try {
@@ -1103,10 +1185,20 @@ function KanbanBoard({
             </div>
             {isTimelineOpen && (
               <div className="max-w-[1000px] mx-auto mt-2">
-                <TimelineClient
-                  snapshots={snapshots}
-                  onPreviewSnapshot={handlePreviewSnapshot}
-                />
+                {isLoadingSnapshots ? (
+                  <div className="text-sm text-muted-foreground px-2 py-3">
+                    Caricamento timeline...
+                  </div>
+                ) : snapshots.length > 0 ? (
+                  <TimelineClient
+                    snapshots={snapshots}
+                    onPreviewSnapshot={handlePreviewSnapshot}
+                  />
+                ) : (
+                  <div className="text-sm text-muted-foreground px-2 py-3">
+                    Nessuno snapshot disponibile per questo kanban.
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -9,7 +9,6 @@ function ContentPage({
   categories,
   history,
   initialTasks,
-  snapshots,
   kanban,
   domain,
 }: {
@@ -19,7 +18,6 @@ function ContentPage({
   categories: any;
   history: any;
   initialTasks?: any[];
-  snapshots: any[];
   kanban: any;
   domain: string;
 }) {
@@ -33,7 +31,6 @@ function ContentPage({
         history={history}
         initialTasks={initialTasks}
         kanban={kanban}
-        snapshots={snapshots}
         domain={domain}
       />
     </div>

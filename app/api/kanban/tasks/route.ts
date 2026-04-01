@@ -11,6 +11,12 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { siteId } = await getSiteContext(req);
+    const { searchParams } = new URL(req.url);
+    const requestedKanbanId = Number.parseInt(
+      searchParams.get("kanbanId") || "",
+      10
+    );
+    const hasKanbanFilter = Number.isFinite(requestedKanbanId);
 
     // In multi-tenant, siteId is required
     if (!siteId) {
@@ -21,16 +27,22 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    log.debug("Fetching kanban tasks", { siteId });
+    log.debug("Fetching kanban tasks", {
+      siteId,
+      kanbanId: hasKanbanFilter ? requestedKanbanId : null,
+    });
 
     // PHASE 1: Parallel fetch of kanbans and tasks with direct site filter
+    const kanbanQuery = supabase.from("Kanban").select("*").eq("site_id", siteId);
+    const taskQuery = supabase
+      .from("Task")
+      .select("*")
+      .eq("site_id", siteId)
+      .eq("archived", false);
+
     const [kanbansResult, tasksResult] = await Promise.all([
-      supabase.from("Kanban").select("*").eq("site_id", siteId),
-      supabase
-        .from("Task")
-        .select("*")
-        .eq("site_id", siteId)
-        .eq("archived", false),
+      hasKanbanFilter ? kanbanQuery.eq("id", requestedKanbanId) : kanbanQuery,
+      hasKanbanFilter ? taskQuery.eq("kanbanId", requestedKanbanId) : taskQuery,
     ]);
 
     if (kanbansResult.error) {
@@ -57,6 +69,12 @@ export async function GET(req: NextRequest) {
     // Get IDs for filtering
     const kanbanIds = kanbans.map((k) => k.id);
     const taskIds = tasks.map((task) => task.id);
+    const clientIds = Array.from(
+      new Set(tasks.map((task) => task.clientId).filter(Boolean))
+    );
+    const sellProductIds = Array.from(
+      new Set(tasks.map((task) => task.sellProductId).filter(Boolean))
+    );
 
     // PHASE 2: Parallel fetch of all related data with direct site filter
     const [
@@ -69,16 +87,28 @@ export async function GET(req: NextRequest) {
       taskSuppliersResult,
     ] = await Promise.all([
       // Columns filtered by kanban IDs
-      kanbanIds.length > 0
+      hasKanbanFilter
+        ? supabase
+          .from("KanbanColumn")
+          .select("*")
+          .eq("kanbanId", requestedKanbanId)
+        : kanbanIds.length > 0
         ? supabase
           .from("KanbanColumn")
           .select("*")
           .in("kanbanId", kanbanIds)
         : Promise.resolve({ data: [], error: null }),
 
-      // Clients and SellProducts with direct site filter
-      supabase.from("Client").select("*").eq("site_id", siteId),
-      supabase.from("SellProduct").select("*, category:sellproduct_categories(id, name, color)").eq("site_id", siteId),
+      // Clients and SellProducts fetched only for the current tasks when possible
+      clientIds.length > 0
+        ? supabase.from("Client").select("*").in("id", clientIds)
+        : Promise.resolve({ data: [], error: null }),
+      sellProductIds.length > 0
+        ? supabase
+          .from("SellProduct")
+          .select("*, category:sellproduct_categories(id, name, color)")
+          .in("id", sellProductIds)
+        : Promise.resolve({ data: [], error: null }),
 
       // Files, QC, Packing filtered by task IDs
       taskIds.length > 0

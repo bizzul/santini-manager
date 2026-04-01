@@ -1,7 +1,6 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import ContentPage from "@/components/kanbans/ContentPage";
-import { getAvailableSnapshots } from "./actions/get-available-snapshots.action";
 import { getUserContext } from "@/lib/auth-utils";
 import {
   requireServerSiteContext,
@@ -32,10 +31,9 @@ export default async function Page({
   const { siteId } = siteContext;
 
   // Fetch all data in parallel using server-side utilities
-  const [kanbanData, kanban, snapshots] = await Promise.all([
-    fetchKanbanWithTasks(siteId),
+  const [kanbanData, kanban] = await Promise.all([
+    fetchKanbanWithTasks(siteId, kanName),
     kanName ? fetchSingleKanban(siteId, kanName) : Promise.resolve(null),
-    getAvailableSnapshots(domain),
   ]);
 
   return (
@@ -46,7 +44,6 @@ export default async function Page({
       categories={kanbanData.categories}
       history={kanbanData.history}
       initialTasks={kanbanData.tasks}
-      snapshots={snapshots}
       kanban={kanban}
       domain={domain}
     />
