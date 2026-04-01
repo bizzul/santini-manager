@@ -222,6 +222,18 @@ export default function Card({
   }, [data, columnIndex]);
 
   useEffect(() => {
+    if (Array.isArray(data.taskSuppliers)) {
+      setTaskSuppliers(data.taskSuppliers);
+      return;
+    }
+
+    if (isSmall && !showModal) {
+      setTaskSuppliers([]);
+      return;
+    }
+
+    let isCancelled = false;
+
     const loadSuppliers = async () => {
       try {
         const taskSuppResponse = await fetch(`/api/tasks/${id}/suppliers`);
@@ -229,15 +241,23 @@ export default function Card({
           throw new Error("Failed to fetch suppliers");
         }
         const taskSuppData = await taskSuppResponse.json();
-        setTaskSuppliers(Array.isArray(taskSuppData) ? taskSuppData : []);
+        if (!isCancelled) {
+          setTaskSuppliers(Array.isArray(taskSuppData) ? taskSuppData : []);
+        }
       } catch (error) {
         logger.error("Error loading suppliers:", error);
-        setTaskSuppliers([]);
+        if (!isCancelled) {
+          setTaskSuppliers([]);
+        }
       }
     };
 
     loadSuppliers();
-  }, [id]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [data.taskSuppliers, id, isSmall, showModal]);
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({

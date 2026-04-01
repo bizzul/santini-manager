@@ -13,8 +13,16 @@ export async function GET(
                 status: 404,
             });
         }
-        const { name, organization_id, image } = response.data;
-        return NextResponse.json({ name, organization_id, image });
+        const { id, name, organization_id, image } = response.data;
+        return NextResponse.json({
+            id,
+            name,
+            organization_id,
+            image,
+            organization: {
+                name: response.data.organization?.name || "",
+            },
+        });
     } catch (error) {
         return NextResponse.json({ error: "Internal server error" }, {
             status: 500,

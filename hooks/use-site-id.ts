@@ -1,45 +1,31 @@
-import { useEffect, useState } from "react";
-import { logger } from "@/lib/logger";
+import { useQuery } from "@tanstack/react-query";
+type SiteDataResponse = {
+    id: string;
+};
+
+async function fetchSiteData(domain: string): Promise<SiteDataResponse> {
+    const response = await fetch(`/api/sites/${encodeURIComponent(domain)}`);
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch site data: ${response.status}`);
+    }
+
+    return response.json();
+}
 
 export function useSiteId(domain?: string) {
-    const [siteId, setSiteId] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const { data, isLoading, error } = useQuery({
+        queryKey: ["site-data", domain],
+        queryFn: () => fetchSiteData(domain!),
+        enabled: !!domain,
+        staleTime: 15 * 60 * 1000,
+        gcTime: 60 * 60 * 1000,
+        refetchOnWindowFocus: false,
+    });
 
-    useEffect(() => {
-        if (!domain) {
-            setSiteId(null);
-            return;
-        }
-
-        const fetchSiteId = async () => {
-            setLoading(true);
-            setError(null);
-
-            try {
-                const response = await fetch(
-                    `/api/domain?domain=${encodeURIComponent(domain)}`
-                );
-
-                if (!response.ok) {
-                    throw new Error(
-                        `Failed to fetch site data: ${response.status}`
-                    );
-                }
-
-                const siteData = await response.json();
-                setSiteId(siteData?.id || null);
-            } catch (err) {
-                logger.error("Error fetching site data:", err);
-                setError(err instanceof Error ? err.message : "Unknown error");
-                setSiteId(null);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchSiteId();
-    }, [domain]);
-
-    return { siteId, loading, error };
+    return {
+        siteId: data?.id || null,
+        loading: isLoading,
+        error: error instanceof Error ? error.message : null,
+    };
 }

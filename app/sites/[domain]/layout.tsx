@@ -18,6 +18,7 @@ import { QuickActionsProvider } from "@/components/quick-actions";
 import { logger } from "@/lib/logger";
 import { QueryHydration } from "@/components/QueryHydration";
 import { ManagerGuideButton, ManagerGuideProvider } from "@/components/manager-guide";
+import { ImpersonationBanner } from "@/components/impersonation-banner";
 
 /**
  * Check if user has access to a specific site
@@ -57,32 +58,6 @@ async function checkSiteAccess(
   }
 
   return !!userSite;
-}
-
-async function ImpersonationBanner({
-  impersonatedUser,
-  originalSuperadminId,
-}: {
-  impersonatedUser: any;
-  originalSuperadminId: string;
-}) {
-  const handleLeave = async () => {
-    await fetch("/api/auth/stop-impersonation", { method: "POST" });
-    window.location.reload();
-  };
-  return (
-    <div className="fixed top-0 left-0 w-full z-50 bg-yellow-200 text-yellow-900 flex items-center justify-center py-3 shadow-sm">
-      <span className="font-semibold mr-4">
-        You are impersonating: {impersonatedUser?.email || impersonatedUser?.id}
-      </span>
-      <button
-        className="bg-red-600 text-white px-3 py-1 rounded-sm"
-        onClick={handleLeave}
-      >
-        Leave impersonation
-      </button>
-    </div>
-  );
 }
 
 export async function generateMetadata({
@@ -188,6 +163,7 @@ export default async function SiteLayout({
               data={{
                 userContext,
                 siteData: {
+                  id: data.id,
                   name: data.name || domain,
                   image: data.image || null,
                   organization: { name: data.organization?.name || "" },

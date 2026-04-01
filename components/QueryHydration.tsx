@@ -6,6 +6,7 @@ import { UserContext } from "@/lib/auth-utils";
 import { validateCacheForUser } from "@/lib/cache-utils";
 
 interface SiteDataForHydration {
+  id: string;
   name: string;
   image: string | null;
   organization: { name: string };

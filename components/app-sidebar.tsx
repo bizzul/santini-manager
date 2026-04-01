@@ -123,12 +123,20 @@ const iconMap = {
   faListUl,
 };
 
+type SiteDataQueryResult = {
+  id: string;
+  name: string;
+  image: string | null;
+  organization: { name: string };
+};
+
 // Fetch functions for React Query
-async function fetchSiteData(domain: string) {
+async function fetchSiteData(domain: string): Promise<SiteDataQueryResult> {
   const response = await fetch(`/api/sites/${domain}`);
   if (!response.ok) throw new Error("Failed to fetch site data");
   const data = await response.json();
   return {
+    id: data.id,
     name: data.name || domain,
     image: data.image || null,
     organization: { name: data.organization?.name || "" },

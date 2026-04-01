@@ -348,7 +348,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       }
     };
 
-    const initializeForm = async () => {
+    const initializeForm = () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue(
         "deliveryDate",
@@ -374,20 +374,22 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       form.setValue("kanbanColumnId", resource.kanbanColumnId);
       setOfferProducts(normalizeOfferProducts(resource));
       setProductionRequired(Boolean(resource.termine_produzione));
+      setProjectFiles(Array.isArray(resource.files) ? resource.files : []);
     };
 
-    const loadData = async () => {
-      await Promise.all([
-        getClients(),
-        getProducts(),
-        getKanbans(),
-        initializeForm(),
-        loadTaskDetails(),
-      ]);
-      setIsLoading(false);
-    };
+    initializeForm();
+    setIsLoading(false);
 
-    loadData();
+    const needsTaskRefresh =
+      !Array.isArray(resource.files) ||
+      resource.offer_products === undefined;
+
+    void Promise.allSettled([
+      getClients(),
+      getProducts(),
+      getKanbans(),
+      needsTaskRefresh ? loadTaskDetails() : Promise.resolve(),
+    ]);
   }, [resource, form.setValue, siteId, siteIdError, domain, loadTaskDetails]);
 
   // Load columns when kanban changes

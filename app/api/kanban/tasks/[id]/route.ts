@@ -39,7 +39,6 @@ export async function GET(
         clients:clientId(*),
         users:userId(*),
         kanban_columns:kanbanColumnId(*),
-        files(*),
         sell_products:sellProductId(*)
       `)
       .eq("id", Number(taskId));
@@ -48,13 +47,24 @@ export async function GET(
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
-    const { data: task, error } = await taskQuery.single();
+    const [{ data: task, error }, { data: files, error: filesError }] =
+      await Promise.all([
+        taskQuery.single(),
+        supabase.from("File").select("*").eq("taskId", Number(taskId)),
+      ]);
 
     if (error) throw error;
+    if (filesError) throw filesError;
 
     // console.log("project", task);
     if (task) {
-      return NextResponse.json({ task, status: 200 });
+      return NextResponse.json({
+        task: {
+          ...task,
+          files: files || [],
+        },
+        status: 200,
+      });
     } else {
       return NextResponse.json({ message: "Task not found", status: 404 });
     }

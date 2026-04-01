@@ -199,7 +199,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       }
     };
 
-    const initializeForm = async () => {
+    const initializeForm = () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue(
         "deliveryDate",
@@ -225,19 +225,17 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       form.setValue("kanbanColumnId", resource.kanbanColumnId);
     };
 
-    const loadData = async () => {
-      await Promise.all([
-        getClients(),
-        getProducts(),
-        getKanbans(),
-        getHistory(),
-        getProjectFiles(),
-        initializeForm(),
-      ]);
-      setIsLoading(false);
-    };
+    initializeForm();
+    setProjectFiles(Array.isArray(resource.files) ? resource.files : []);
+    setIsLoading(false);
 
-    loadData();
+    void Promise.allSettled([
+      getClients(),
+      getProducts(),
+      getKanbans(),
+      getHistory(),
+      getProjectFiles(),
+    ]);
   }, [resource, form.setValue, siteId, siteIdError, domain]);
 
   useEffect(() => {

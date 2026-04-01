@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
       filesResult,
       qualityControlResult,
       packingControlResult,
+      taskSuppliersResult,
     ] = await Promise.all([
       // Columns filtered by kanban IDs
       kanbanIds.length > 0
@@ -95,6 +96,12 @@ export async function GET(req: NextRequest) {
           .select("*")
           .in("taskId", taskIds)
         : Promise.resolve({ data: [], error: null }),
+      taskIds.length > 0
+        ? supabase
+          .from("TaskSupplier")
+          .select("*, supplier:Supplier(*)")
+          .in("taskId", taskIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     // Handle errors from parallel queries
@@ -110,6 +117,8 @@ export async function GET(req: NextRequest) {
       { name: "qualityControl", error: qualityControlResult.error },
       packingControlResult.error &&
       { name: "packingControl", error: packingControlResult.error },
+      taskSuppliersResult.error &&
+      { name: "taskSuppliers", error: taskSuppliersResult.error },
     ].filter(Boolean);
 
     if (errors.length > 0) {
@@ -127,6 +136,7 @@ export async function GET(req: NextRequest) {
     const files = filesResult.data || [];
     const qualityControl = qualityControlResult.data || [];
     const packingControl = packingControlResult.data || [];
+    const taskSuppliers = taskSuppliersResult.data || [];
 
     // Create lookup maps for O(1) access instead of O(n) find operations
     const columnMap = new Map(columns.map((c) => [c.id, c]));
@@ -156,6 +166,13 @@ export async function GET(req: NextRequest) {
       packingByTaskId.set(pc.taskId, existing);
     });
 
+    const suppliersByTaskId = new Map<number, typeof taskSuppliers>();
+    taskSuppliers.forEach((item) => {
+      const existing = suppliersByTaskId.get(item.taskId) || [];
+      existing.push(item);
+      suppliersByTaskId.set(item.taskId, existing);
+    });
+
     // Build the response with relationships using O(1) lookups
     const tasksWithRelations = tasks.map((task) => ({
       ...task,
@@ -163,6 +180,7 @@ export async function GET(req: NextRequest) {
       client: clientMap.get(task.clientId),
       kanban: kanbanMap.get(task.kanbanId),
       files: filesByTaskId.get(task.id) || [],
+      taskSuppliers: suppliersByTaskId.get(task.id) || [],
       sellProduct: sellProductMap.get(task.sellProductId),
       QualityControl: qcByTaskId.get(task.id) || [],
       PackingControl: packingByTaskId.get(task.id) || [],

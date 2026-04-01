@@ -557,7 +557,14 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
     const kanbanIds = kanbans.map((k) => k.id);
     const taskIds = tasks.map((t) => t.id);
 
-    const [columnsResult, filesResult, qcResult, packingResult, historyResult] =
+    const [
+        columnsResult,
+        filesResult,
+        qcResult,
+        packingResult,
+        historyResult,
+        taskSuppliersResult,
+    ] =
         await Promise.all([
             kanbanIds.length > 0
                 ? supabase
@@ -571,6 +578,10 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
             supabase.from("Action").select(
                 "*, User(id, picture, given_name, family_name)",
             ).eq("site_id", siteId),
+            supabase
+                .from("TaskSupplier")
+                .select("*, supplier:Supplier(*)")
+                .in("taskId", taskIds),
         ]);
 
     const columns = columnsResult.data || [];
@@ -578,6 +589,7 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
     const qc = qcResult.data || [];
     const packing = packingResult.data || [];
     const history = historyResult.data || [];
+    const taskSuppliers = taskSuppliersResult.data || [];
 
     // Create lookup maps for O(1) access
     const columnMap = new Map(columns.map((c) => [c.id, c]));
@@ -607,6 +619,13 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
         packingByTask.set(item.taskId, arr);
     });
 
+    const suppliersByTask = new Map<number, typeof taskSuppliers>();
+    taskSuppliers.forEach((item) => {
+        const arr = suppliersByTask.get(item.taskId) || [];
+        arr.push(item);
+        suppliersByTask.set(item.taskId, arr);
+    });
+
     // Build tasks with relations
     const tasksWithRelations = tasks.map((task) => ({
         ...task,
@@ -615,6 +634,7 @@ export const fetchKanbanWithTasks = cache(async (siteId: string) => {
         kanban: kanbanMap.get(task.kanbanId),
         sellProduct: productMap.get(task.sellProductId),
         files: filesByTask.get(task.id) || [],
+        taskSuppliers: suppliersByTask.get(task.id) || [],
         QualityControl: qcByTask.get(task.id) || [],
         PackingControl: packingByTask.get(task.id) || [],
     }));
