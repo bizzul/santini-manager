@@ -24,6 +24,9 @@ export const OFFER_CONTACT_TYPE_LABELS: Record<OfferContactType, string> = {
   other: "Altro",
 };
 
+export const OFFER_FOLLOW_UP_HIGHLIGHT_DAYS = 14;
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+
 export function addDaysToToday(days: number): Date {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
@@ -105,6 +108,87 @@ export function normalizeOfferFollowUps(
       (a, b) =>
         new Date(b.contactDate).getTime() - new Date(a.contactDate).getTime(),
     );
+}
+
+function getStartOfDayTimestamp(value: Date | string | undefined | null): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+export function getOfferFollowUpHighlightState(
+  task?: Partial<Task> | null,
+  now: Date = new Date(),
+) {
+  const followUps = normalizeOfferFollowUps(task);
+  const nowTimestamp = getStartOfDayTimestamp(now);
+
+  if (nowTimestamp === null) {
+    return {
+      hasRecentFollowUp: false,
+      daysSinceFollowUp: null,
+      daysRemaining: 0,
+    };
+  }
+
+  for (const followUp of followUps) {
+    const contactTimestamp = getStartOfDayTimestamp(followUp.contactDate);
+    if (contactTimestamp === null) {
+      continue;
+    }
+
+    const daysSinceFollowUp = Math.floor((nowTimestamp - contactTimestamp) / DAY_IN_MS);
+    if (
+      daysSinceFollowUp >= 0 &&
+      daysSinceFollowUp < OFFER_FOLLOW_UP_HIGHLIGHT_DAYS
+    ) {
+      return {
+        hasRecentFollowUp: true,
+        daysSinceFollowUp,
+        daysRemaining:
+          OFFER_FOLLOW_UP_HIGHLIGHT_DAYS - daysSinceFollowUp,
+      };
+    }
+  }
+
+  return {
+    hasRecentFollowUp: false,
+    daysSinceFollowUp: null,
+    daysRemaining: 0,
+  };
+}
+
+export function getOfferTrattativaSortPriority(
+  task?: Partial<Task> | null,
+  now: Date = new Date(),
+) {
+  const sentDate = task?.sent_date || task?.sentDate;
+  const sentTimestamp = getStartOfDayTimestamp(sentDate);
+  const nowTimestamp = getStartOfDayTimestamp(now);
+  const { hasRecentFollowUp } = getOfferFollowUpHighlightState(task, now);
+
+  const isOverdue =
+    sentTimestamp !== null &&
+    nowTimestamp !== null &&
+    Math.floor((nowTimestamp - sentTimestamp) / DAY_IN_MS) >= 7;
+
+  if (isOverdue && !hasRecentFollowUp) {
+    return 0;
+  }
+
+  if (isOverdue && hasRecentFollowUp) {
+    return 1;
+  }
+
+  return 2;
 }
 
 export function sanitizeOfferProducts(

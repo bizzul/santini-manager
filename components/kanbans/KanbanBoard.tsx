@@ -58,7 +58,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { OFFER_LOSS_REASON_OPTIONS } from "@/lib/offers";
+import {
+  getOfferTrattativaSortPriority,
+  OFFER_LOSS_REASON_OPTIONS,
+} from "@/lib/offers";
 
 const Column = ({
   column,
@@ -207,8 +210,14 @@ const Column = ({
   // Sort function based on column type
   const sortCards = (cardsToSort: any[]) => {
     return [...cardsToSort].sort((a: any, b: any) => {
-      // For "Trattativa" column in offer kanban: sort by sent_date (oldest first)
+      // For "Trattativa": actionable overdue offers first, then recently contacted ones.
       if (isTrattativaColumn) {
+        const priorityDiff =
+          getOfferTrattativaSortPriority(a) - getOfferTrattativaSortPriority(b);
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+
         return compareByDate(a, b, ["sent_date", "sentDate"]);
       }
 
@@ -389,6 +398,7 @@ const Column = ({
                   data={card}
                   onCardClick={onMiniCardClick}
                   domain={domain}
+                  onTaskDeleted={onTaskDeleted}
                 />
               ) : (
                 <Card
