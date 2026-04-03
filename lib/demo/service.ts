@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import path from "path";
+import { readFile } from "fs/promises";
 import { addDays, format, subDays } from "date-fns";
 import { getBaseUrl } from "@/lib/utils";
 import { AVAILABLE_MODULES } from "@/lib/module-config";
@@ -120,6 +122,133 @@ function buildDemoEmail(subdomain: string, suffix = "owner") {
 
 function buildDemoIdentifier(base: string, scope: string) {
     return `${slugifySegment(base)}-${slugifySegment(scope).slice(0, 12)}`;
+}
+
+interface DemoCatalogRow {
+    COD_INT: string;
+    CATEGORIA: string;
+    NOME_PRODOTTO: string;
+    SOTTOCATEGORIA: string;
+    DESCRIZIONE: string;
+    LISTINO_PREZZI: string;
+    URL_IMMAGINE: string;
+    URL_DOC: string;
+}
+
+interface DemoCatalogData {
+    categories: Array<{
+        name: string;
+        description: string;
+        color: string;
+    }>;
+    products: Array<{
+        internal_code: string;
+        name: string;
+        type: string;
+        description: string;
+        price_list: boolean;
+        image_url?: string;
+        doc_url?: string;
+        categoryName: string;
+    }>;
+}
+
+function parseCsvLine(line: string) {
+    const values: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let index = 0; index < line.length; index += 1) {
+        const char = line[index];
+        const nextChar = line[index + 1];
+
+        if (char === "\"") {
+            if (inQuotes && nextChar === "\"") {
+                current += "\"";
+                index += 1;
+            } else {
+                inQuotes = !inQuotes;
+            }
+            continue;
+        }
+
+        if (char === "," && !inQuotes) {
+            values.push(current);
+            current = "";
+            continue;
+        }
+
+        current += char;
+    }
+
+    values.push(current);
+    return values.map((value) => value.trim());
+}
+
+async function loadDemoArredoCatalog(): Promise<DemoCatalogData> {
+    const filePath = path.join(
+        process.cwd(),
+        "data",
+        "dadesign-products-import.csv",
+    );
+    const csvContent = await readFile(filePath, "utf8");
+    const lines = csvContent
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    if (lines.length < 2) {
+        throw new Error("Demo catalog CSV is empty");
+    }
+
+    const headers = parseCsvLine(lines[0]);
+    const palette = [
+        "#2563EB",
+        "#14B8A6",
+        "#F97316",
+        "#7C3AED",
+        "#DC2626",
+        "#0891B2",
+        "#65A30D",
+        "#D97706",
+    ];
+
+    const rows: DemoCatalogRow[] = lines.slice(1).map((line) => {
+        const values = parseCsvLine(line);
+        return headers.reduce((accumulator, header, index) => {
+            accumulator[header as keyof DemoCatalogRow] = values[index] || "";
+            return accumulator;
+        }, {} as DemoCatalogRow);
+    }).filter((row) => row.NOME_PRODOTTO && row.CATEGORIA);
+
+    const categoryNames = Array.from(new Set(rows.map((row) => row.CATEGORIA)));
+    const categories = categoryNames.map((name, index) => {
+        const categoryRows = rows.filter((row) => row.CATEGORIA === name);
+        const sampleSubcategories = Array.from(
+            new Set(categoryRows.map((row) => row.SOTTOCATEGORIA).filter(Boolean)),
+        ).slice(0, 3);
+
+        return {
+            name,
+            description: sampleSubcategories.length > 0
+                ? `Catalogo ${name} con sottocategorie ${sampleSubcategories.join(", ")}`
+                : `Catalogo ${name} della demo arredamento`,
+            color: palette[index % palette.length],
+        };
+    });
+
+    const products = rows.map((row) => ({
+        internal_code: row.COD_INT,
+        name: row.NOME_PRODOTTO,
+        type: row.SOTTOCATEGORIA || row.CATEGORIA,
+        description: row.DESCRIZIONE,
+        price_list: row.LISTINO_PREZZI.toUpperCase() === "SI",
+        image_url: row.URL_IMMAGINE || undefined,
+        doc_url: row.URL_DOC || undefined,
+        categoryName: row.CATEGORIA,
+    }));
+
+    return { categories, products };
 }
 
 function buildInitials(name: string) {
@@ -658,28 +787,18 @@ async function seedDemoWorkspaceData(
         );
     }
 
+    const demoCatalog = await loadDemoArredoCatalog();
+
     const { data: productCategories, error: productCategoryError } = await supabase
         .from("sellproduct_categories")
-        .insert([
-            {
+        .insert(
+            demoCatalog.categories.map((category) => ({
                 site_id: input.siteId,
-                name: "Reception",
-                description: "Banconi e reception custom",
-                color: "#2563EB",
-            },
-            {
-                site_id: input.siteId,
-                name: "Camere hotel",
-                description: "Arredi e complementi camera",
-                color: "#14B8A6",
-            },
-            {
-                site_id: input.siteId,
-                name: "Retail",
-                description: "Arredi retail e corner espositivi",
-                color: "#F97316",
-            },
-        ])
+                name: category.name,
+                description: category.description,
+                color: category.color,
+            })),
+        )
         .select("id, name")
         .order("id", { ascending: true });
 
@@ -689,47 +808,29 @@ async function seedDemoWorkspaceData(
         );
     }
 
+    const categoryIdByName = new Map(
+        productCategories.map((category) => [category.name, category.id]),
+    );
+
     const { data: sellProducts, error: sellProductError } = await supabase
         .from("SellProduct")
-        .insert([
-            {
-                site_id: input.siteId,
-                name: "Reception Rovere Canetté",
-                type: "reception",
-                description: "Bancone reception con frontale lavorato",
-                active: true,
-                category_id: productCategories[0]?.id,
-                internal_code: "REC-001",
-            },
-            {
-                site_id: input.siteId,
-                name: "Mobile minibar hotel",
-                type: "camera",
-                description: "Modulo minibar e vano tecnico",
-                active: true,
-                category_id: productCategories[1]?.id,
-                internal_code: "HOT-014",
-            },
-            {
-                site_id: input.siteId,
-                name: "Testata letto imbottita",
-                type: "camera",
-                description: "Testata rivestita per contract alberghiero",
-                active: true,
-                category_id: productCategories[1]?.id,
-                internal_code: "HOT-022",
-            },
-            {
-                site_id: input.siteId,
-                name: "Corner retail premium",
-                type: "retail",
-                description: "Corner retail con illuminazione integrata",
-                active: true,
-                category_id: productCategories[2]?.id,
-                internal_code: "RTL-005",
-            },
-        ])
-        .select("id, name")
+        .insert(
+            demoCatalog.products
+                .filter((product) => categoryIdByName.has(product.categoryName))
+                .map((product) => ({
+                    site_id: input.siteId,
+                    name: product.name,
+                    type: product.type,
+                    description: product.description,
+                    price_list: product.price_list,
+                    image_url: product.image_url || null,
+                    doc_url: product.doc_url || null,
+                    active: true,
+                    category_id: categoryIdByName.get(product.categoryName),
+                    internal_code: product.internal_code,
+                })),
+        )
+        .select("id, name, type, category_id, internal_code")
         .order("id", { ascending: true });
 
     if (sellProductError || !sellProducts) {
