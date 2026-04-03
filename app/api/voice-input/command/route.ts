@@ -133,6 +133,8 @@ Regole:
    - lossReason se serve
    - notes
 14. Mantieni null per i campi assenti.
+15. needsClarification deve essere sempre presente come boolean.
+16. Dentro data restituisci sempre TUTTI i campi previsti dallo schema; se un valore manca usa null.
 
 Esempi:
 - "crea offerta per Rossi serramenti a Lugano da 4500 franchi" -> create_offer

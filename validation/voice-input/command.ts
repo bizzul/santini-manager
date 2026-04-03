@@ -25,9 +25,9 @@ export const VoiceCommandRequestSchema = z.object({
         .default({}),
 });
 
-const NullableString = z.string().trim().min(1).nullable().optional();
-const NullableNumber = z.number().nullable().optional();
-const NullableInteger = z.number().int().nullable().optional();
+const NullableString = z.string().trim().min(1).nullable();
+const NullableNumber = z.number().nullable();
+const NullableInteger = z.number().int().nullable();
 
 export const VoiceCommandExtractionSchema = z.object({
     intent: VoiceCommandIntentSchema,
@@ -35,7 +35,7 @@ export const VoiceCommandExtractionSchema = z.object({
         .string()
         .trim()
         .min(1, "Serve un breve riassunto del comando riconosciuto"),
-    needsClarification: z.boolean().optional().default(false),
+    needsClarification: z.boolean(),
     data: z.object({
         clientName: NullableString,
         title: NullableString,
@@ -56,8 +56,8 @@ export const VoiceCommandExtractionSchema = z.object({
         hours: NullableInteger,
         minutes: NullableInteger,
         zipCode: NullableInteger,
-        priceList: z.boolean().nullable().optional(),
-        team: z.union([z.literal(1), z.literal(2)]).nullable().optional(),
+        priceList: z.boolean().nullable(),
+        team: z.union([z.literal(1), z.literal(2)]).nullable(),
         roleName: NullableString,
         internalActivity: NullableString,
         address: NullableString,
@@ -65,18 +65,11 @@ export const VoiceCommandExtractionSchema = z.object({
         countryCode: NullableString,
         email: NullableString,
         phone: NullableString,
-        clientType: z
-            .enum(["BUSINESS", "INDIVIDUAL"])
-            .nullable()
-            .optional(),
-        activityType: z
-            .enum(["project", "internal"])
-            .nullable()
-            .optional(),
+        clientType: z.enum(["BUSINESS", "INDIVIDUAL"]).nullable(),
+        activityType: z.enum(["project", "internal"]).nullable(),
         lossReason: z
             .enum(["price", "delivery_time", "site_on_hold", "other"])
-            .nullable()
-            .optional(),
+            .nullable(),
     }),
 });
 
