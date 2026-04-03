@@ -2,6 +2,7 @@ import {
   analyzeVoiceCommandKeywords,
   getVoiceCommandScreenContext,
 } from "@/lib/voice-command-config";
+import { splitVoiceCommandTranscript } from "@/lib/voice-command-transcript";
 
 describe("lib/voice-command-config - screen context", () => {
   it("detects the products screen from pathname", () => {
@@ -100,5 +101,29 @@ describe("lib/voice-command-config - keyword coverage", () => {
       matched: false,
       missingGroups: ["entity"],
     });
+  });
+});
+
+describe("lib/voice-command-transcript", () => {
+  it("splits a dictation with multiple actions into atomic commands", () => {
+    const segments = splitVoiceCommandTranscript(
+      "Sposta il progetto 26-632 in inviata. Poi crea anche un'offerta per il cliente Franceschelli Mirko per quattro armadi. Poi crea anche un'offerta per il signor Gianni Lucia per una nuova finestra in legno.",
+    );
+
+    expect(segments).toEqual([
+      "Sposta il progetto 26-632 in inviata",
+      "crea anche un'offerta per il cliente Franceschelli Mirko per quattro armadi",
+      "crea anche un'offerta per il signor Gianni Lucia per una nuova finestra in legno",
+    ]);
+  });
+
+  it("keeps a single command untouched", () => {
+    const segments = splitVoiceCommandTranscript(
+      "Crea offerta per Rossi serramenti da 4500 franchi",
+    );
+
+    expect(segments).toEqual([
+      "Crea offerta per Rossi serramenti da 4500 franchi",
+    ]);
   });
 });

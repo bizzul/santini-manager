@@ -32,9 +32,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
+    getVoiceCommandIntentLabel,
     getVoiceCommandIntentLabels,
     getVoiceCommandScreenContext,
 } from "@/lib/voice-command-config";
+import { splitVoiceCommandTranscript } from "@/lib/voice-command-transcript";
 
 type SpeechProvider = "web-speech" | "whisper";
 
@@ -50,26 +52,49 @@ interface CommandOperation {
     body: Record<string, unknown>;
 }
 
-interface CommandResult {
+type CommandIntent =
+    | "create_project"
+    | "create_offer"
+    | "create_client"
+    | "create_product"
+    | "schedule_task"
+    | "log_time"
+    | "move_card"
+    | "unknown";
+
+interface CommandClarification {
+    question: string;
+    missingFields?: string[];
+    examples?: string[];
+}
+
+interface SingleCommandResult {
     status: "ready" | "needs_clarification";
-    intent:
-        | "create_project"
-        | "create_offer"
-        | "create_client"
-        | "create_product"
-        | "schedule_task"
-        | "log_time"
-        | "move_card"
-        | "unknown";
+    intent: CommandIntent;
     summary: string;
     message?: string;
     preview?: Record<string, unknown>;
-    clarification?: {
-        question: string;
-        missingFields?: string[];
-        examples?: string[];
-    } | null;
+    clarification?: CommandClarification | null;
     operation?: CommandOperation | null;
+}
+
+interface PlannedCommand extends SingleCommandResult {
+    id: string;
+    transcript: string;
+}
+
+interface CommandAnalysisResult {
+    status: "ready" | "needs_clarification";
+    summary: string;
+    message?: string;
+    commands: PlannedCommand[];
+    readyCount: number;
+    blockedCount: number;
+}
+
+interface CommandExecutionState {
+    status: "running" | "success" | "error";
+    message?: string;
 }
 
 function formatPreviewValue(value: unknown) {
@@ -85,7 +110,7 @@ function formatPreviewValue(value: unknown) {
 }
 
 function createExecutionMessage(
-    result: CommandResult,
+    result: SingleCommandResult,
     payload: Record<string, any> | null
 ) {
     if (result.intent === "create_client") {
@@ -138,6 +163,92 @@ function createExecutionMessage(
     return "Comando eseguito correttamente.";
 }
 
+function formatApiErrorMessage(payload: any, fallback: string) {
+    const details = Array.isArray(payload?.details)
+        ? payload.details
+              .map((detail: { message?: string; path?: Array<string | number> }) => {
+                  const path = Array.isArray(detail?.path) ? detail.path.join(".") : "";
+                  return path ? `${path}: ${detail.message}` : detail?.message;
+              })
+              .filter(Boolean)
+              .join(", ")
+        : null;
+
+    return payload?.message || payload?.error || details || fallback;
+}
+
+function formatIntentLabel(intent: CommandIntent) {
+    return intent === "unknown"
+        ? "azione non riconosciuta"
+        : getVoiceCommandIntentLabel(intent);
+}
+
+function buildClarificationState(commands: PlannedCommand[]) {
+    const firstBlockedCommand = commands.find(
+        (command) => command.status !== "ready" || !command.operation
+    );
+
+    if (!firstBlockedCommand?.clarification) {
+        return null;
+    }
+
+    return {
+        question: firstBlockedCommand.clarification.question,
+        missingFields: firstBlockedCommand.clarification.missingFields,
+        examples: firstBlockedCommand.clarification.examples,
+        commandId: firstBlockedCommand.id,
+    };
+}
+
+function buildAnalysisResult(commands: PlannedCommand[]): CommandAnalysisResult {
+    const readyCount = commands.filter(
+        (command) => command.status === "ready" && command.operation
+    ).length;
+    const blockedCount = commands.length - readyCount;
+    const hasMultipleCommands = commands.length > 1;
+
+    if (!hasMultipleCommands && commands[0]) {
+        const singleCommand = commands[0];
+
+        return {
+            status:
+                singleCommand.status === "ready" && singleCommand.operation
+                    ? "ready"
+                    : "needs_clarification",
+            summary: singleCommand.summary,
+            message:
+                singleCommand.status === "ready" && singleCommand.operation
+                    ? "Analisi completata. Controlla il riepilogo e conferma manualmente l'esecuzione."
+                    : singleCommand.message,
+            commands,
+            readyCount,
+            blockedCount,
+        };
+    }
+
+    if (blockedCount > 0) {
+        return {
+            status: "needs_clarification",
+            summary: `Ho analizzato ${commands.length} azioni: ${readyCount} pronte e ${blockedCount} da chiarire.`,
+            message:
+                "Le azioni non partiranno automaticamente. Controlla i dettagli mancanti, poi rianalizza la registrazione.",
+            commands,
+            readyCount,
+            blockedCount,
+        };
+    }
+
+    return {
+        status: "ready",
+        summary: `Ho preparato ${commands.length} azioni dalla stessa registrazione.`,
+        message:
+            "Le azioni sono tutte pronte, ma verranno eseguite solo dopo la conferma dell'operatore.",
+        commands,
+        readyCount,
+        blockedCount,
+    };
+}
+
 export function GlobalVoiceAssistant() {
     const params = useParams();
     const pathname = usePathname();
@@ -174,7 +285,12 @@ export function GlobalVoiceAssistant() {
     const [open, setOpen] = useState(false);
     const [siteSettings, setSiteSettings] = useState<SiteAiSettings | null>(null);
     const [settingsLoading, setSettingsLoading] = useState(false);
-    const [commandResult, setCommandResult] = useState<CommandResult | null>(null);
+    const [commandResult, setCommandResult] = useState<CommandAnalysisResult | null>(
+        null
+    );
+    const [commandExecutionStates, setCommandExecutionStates] = useState<
+        Record<string, CommandExecutionState>
+    >({});
     const [executionMessage, setExecutionMessage] = useState<string | null>(null);
     const [executionError, setExecutionError] = useState<string | null>(null);
     const [isRunningCommand, setIsRunningCommand] = useState(false);
@@ -182,9 +298,11 @@ export function GlobalVoiceAssistant() {
         question: string;
         missingFields?: string[];
         examples?: string[];
+        commandId?: string;
     } | null>(null);
     const [manualClarificationAnswer, setManualClarificationAnswer] = useState("");
     const [manualTranscript, setManualTranscript] = useState("");
+    const [runMode, setRunMode] = useState<"analysis" | "execution" | null>(null);
 
     const [whisperRecording, setWhisperRecording] = useState(false);
     const [whisperTranscript, setWhisperTranscript] = useState("");
@@ -364,12 +482,28 @@ export function GlobalVoiceAssistant() {
     const isRecording = useWhisper ? whisperRecording : webIsRecording;
     const isSupported = useWhisper ? true : webIsSupported;
     const speechError = useWhisper ? whisperError : webSpeechError?.message || null;
+    const commandsReadyToExecute =
+        commandResult?.commands.filter(
+            (command) => command.status === "ready" && command.operation
+        ) || [];
+    const canExecuteCommands =
+        commandsReadyToExecute.length > 0 &&
+        commandResult?.blockedCount === 0 &&
+        !clarificationState;
+    const clarificationCommandIndex =
+        clarificationState?.commandId && commandResult
+            ? commandResult.commands.findIndex(
+                  (command) => command.id === clarificationState.commandId
+              )
+            : -1;
 
     const resetAssistant = useCallback(() => {
         setCommandResult(null);
+        setCommandExecutionStates({});
         setExecutionMessage(null);
         setExecutionError(null);
         setIsRunningCommand(false);
+        setRunMode(null);
         setClarificationState(null);
         setManualClarificationAnswer("");
         setManualTranscript("");
@@ -389,6 +523,8 @@ export function GlobalVoiceAssistant() {
     const startRecording = useCallback(async () => {
         setExecutionMessage(null);
         setExecutionError(null);
+        setCommandExecutionStates({});
+        setRunMode(null);
         if (!clarificationState) {
             setCommandResult(null);
         }
@@ -444,83 +580,100 @@ export function GlobalVoiceAssistant() {
         }
 
         setIsRunningCommand(true);
+        setRunMode("analysis");
+        setCommandExecutionStates({});
         setExecutionError(null);
         setExecutionMessage(null);
 
         try {
-            const parseResponse = await fetch("/api/voice-input/command", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    transcript: transcriptForAnalysis,
-                    siteId,
-                    context: {
-                        pathname,
-                        currentKanbanId,
-                        currentModule: currentScreen.module,
-                        currentScreen: currentScreen.key,
-                        screenLabel: currentScreen.label,
-                        allowedIntents: currentScreen.allowedIntents,
+            const commandSegments = splitVoiceCommandTranscript(transcriptForAnalysis);
+
+            if (commandSegments.length === 0) {
+                throw new Error("Non ho trovato azioni chiare nella trascrizione.");
+            }
+
+            const analysisRequests = commandSegments.map(async (segment, index) => {
+                const parseResponse = await fetch("/api/voice-input/command", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
                     },
-                }),
-            });
-            const parsed = await parseResponse.json();
-
-            if (!parseResponse.ok) {
-                throw new Error(
-                    parsed.error || parsed.message || "Errore durante l'analisi"
-                );
-            }
-
-            setCommandResult(parsed);
-            setClarificationState(parsed.clarification || null);
-
-            if (parsed.status !== "ready" || !parsed.operation) {
-                toast({
-                    title: "Comando chiarito solo in parte",
-                    description:
-                        parsed.message ||
-                        "Aggiungi qualche dettaglio e riprova con il comando vocale.",
+                    body: JSON.stringify({
+                        transcript: segment,
+                        siteId,
+                        context: {
+                            pathname,
+                            currentKanbanId,
+                            currentModule: currentScreen.module,
+                            currentScreen: currentScreen.key,
+                            screenLabel: currentScreen.label,
+                            allowedIntents: currentScreen.allowedIntents,
+                        },
+                    }),
                 });
-                return;
-            }
+                const parsed = await parseResponse.json().catch(() => null);
 
-            setClarificationState(null);
-            const executeResponse = await fetch(parsed.operation.endpoint, {
-                method: parsed.operation.method,
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-site-id": siteId,
-                },
-                body: JSON.stringify(parsed.operation.body),
+                if (!parseResponse.ok) {
+                    throw new Error(
+                        formatApiErrorMessage(
+                            parsed,
+                            `Errore durante l'analisi dell'azione ${index + 1}.`
+                        )
+                    );
+                }
+
+                return {
+                    id: `command-${index + 1}`,
+                    transcript: segment,
+                    ...(parsed as SingleCommandResult),
+                } satisfies PlannedCommand;
             });
-            const executePayload = await executeResponse.json().catch(() => null);
 
-            if (!executeResponse.ok) {
-                throw new Error(
-                    executePayload?.message ||
-                        executePayload?.error ||
-                        "Errore durante l'esecuzione del comando"
-                );
-            }
+            const settledResults = await Promise.allSettled(analysisRequests);
+            const analyzedCommands = settledResults.map((result, index) => {
+                if (result.status === "fulfilled") {
+                    return result.value;
+                }
 
-            const successMessage = createExecutionMessage(parsed, executePayload);
-            setExecutionMessage(successMessage);
+                return {
+                    id: `command-${index + 1}`,
+                    transcript: commandSegments[index],
+                    status: "needs_clarification",
+                    intent: "unknown",
+                    summary: `Azione ${index + 1} da chiarire`,
+                    message: result.reason instanceof Error
+                        ? result.reason.message
+                        : "Non sono riuscito a interpretare questa azione.",
+                    clarification: {
+                        question:
+                            "Puoi riformulare questa parte della registrazione in modo piu' preciso?",
+                    },
+                    operation: null,
+                } satisfies PlannedCommand;
+            });
+
+            const analysisResult = buildAnalysisResult(analyzedCommands);
+            setCommandResult(analysisResult);
+            setClarificationState(buildClarificationState(analyzedCommands));
             setManualClarificationAnswer("");
 
             toast({
-                title: "Comando eseguito",
-                description: successMessage,
+                title:
+                    analysisResult.status === "ready"
+                        ? "Analisi completata"
+                        : "Analisi completata con chiarimenti",
+                description:
+                    analysisResult.message ||
+                    "Controlla il riepilogo delle azioni prima di procedere.",
             });
-
-            router.refresh();
         } catch (error) {
             const message =
                 error instanceof Error
                     ? error.message
-                    : "Errore durante l'esecuzione del comando";
+                    : "Errore durante l'analisi del comando vocale";
+            setCommandResult(null);
+            setCommandExecutionStates({});
+            setClarificationState(null);
             setExecutionError(message);
 
             toast({
@@ -530,6 +683,7 @@ export function GlobalVoiceAssistant() {
             });
         } finally {
             setIsRunningCommand(false);
+            setRunMode(null);
         }
     }, [
         appendTypedClarification,
@@ -538,10 +692,133 @@ export function GlobalVoiceAssistant() {
         effectiveTranscript,
         manualClarificationAnswer,
         pathname,
-        router,
         siteId,
         toast,
     ]);
+
+    const handleExecuteCommands = useCallback(async () => {
+        if (!siteId || !commandResult) {
+            return;
+        }
+
+        const commandsToExecute = commandResult.commands.filter(
+            (command) => command.status === "ready" && command.operation
+        );
+
+        if (commandsToExecute.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "Nessuna azione eseguibile",
+                description:
+                    "Prima completa l'analisi e chiarisci eventuali dati mancanti.",
+            });
+            return;
+        }
+
+        setIsRunningCommand(true);
+        setRunMode("execution");
+        setExecutionMessage(null);
+        setExecutionError(null);
+        setCommandExecutionStates({});
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        try {
+            for (const command of commandsToExecute) {
+                setCommandExecutionStates((previous) => ({
+                    ...previous,
+                    [command.id]: {
+                        status: "running",
+                        message: "Esecuzione in corso...",
+                    },
+                }));
+
+                const executeResponse = await fetch(command.operation!.endpoint, {
+                    method: command.operation!.method,
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-site-id": siteId,
+                    },
+                    body: JSON.stringify(command.operation!.body),
+                });
+                const executePayload = await executeResponse.json().catch(() => null);
+
+                if (!executeResponse.ok) {
+                    errorCount += 1;
+
+                    setCommandExecutionStates((previous) => ({
+                        ...previous,
+                        [command.id]: {
+                            status: "error",
+                            message: formatApiErrorMessage(
+                                executePayload,
+                                "Errore durante l'esecuzione del comando"
+                            ),
+                        },
+                    }));
+                    continue;
+                }
+
+                successCount += 1;
+
+                setCommandExecutionStates((previous) => ({
+                    ...previous,
+                    [command.id]: {
+                        status: "success",
+                        message: createExecutionMessage(command, executePayload),
+                    },
+                }));
+            }
+
+            if (successCount > 0) {
+                router.refresh();
+            }
+
+            if (errorCount === 0) {
+                const successMessage =
+                    successCount === 1
+                        ? "1 azione completata correttamente."
+                        : `${successCount} azioni completate correttamente.`;
+                setExecutionMessage(successMessage);
+
+                toast({
+                    title: "Esecuzione completata",
+                    description: successMessage,
+                });
+                return;
+            }
+
+            const partialMessage =
+                successCount > 0
+                    ? `${successCount} azioni completate, ${errorCount} non riuscite.`
+                    : `${errorCount} azioni non riuscite.`;
+            setExecutionError(
+                `${partialMessage} Controlla il dettaglio di ciascuna azione qui sotto.`
+            );
+
+            toast({
+                variant: "destructive",
+                title: "Esecuzione completata con errori",
+                description: partialMessage,
+            });
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Errore durante l'esecuzione dei comandi vocali";
+            setExecutionError(message);
+
+            toast({
+                variant: "destructive",
+                title: "Errore comando vocale",
+                description: message,
+            });
+        } finally {
+            setIsRunningCommand(false);
+            setRunMode(null);
+        }
+    }, [commandResult, router, siteId, toast]);
 
     const handleOpenChange = useCallback(
         (nextOpen: boolean) => {
@@ -581,8 +858,9 @@ export function GlobalVoiceAssistant() {
                     </SheetTitle>
                     <SheetDescription>
                         Registra un comando, leggi subito la trascrizione e lascia
-                        che l&apos;assistente esegua azioni come creare progetti,
-                        creare offerte o spostare card.
+                        che l&apos;assistente prepari azioni come creare progetti,
+                        creare offerte o spostare card, sempre con conferma
+                        manuale prima dell&apos;esecuzione.
                     </SheetDescription>
                 </SheetHeader>
 
@@ -675,6 +953,10 @@ export function GlobalVoiceAssistant() {
                         <p className="mt-2 text-muted-foreground">
                             {currentScreen.description}
                         </p>
+                        <p className="mt-2 text-muted-foreground">
+                            Puoi anche concatenare piu&apos; azioni nella stessa registrazione,
+                            per esempio usando &quot;poi crea...&quot; o &quot;poi sposta...&quot;.
+                        </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                             {getVoiceCommandIntentLabels(currentScreen.allowedIntents).map(
                                 (label) => (
@@ -692,7 +974,7 @@ export function GlobalVoiceAssistant() {
                     </div>
 
                     {commandResult && (
-                        <div className="rounded-lg border p-3">
+                        <div className="space-y-3 rounded-lg border p-3">
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-4 w-4 text-primary" />
                                 <p className="text-sm font-medium">
@@ -700,30 +982,160 @@ export function GlobalVoiceAssistant() {
                                 </p>
                             </div>
                             {commandResult.message && (
-                                <p className="mt-2 text-sm text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     {commandResult.message}
                                 </p>
                             )}
-                            {commandResult.preview &&
-                                Object.keys(commandResult.preview).length > 0 && (
-                                    <div className="mt-3 grid gap-2 rounded-lg bg-muted/30 p-3 text-sm">
-                                        {Object.entries(commandResult.preview).map(
-                                            ([key, value]) => (
-                                                <div
-                                                    key={key}
-                                                    className="flex items-center justify-between gap-3"
+                            <div className="flex flex-wrap gap-2 text-xs">
+                                <Badge variant="outline">
+                                    {commandResult.readyCount} pronte
+                                </Badge>
+                                <Badge variant="outline">
+                                    {commandResult.blockedCount} da chiarire
+                                </Badge>
+                                <Badge variant="secondary">
+                                    Conferma operatore richiesta
+                                </Badge>
+                            </div>
+
+                            <div className="space-y-3">
+                                {commandResult.commands.map((command, index) => {
+                                    const executionState =
+                                        commandExecutionStates[command.id] || null;
+
+                                    return (
+                                        <div
+                                            key={command.id}
+                                            className="rounded-lg border bg-muted/20 p-3"
+                                        >
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <Badge variant="outline">
+                                                    Azione {index + 1}
+                                                </Badge>
+                                                <Badge
+                                                    variant={
+                                                        command.status === "ready"
+                                                            ? "secondary"
+                                                            : "outline"
+                                                    }
                                                 >
-                                                    <span className="text-muted-foreground">
-                                                        {key}
-                                                    </span>
-                                                    <span className="text-right font-medium">
-                                                        {formatPreviewValue(value)}
-                                                    </span>
+                                                    {command.status === "ready"
+                                                        ? "Pronta"
+                                                        : "Da chiarire"}
+                                                </Badge>
+                                                <Badge variant="outline">
+                                                    {formatIntentLabel(command.intent)}
+                                                </Badge>
+                                            </div>
+
+                                            <p className="mt-2 text-sm font-medium">
+                                                {command.summary}
+                                            </p>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                {command.transcript}
+                                            </p>
+
+                                            {command.message && (
+                                                <p
+                                                    className={`mt-2 text-sm ${
+                                                        command.status === "ready"
+                                                            ? "text-muted-foreground"
+                                                            : "text-destructive"
+                                                    }`}
+                                                >
+                                                    {command.message}
+                                                </p>
+                                            )}
+
+                                            {command.preview &&
+                                                Object.keys(command.preview).length > 0 && (
+                                                    <div className="mt-3 grid gap-2 rounded-lg bg-background/80 p-3 text-sm">
+                                                        {Object.entries(command.preview).map(
+                                                            ([key, value]) => (
+                                                                <div
+                                                                    key={key}
+                                                                    className="flex items-center justify-between gap-3"
+                                                                >
+                                                                    <span className="text-muted-foreground">
+                                                                        {key}
+                                                                    </span>
+                                                                    <span className="text-right font-medium">
+                                                                        {formatPreviewValue(value)}
+                                                                    </span>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                            {command.clarification && (
+                                                <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+                                                    <p className="font-medium">
+                                                        Problema rilevato
+                                                    </p>
+                                                    <p className="mt-1">
+                                                        {command.clarification.question}
+                                                    </p>
+                                                    {command.clarification.missingFields &&
+                                                        command.clarification.missingFields
+                                                            .length > 0 && (
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                                {command.clarification.missingFields.map(
+                                                                    (field) => (
+                                                                        <Badge
+                                                                            key={field}
+                                                                            variant="outline"
+                                                                        >
+                                                                            {field}
+                                                                        </Badge>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    {command.clarification.examples &&
+                                                        command.clarification.examples
+                                                            .length > 0 && (
+                                                            <div className="mt-2 space-y-1 text-muted-foreground">
+                                                                {command.clarification.examples.map(
+                                                                    (example) => (
+                                                                        <p key={example}>
+                                                                            {example}
+                                                                        </p>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        )}
                                                 </div>
-                                            )
-                                        )}
-                                    </div>
-                                )}
+                                            )}
+
+                                            {executionState && (
+                                                <div
+                                                    className={`mt-3 rounded-lg border p-3 text-sm ${
+                                                        executionState.status === "success"
+                                                            ? "border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-300"
+                                                            : executionState.status === "error"
+                                                            ? "border-destructive/30 bg-destructive/5 text-destructive"
+                                                            : "border-primary/30 bg-primary/5"
+                                                    }`}
+                                                >
+                                                    <p className="font-medium">
+                                                        {executionState.status === "success"
+                                                            ? "Azione completata"
+                                                            : executionState.status === "error"
+                                                            ? "Azione non completata"
+                                                            : "Azione in esecuzione"}
+                                                    </p>
+                                                    {executionState.message && (
+                                                        <p className="mt-1">
+                                                            {executionState.message}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
 
@@ -733,6 +1145,12 @@ export function GlobalVoiceAssistant() {
                                 <Sparkles className="h-4 w-4 text-amber-600" />
                                 <p className="text-sm font-medium">Chiarimento richiesto</p>
                             </div>
+                            {clarificationCommandIndex >= 0 && (
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                    Serve un dettaglio aggiuntivo per l&apos;azione{" "}
+                                    {clarificationCommandIndex + 1}.
+                                </p>
+                            )}
                             <p className="mt-2 text-sm">{clarificationState.question}</p>
                             {clarificationState.missingFields &&
                                 clarificationState.missingFields.length > 0 && (
@@ -791,7 +1209,7 @@ export function GlobalVoiceAssistant() {
                         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
                             <div className="flex items-center gap-2 font-medium">
                                 <AlertCircle className="h-4 w-4" />
-                                Esecuzione fallita
+                                Operazione non completata
                             </div>
                             <p className="mt-1">{executionError}</p>
                         </div>
@@ -822,14 +1240,36 @@ export function GlobalVoiceAssistant() {
                         {isRunningCommand ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Analisi ed esecuzione...
+                                {runMode === "execution"
+                                    ? "Esecuzione..."
+                                    : "Analisi in corso..."}
                             </>
                         ) : (
                             <>
                                 <Sparkles className="h-4 w-4" />
                                 {clarificationState
-                                    ? "Rielabora risposta"
-                                    : "Analizza ed esegui"}
+                                    ? "Rianalizza risposta"
+                                    : "Analizza registrazione"}
+                            </>
+                        )}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant={canExecuteCommands ? "default" : "outline"}
+                        onClick={handleExecuteCommands}
+                        disabled={!canExecuteCommands || isRunningCommand}
+                    >
+                        {isRunningCommand && runMode === "execution" ? (
+                            <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Conferma ed esegui...
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle2 className="h-4 w-4" />
+                                {commandsReadyToExecute.length > 1
+                                    ? `Conferma ${commandsReadyToExecute.length} azioni`
+                                    : "Conferma ed esegui"}
                             </>
                         )}
                     </Button>

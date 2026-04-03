@@ -1411,7 +1411,13 @@ Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
         console.error("Error handling voice command:", error);
 
         return NextResponse.json(
-            { error: "Errore durante l'interpretazione del comando vocale" },
+            {
+                error: "Errore durante l'interpretazione del comando vocale",
+                message:
+                    error instanceof Error && error.message
+                        ? error.message
+                        : "Controlla la trascrizione o riprova tra qualche secondo.",
+            },
             { status: 500 }
         );
     }
