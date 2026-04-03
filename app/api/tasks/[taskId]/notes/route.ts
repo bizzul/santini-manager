@@ -24,7 +24,7 @@ export async function POST(
     }
 
     const body = await req.json();
-    const { note, contactType, contactDate } = body;
+    const { note, followUpNote, contactType, contactDate, followUpUntil } = body;
 
     if (!note) {
       return NextResponse.json(
@@ -94,7 +94,8 @@ export async function POST(
       id: crypto.randomUUID(),
       contactType: contactType || "other",
       contactDate: contactDate || new Date().toISOString(),
-      note,
+      followUpUntil: followUpUntil || null,
+      note: followUpNote || "",
       createdAt: new Date().toISOString(),
       createdBy: user.id,
     };
@@ -144,9 +145,10 @@ export async function POST(
       type: "add_note",
       data: {
         taskId: parseInt(taskId),
-        note: note,
+        note: followUpNote || note,
         contactType: contactType || null,
         contactDate: contactDate || null,
+        followUpUntil: followUpUntil || null,
       },
       user_id: user.id,
       taskId: parseInt(taskId),

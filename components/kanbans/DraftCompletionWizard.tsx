@@ -62,14 +62,6 @@ const completionSchema = z.object({
   termine_produzione: z.date().optional().nullable(),
   sellPrice: z.number().min(0, "Inserisci un prezzo valido"),
   other: z.string().optional(),
-  position1: z.string().optional(),
-  position2: z.string().optional(),
-  position3: z.string().optional(),
-  position4: z.string().optional(),
-  position5: z.string().optional(),
-  position6: z.string().optional(),
-  position7: z.string().optional(),
-  position8: z.string().optional(),
 });
 
 type CompletionFormData = z.infer<typeof completionSchema>;
@@ -151,14 +143,6 @@ export default function DraftCompletionWizard({
       termine_produzione: null,
       sellPrice: 0,
       other: "",
-      position1: "",
-      position2: "",
-      position3: "",
-      position4: "",
-      position5: "",
-      position6: "",
-      position7: "",
-      position8: "",
     },
   });
 
@@ -174,14 +158,6 @@ export default function DraftCompletionWizard({
         deliveryDate: task.deliveryDate ? parseLocalDate(task.deliveryDate) : null,
         sellPrice: task.sellPrice || 0,
         other: task.other || "",
-        position1: task.positions?.[0] || "",
-        position2: task.positions?.[1] || "",
-        position3: task.positions?.[2] || "",
-        position4: task.positions?.[3] || "",
-        position5: task.positions?.[4] || "",
-        position6: task.positions?.[5] || "",
-        position7: task.positions?.[6] || "",
-        position8: task.positions?.[7] || "",
       });
     }
   }, [task, open, form]);
@@ -213,18 +189,6 @@ export default function DraftCompletionWizard({
     try {
       setIsSubmitting(true);
 
-      // Prepare positions array
-      const positions = [
-        data.position1 || "",
-        data.position2 || "",
-        data.position3 || "",
-        data.position4 || "",
-        data.position5 || "",
-        data.position6 || "",
-        data.position7 || "",
-        data.position8 || "",
-      ];
-
       // Update the task with complete data and remove draft flag
       const response = await fetch(`/api/kanban/tasks/${task.id}`, {
         method: "PATCH",
@@ -241,7 +205,6 @@ export default function DraftCompletionWizard({
           termine_produzione: toDateString(data.termine_produzione),
           sellPrice: data.sellPrice,
           other: data.other,
-          positions: positions,
           is_draft: false, // Remove draft flag
           // Clear draft category IDs since draft is now complete
           draft_category_ids: null,
@@ -577,32 +540,6 @@ export default function DraftCompletionWizard({
                 </FormItem>
               )}
             />
-
-            {/* Positions */}
-            <div>
-              <FormLabel>Posizioni</FormLabel>
-              <div className="grid grid-cols-4 gap-2 mt-2">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                  <FormField
-                    key={i}
-                    name={`position${i}` as keyof CompletionFormData}
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder={`Pos. ${i}`}
-                            value={String(field.value || "")}
-                            disabled={isSubmitting}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
 
             {/* Notes */}
             <FormField

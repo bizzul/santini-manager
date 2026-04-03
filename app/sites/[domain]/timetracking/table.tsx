@@ -59,6 +59,7 @@ interface DataTableProps<TData, TValue> {
   domain?: string;
   internalActivities?: InternalActivity[];
   mode?: "personal" | "admin";
+  readOnly?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -70,6 +71,7 @@ export function DataTable<TData, TValue>({
   domain,
   internalActivities = [],
   mode = "admin",
+  readOnly = false,
 }: DataTableProps<TData, TValue>) {
   const { toast } = useToast();
   // Sorting State
@@ -177,7 +179,7 @@ export function DataTable<TData, TValue>({
     enableGlobalFilter: true,
     enableColumnFilters: true,
     enableFilters: true,
-    enableRowSelection: true,
+    enableRowSelection: !readOnly,
   });
 
   // useEffect(() => {
@@ -244,7 +246,7 @@ export function DataTable<TData, TValue>({
         </Select>
 
         {/* Delete selected button */}
-        {selectedCount > 0 && (
+        {!readOnly && selectedCount > 0 && (
           <Button
             variant="destructive"
             size="sm"
@@ -283,7 +285,7 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {mode === "admin" && (
+            {!readOnly && mode === "admin" && (
               <QuickCreateTimetrackingRow
                 colSpan={columns.length}
                 users={users}

@@ -31,6 +31,10 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import {
+    getVoiceCommandIntentLabels,
+    getVoiceCommandScreenContext,
+} from "@/lib/voice-command-config";
 
 type SpeechProvider = "web-speech" | "whisper";
 
@@ -52,6 +56,7 @@ interface CommandResult {
         | "create_project"
         | "create_offer"
         | "create_client"
+        | "create_product"
         | "schedule_task"
         | "log_time"
         | "move_card"
@@ -123,59 +128,14 @@ function createExecutionMessage(
             : "Progetto creato correttamente.";
     }
 
-    return "Comando eseguito correttamente.";
-}
-
-function inferCurrentModule(pathname: string | null) {
-    if (!pathname) return "general";
-    if (pathname.includes("/clients")) return "clients";
-    if (pathname.includes("/calendar-service")) return "calendar-service";
-    if (pathname.includes("/calendar-installation")) return "calendar-installation";
-    if (pathname.includes("/calendar")) return "calendar";
-    if (pathname.includes("/timetracking")) return "timetracking";
-    if (pathname.includes("/offerte")) return "offerte";
-    if (pathname.includes("/projects")) return "projects";
-    if (pathname.includes("/kanban")) return "kanban";
-    return "general";
-}
-
-function getModuleExamples(currentModule: string) {
-    switch (currentModule) {
-        case "clients":
-            return [
-                'Crea cliente Bianchi SA in via Roma 1 Lugano 6900 Svizzera',
-                "Crea cliente Mario Rossi in via Cantonale 12 Bellinzona 6500",
-            ];
-        case "calendar":
-        case "calendar-installation":
-        case "calendar-service":
-            return [
-                "Pianifica la card 26-044 il 15 aprile alle 08:00",
-                "Programma il progetto Rossi il 22 aprile squadra 2",
-            ];
-        case "timetracking":
-            return [
-                "Registra 2 ore sul progetto 26-011 reparto montaggio",
-                "Registra 1 ora e 30 minuti attivita' interna ufficio",
-            ];
-        case "offerte":
-            return [
-                "Crea offerta per Rossi serramenti da 4500 franchi",
-                "Sposta la card 26-044-OFF in trattativa",
-            ];
-        case "projects":
-        case "kanban":
-            return [
-                "Crea progetto cucina villa Bianchi a Lugano",
-                "Sposta la card 26-044 in produzione",
-            ];
-        default:
-            return [
-                "Crea cliente Bianchi SA in via Roma 1 Lugano 6900 Svizzera",
-                "Crea offerta per Rossi serramenti da 4500 franchi",
-                "Registra 2 ore sul progetto 26-011 reparto montaggio",
-            ];
+    if (result.intent === "create_product") {
+        const productName = payload?.data?.name;
+        return productName
+            ? `Prodotto ${productName} creato correttamente.`
+            : "Prodotto creato correttamente.";
     }
+
+    return "Comando eseguito correttamente.";
 }
 
 export function GlobalVoiceAssistant() {
@@ -198,13 +158,9 @@ export function GlobalVoiceAssistant() {
         return null;
     }, [params]);
     const isSiteRoute = Boolean(domain && pathname?.startsWith("/sites/"));
-    const currentModule = useMemo(
-        () => inferCurrentModule(pathname),
+    const currentScreen = useMemo(
+        () => getVoiceCommandScreenContext(pathname),
         [pathname]
-    );
-    const moduleExamples = useMemo(
-        () => getModuleExamples(currentModule),
-        [currentModule]
     );
     const currentKanbanId = useMemo(() => {
         const rawValue = searchParams.get("kanbanId");
@@ -503,7 +459,10 @@ export function GlobalVoiceAssistant() {
                     context: {
                         pathname,
                         currentKanbanId,
-                        currentModule,
+                        currentModule: currentScreen.module,
+                        currentScreen: currentScreen.key,
+                        screenLabel: currentScreen.label,
+                        allowedIntents: currentScreen.allowedIntents,
                     },
                 }),
             });
@@ -575,7 +534,7 @@ export function GlobalVoiceAssistant() {
     }, [
         appendTypedClarification,
         currentKanbanId,
-        currentModule,
+        currentScreen,
         effectiveTranscript,
         manualClarificationAnswer,
         pathname,
@@ -636,7 +595,7 @@ export function GlobalVoiceAssistant() {
                                 ? "Whisper"
                                 : "Web Speech"}
                         </Badge>
-                        <Badge variant="outline">{currentModule}</Badge>
+                        <Badge variant="outline">{currentScreen.label}</Badge>
                         {siteLoading && <Badge variant="outline">Caricamento sito...</Badge>}
                         {isRecording && <Badge variant="outline">Registrazione in corso</Badge>}
                         {whisperProcessing && (
@@ -704,8 +663,8 @@ export function GlobalVoiceAssistant() {
                         <p className="min-h-16 text-sm leading-6">
                             {effectiveTranscript || liveTranscript || (
                                 <span className="text-muted-foreground">
-                                    Prova con: &quot;{moduleExamples[0]}&quot; oppure
-                                    &quot;{moduleExamples[1]}&quot;.
+                                    Prova con: &quot;{currentScreen.examples[0]}&quot; oppure
+                                    &quot;{currentScreen.examples[1]}&quot;.
                                 </span>
                             )}
                         </p>
@@ -713,7 +672,19 @@ export function GlobalVoiceAssistant() {
 
                     <div className="rounded-lg border p-3 text-sm">
                         <p className="font-medium">Comandi supportati nel contesto attuale</p>
-                        {moduleExamples.map((example) => (
+                        <p className="mt-2 text-muted-foreground">
+                            {currentScreen.description}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {getVoiceCommandIntentLabels(currentScreen.allowedIntents).map(
+                                (label) => (
+                                    <Badge key={label} variant="secondary">
+                                        {label}
+                                    </Badge>
+                                )
+                            )}
+                        </div>
+                        {currentScreen.examples.map((example) => (
                             <p key={example} className="mt-2 text-muted-foreground">
                                 {example}
                             </p>

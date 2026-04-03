@@ -334,7 +334,7 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
                   Ciao {userProfile?.name || user?.email?.split("@")[0]}
                 </p>
                 <h1 className="text-xl md:text-2xl font-bold">
-                  Consuntivi ore
+                  Registra ore
                 </h1>
               </div>
             </div>

@@ -224,6 +224,14 @@ export function ProjectOrSiteDetailDrawer({
                     Modifica ore
                   </Button>
                 )}
+                {item.timeTrackingHref && (
+                  <Button asChild variant="outline" className="flex-1">
+                    <Link href={item.timeTrackingHref}>
+                      <Clock3 className="mr-2 h-4 w-4" />
+                      Registra ore
+                    </Link>
+                  </Button>
+                )}
                 {item.detailHref && (
                   <Button asChild className="flex-1">
                     <Link href={item.detailHref}>

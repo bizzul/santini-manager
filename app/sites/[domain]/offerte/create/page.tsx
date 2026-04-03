@@ -41,11 +41,24 @@ export default async function OfferCreatePage({
 
   // If no kanbanId provided, find the first offer kanban
   let targetKanbanId = kanbanId ? parseInt(kanbanId) : null;
+  let targetKanbanIdentifier: string | null = null;
 
-  if (!targetKanbanId) {
+  if (targetKanbanId) {
+    const { data: selectedKanban } = await supabase
+      .from("Kanban")
+      .select("id, identifier")
+      .eq("site_id", siteId)
+      .eq("id", targetKanbanId)
+      .single();
+
+    if (selectedKanban) {
+      targetKanbanId = selectedKanban.id;
+      targetKanbanIdentifier = selectedKanban.identifier;
+    }
+  } else {
     const { data: offerKanban } = await supabase
       .from("Kanban")
-      .select("id")
+      .select("id, identifier")
       .eq("site_id", siteId)
       .eq("is_offer_kanban", true)
       .limit(1)
@@ -53,6 +66,7 @@ export default async function OfferCreatePage({
 
     if (offerKanban) {
       targetKanbanId = offerKanban.id;
+      targetKanbanIdentifier = offerKanban.identifier;
     }
   }
 
@@ -99,6 +113,7 @@ export default async function OfferCreatePage({
           domain={domain}
           siteId={siteId}
           kanbanId={targetKanbanId}
+          kanbanIdentifier={targetKanbanIdentifier}
           clients={clients || []}
           products={products || []}
           draftTask={draftTask}

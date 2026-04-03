@@ -34,6 +34,7 @@ export interface WeeklyCalendarItem {
   linkType?: CalendarLinkType;
   detailHref?: string | null;
   secondaryHref?: string | null;
+  timeTrackingHref?: string | null;
   sourceMode?: Exclude<CalendarDataMode, "both">;
   scheduleDisplay?: CalendarScheduleDisplay;
   notes?: string | null;

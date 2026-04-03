@@ -1,14 +1,10 @@
 import { z } from "zod";
+import {
+    SUPPORTED_VOICE_COMMAND_INTENTS,
+    VOICE_COMMAND_INTENTS,
+} from "@/lib/voice-command-config";
 
-export const VoiceCommandIntentSchema = z.enum([
-    "create_project",
-    "create_offer",
-    "create_client",
-    "schedule_task",
-    "log_time",
-    "move_card",
-    "unknown",
-]);
+export const VoiceCommandIntentSchema = z.enum(VOICE_COMMAND_INTENTS);
 
 export const VoiceCommandRequestSchema = z.object({
     transcript: z.string().trim().min(1, "La trascrizione e' obbligatoria"),
@@ -18,6 +14,12 @@ export const VoiceCommandRequestSchema = z.object({
             pathname: z.string().trim().optional().nullable(),
             currentKanbanId: z.number().int().optional().nullable(),
             currentModule: z.string().trim().optional().nullable(),
+            currentScreen: z.string().trim().optional().nullable(),
+            screenLabel: z.string().trim().optional().nullable(),
+            allowedIntents: z
+                .array(z.enum(SUPPORTED_VOICE_COMMAND_INTENTS))
+                .optional()
+                .default([]),
         })
         .optional()
         .default({}),
@@ -37,6 +39,9 @@ export const VoiceCommandExtractionSchema = z.object({
     data: z.object({
         clientName: NullableString,
         title: NullableString,
+        productName: NullableString,
+        productCategory: NullableString,
+        productType: NullableString,
         location: NullableString,
         kanbanName: NullableString,
         taskCode: NullableString,
@@ -51,6 +56,7 @@ export const VoiceCommandExtractionSchema = z.object({
         hours: NullableInteger,
         minutes: NullableInteger,
         zipCode: NullableInteger,
+        priceList: z.boolean().nullable().optional(),
         team: z.union([z.literal(1), z.literal(2)]).nullable().optional(),
         roleName: NullableString,
         internalActivity: NullableString,

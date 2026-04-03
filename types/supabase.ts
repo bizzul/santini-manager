@@ -35,6 +35,7 @@ export interface OfferFollowUpEntry {
     id: string;
     contactType: OfferContactType;
     contactDate: string;
+    followUpUntil?: string | null;
     note?: string | null;
     createdAt?: string;
     createdBy?: string | null;

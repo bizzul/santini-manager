@@ -24,6 +24,9 @@ describe("lib/offers - getOfferFollowUpHighlightState", () => {
       hasRecentFollowUp: true,
       daysSinceFollowUp: 1,
       daysRemaining: OFFER_FOLLOW_UP_HIGHLIGHT_DAYS - 1,
+      followUpUntil: null,
+      followUpDeadlinePassedBy: 0,
+      isUsingCustomDeadline: false,
     });
   });
 
@@ -46,6 +49,9 @@ describe("lib/offers - getOfferFollowUpHighlightState", () => {
       hasRecentFollowUp: false,
       daysSinceFollowUp: null,
       daysRemaining: 0,
+      followUpUntil: null,
+      followUpDeadlinePassedBy: 0,
+      isUsingCustomDeadline: false,
     });
   });
 
@@ -68,6 +74,61 @@ describe("lib/offers - getOfferFollowUpHighlightState", () => {
       hasRecentFollowUp: false,
       daysSinceFollowUp: null,
       daysRemaining: 0,
+      followUpUntil: null,
+      followUpDeadlinePassedBy: 0,
+      isUsingCustomDeadline: false,
+    });
+  });
+
+  it("keeps offers green until the custom follow-up deadline", () => {
+    const result = getOfferFollowUpHighlightState(
+      {
+        offer_followups: [
+          {
+            id: "fu-1",
+            contactType: "call",
+            contactDate: "2026-04-02T09:00:00.000Z",
+            followUpUntil: "2026-04-10T09:00:00.000Z",
+            note: "Richiamare settimana prossima",
+          },
+        ],
+      },
+      new Date("2026-04-08T12:00:00.000Z"),
+    );
+
+    expect(result).toEqual({
+      hasRecentFollowUp: true,
+      daysSinceFollowUp: 6,
+      daysRemaining: 2,
+      followUpUntil: "2026-04-10T09:00:00.000Z",
+      followUpDeadlinePassedBy: 0,
+      isUsingCustomDeadline: true,
+    });
+  });
+
+  it("marks offers as expired after the custom follow-up deadline", () => {
+    const result = getOfferFollowUpHighlightState(
+      {
+        offer_followups: [
+          {
+            id: "fu-1",
+            contactType: "call",
+            contactDate: "2026-04-02T09:00:00.000Z",
+            followUpUntil: "2026-04-10T09:00:00.000Z",
+            note: "Richiamare settimana prossima",
+          },
+        ],
+      },
+      new Date("2026-04-12T12:00:00.000Z"),
+    );
+
+    expect(result).toEqual({
+      hasRecentFollowUp: false,
+      daysSinceFollowUp: 10,
+      daysRemaining: 0,
+      followUpUntil: "2026-04-10T09:00:00.000Z",
+      followUpDeadlinePassedBy: 2,
+      isUsingCustomDeadline: true,
     });
   });
 
@@ -107,5 +168,43 @@ describe("lib/offers - getOfferFollowUpHighlightState", () => {
 
     expect(orangePriority).toBeLessThan(greenPriority);
     expect(greenPriority).toBeLessThan(neutralPriority);
+  });
+
+  it("prioritizes offers with expired follow-up deadlines as actionable", () => {
+    const now = new Date("2026-04-12T12:00:00.000Z");
+
+    const expiredDeadlinePriority = getOfferTrattativaSortPriority(
+      {
+        sent_date: "2026-04-09T10:00:00.000Z",
+        offer_followups: [
+          {
+            id: "fu-1",
+            contactType: "call",
+            contactDate: "2026-04-02T09:00:00.000Z",
+            followUpUntil: "2026-04-10T09:00:00.000Z",
+            note: "Richiamare settimana prossima",
+          },
+        ],
+      },
+      now,
+    );
+
+    const activeDeadlinePriority = getOfferTrattativaSortPriority(
+      {
+        sent_date: "2026-04-09T10:00:00.000Z",
+        offer_followups: [
+          {
+            id: "fu-1",
+            contactType: "call",
+            contactDate: "2026-04-08T09:00:00.000Z",
+            followUpUntil: "2026-04-15T09:00:00.000Z",
+            note: "Richiamare settimana prossima",
+          },
+        ],
+      },
+      now,
+    );
+
+    expect(expiredDeadlinePriority).toBeLessThan(activeDeadlinePriority);
   });
 });

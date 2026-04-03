@@ -1,8 +1,6 @@
 import React from "react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getUserContext } from "@/lib/auth-utils";
-import { Button } from "@/components/ui/button";
 import {
   requireServerSiteContext,
   fetchTimetrackingData,
@@ -44,11 +42,6 @@ export default async function Page({
 
   return (
     <div className="container">
-      <div className="flex justify-end pt-12">
-        <Button asChild>
-          <Link href={`/sites/${domain}/timetracking/create`}>Apri consuntivi</Link>
-        </Button>
-      </div>
       <DataWrapper
         data={filteredTimetrackings}
         users={data.users}

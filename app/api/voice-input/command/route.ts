@@ -6,6 +6,14 @@ import { createClient } from "@/utils/supabase/server";
 import { getSiteAiConfig } from "@/lib/ai/get-site-ai-config";
 import { formatLocalDate } from "@/lib/utils";
 import {
+    analyzeVoiceCommandKeywords,
+    getVoiceCommandIntentLabel,
+    getVoiceCommandIntentLabels,
+    getVoiceCommandScreenContext,
+    SUPPORTED_VOICE_COMMAND_INTENTS,
+    type SupportedVoiceCommandIntent,
+} from "@/lib/voice-command-config";
+import {
     VoiceCommandExtractionSchema,
     VoiceCommandRequestSchema,
 } from "@/validation/voice-input/command";
@@ -50,6 +58,11 @@ type TaskRecord = {
     archived?: boolean | null;
 };
 
+type ProductCategoryRecord = {
+    id: number;
+    name?: string | null;
+};
+
 type RoleRecord = {
     id: number;
     name?: string | null;
@@ -69,6 +82,7 @@ Puoi riconoscere solo questi intenti:
 - create_project
 - create_offer
 - create_client
+- create_product
 - schedule_task
 - log_time
 - move_card
@@ -81,42 +95,52 @@ Regole:
 4. Riassunto summary: breve, in italiano, max 1 frase.
 5. Il modulo corrente aiuta a disambiguare:
    - clients -> preferisci create_client
+   - products -> preferisci create_product
    - calendar / calendar-installation / calendar-service -> preferisci schedule_task
    - timetracking -> preferisci log_time
    - kanban / projects / offerte -> preferisci create_project, create_offer, move_card
-6. Per create_project e create_offer estrai:
+6. Rispetta sempre gli intenti consentiti della schermata corrente.
+7. Se la trascrizione usa "sposta progetto", "sposta offerta" o "sposta lavoro", interpretala come move_card.
+8. Per create_project e create_offer estrai:
    - clientName, title, location, kanbanName, sellPrice, pieces, deliveryDate, notes
-7. Per create_client estrai:
+9. Per create_client estrai:
    - clientName
    - clientType: BUSINESS o INDIVIDUAL
    - address, city, zipCode, countryCode
    - email, phone
-8. Per schedule_task estrai:
+10. Per create_product estrai:
+   - productName
+   - productCategory
+   - productType
+   - notes come descrizione se presente
+   - priceList true se viene citato listino prezzi
+11. Per schedule_task estrai:
    - taskCode o cardTitle
    - deliveryDate
    - startTime e endTime in formato HH:mm se presenti
    - team: 1 o 2 se citata la squadra
    - notes
-9. Per log_time estrai:
+12. Per log_time estrai:
    - activityType: project o internal
    - taskCode o cardTitle se project
    - internalActivity se internal
    - roleName se citato il reparto
    - hours e minutes
    - notes
-10. Per move_card estrai:
+13. Per move_card estrai:
    - taskCode o cardTitle
    - targetColumnName
    - lossReason se serve
    - notes
-11. Mantieni null per i campi assenti.
+14. Mantieni null per i campi assenti.
 
 Esempi:
 - "crea offerta per Rossi serramenti a Lugano da 4500 franchi" -> create_offer
 - "crea cliente Bianchi SA via Roma 1 Lugano 6900 svizzera" -> create_client
+- "aggiungi prodotto armadio categoria cucine" -> create_product
 - "programma la card 26-044 il 15 aprile alle 08:00" -> schedule_task
 - "registra 2 ore sul progetto 26-011 reparto montaggio" -> log_time
-- "sposta la card 26-044-OFF in trattativa" -> move_card`;
+- "sposta il progetto 26-632 in inviata" -> move_card`;
 
 function createModelFromConfig(config: {
     provider: string;
@@ -139,19 +163,6 @@ function normalizeText(value?: string | null) {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, " ")
         .trim();
-}
-
-function inferModule(pathname?: string | null) {
-    if (!pathname) return "general";
-    if (pathname.includes("/clients")) return "clients";
-    if (pathname.includes("/calendar-service")) return "calendar-service";
-    if (pathname.includes("/calendar-installation")) return "calendar-installation";
-    if (pathname.includes("/calendar")) return "calendar";
-    if (pathname.includes("/timetracking")) return "timetracking";
-    if (pathname.includes("/offerte")) return "offerte";
-    if (pathname.includes("/projects")) return "projects";
-    if (pathname.includes("/kanban")) return "kanban";
-    return "general";
 }
 
 function getClientDisplayName(client: Partial<ClientRecord>) {
@@ -288,6 +299,17 @@ function buildClarificationResponse(payload: {
     });
 }
 
+function asSupportedIntentList(
+    intents?: readonly string[] | null
+): SupportedVoiceCommandIntent[] {
+    const supportedIntents = new Set(SUPPORTED_VOICE_COMMAND_INTENTS);
+
+    return (intents || []).filter(
+        (intent): intent is SupportedVoiceCommandIntent =>
+            supportedIntents.has(intent as SupportedVoiceCommandIntent)
+    );
+}
+
 function splitFullName(fullName: string) {
     const parts = fullName.trim().split(/\s+/).filter(Boolean);
     if (parts.length <= 1) {
@@ -328,8 +350,17 @@ export async function POST(request: NextRequest) {
         }
 
         const { transcript, siteId, context } = validationResult.data;
-        const currentModule =
-            context.currentModule || inferModule(context.pathname);
+        const screenContext = getVoiceCommandScreenContext(context.pathname);
+        const currentModule = context.currentModule || screenContext.module;
+        const allowedIntents =
+            asSupportedIntentList(context.allowedIntents) ||
+            screenContext.allowedIntents;
+        const effectiveAllowedIntents =
+            allowedIntents.length > 0 ? allowedIntents : screenContext.allowedIntents;
+        const keywordAnalysis = analyzeVoiceCommandKeywords(
+            transcript,
+            effectiveAllowedIntents
+        );
         const aiConfig = await getSiteAiConfig(siteId);
 
         if (!aiConfig.apiKey) {
@@ -350,14 +381,30 @@ export async function POST(request: NextRequest) {
         });
 
         const today = formatLocalDate(new Date());
+        const keywordCoverageSummary = keywordAnalysis.coverage
+            .map((entry) =>
+                `${getVoiceCommandIntentLabel(entry.intent)}: ${
+                    entry.matched
+                        ? "keyword minime presenti"
+                        : `mancano ${entry.missingLabels.join(", ")}`
+                }`
+            )
+            .join("\n");
         const { object: command } = await generateObject({
             model,
             schema: VoiceCommandExtractionSchema,
             system: SYSTEM_PROMPT,
             prompt: `Data odierna: ${today}
 Percorso corrente: ${context.pathname || "sconosciuto"}
+Schermata corrente: ${screenContext.label}
 Modulo corrente: ${currentModule}
 Kanban corrente: ${context.currentKanbanId || "nessuna"}
+Intenti consentiti: ${effectiveAllowedIntents.join(", ")}
+Intenti suggeriti dalle keyword: ${
+                keywordAnalysis.recognizedIntents.join(", ") || "nessuno"
+            }
+Copertura keyword:
+${keywordCoverageSummary || "nessuna"}
 
 Trascrizione:
 ---
@@ -367,19 +414,40 @@ ${transcript}
 Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
         });
 
+        if (
+            command.intent !== "unknown" &&
+            !effectiveAllowedIntents.includes(command.intent)
+        ) {
+            return buildClarificationResponse({
+                intent: command.intent,
+                summary: command.summary,
+                message: `In questa schermata posso solo ${getVoiceCommandIntentLabels(
+                    effectiveAllowedIntents
+                ).join(", ")}.`,
+                question: `Vuoi riformulare il comando per ${getVoiceCommandIntentLabels(
+                    effectiveAllowedIntents
+                ).join(", ")}?`,
+                examples: screenContext.examples,
+            });
+        }
+
         if (command.intent === "unknown") {
             return buildClarificationResponse({
                 intent: command.intent,
                 summary: command.summary,
                 message:
-                    "Non ho riconosciuto un'azione supportata. Prova con crea cliente, crea progetto, crea offerta, pianifica task, registra ore o sposta card.",
+                    effectiveAllowedIntents.length > 0
+                        ? `Non ho riconosciuto un'azione supportata in questa schermata. Posso aiutarti a ${getVoiceCommandIntentLabels(
+                              effectiveAllowedIntents
+                          ).join(", ")}.`
+                        : "Non ho riconosciuto un'azione supportata.",
                 question:
-                    "Vuoi creare un cliente, creare un progetto, creare un'offerta, pianificare un task, registrare ore o spostare una card?",
-                examples: [
-                    "Crea cliente Bianchi SA in via Roma 1 Lugano 6900 Svizzera",
-                    "Pianifica la card 26-044 il 15 aprile alle 08:00",
-                    "Registra 2 ore sul progetto 26-011 reparto montaggio",
-                ],
+                    effectiveAllowedIntents.length > 0
+                        ? `Vuoi ${getVoiceCommandIntentLabels(
+                              effectiveAllowedIntents
+                          ).join(", ")}?`
+                        : "Puoi riformulare il comando in modo piu' specifico?",
+                examples: screenContext.examples,
             });
         }
 
@@ -493,6 +561,34 @@ Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
 
                       return [task.unique_code, task.title, task.name, clientName];
                   });
+        };
+
+        const resolveProductCategory = async (
+            requestedCategory?: string | null
+        ): Promise<MatchResult<ProductCategoryRecord>> => {
+            const categoriesResult = await supabase
+                .from("sellproduct_categories")
+                .select("id, name")
+                .eq("site_id", siteId)
+                .order("name", { ascending: true });
+
+            if (categoriesResult.error) {
+                throw new Error("Errore nel recupero delle categorie prodotto");
+            }
+
+            const categories = (categoriesResult.data || []) as ProductCategoryRecord[];
+
+            if (categories.length === 0) {
+                return { match: null, ambiguous: false };
+            }
+
+            if (!requestedCategory && categories.length === 1) {
+                return { match: categories[0], ambiguous: false };
+            }
+
+            return pickBestMatch(categories, requestedCategory, (category) => [
+                category.name,
+            ]);
         };
 
         if (command.intent === "create_offer") {
@@ -694,6 +790,97 @@ Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
                     ? null
                     : {
                           endpoint: "/api/kanban/tasks/create",
+                          method: "POST",
+                          body: operationBody,
+                      },
+            });
+        }
+
+        if (command.intent === "create_product") {
+            const productName = command.data.productName || command.data.title;
+            if (!productName) {
+                return buildClarificationResponse({
+                    intent: command.intent,
+                    summary: command.summary,
+                    message:
+                        "Per aggiungere un prodotto mi serve almeno il nome dell'articolo.",
+                    question: "Qual e' il nome del prodotto da creare?",
+                    missingFields: ["productName"],
+                    examples: [
+                        "Aggiungi prodotto armadio categoria cucine",
+                        "Crea articolo tavolo rovere categoria soggiorno",
+                    ],
+                });
+            }
+
+            const categoryResult = await resolveProductCategory(
+                command.data.productCategory
+            );
+
+            if (categoryResult.ambiguous) {
+                return buildClarificationResponse({
+                    intent: command.intent,
+                    summary: command.summary,
+                    message:
+                        "Ho trovato piu' categorie prodotto compatibili. Specifica meglio la categoria.",
+                    question: "In quale categoria vuoi inserire il prodotto?",
+                    missingFields: ["productCategory"],
+                });
+            }
+
+            if (!categoryResult.match) {
+                return buildClarificationResponse({
+                    intent: command.intent,
+                    summary: command.summary,
+                    message:
+                        "Per creare il prodotto mi serve una categoria esistente.",
+                    question: "Qual e' la categoria prodotto corretta?",
+                    missingFields: ["productCategory"],
+                    examples: [
+                        "Categoria cucine",
+                        "Categoria soggiorno",
+                    ],
+                });
+            }
+
+            const operationBody = {
+                category: categoryResult.match.name || "",
+                name: productName,
+                type: command.data.productType || "",
+                description: command.data.notes || "",
+                price_list: command.data.priceList ?? false,
+                image_url: "",
+                doc_url: "",
+                active: true,
+            };
+
+            return buildResponse({
+                status: command.needsClarification ? "needs_clarification" : "ready",
+                intent: command.intent,
+                summary: command.summary,
+                preview: {
+                    productName: operationBody.name,
+                    category: operationBody.category,
+                    type: operationBody.type || null,
+                    priceList: operationBody.price_list ? "si" : "no",
+                },
+                message: command.needsClarification
+                    ? "Il comando e' stato capito solo in parte. Verifica nome e categoria del prodotto."
+                    : undefined,
+                clarification: command.needsClarification
+                    ? buildClarification(
+                          "Vuoi aggiungere sottocategoria o descrizione del prodotto?",
+                          ["productType", "notes"],
+                          [
+                              "Sottocategoria armadi su misura",
+                              "Descrizione finitura rovere naturale",
+                          ]
+                      )
+                    : null,
+                operation: command.needsClarification
+                    ? null
+                    : {
+                          endpoint: "/api/sell-products",
                           method: "POST",
                           body: operationBody,
                       },

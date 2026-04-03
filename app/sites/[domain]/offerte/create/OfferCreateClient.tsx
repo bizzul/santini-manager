@@ -12,6 +12,7 @@ interface OfferCreateClientProps {
   domain: string;
   siteId: string;
   kanbanId: number | null;
+  kanbanIdentifier?: string | null;
   clients: Client[];
   products: SellProduct[];
   draftTask?: Task | null;
@@ -22,6 +23,7 @@ export default function OfferCreateClient({
   domain,
   siteId,
   kanbanId,
+  kanbanIdentifier,
   clients,
   products,
   draftTask,
@@ -96,7 +98,11 @@ export default function OfferCreateClient({
       }
 
       // Redirect back to kanban
-      router.push(`/sites/${domain}/kanban?kanbanId=${kanbanId}`);
+      if (kanbanIdentifier) {
+        router.push(`/sites/${domain}/kanban?name=${kanbanIdentifier}`);
+      } else {
+        router.push(`/sites/${domain}/kanban`);
+      }
     } catch (error) {
       console.error("Error with offer:", error);
       toast({

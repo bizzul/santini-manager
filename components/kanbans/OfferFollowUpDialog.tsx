@@ -77,6 +77,18 @@ interface OfferFollowUpDialogProps {
   onTaskUpdated?: (task: Task) => void;
 }
 
+function toStoredCalendarISOString(value: Date): string {
+  const normalized = new Date(value);
+  normalized.setHours(12, 0, 0, 0);
+  return normalized.toISOString();
+}
+
+function getStartOfDay(value: Date): Date {
+  const normalized = new Date(value);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+}
+
 export default function OfferFollowUpDialog({
   open,
   onOpenChange,
@@ -92,6 +104,7 @@ export default function OfferFollowUpDialog({
   const [contactDate, setContactDate] = useState<Date>(new Date());
   const [contactType, setContactType] = useState<OfferContactType>("call");
   const [note, setNote] = useState("");
+  const [followUpUntil, setFollowUpUntil] = useState<Date | undefined>();
   const [selectedColumnId, setSelectedColumnId] = useState<string>("");
   const [existingFollowUps, setExistingFollowUps] = useState<OfferFollowUpEntry[]>([]);
 
@@ -169,6 +182,7 @@ export default function OfferFollowUpDialog({
       setContactDate(new Date());
       setContactType("call");
       setNote("");
+      setFollowUpUntil(undefined);
       setSelectedColumnId("");
       setExistingFollowUps(normalizeOfferFollowUps(task));
     }
@@ -192,15 +206,35 @@ export default function OfferFollowUpDialog({
       (col) => col.id.toString() === selectedColumnId
     );
 
+    const normalizedContactDate = getStartOfDay(contactDate);
+    const normalizedFollowUpUntil = followUpUntil ? getStartOfDay(followUpUntil) : null;
+    if (
+      normalizedFollowUpUntil &&
+      normalizedFollowUpUntil.getTime() < normalizedContactDate.getTime()
+    ) {
+      toast({
+        variant: "destructive",
+        title: "Data non valida",
+        description:
+          "La data entro cui ricontattare il cliente non puo essere precedente alla data del contatto",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const trimmedNote = note.trim();
+      const followUpUntilLabel = followUpUntil
+        ? format(followUpUntil, "dd/MM/yyyy", {
+            locale: it,
+          })
+        : null;
       const fullNote = `[${format(contactDate, "dd/MM/yyyy", {
         locale: it,
       })}] ${OFFER_CONTACT_TYPE_LABELS[contactType]}${
         trimmedNote ? `: ${trimmedNote}` : ""
-      }`;
+      }${followUpUntilLabel ? ` | Ricontattare entro ${followUpUntilLabel}` : ""}`;
 
       const headers: HeadersInit = {
         "Content-Type": "application/json",
@@ -214,8 +248,12 @@ export default function OfferFollowUpDialog({
         headers,
         body: JSON.stringify({
           note: fullNote,
+          followUpNote: trimmedNote,
           contactType,
-          contactDate: contactDate.toISOString(),
+          contactDate: toStoredCalendarISOString(contactDate),
+          followUpUntil: followUpUntil
+            ? toStoredCalendarISOString(followUpUntil)
+            : null,
         }),
       });
 
@@ -260,6 +298,7 @@ export default function OfferFollowUpDialog({
       setContactDate(new Date());
       setContactType("call");
       setNote("");
+      setFollowUpUntil(undefined);
     } catch (error) {
       console.error("Error in follow-up:", error);
       toast({
@@ -508,6 +547,53 @@ export default function OfferFollowUpDialog({
               />
             </div>
 
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Ricontattare entro</Label>
+                {followUpUntil && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFollowUpUntil(undefined)}
+                    className="h-auto px-2 py-1 text-xs"
+                  >
+                    Rimuovi
+                  </Button>
+                )}
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !followUpUntil && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {followUpUntil ? (
+                      format(followUpUntil, "PPP", { locale: it })
+                    ) : (
+                      <span>Seleziona data di ricontatto</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={followUpUntil}
+                    onSelect={setFollowUpUntil}
+                    disabled={(date) =>
+                      getStartOfDay(date).getTime() <
+                      getStartOfDay(contactDate).getTime()
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
             {/* Destination Column */}
             <div className="space-y-2">
               <Label>Sposta in</Label>
@@ -591,15 +677,34 @@ export default function OfferFollowUpDialog({
               {existingFollowUps.map((entry) => (
                 <div
                   key={entry.id}
-                  className="grid grid-cols-[150px_120px_minmax(0,1fr)] gap-3 rounded-lg border bg-muted/20 p-3 text-sm"
+                  className="grid gap-3 rounded-lg border bg-muted/20 p-3 text-sm md:grid-cols-[120px_120px_150px_minmax(0,1fr)]"
                 >
-                  <div className="font-medium">
-                    {DateManager.formatEUDate(entry.contactDate)}
+                  <div>
+                    <div className="text-xs text-muted-foreground">Contatto</div>
+                    <div className="font-medium">
+                      {DateManager.formatEUDate(entry.contactDate)}
+                    </div>
                   </div>
-                  <div className="text-muted-foreground">
-                    {OFFER_CONTACT_TYPE_LABELS[entry.contactType]}
+                  <div>
+                    <div className="text-xs text-muted-foreground">Tipo</div>
+                    <div className="text-muted-foreground">
+                      {OFFER_CONTACT_TYPE_LABELS[entry.contactType]}
+                    </div>
                   </div>
-                  <div className="truncate">{entry.note || "-"}</div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">
+                      Ricontattare entro
+                    </div>
+                    <div className={cn(entry.followUpUntil ? "font-medium" : "text-muted-foreground")}>
+                      {entry.followUpUntil
+                        ? DateManager.formatEUDate(entry.followUpUntil)
+                        : "-"}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs text-muted-foreground">Nota</div>
+                    <div className="truncate">{entry.note || "-"}</div>
+                  </div>
                 </div>
               ))}
             </div>

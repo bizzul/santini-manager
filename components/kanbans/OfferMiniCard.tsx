@@ -57,7 +57,7 @@ export default function OfferMiniCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
-  // Orange after 7 days from send date, unless a recent follow-up keeps it green.
+  // Orange after 7 days from send date, unless an active follow-up keeps it green.
   const { isOverdue, daysSinceSent } = useMemo(() => {
     const sentDate = data.sent_date || data.sentDate;
     if (!sentDate) {
@@ -75,7 +75,14 @@ export default function OfferMiniCard({
     };
   }, [data.sent_date, data.sentDate]);
 
-  const { hasRecentFollowUp, daysSinceFollowUp } = useMemo(
+  const {
+    hasRecentFollowUp,
+    daysSinceFollowUp,
+    daysRemaining,
+    followUpUntil,
+    followUpDeadlinePassedBy,
+    isUsingCustomDeadline,
+  } = useMemo(
     () => getOfferFollowUpHighlightState(data),
     [data],
   );
@@ -127,6 +134,14 @@ export default function OfferMiniCard({
     return details.join(" · ") || "-";
   }, [data.name, data.luogo]);
 
+  const followUpBadgeLabel = useMemo(() => {
+    if (!followUpUntil) {
+      return null;
+    }
+
+    return `Ricontatto ${DateManager.formatEUDate(followUpUntil)}`;
+  }, [followUpUntil]);
+
   // Priorità a numero_pezzi, altrimenti conta le posizioni riempite
   const piecesOrPositions = useMemo(() => {
     // Se numero_pezzi è definito, usa quello
@@ -141,10 +156,10 @@ export default function OfferMiniCard({
 
   // Background class based on overdue status
   const getBackgroundClass = () => {
-    if (isOverdue && hasRecentFollowUp) {
+    if (hasRecentFollowUp) {
       return "bg-green-600 dark:bg-green-700";
     }
-    if (isOverdue) {
+    if (isOverdue || followUpDeadlinePassedBy > 0) {
       return "bg-orange-500 dark:bg-orange-600";
     }
     return "bg-slate-600 dark:bg-slate-700";
@@ -161,13 +176,33 @@ export default function OfferMiniCard({
   };
 
   const statusMeta = useMemo(() => {
-    if (isOverdue && hasRecentFollowUp && daysSinceFollowUp !== null) {
+    if (hasRecentFollowUp && isUsingCustomDeadline && followUpUntil) {
+      return {
+        className: "text-green-100",
+        label:
+          daysRemaining === 0
+            ? "Ricontatta oggi"
+            : `Ricontatta entro ${DateManager.formatEUDate(followUpUntil)}`,
+      };
+    }
+
+    if (hasRecentFollowUp && daysSinceFollowUp !== null) {
       return {
         className: "text-green-100",
         label:
           daysSinceFollowUp === 0
             ? "Contattato oggi"
             : `Contattato ${daysSinceFollowUp} giorni fa`,
+      };
+    }
+
+    if (followUpDeadlinePassedBy > 0) {
+      return {
+        className: "text-orange-100",
+        label:
+          followUpDeadlinePassedBy === 1
+            ? "Ricontatto scaduto ieri"
+            : `Ricontatto scaduto da ${followUpDeadlinePassedBy} giorni`,
       };
     }
 
@@ -180,7 +215,7 @@ export default function OfferMiniCard({
 
     if (isOverdue) {
       return {
-        className: "text-white",
+        className: "text-orange-100",
         label: `Da ${daysSinceSent} giorni`,
       };
     }
@@ -192,7 +227,16 @@ export default function OfferMiniCard({
           ? "Inviata oggi"
           : `Inviata da ${daysSinceSent} giorni`,
     };
-  }, [daysSinceFollowUp, daysSinceSent, hasRecentFollowUp, isOverdue]);
+  }, [
+    daysRemaining,
+    daysSinceFollowUp,
+    daysSinceSent,
+    followUpDeadlinePassedBy,
+    followUpUntil,
+    hasRecentFollowUp,
+    isOverdue,
+    isUsingCustomDeadline,
+  ]);
 
   async function handleArchive() {
     setIsArchiving(true);
@@ -297,7 +341,7 @@ export default function OfferMiniCard({
             transition-all duration-200
           `}
         >
-          <div className="flex h-[122px] flex-col">
+          <div className="flex min-h-[122px] flex-col">
             <div className="px-2 pt-2 pb-1 flex-1">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -326,6 +370,14 @@ export default function OfferMiniCard({
                   </>
                 )}
               </div>
+
+              {followUpBadgeLabel && (
+                <div className="mb-1">
+                  <span className="inline-flex max-w-full items-center rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-medium text-white/95 ring-1 ring-white/20">
+                    <span className="truncate">{followUpBadgeLabel}</span>
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center gap-1.5 text-xs">
                 <span className="text-white/85">

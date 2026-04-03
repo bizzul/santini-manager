@@ -51,6 +51,8 @@ import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.acti
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { Input } from "../ui/input";
+import { Checkbox } from "../ui/checkbox";
+import { Label } from "../ui/label";
 import {
   Select,
   SelectContent,
@@ -62,6 +64,43 @@ import {
   getOfferTrattativaSortPriority,
   OFFER_LOSS_REASON_OPTIONS,
 } from "@/lib/offers";
+
+const getTaskCategoryIds = (task: any): number[] => {
+  const ids = new Set<number>();
+  const sellProduct = task?.sellProduct || task?.SellProduct;
+  const rawCategory = sellProduct?.category;
+  const categories = Array.isArray(rawCategory)
+    ? rawCategory
+    : rawCategory
+      ? [rawCategory]
+      : [];
+
+  categories.forEach((category: any) => {
+    const categoryId = Number(category?.id);
+    if (Number.isFinite(categoryId)) {
+      ids.add(categoryId);
+    }
+  });
+
+  const directCategoryId = Number(
+    sellProduct?.category_id ?? sellProduct?.categoryId
+  );
+  if (Number.isFinite(directCategoryId)) {
+    ids.add(directCategoryId);
+  }
+
+  const draftCategoryIds = task?.draft_category_ids || task?.draftCategoryIds;
+  if (Array.isArray(draftCategoryIds)) {
+    draftCategoryIds.forEach((categoryId: any) => {
+      const normalizedCategoryId = Number(categoryId);
+      if (Number.isFinite(normalizedCategoryId)) {
+        ids.add(normalizedCategoryId);
+      }
+    });
+  }
+
+  return Array.from(ids);
+};
 
 const Column = ({
   column,
@@ -210,7 +249,7 @@ const Column = ({
   // Sort function based on column type
   const sortCards = (cardsToSort: any[]) => {
     return [...cardsToSort].sort((a: any, b: any) => {
-      // For "Trattativa": actionable overdue offers first, then recently contacted ones.
+      // For "Trattativa": actionable offers first, then active follow-ups.
       if (isTrattativaColumn) {
         const priorityDiff =
           getOfferTrattativaSortPriority(a) - getOfferTrattativaSortPriority(b);
@@ -442,11 +481,14 @@ function KanbanBoard({
 }: KanbanBoardTypes) {
   const router = useRouter();
   const { siteId } = useSiteId(domain);
+  const safeCategories = Array.isArray(categories) ? categories : [];
 
   const [tasks, setTasks] = useState(() => {
     // Ensure initialTasks is always an array
     return Array.isArray(initialTasks) ? initialTasks : [];
   });
+  const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
+  const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
 
   // Sync tasks state when kanban changes (e.g., user clicks on a different kanban)
   // This is needed because useState only uses the initial value on first render
@@ -824,6 +866,44 @@ function KanbanBoard({
   >([]);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
   const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false);
+  const isSomeCategoriesSelected =
+    selectedCategories.length > 0 && !allCategoriesSelected;
+
+  const handleCategoryToggle = useCallback((categoryId: number) => {
+    setAllCategoriesSelected(false);
+    setSelectedCategories((prev) => {
+      if (prev.includes(categoryId)) {
+        return prev.filter((id) => id !== categoryId);
+      }
+
+      return [...prev, categoryId];
+    });
+  }, []);
+
+  const handleSelectAllCategories = useCallback(
+    (checked: boolean) => {
+      setAllCategoriesSelected(checked);
+      setSelectedCategories(checked ? [] : safeCategories.map((cat) => cat.id));
+    },
+    [safeCategories]
+  );
+
+  const filteredTasks = Array.isArray(tasks)
+    ? tasks.filter((task: any) => {
+        if (allCategoriesSelected) {
+          return true;
+        }
+
+        if (selectedCategories.length === 0) {
+          return false;
+        }
+
+        const taskCategoryIds = getTaskCategoryIds(task);
+        return taskCategoryIds.some((categoryId) =>
+          selectedCategories.includes(categoryId)
+        );
+      })
+    : [];
 
   useEffect(() => {
     setSnapshots([]);
@@ -1193,6 +1273,64 @@ function KanbanBoard({
                 </h4>
               </div>
             </div>
+            {safeCategories.length > 0 && (
+              <div className="mt-4 rounded-lg border bg-background/80 px-4 py-3 shadow-sm">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="text-sm font-medium">Categoria:</span>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="all-project-types"
+                        checked={
+                          isSomeCategoriesSelected
+                            ? "indeterminate"
+                            : allCategoriesSelected
+                        }
+                        onCheckedChange={(checked) =>
+                          handleSelectAllCategories(checked === true)
+                        }
+                      />
+                      <Label
+                        htmlFor="all-project-types"
+                        className="cursor-pointer text-sm font-normal"
+                      >
+                        Tutte le categorie
+                      </Label>
+                    </div>
+                    {safeCategories.map((category) => {
+                      const isSelected = selectedCategories.includes(category.id);
+
+                      return (
+                        <div
+                          key={category.id}
+                          className="flex items-center space-x-2"
+                        >
+                          <Checkbox
+                            id={`project-type-${category.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              handleCategoryToggle(category.id)
+                            }
+                          />
+                          <Label
+                            htmlFor={`project-type-${category.id}`}
+                            className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+                          >
+                            {category.color && (
+                              <span
+                                className="h-3 w-3 shrink-0 rounded-full"
+                                style={{ backgroundColor: category.color }}
+                              />
+                            )}
+                            {category.name}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
             {isTimelineOpen && (
               <div className="max-w-[1000px] mx-auto mt-2">
                 {isLoadingSnapshots ? (
@@ -1224,8 +1362,8 @@ function KanbanBoard({
                 .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
                 .map((column: KanbanColumn) => {
                   // Ensure tasks is an array before filtering
-                  const columnCards = Array.isArray(tasks)
-                    ? tasks.filter(
+                  const columnCards = Array.isArray(filteredTasks)
+                    ? filteredTasks.filter(
                         (task: Task) =>
                           //@ts-ignore
                           task?.column?.identifier === column.identifier &&

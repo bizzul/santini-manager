@@ -29,7 +29,6 @@ import {
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import {
     buildAttendanceCalendarItems,
-    buildTimetrackingCalendarItems,
 } from "@/components/calendar/calendar-utils";
 
 interface AttendanceGridProps {
@@ -179,11 +178,10 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
     const users: AttendanceUser[] = attendanceData?.users || [];
     const attendance: Record<string, Record<string, AttendanceEntry>> =
         attendanceData?.attendance || {};
-    const timetrackingEntries = attendanceData?.timetrackingEntries || [];
     const leaveRequests: LeaveRequest[] = leaveData?.requests || [];
 
     const weeklyItems = useMemo(() => {
-        const attendanceItems = buildAttendanceCalendarItems(
+        return buildAttendanceCalendarItems(
             users.flatMap((user) =>
                 Object.entries(attendance[user.id] || {}).flatMap(([date, entry]) => {
                     if (entry.status === "presente" && entry.autoDetected) {
@@ -203,14 +201,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                 })
             )
         );
-
-        const hoursItems = buildTimetrackingCalendarItems(
-            timetrackingEntries,
-            domain
-        );
-
-        return [...attendanceItems, ...hoursItems];
-    }, [attendance, domain, timetrackingEntries, users]);
+    }, [attendance, users]);
 
     const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i);
 
@@ -323,9 +314,9 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                                     ? undefined
                                     : { weekdayMinutes: 540, fridayMinutes: 360 }
                             }
-                            title="Planner presenze e ore"
-                            description="Vista settimanale unificata tra presenze, assenze e ore registrate."
-                            emptyStateTitle="Nessuna presenza o registrazione trovata"
+                            title="Planner presenze"
+                            description="Vista settimanale di presenze e assenze."
+                            emptyStateTitle="Nessuna presenza trovata"
                             emptyStateDescription="Cambia periodo o aggiorna i filtri per analizzare la settimana."
                         />
                     ) : view === "monthly" ? (

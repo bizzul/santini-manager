@@ -9,8 +9,6 @@ import { Calendar, CalendarDays, TableProperties } from "lucide-react";
 import { MonthlyCalendarView } from "@/components/calendar/MonthlyCalendarView";
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
-import type { WeeklyCalendarTimetrackingEntry } from "@/components/calendar/weekly-calendar-types";
-import { TimetrackingInstructionsCard } from "@/components/timeTracking/timetracking-instructions";
 
 interface InternalActivity {
   id: string;
@@ -41,9 +39,9 @@ const DataWrapper = ({
   mode = "admin",
   currentUserId,
 }: DataWrapperProps) => {
-  const [activeView, setActiveView] = useState<"week" | "month" | "table">("week");
+  const [activeView, setActiveView] = useState<"week" | "month" | "table">("table");
   const columns = useMemo(
-    () => createColumns(domain, internalActivities, tasks, mode === "admin"),
+    () => createColumns(domain, internalActivities, tasks, false),
     [domain, internalActivities, mode, tasks]
   );
   const activityLabels = useMemo(
@@ -76,14 +74,6 @@ const DataWrapper = ({
             Tabella
           </TabsTrigger>
         </TabsList>
-
-        <TimetrackingInstructionsCard
-          view={activeView}
-          mode={mode}
-          entryCount={data.length}
-          userCount={users.length}
-        />
-
         <TabsContent value="week" className="mt-0">
           <WeeklyCalendarView
             items={calendarItems}
@@ -96,18 +86,8 @@ const DataWrapper = ({
                 ? { weekdayMinutes: 540, fridayMinutes: 360 }
                 : undefined
             }
-            timetrackingEditConfig={
-              mode === "admin"
-                ? {
-                    entries: data as WeeklyCalendarTimetrackingEntry[],
-                    users,
-                    roles,
-                    tasks,
-                  }
-                : undefined
-            }
             title="Calendario ore"
-            description="Vista settimanale delle ore registrate con filtri, conflitti, riepiloghi e modifica rapida per gli amministratori."
+            description="Vista settimanale delle ore registrate in sola consultazione."
             emptyStateTitle="Nessuna registrazione ore nella settimana selezionata"
           />
         </TabsContent>
@@ -118,19 +98,9 @@ const DataWrapper = ({
             mode={mode}
             currentUserId={currentUserId}
             title="Calendario ore"
-            description="Vista mensile delle ore registrate con filtri, riepilogo per giorno e accesso rapido alla modifica."
+            description="Vista mensile delle ore registrate in sola consultazione."
             emptyStateTitle="Nessuna registrazione ore nel mese selezionato"
-            emptyStateDescription="Le registrazioni compariranno qui appena ci saranno ore pianificate o consuntivate."
-            timetrackingEditConfig={
-              mode === "admin"
-                ? {
-                    entries: data as WeeklyCalendarTimetrackingEntry[],
-                    users,
-                    roles,
-                    tasks,
-                  }
-                : undefined
-            }
+            emptyStateDescription="Le registrazioni compariranno qui appena verranno salvate."
           />
         </TabsContent>
 
@@ -144,6 +114,7 @@ const DataWrapper = ({
             domain={domain}
             internalActivities={internalActivities}
             mode={mode}
+            readOnly
           />
         </TabsContent>
       </Tabs>

@@ -479,6 +479,7 @@ export function buildProjectCalendarItems(
       linkType: "project",
       detailHref: `/sites/${domain}/progetti/${task.id}`,
       secondaryHref: `/sites/${domain}/projects?edit=${task.id}`,
+      timeTrackingHref: `/sites/${domain}/timetracking/create?taskId=${task.id}`,
       sourceMode: "planned",
       scheduleDisplay,
       notes: task.other || null,

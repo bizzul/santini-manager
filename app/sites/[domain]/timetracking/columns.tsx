@@ -437,8 +437,7 @@ export const createColumns = (
   const handleTimetrackingEdit = createTimetrackingEditHandler(domain);
   const handleTimetrackingUpdate = createTimetrackingUpdateHandler(domain);
 
-  return [
-    {
+  const selectionColumn: ColumnDef<TimetrackingRow> = {
       id: "select",
       header: ({ table }) => (
         <div
@@ -505,7 +504,9 @@ export const createColumns = (
       ),
       enableSorting: false,
       enableHiding: false,
-    },
+    };
+
+  const baseColumns: ColumnDef<TimetrackingRow>[] = [
     {
       accessorKey: "user",
       accessorFn: (row) =>
@@ -647,6 +648,15 @@ export const createColumns = (
         />
       ),
     },
+  ];
+
+  if (!editable) {
+    return baseColumns;
+  }
+
+  return [
+    selectionColumn,
+    ...baseColumns,
     {
       id: "actions",
       header: "Azioni",

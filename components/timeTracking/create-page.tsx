@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "../ui/use-toast";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
@@ -48,7 +49,6 @@ import { VoiceInputButton } from "./VoiceInputButton";
 import { LeaveRequestForm } from "@/components/attendance/LeaveRequestForm";
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
-import { TimetrackingInstructionsCard } from "./timetracking-instructions";
 
 // Internal activity type from database
 export interface InternalActivity {
@@ -170,9 +170,14 @@ const CreatePage = ({
   siteId?: string;
   isAttendanceModuleEnabled?: boolean;
 }) => {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("create");
   const rolesOptions = data.roles;
   const todayEntries = data.todayEntries || [];
+  const prefilledTaskId = searchParams.get("taskId");
+  const prefilledTask =
+    data.tasks.find((task) => task.id.toString() === prefilledTaskId) || null;
+  const isProjectLocked = Boolean(prefilledTask);
 
   // Create a lookup map for activity labels
   const activityLabels = new Map(
@@ -261,8 +266,8 @@ const CreatePage = ({
 
   const createEmptyRow = useCallback(
     (): TimeRow => ({
-      task: "",
-      taskLabel: "",
+      task: prefilledTask?.unique_code || "",
+      taskLabel: prefilledTask ? getProjectLabel(prefilledTask) : "",
       start: "",
       end: "",
       hours: "",
@@ -275,7 +280,7 @@ const CreatePage = ({
       lunchOffsite: false,
       lunchLocation: "",
     }),
-    [session.user.id]
+    [isProjectLocked, prefilledTask, session.user.id]
   );
 
   const [rows, setRows] = useState<TimeRow[]>([createEmptyRow()]);
@@ -306,6 +311,11 @@ const CreatePage = ({
 
   // Load from localStorage on mount
   useEffect(() => {
+    if (isProjectLocked) {
+      setRows([createEmptyRow()]);
+      return;
+    }
+
     const storedData = localStorage.getItem(`timetracking-${session.user.id}`);
     if (storedData) {
       try {
@@ -322,7 +332,13 @@ const CreatePage = ({
         // Invalid data, start fresh
       }
     }
-  }, [session.user.id]);
+  }, [createEmptyRow, isProjectLocked, session.user.id]);
+
+  useEffect(() => {
+    if (isProjectLocked) {
+      setActiveTab("create");
+    }
+  }, [isProjectLocked]);
 
   // Calculate totals (including both new entries and saved entries)
   const calculateTotals = useCallback(() => {
@@ -361,51 +377,6 @@ const CreatePage = ({
 
   const totals = calculateTotals();
 
-  const currentInstructionRow = useMemo(() => {
-    return (
-      rows.find((row) => {
-        const hasSelectedActivity =
-          row.activityType === "project" ? Boolean(row.task) : Boolean(row.internalActivity);
-        const hasRequiredRole =
-          row.activityType === "project"
-            ? Boolean(row.roles && Object.keys(row.roles).length > 0)
-            : true;
-        const hasTrackedTime =
-          (parseInt(row.hours || "0", 10) || 0) > 0 ||
-          (parseInt(row.minutes || "0", 10) || 0) > 0;
-        const hasLunchLocation = !row.lunchOffsite || Boolean(row.lunchLocation.trim());
-
-        return !(hasSelectedActivity && hasRequiredRole && hasTrackedTime && hasLunchLocation);
-      }) ??
-      rows[rows.length - 1] ??
-      null
-    );
-  }, [rows]);
-
-  const currentInstructionRowSnapshot = currentInstructionRow
-    ? {
-        activityType: currentInstructionRow.activityType,
-        label:
-          currentInstructionRow.activityType === "project"
-            ? currentInstructionRow.taskLabel || currentInstructionRow.task
-            : activityLabels.get(currentInstructionRow.internalActivity || "") ||
-              currentInstructionRow.internalActivity ||
-              "",
-        hasProject: Boolean(currentInstructionRow.task),
-        hasRole: Boolean(
-          currentInstructionRow.roles &&
-            Object.keys(currentInstructionRow.roles).length > 0
-        ),
-        hasInternalActivity: Boolean(currentInstructionRow.internalActivity),
-        hasTime:
-          (parseInt(currentInstructionRow.hours || "0", 10) || 0) > 0 ||
-          (parseInt(currentInstructionRow.minutes || "0", 10) || 0) > 0,
-        hasComment: Boolean(currentInstructionRow.description.trim()),
-        lunchOffsite: currentInstructionRow.lunchOffsite,
-        hasLunchLocation: Boolean(currentInstructionRow.lunchLocation.trim()),
-      }
-    : null;
-
   // Get completed entries (rows with task or internal activity filled)
   const completedEntries = rows.filter((row) =>
     row.activityType === "project" ? row.task : row.internalActivity
@@ -422,6 +393,10 @@ const CreatePage = ({
 
   // Handle task selection for a row
   const handleTaskChange = (value: string, index: number) => {
+    if (isProjectLocked) {
+      return;
+    }
+
     const selectedTask = data.tasks.find((t) => t.id.toString() === value);
     if (selectedTask) {
       const updatedRows = [...rows];
@@ -440,6 +415,10 @@ const CreatePage = ({
     value: "project" | "internal",
     index: number
   ) => {
+    if (isProjectLocked) {
+      return;
+    }
+
     const updatedRows = [...rows];
     updatedRows[index] = {
       ...updatedRows[index],
@@ -552,23 +531,27 @@ const CreatePage = ({
       description?: string;
     }) => {
       const taskLabel =
-        entry.activityType === "internal" && entry.internalActivity
+        !isProjectLocked &&
+        entry.activityType === "internal" &&
+        entry.internalActivity
           ? activityLabels.get(entry.internalActivity) || entry.internalActivity
-          : entry.taskLabel || entry.task || "";
+          : isProjectLocked
+            ? createEmptyRow().taskLabel
+            : entry.taskLabel || entry.task || "";
       const newRow: TimeRow = {
         ...createEmptyRow(),
-        task: entry.task || "",
+        task: isProjectLocked ? createEmptyRow().task : entry.task || "",
         taskLabel,
         hours: entry.hours,
         minutes: entry.minutes,
-        activityType: entry.activityType,
-        internalActivity: entry.internalActivity,
+        activityType: isProjectLocked ? "project" : entry.activityType,
+        internalActivity: isProjectLocked ? undefined : entry.internalActivity,
         description: entry.description || "",
       };
       setRows((prev) => [...prev, newRow]);
       handleSaveTemp();
     },
-    [createEmptyRow, activityLabels, handleSaveTemp]
+    [activityLabels, createEmptyRow, handleSaveTemp, isProjectLocked]
   );
 
   // Delete row
@@ -715,37 +698,49 @@ const CreatePage = ({
       <div
         className={`
           mx-auto px-4 pt-4
-          ${activeTab === "week-calendar" ? "max-w-[1600px]" : "max-w-4xl"}
+          ${!isProjectLocked && activeTab === "week-calendar" ? "max-w-[1600px]" : "max-w-4xl"}
         `}
       >
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center gap-2">
-            <TabsList className={`grid flex-1 ${isAttendanceModuleEnabled ? "grid-cols-4" : "grid-cols-3"}`}>
+            <TabsList
+              className={`grid flex-1 ${
+                isProjectLocked
+                  ? "grid-cols-1"
+                  : isAttendanceModuleEnabled
+                    ? "grid-cols-4"
+                    : "grid-cols-3"
+              }`}
+            >
               <TabsTrigger value="create" className="gap-2">
                 <Plus className="h-4 w-4" />
                 Registra ore
               </TabsTrigger>
-              <TabsTrigger value="my-hours" className="gap-2">
-                <List className="h-4 w-4" />
-                Le mie ore
-                {allUserEntries.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                    {allUserEntries.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="week-calendar" className="gap-2">
-                <Calendar className="h-4 w-4" />
-                Settimana
-              </TabsTrigger>
-              {isAttendanceModuleEnabled && (
+              {!isProjectLocked && (
+                <TabsTrigger value="my-hours" className="gap-2">
+                  <List className="h-4 w-4" />
+                  Le mie ore
+                  {allUserEntries.length > 0 && (
+                    <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                      {allUserEntries.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              )}
+              {!isProjectLocked && (
+                <TabsTrigger value="week-calendar" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Settimana
+                </TabsTrigger>
+              )}
+              {!isProjectLocked && isAttendanceModuleEnabled && (
                 <TabsTrigger value="leave-request" className="gap-2">
                   <Clock className="h-4 w-4" />
                   Assenze
                 </TabsTrigger>
               )}
             </TabsList>
-            {domain && siteId && activeTab === "create" && (
+            {!isProjectLocked && domain && siteId && activeTab === "create" && (
               <VoiceInputButton
                 domain={domain}
                 siteId={siteId}
@@ -756,30 +751,20 @@ const CreatePage = ({
             )}
           </div>
 
-          <div className="mt-4">
-            <TimetrackingInstructionsCard
-              view={
-                activeTab === "create"
-                  ? "create"
-                  : activeTab === "my-hours"
-                    ? "my-hours"
-                    : activeTab === "week-calendar"
-                      ? "personal-week"
-                      : "leave-request"
-              }
-              mode="personal"
-              entryCount={allUserEntries.length}
-              completedEntries={completedEntries}
-              savedEntriesCount={todayEntries.length}
-              totalMinutes={totals.totalInMinutes}
-              targetMinutes={getWorkHoursTarget() * 60}
-              currentRow={currentInstructionRowSnapshot}
-              voiceAvailable={Boolean(domain && siteId)}
-            />
-          </div>
-
           {/* Create Tab Content */}
           <TabsContent value="create" className="mt-4 space-y-6">
+            {prefilledTask && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Registrazione ore contestuale al progetto</p>
+                    <p className="text-sm text-muted-foreground">{getProjectLabel(prefilledTask)}</p>
+                  </div>
+                  <Badge variant="secondary">Progetto bloccato</Badge>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Progress Summary Card */}
             <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
           <CardHeader className="pb-3">
@@ -987,44 +972,45 @@ const CreatePage = ({
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Activity Type Toggle */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Tipo Attività</label>
-                  <RadioGroup
-                    value={row.activityType}
-                    onValueChange={(v) =>
-                      handleActivityTypeChange(
-                        v as "project" | "internal",
-                        index
-                      )
-                    }
-                    className="flex gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="project" id={`project-${index}`} />
-                      <Label
-                        htmlFor={`project-${index}`}
-                        className="flex items-center gap-1 cursor-pointer"
-                      >
-                        <Briefcase className="h-4 w-4" />
-                        Progetto
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem
-                        value="internal"
-                        id={`internal-${index}`}
-                      />
-                      <Label
-                        htmlFor={`internal-${index}`}
-                        className="flex items-center gap-1 cursor-pointer"
-                      >
-                        <Wrench className="h-4 w-4" />
-                        Attività Interna
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
+                {!isProjectLocked && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Tipo Attività</label>
+                    <RadioGroup
+                      value={row.activityType}
+                      onValueChange={(v) =>
+                        handleActivityTypeChange(
+                          v as "project" | "internal",
+                          index
+                        )
+                      }
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="project" id={`project-${index}`} />
+                        <Label
+                          htmlFor={`project-${index}`}
+                          className="flex items-center gap-1 cursor-pointer"
+                        >
+                          <Briefcase className="h-4 w-4" />
+                          Progetto
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem
+                          value="internal"
+                          id={`internal-${index}`}
+                        />
+                        <Label
+                          htmlFor={`internal-${index}`}
+                          className="flex items-center gap-1 cursor-pointer"
+                        >
+                          <Wrench className="h-4 w-4" />
+                          Attività Interna
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                )}
 
                 {/* Project/Internal Activity & Role Selection */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1035,21 +1021,27 @@ const CreatePage = ({
                           <Briefcase className="h-4 w-4 text-muted-foreground" />
                           Progetto
                         </label>
-                        <SearchSelect
-                          value={
-                            data.tasks
-                              .find((t) => t.unique_code === row.task)
-                              ?.id.toString() || ""
-                          }
-                          onValueChange={(v) =>
-                            handleTaskChange(v.toString(), index)
-                          }
-                          placeholder="Seleziona progetto..."
-                          options={data.tasks.map((t) => ({
-                            value: t.id.toString(),
-                            label: getProjectLabel(t),
-                          }))}
-                        />
+                        {isProjectLocked && prefilledTask ? (
+                          <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm font-medium">
+                            {getProjectLabel(prefilledTask)}
+                          </div>
+                        ) : (
+                          <SearchSelect
+                            value={
+                              data.tasks
+                                .find((t) => t.unique_code === row.task)
+                                ?.id.toString() || ""
+                            }
+                            onValueChange={(v) =>
+                              handleTaskChange(v.toString(), index)
+                            }
+                            placeholder="Seleziona progetto..."
+                            options={data.tasks.map((t) => ({
+                              value: t.id.toString(),
+                              label: getProjectLabel(t),
+                            }))}
+                          />
+                        )}
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">

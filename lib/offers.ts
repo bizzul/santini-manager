@@ -100,6 +100,7 @@ export function normalizeOfferFollowUps(
       id: String(entry.id || crypto.randomUUID()),
       contactType: (entry.contactType || "other") as OfferContactType,
       contactDate: entry.contactDate || entry.createdAt || new Date().toISOString(),
+      followUpUntil: entry.followUpUntil || null,
       note: entry.note || "",
       createdAt: entry.createdAt || entry.contactDate || new Date().toISOString(),
       createdBy: entry.createdBy || null,
@@ -136,16 +137,44 @@ export function getOfferFollowUpHighlightState(
       hasRecentFollowUp: false,
       daysSinceFollowUp: null,
       daysRemaining: 0,
+      followUpUntil: null,
+      followUpDeadlinePassedBy: 0,
+      isUsingCustomDeadline: false,
     };
   }
 
-  for (const followUp of followUps) {
-    const contactTimestamp = getStartOfDayTimestamp(followUp.contactDate);
-    if (contactTimestamp === null) {
-      continue;
+  const latestFollowUp = followUps[0];
+  if (!latestFollowUp) {
+    return {
+      hasRecentFollowUp: false,
+      daysSinceFollowUp: null,
+      daysRemaining: 0,
+      followUpUntil: null,
+      followUpDeadlinePassedBy: 0,
+      isUsingCustomDeadline: false,
+    };
+  }
+
+  const contactTimestamp = getStartOfDayTimestamp(latestFollowUp.contactDate);
+  if (contactTimestamp !== null) {
+    const daysSinceFollowUp = Math.floor((nowTimestamp - contactTimestamp) / DAY_IN_MS);
+    const followUpUntilTimestamp = getStartOfDayTimestamp(latestFollowUp.followUpUntil);
+
+    if (followUpUntilTimestamp !== null && daysSinceFollowUp >= 0) {
+      const daysUntilDeadline = Math.floor(
+        (followUpUntilTimestamp - nowTimestamp) / DAY_IN_MS,
+      );
+
+      return {
+        hasRecentFollowUp: daysUntilDeadline >= 0,
+        daysSinceFollowUp,
+        daysRemaining: daysUntilDeadline >= 0 ? daysUntilDeadline : 0,
+        followUpUntil: latestFollowUp.followUpUntil || null,
+        followUpDeadlinePassedBy: daysUntilDeadline < 0 ? Math.abs(daysUntilDeadline) : 0,
+        isUsingCustomDeadline: true,
+      };
     }
 
-    const daysSinceFollowUp = Math.floor((nowTimestamp - contactTimestamp) / DAY_IN_MS);
     if (
       daysSinceFollowUp >= 0 &&
       daysSinceFollowUp < OFFER_FOLLOW_UP_HIGHLIGHT_DAYS
@@ -155,6 +184,9 @@ export function getOfferFollowUpHighlightState(
         daysSinceFollowUp,
         daysRemaining:
           OFFER_FOLLOW_UP_HIGHLIGHT_DAYS - daysSinceFollowUp,
+        followUpUntil: null,
+        followUpDeadlinePassedBy: 0,
+        isUsingCustomDeadline: false,
       };
     }
   }
@@ -163,6 +195,9 @@ export function getOfferFollowUpHighlightState(
     hasRecentFollowUp: false,
     daysSinceFollowUp: null,
     daysRemaining: 0,
+    followUpUntil: latestFollowUp.followUpUntil || null,
+    followUpDeadlinePassedBy: 0,
+    isUsingCustomDeadline: Boolean(latestFollowUp.followUpUntil),
   };
 }
 
@@ -173,18 +208,21 @@ export function getOfferTrattativaSortPriority(
   const sentDate = task?.sent_date || task?.sentDate;
   const sentTimestamp = getStartOfDayTimestamp(sentDate);
   const nowTimestamp = getStartOfDayTimestamp(now);
-  const { hasRecentFollowUp } = getOfferFollowUpHighlightState(task, now);
+  const { hasRecentFollowUp, followUpUntil, followUpDeadlinePassedBy } =
+    getOfferFollowUpHighlightState(task, now);
 
   const isOverdue =
     sentTimestamp !== null &&
     nowTimestamp !== null &&
     Math.floor((nowTimestamp - sentTimestamp) / DAY_IN_MS) >= 7;
+  const hasExpiredDeadline =
+    Boolean(followUpUntil) && followUpDeadlinePassedBy > 0;
 
-  if (isOverdue && !hasRecentFollowUp) {
+  if ((isOverdue || hasExpiredDeadline) && !hasRecentFollowUp) {
     return 0;
   }
 
-  if (isOverdue && hasRecentFollowUp) {
+  if (hasRecentFollowUp) {
     return 1;
   }
 

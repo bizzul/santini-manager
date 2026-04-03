@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Save, RotateCcw, Clock3, Coins } from "lucide-react";
+import Link from "next/link";
+import { Download, Save, RotateCcw, Clock3, Coins, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -246,9 +247,17 @@ export function ProjectConsuntivoSummary({
               Consuntivo ore
             </span>
           </div>
-          <Badge variant="outline" className="text-xs">
-            Base {formatSwissCurrency(snapshot.defaultHourlyRate)} / h
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              Base {formatSwissCurrency(snapshot.defaultHourlyRate)} / h
+            </Badge>
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/sites/${domain}/timetracking/create?taskId=${taskId}`}>
+                <Plus className="mr-2 h-4 w-4" />
+                Registra ore
+              </Link>
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
