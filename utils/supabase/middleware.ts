@@ -46,6 +46,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/static") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/auth") ||
+    pathname.startsWith("/demo") ||
     pathname.startsWith("/confirm") ||
     pathname.match(/\.[a-zA-Z0-9]+$/); // static files (images, fonts, etc.)
 

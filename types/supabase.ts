@@ -714,3 +714,134 @@ export interface UserPermissions {
     kanbans: number[];
     kanban_categories: number[];
 }
+
+// ==========================================
+// DEMO WORKSPACE TYPES
+// ==========================================
+
+export type DemoWorkspaceStatus =
+    | "provisioning"
+    | "active"
+    | "expired"
+    | "revoked"
+    | "failed";
+
+export type DemoTokenPolicy = "single_use" | "multi_use";
+
+export type DemoAccessEventType =
+    | "landing_view"
+    | "cta_click"
+    | "magic_link_generated"
+    | "login_success"
+    | "session_started"
+    | "invalid_token"
+    | "expired_token"
+    | "revoked_token";
+
+export interface DemoBrandingConfig {
+    customerName: string;
+    customerLogoUrl?: string;
+    heroImageUrl?: string;
+    primaryColor?: string;
+}
+
+export interface DemoLandingConfig {
+    landingTitle: string;
+    landingSubtitle?: string;
+    introNarrative?: string;
+    ctaLabel?: string;
+    painPoints: string[];
+    recommendedModules: string[];
+    customSections?: Array<{
+        title: string;
+        body: string;
+    }>;
+}
+
+export interface DemoSeedUser {
+    authId: string;
+    email: string;
+    given_name: string;
+    family_name: string;
+    color?: string;
+}
+
+export interface DemoSeedConfig {
+    templateKey: string;
+    sectorKey: string;
+    scenarioType: string;
+    enabledModules: string[];
+    dataIntensity: "low" | "medium" | "high";
+    desiredOutcomes: string[];
+    currentProcessIssues?: string;
+    generatedUsers?: DemoSeedUser[];
+}
+
+export interface DemoWorkspace {
+    id: string;
+    organization_id: string;
+    site_id: string;
+    demo_user_id: string;
+    template_key: string;
+    sector_key: string;
+    scenario_type: string;
+    display_name: string;
+    customer_name: string;
+    customer_company?: string;
+    customer_contact_name?: string;
+    customer_contact_email?: string;
+    status: DemoWorkspaceStatus;
+    branding_config: DemoBrandingConfig;
+    landing_config: DemoLandingConfig;
+    seed_config: DemoSeedConfig;
+    notes?: string;
+    first_landing_view_at?: string;
+    first_login_at?: string;
+    last_login_at?: string;
+    last_accessed_at?: string;
+    last_magic_link_at?: string;
+    last_ip_address?: string;
+    last_user_agent?: string;
+    login_count: number;
+    landing_view_count: number;
+    magic_link_count: number;
+    expires_at?: string;
+    created_by?: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DemoAccessToken {
+    id: string;
+    workspace_id: string;
+    token_hash: string;
+    label?: string;
+    redirect_path: string;
+    use_policy: DemoTokenPolicy;
+    max_uses?: number;
+    uses_count: number;
+    last_used_at?: string;
+    expires_at?: string;
+    revoked_at?: string;
+    created_by?: string;
+    created_at: string;
+}
+
+export interface DemoAccessEvent {
+    id: string;
+    workspace_id: string;
+    access_token_id?: string;
+    event_type: DemoAccessEventType;
+    session_id?: string;
+    ip_address?: string;
+    user_agent?: string;
+    country?: string;
+    city?: string;
+    referrer?: string;
+    landing_path?: string;
+    redirect_path?: string;
+    customer_name_snapshot?: string;
+    customer_company_snapshot?: string;
+    event_metadata?: Record<string, unknown>;
+    created_at: string;
+}

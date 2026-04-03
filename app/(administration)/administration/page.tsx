@@ -8,6 +8,7 @@ import {
   Settings,
   Plus,
   ExternalLink,
+  QrCode,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
@@ -147,6 +148,12 @@ export default async function AdminDashboardPage() {
               icon: <Users className="h-5 w-5" />,
               href: "/administration/users",
             },
+            {
+              title: "Demo QR",
+              description: "Create demo workspaces, QR access and statistics",
+              icon: <QrCode className="h-5 w-5" />,
+              href: "/administration/demos",
+            },
           ],
         };
 
@@ -214,7 +221,7 @@ export default async function AdminDashboardPage() {
 
       {/* Navigation Cards */}
       <div className="w-full max-w-6xl space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {content.cards.map((card, index) => (
             <Link key={index} href={card.href}>
               <div className="group backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6 hover:bg-white/20 hover:shadow-2xl transition-all duration-300 hover:scale-105 hover:border-white/60 h-full">

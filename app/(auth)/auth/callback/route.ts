@@ -1,5 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { recordDemoLoginFromToken } from "@/lib/demo/service";
 
 export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
@@ -7,6 +8,7 @@ export async function GET(request: NextRequest) {
     const token_hash = requestUrl.searchParams.get("token_hash");
     const type = requestUrl.searchParams.get("type");
     const next = requestUrl.searchParams.get("next") || "/";
+    const demoToken = requestUrl.searchParams.get("demo_token");
 
     // Get the origin for redirects
     const origin = requestUrl.origin;
@@ -67,6 +69,18 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("[Auth Callback] User authenticated:", user.id, user.email);
+
+    if (demoToken) {
+        await recordDemoLoginFromToken(demoToken, {
+            ipAddress: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                null,
+            userAgent: request.headers.get("user-agent"),
+            referrer: request.headers.get("referer"),
+            country: request.headers.get("x-vercel-ip-country"),
+            city: request.headers.get("x-vercel-ip-city"),
+            redirectPath: next,
+        });
+    }
 
     // Check if this is an invitation (user needs to complete signup)
     // Look up user in our User table to check if profile is complete
@@ -143,6 +157,11 @@ export async function GET(request: NextRequest) {
 
     // If user profile exists and is enabled, they're already set up
     if (userProfile && userProfile.enabled) {
+        if (demoToken) {
+            const redirectPath = next.startsWith("/") ? next : "/sites/select";
+            return NextResponse.redirect(`${origin}${redirectPath}`);
+        }
+
         console.log(
             "[Auth Callback] User already enabled, redirecting to sites/select",
         );
