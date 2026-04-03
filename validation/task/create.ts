@@ -30,10 +30,11 @@ export const validation = z.object({
     )
     .optional()
     .nullable(),
+  // Voice assistant flows can create tasks without an explicit product selection.
   productId: z.preprocess(
     (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
-    z.number()
-  ).nullable(),
+    z.number().nullable()
+  ).optional(),
   // Array of product IDs for quick add (multiple products)
   productIds: z.array(z.number()).optional().nullable(),
   deliveryDate: z.preprocess(parseDate, z.date().optional().nullable()),
