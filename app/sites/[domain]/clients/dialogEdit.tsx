@@ -18,7 +18,7 @@ type Props = {
 function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
-      <DialogContent className="sm:max-w-[60%] max-h-[90%] overflow-scroll">
+      <DialogContent className="sm:max-w-2xl max-h-[90%] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifica </DialogTitle>
           <DialogDescription className="text-lg">

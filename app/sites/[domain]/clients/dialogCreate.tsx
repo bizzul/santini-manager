@@ -19,7 +19,7 @@ function DialogCreate() {
           Aggiungi cliente
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[60%] max-h-[90%] overflow-scroll ">
+      <DialogContent className="sm:max-w-2xl max-h-[90%] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crea nuovo cliente</DialogTitle>
           {/* <DialogDescription>Crea un cliente nuovo</DialogDescription> */}

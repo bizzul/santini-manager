@@ -11,18 +11,12 @@ import {
   FormMessage,
 } from "../../../components/ui/form";
 import { Input } from "../../../components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
 import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
 import { CountryCombo } from "@/app/sites/[domain]/clients/countryCombo";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { getEmptyClientContactPerson } from "@/lib/client-contacts";
+import { LanguageCombo } from "@/components/clients/forms/language-combo";
 
 type FormData = z.infer<typeof validation>;
 
@@ -31,13 +25,6 @@ interface MainClientFormProps {
   watchClientType: string;
   isSubmitting: boolean;
 }
-
-const languages = [
-  { id: 1, value: "Italiano", label: "Italiano", countryCode: "it" },
-  { id: 2, value: "Tedesco", label: "Tedesco", countryCode: "de" },
-  { id: 3, value: "Francese", label: "Francese", countryCode: "fr" },
-  { id: 4, value: "Inglese", label: "Inglese", countryCode: "gb" },
-];
 
 export const MainClientForm: FC<MainClientFormProps> = ({
   form,
@@ -106,59 +93,16 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               </FormLabel>
               <Select
                 onValueChange={field.onChange}
-                defaultValue={field.value}
+                value={field.value}
                 disabled={isSubmitting}
               >
                 <FormControl>
-                  <SelectTrigger className="w-full h-8">
-                    <SelectValue placeholder="Seleziona lingua">
-                      {field.value ? (
-                        (() => {
-                          const selectedLanguage = languages.find(
-                            (language) => language.value === field.value
-                          );
-
-                          if (!selectedLanguage) {
-                            return field.value;
-                          }
-
-                          return (
-                            <span className="flex items-center gap-2">
-                              <Image
-                                src={`https://flagcdn.com/w20/${selectedLanguage.countryCode}.png`}
-                                alt={selectedLanguage.label}
-                                width={20}
-                                height={15}
-                                className="h-auto w-auto shrink-0 rounded-sm"
-                              />
-                              <span>{selectedLanguage.label}</span>
-                            </span>
-                          );
-                        })()
-                      ) : null}
-                    </SelectValue>
-                  </SelectTrigger>
+                  <LanguageCombo
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={isSubmitting}
+                  />
                 </FormControl>
-                <SelectContent>
-                  {languages.map((lan) => (
-                    <SelectItem
-                      className="hover:bg-slate-500 dark:hover:bg-slate-500"
-                      key={lan.id}
-                      value={lan.value}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Image
-                          src={`https://flagcdn.com/w20/${lan.countryCode}.png`}
-                          alt={lan.label}
-                          width={20}
-                          height={15}
-                          className="h-auto w-auto shrink-0 rounded-sm"
-                        />
-                        <span>{lan.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
