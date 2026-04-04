@@ -55,8 +55,10 @@ export async function GET(
             );
         }
 
-        // Return all available modules with their enabled status
-        // For non-admin users, also check user permissions
+        // Return all available modules with their enabled status.
+        // If a non-admin user has explicit module permissions, intersect them with
+        // the site-level modules. If no explicit rows exist yet, fall back to the
+        // site-level configuration so newly enabled modules are visible immediately.
         const modulesWithStatus = AVAILABLE_MODULES.map((module) => {
             const siteEnabled = enabledModules.get(module.name) ?? module.enabledByDefault;
             
@@ -68,8 +70,16 @@ export async function GET(
                 };
             }
             
-            // Non-admin users: must have both site-level AND user-level permission
-            // If user has no permissions at all, show nothing
+            // Non-admin users with no explicit module rows inherit the site-level setup.
+            if (!userModulePermissions || userModulePermissions.size === 0) {
+                return {
+                    ...module,
+                    isEnabled: siteEnabled,
+                };
+            }
+
+            // Non-admin users with explicit rows must satisfy both site-level and
+            // user-level permission checks.
             const userHasPermission = userModulePermissions?.has(module.name) ?? false;
             
             return {

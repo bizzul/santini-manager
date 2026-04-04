@@ -1,5 +1,11 @@
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
+import { resolveFactoryDepartmentMeta } from "@/lib/factory/mock-data";
+import type {
+    FactoryDashboardData,
+    FactoryDepartmentSeed,
+    FactoryTaskPreview,
+} from "@/lib/factory/types";
 import { logger } from "@/lib/logger";
 import { cache } from "react";
 import { AVAILABLE_MODULES, ModuleConfig } from "@/lib/module-config";
@@ -3169,6 +3175,288 @@ export const fetchProduzioneDashboardData = cache(
             weeklyTrend,
             columnNames,
             productionKanbanId,
+        };
+    },
+);
+
+function getFactoryFlowBucket(column: { title?: string | null; identifier?: string | null } | undefined): "waiting" | "inProgress" | "delivered" {
+    const haystack = `${column?.title || ""} ${column?.identifier || ""}`.toLowerCase();
+
+    if (!haystack) {
+        return "inProgress";
+    }
+
+    if (
+        haystack.includes("conseg") ||
+        haystack.includes("sped") ||
+        haystack.includes("complet") ||
+        haystack.includes("done") ||
+        haystack.includes("finit") ||
+        haystack.includes("chius")
+    ) {
+        return "delivered";
+    }
+
+    if (
+        haystack.includes("attes") ||
+        haystack.includes("queue") ||
+        haystack.includes("todo") ||
+        haystack.includes("prepar") ||
+        haystack.includes("pianif") ||
+        haystack.includes("backlog")
+    ) {
+        return "waiting";
+    }
+
+    return "inProgress";
+}
+
+function getFactoryTaskStatusLabel(column: { title?: string | null; identifier?: string | null } | undefined): string {
+    if (!column) {
+        return "In lavorazione";
+    }
+
+    const bucket = getFactoryFlowBucket(column);
+    if (bucket === "waiting") return "In attesa";
+    if (bucket === "delivered") return "Consegnato";
+
+    return column.title || column.identifier || "In lavorazione";
+}
+
+function calculateFactoryLoadPercentage(seed: FactoryDepartmentSeed): number {
+    const totalFlow = seed.waiting + seed.inProgress + seed.delivered;
+    if (totalFlow === 0) {
+        return seed.jobs > 0 ? 34 : 0;
+    }
+
+    const weightedLoad =
+        seed.waiting * 0.7 +
+        seed.inProgress * 1.15 +
+        seed.delivered * 0.3 +
+        seed.delayed * 0.6;
+
+    return Math.min(100, Math.max(8, Math.round((weightedLoad / totalFlow) * 100)));
+}
+
+function sortFactoryTasks(
+    left: { deliveryDate?: string | null; updated_at?: string | null },
+    right: { deliveryDate?: string | null; updated_at?: string | null },
+): number {
+    const leftDue = left.deliveryDate ? new Date(left.deliveryDate).getTime() : Number.MAX_SAFE_INTEGER;
+    const rightDue = right.deliveryDate ? new Date(right.deliveryDate).getTime() : Number.MAX_SAFE_INTEGER;
+    if (leftDue !== rightDue) {
+        return leftDue - rightDue;
+    }
+
+    const leftUpdated = left.updated_at ? new Date(left.updated_at).getTime() : 0;
+    const rightUpdated = right.updated_at ? new Date(right.updated_at).getTime() : 0;
+    return rightUpdated - leftUpdated;
+}
+
+export const fetchFactoryDashboardData = cache(
+    async (siteId: string): Promise<FactoryDashboardData> => {
+        const supabase = await createClient();
+        const now = new Date();
+        const productionDashboardData = await fetchProduzioneDashboardData(siteId);
+
+        const [kanbansResult, categoriesResult, columnsResult, tasksResult] =
+            await Promise.all([
+                supabase
+                    .from("Kanban")
+                    .select(
+                        "id, title, identifier, is_production_kanban, color, icon, category_id",
+                    )
+                    .eq("site_id", siteId),
+                supabase
+                    .from("KanbanCategory")
+                    .select("id, name, identifier")
+                    .eq("site_id", siteId),
+                supabase
+                    .from("KanbanColumn")
+                    .select("id, kanbanId, title, identifier, position")
+                    .eq("site_id", siteId)
+                    .order("position", { ascending: true }),
+                supabase
+                    .from("Task")
+                    .select(
+                        `
+                        id,
+                        unique_code,
+                        name,
+                        kanbanId,
+                        kanbanColumnId,
+                        deliveryDate,
+                        created_at,
+                        updated_at,
+                        archived,
+                        positions,
+                        numero_pezzi
+                    `,
+                    )
+                    .eq("site_id", siteId)
+                    .eq("archived", false),
+            ]);
+
+        const allKanbans = kanbansResult.data || [];
+        const allCategories = categoriesResult.data || [];
+        const allColumns = columnsResult.data || [];
+        const allTasks = tasksResult.data || [];
+
+        const productionCategory = allCategories.find((category) => {
+            const label = `${category.name || ""} ${category.identifier || ""}`.toLowerCase();
+            return label.includes("produzione") || label.includes("production");
+        });
+
+        const productionStatsByKanbanId = new Map(
+            productionDashboardData.kanbanStatus.map((status) => [status.kanbanId, status]),
+        );
+        const productionKanbansFromDashboard = productionDashboardData.kanbanStatus
+            .map((status) => allKanbans.find((kanban) => kanban.id === status.kanbanId))
+            .filter(Boolean);
+
+        const fallbackProductionKanbans = productionCategory
+            ? allKanbans.filter((kanban) => kanban.category_id === productionCategory.id)
+            : allKanbans.filter((kanban) => {
+                  if (kanban.is_production_kanban) return true;
+                  const label = `${kanban.title || ""} ${kanban.identifier || ""}`.toLowerCase();
+                  return (
+                      label.includes("produzione") ||
+                      label.includes("production") ||
+                      label.includes("officina") ||
+                      label.includes("assembl") ||
+                      label.includes("taglio") ||
+                      label.includes("vernic")
+                  );
+              });
+
+        const productionKanbans = (
+            productionKanbansFromDashboard.length > 0
+                ? productionKanbansFromDashboard
+                : fallbackProductionKanbans
+        ) as typeof allKanbans;
+        const departmentKanbans = productionKanbans.slice(0, 9);
+        const columnMap = new Map(allColumns.map((column) => [column.id, column]));
+
+        const departments = departmentKanbans.map((kanban) => {
+            const kanbanTasks = allTasks
+                .filter((task: any) => task.kanbanId === kanban.id)
+                .sort(sortFactoryTasks);
+            const productionStats = productionStatsByKanbanId.get(kanban.id);
+
+            let waiting = 0;
+            let inProgress = 0;
+            let delivered = 0;
+            let items = productionStats?.elementi ?? 0;
+            let delayed = productionStats?.ritardo ?? 0;
+
+            kanbanTasks.forEach((task: any) => {
+                const bucket = getFactoryFlowBucket(columnMap.get(task.kanbanColumnId));
+                if (bucket === "waiting") waiting += 1;
+                if (bucket === "inProgress") inProgress += 1;
+                if (bucket === "delivered") delivered += 1;
+
+                if (!productionStats) {
+                    const quantity = task.positions?.length || task.numero_pezzi || 1;
+                    items += quantity;
+                }
+
+                if (
+                    !productionStats &&
+                    task.deliveryDate &&
+                    new Date(task.deliveryDate) < now
+                ) {
+                    delayed += 1;
+                }
+            });
+
+            const jobs = productionStats?.lavori ?? kanbanTasks.length;
+            const activeOperators = jobs === 0
+                ? 0
+                : Math.min(6, Math.max(1, Math.ceil((waiting + inProgress * 2) / 3)));
+
+            const seed: FactoryDepartmentSeed = {
+                kanbanId: kanban.id,
+                kanbanName: kanban.title || kanban.identifier || `Reparto ${kanban.id}`,
+                kanbanIdentifier: kanban.identifier || `reparto-${kanban.id}`,
+                color: kanban.color || "",
+                icon: kanban.icon || null,
+                jobs,
+                items,
+                delayed,
+                waiting,
+                inProgress,
+                delivered,
+                activeOperators,
+            };
+
+            const meta = resolveFactoryDepartmentMeta(seed);
+            const tasks: FactoryTaskPreview[] = kanbanTasks.slice(0, 5).map((task: any) => ({
+                id: task.id,
+                uniqueCode: task.unique_code || null,
+                name: task.name || task.unique_code || `Task ${task.id}`,
+                quantity: task.positions?.length || task.numero_pezzi || 1,
+                dueDate: task.deliveryDate || null,
+                statusLabel: getFactoryTaskStatusLabel(columnMap.get(task.kanbanColumnId)),
+            }));
+
+            return {
+                id: `${meta.id}-${kanban.id}`,
+                kanbanId: kanban.id,
+                kanbanIdentifier: seed.kanbanIdentifier,
+                kanbanName: seed.kanbanName,
+                color: kanban.color || meta.accentColor,
+                icon: kanban.icon || null,
+                jobs,
+                items,
+                delayed,
+                activeOperators,
+                loadPercentage: calculateFactoryLoadPercentage(seed),
+                flow: {
+                    waiting,
+                    inProgress,
+                    delivered,
+                },
+                tasks,
+                machines: meta.machines,
+                description: meta.description,
+                coverImage: meta.coverImage,
+                departmentIcon: meta.icon,
+                focusAreas: meta.focusAreas,
+                source: meta.source,
+            };
+        });
+
+        const overview = departments.reduce(
+            (accumulator, department) => {
+                accumulator.departmentsCount += 1;
+                accumulator.machinesCount += department.machines.length;
+                accumulator.totalJobs += department.jobs;
+                accumulator.totalItems += department.items;
+                accumulator.delayedJobs += department.delayed;
+                accumulator.waiting += department.flow.waiting;
+                accumulator.inProgress += department.flow.inProgress;
+                accumulator.delivered += department.flow.delivered;
+                accumulator.activeOperators += department.activeOperators;
+                return accumulator;
+            },
+            {
+                departmentsCount: 0,
+                machinesCount: 0,
+                totalJobs: 0,
+                totalItems: 0,
+                delayedJobs: 0,
+                waiting: 0,
+                inProgress: 0,
+                delivered: 0,
+                activeOperators: 0,
+            },
+        );
+
+        return {
+            departments,
+            overview,
+            updatedAt: now.toISOString(),
+            productionCategoryName: productionCategory?.name || null,
         };
     },
 );

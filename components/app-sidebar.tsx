@@ -305,6 +305,13 @@ const getMenuItems = (
       href: `${basePath}/inventory`,
     },
     {
+      label: "Fabbrica",
+      icon: "faIndustry",
+      alert: false,
+      moduleName: "factory",
+      href: `${basePath}/factory`,
+    },
+    {
       label: "Prodotti",
       icon: "faBox",
       href: `${basePath}/products`,
@@ -872,7 +879,8 @@ export function AppSidebar() {
     const calendars = menuItems.filter((item) => item.label === "Calendari");
     const contacts = menuItems.filter((item) => item.label === "Contatti");
     const warehouse = menuItems.filter((item) => item.label === "Magazzino");
-    const products = menuItems.filter((item) => item.label === "Articoli");
+    const factory = menuItems.filter((item) => item.label === "Fabbrica");
+    const products = menuItems.filter((item) => item.label === "Prodotti");
     const projectsSection = menuItems.filter(
       (item) => item.label === "Progetti"
     );
@@ -888,7 +896,8 @@ export function AppSidebar() {
           "Presenze",
           "Contatti",
           "Magazzino",
-          "Articoli",
+          "Fabbrica",
+          "Prodotti",
           "Progetti",
           "Categorie",
           "Errori",
@@ -903,6 +912,7 @@ export function AppSidebar() {
       attendance,
       contacts,
       warehouse,
+      factory,
       products,
       projectsSection,
       categories,
@@ -1473,8 +1483,9 @@ export function AppSidebar() {
               </>
             )}
 
-            {/* Warehouse & Products */}
+            {/* Warehouse, Factory & Products */}
             {(groupedMenuItems.warehouse.length > 0 ||
+              groupedMenuItems.factory.length > 0 ||
               groupedMenuItems.products.length > 0) && (
               <>
                 <SidebarSeparator />
@@ -1482,6 +1493,7 @@ export function AppSidebar() {
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {groupedMenuItems.warehouse.map(renderMenuItem)}
+                      {groupedMenuItems.factory.map(renderMenuItem)}
                       {groupedMenuItems.products.map(renderMenuItem)}
                     </SidebarMenu>
                   </SidebarGroupContent>

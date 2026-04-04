@@ -25,9 +25,10 @@ export function useSiteModules(domain: string) {
         queryKey: ["site-modules", domain],
         queryFn: () => fetchSiteModules(domain),
         enabled: !!domain, // Only fetch if domain is provided
-        staleTime: 10 * 60 * 1000, // Consider fresh for 10 minutes (modules change rarely)
-        gcTime: 60 * 60 * 1000, // Keep in cache for 1 hour
-        refetchOnWindowFocus: false,
+        staleTime: 0,
+        gcTime: 10 * 60 * 1000,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
     });
 
     const enabledModules = useMemo(() => {

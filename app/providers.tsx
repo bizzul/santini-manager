@@ -10,11 +10,11 @@ import { Suspense, useState, useEffect } from "react";
 import { GlobalVoiceAssistant } from "@/components/voice-assistant/GlobalVoiceAssistant";
 
 // Query keys that should be persisted to localStorage
-// ONLY persist stable data that doesn't change frequently
-// DO NOT persist: kanbans-list, kanban-tasks, tasks, kanban-categories, inventory
+// ONLY persist stable data that doesn't affect navigation or permissions
+// DO NOT persist: site-modules, kanbans-list, kanban-tasks, tasks,
+// kanban-categories, inventory
 // These need to be always fresh for multi-user collaboration
 const PERSISTABLE_QUERY_KEYS = [
-  "site-modules", // Modules change rarely (admin only)
   "site-data", // Site info changes rarely
   "user-context", // User info changes rarely
   // NOTE: kanban-categories is NOT persisted because it can be created/modified
@@ -66,7 +66,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return undefined;
     return createSyncStoragePersister({
       storage: window.localStorage,
-      key: "matris-query-cache",
+      // Bump the cache key to discard stale persisted entries
+      // after changing the site-modules caching strategy.
+      key: "matris-query-cache-v2",
       // Throttle writes to localStorage
       throttleTime: 1000,
     });

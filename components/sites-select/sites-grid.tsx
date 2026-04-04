@@ -1,7 +1,6 @@
 import { getUserSites } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import Image from "next/image";
 import { Building2 } from "lucide-react";
 
 export async function SitesGrid() {
@@ -28,12 +27,11 @@ export async function SitesGrid() {
             <div className="flex items-center gap-3">
               {site.image ? (
                 <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/10 group-hover:bg-white/20 transition-all shrink-0">
-                  <Image
+                  <img
                     src={site.image}
                     alt={site.name}
-                    width={48}
-                    height={48}
                     className="w-full h-full object-contain"
+                    loading="lazy"
                   />
                 </div>
               ) : (

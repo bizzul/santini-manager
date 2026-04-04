@@ -9,7 +9,7 @@ import { logger } from "@/lib/logger";
 // Scoped logger for realtime events
 const log = logger.scope("Realtime");
 
-type RealtimePayload = {
+export type RealtimePayload = {
     eventType: "INSERT" | "UPDATE" | "DELETE";
     new: Record<string, any>;
     old: Record<string, any>;
@@ -17,6 +17,13 @@ type RealtimePayload = {
 };
 
 type RealtimeCallback = (payload: RealtimePayload) => void;
+
+function invalidateTaskQueries(
+    queryClient: ReturnType<typeof useQueryClient>,
+) {
+    queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
+    queryClient.invalidateQueries({ queryKey: ["tasks"] });
+}
 
 /**
  * Hook for subscribing to Supabase Realtime changes on Kanban tasks.
@@ -44,8 +51,7 @@ export function useRealtimeKanban(
             }
 
             // Invalidate React Query cache to trigger refetch
-            queryClient.invalidateQueries({ queryKey: ["kanban-tasks"] });
-            queryClient.invalidateQueries({ queryKey: ["tasks"] });
+            invalidateTaskQueries(queryClient);
         },
         [queryClient, onTaskChange],
     );
@@ -140,10 +146,30 @@ export function useRealtimeKanban(
  * Hook for subscribing to multiple tables for a complete Kanban experience.
  * Subscribes to: Task, KanbanColumn changes
  */
-export function useRealtimeKanbanFull(siteId: string | null) {
+export function useRealtimeKanbanFull(
+    siteId: string | null,
+    onChange?: RealtimeCallback,
+) {
     const queryClient = useQueryClient();
     const channelRef = useRef<RealtimeChannel | null>(null);
     const supabaseRef = useRef(createClient());
+    const handleChange = useCallback(
+        (payload: RealtimePayload) => {
+            log.debug(
+                "Full kanban update received:",
+                payload.table,
+                payload.eventType,
+                payload,
+            );
+            if (onChange) {
+                onChange(payload);
+            }
+            invalidateTaskQueries(queryClient);
+            queryClient.invalidateQueries({ queryKey: ["kanban"] });
+            queryClient.invalidateQueries({ queryKey: ["kanbans"] });
+        },
+        [queryClient, onChange],
+    );
 
     useEffect(() => {
         if (!siteId) return;
@@ -162,12 +188,13 @@ export function useRealtimeKanbanFull(siteId: string | null) {
                     table: "Task",
                     filter: `site_id=eq.${siteId}`,
                 },
-                () => {
-                    queryClient.invalidateQueries({
-                        queryKey: ["kanban-tasks"],
-                    });
-                    queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                },
+                (payload: any) =>
+                    handleChange({
+                        eventType: payload.eventType,
+                        new: payload.new as Record<string, any>,
+                        old: payload.old as Record<string, any>,
+                        table: "Task",
+                    }),
             )
             // KanbanColumn changes (column reordering, etc.)
             .on(
@@ -176,11 +203,31 @@ export function useRealtimeKanbanFull(siteId: string | null) {
                     event: "*",
                     schema: "public",
                     table: "KanbanColumn",
+                    filter: `site_id=eq.${siteId}`,
                 },
-                () => {
-                    queryClient.invalidateQueries({ queryKey: ["kanban"] });
-                    queryClient.invalidateQueries({ queryKey: ["kanbans"] });
+                (payload: any) =>
+                    handleChange({
+                        eventType: payload.eventType,
+                        new: payload.new as Record<string, any>,
+                        old: payload.old as Record<string, any>,
+                        table: "KanbanColumn",
+                    }),
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "Kanban",
+                    filter: `site_id=eq.${siteId}`,
                 },
+                (payload: any) =>
+                    handleChange({
+                        eventType: payload.eventType,
+                        new: payload.new as Record<string, any>,
+                        old: payload.old as Record<string, any>,
+                        table: "Kanban",
+                    }),
             )
             .subscribe((status: any) => {
                 if (status === "SUBSCRIBED") {
@@ -196,7 +243,7 @@ export function useRealtimeKanbanFull(siteId: string | null) {
                 channelRef.current = null;
             }
         };
-    }, [siteId, queryClient]);
+    }, [siteId, handleChange]);
 
     return { isSubscribed: !!channelRef.current };
 }

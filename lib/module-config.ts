@@ -146,6 +146,15 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         category: "management",
     },
     {
+        name: "factory",
+        label: "Fabbrica",
+        description: "Panoramica reparti, macchinari e flussi produzione",
+        icon: "faIndustry",
+        href: "/factory",
+        enabledByDefault: false,
+        category: "management",
+    },
+    {
         name: "products",
         label: "Prodotti",
         description: "Product catalog and management",
