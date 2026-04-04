@@ -120,6 +120,13 @@ export interface Task {
 }
 
 // Client related types
+export interface ClientContactPerson {
+    name?: string;
+    role?: string;
+    email?: string;
+    phone?: string;
+}
+
 export interface Client {
     id: number;
     businessName?: string;
@@ -137,6 +144,7 @@ export interface Client {
     phone?: string;
     mobilePhone?: string;
     email?: string;
+    contactPeople?: ClientContactPerson[] | null;
     created_at?: string;
     updated_at?: string;
 }

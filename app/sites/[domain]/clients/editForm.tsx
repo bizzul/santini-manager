@@ -11,6 +11,10 @@ import { editItem } from "./actions/edit-item.action";
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import {
+  getEmptyClientContactPerson,
+  normalizeClientContactPeople,
+} from "@/lib/client-contacts";
 import { useParams } from "next/navigation";
 
 type Props = {
@@ -35,6 +39,10 @@ const EditClientForm = ({ handleClose, data }: Props) => {
       clientLanguage: data.clientLanguage || "",
       email: data.email || "",
       phone: data.mobilePhone || "",
+      contactPeople:
+        normalizeClientContactPeople(data.contactPeople).length > 0
+          ? normalizeClientContactPeople(data.contactPeople)
+          : [getEmptyClientContactPerson()],
 
       // Main address
       address: data.address || "",

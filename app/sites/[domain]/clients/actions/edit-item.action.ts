@@ -4,6 +4,7 @@ import { Client } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
+import { normalizeClientContactPeople } from "@/lib/client-contacts";
 import { getSiteData } from "@/lib/fetchers";
 import { logger } from "@/lib/logger";
 
@@ -80,6 +81,7 @@ export async function editItem(props: Client, id: number, domain: string) {
           landlinePhone: result.data?.phone,
           zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
           clientLanguage: result.data?.clientLanguage,
+          contactPeople: normalizeClientContactPeople(result.data?.contactPeople),
           code: generatedCode,
         })
         .eq("id", id)

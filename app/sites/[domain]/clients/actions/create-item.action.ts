@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
 import { getSiteData } from "@/lib/fetchers";
+import { normalizeClientContactPeople } from "@/lib/client-contacts";
 import { logger } from "@/lib/logger";
 
 export async function createItem(props: any, domain?: string) {
@@ -79,6 +80,7 @@ export async function createItem(props: any, domain?: string) {
         landlinePhone: result.data?.phone,
         zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
         clientLanguage: result.data?.clientLanguage,
+        contactPeople: normalizeClientContactPeople(result.data?.contactPeople),
         code: generatedCode,
       };
 

@@ -1,6 +1,7 @@
 import { FC } from "react";
-import { UseFormReturn } from "react-hook-form";
+import { UseFormReturn, useFieldArray } from "react-hook-form";
 import { z } from "zod";
+import { Plus, Trash2 } from "lucide-react";
 import { validation } from "../../../validation/clients/create";
 import {
   FormControl,
@@ -19,6 +20,9 @@ import {
 } from "../../../components/ui/select";
 import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
 import { CountryCombo } from "@/app/sites/[domain]/clients/countryCombo";
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { getEmptyClientContactPerson } from "@/lib/client-contacts";
 
 type FormData = z.infer<typeof validation>;
 
@@ -29,10 +33,10 @@ interface MainClientFormProps {
 }
 
 const languages = [
-  { id: 1, name: "Italiano" },
-  { id: 2, name: "Tedesco" },
-  { id: 3, name: "Francese" },
-  { id: 4, name: "Inglese" },
+  { id: 1, value: "Italiano", label: "Italiano", countryCode: "it" },
+  { id: 2, value: "Tedesco", label: "Tedesco", countryCode: "de" },
+  { id: 3, value: "Francese", label: "Francese", countryCode: "fr" },
+  { id: 4, value: "Inglese", label: "Inglese", countryCode: "gb" },
 ];
 
 export const MainClientForm: FC<MainClientFormProps> = ({
@@ -40,6 +44,11 @@ export const MainClientForm: FC<MainClientFormProps> = ({
   watchClientType,
   isSubmitting,
 }) => {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "contactPeople",
+  });
+
   return (
     <div className="space-y-4 bg-card">
       <h2 className="text-md font-semibold text-foreground border-b border-border">
@@ -102,7 +111,32 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               >
                 <FormControl>
                   <SelectTrigger className="w-full h-8">
-                    <SelectValue placeholder="Seleziona lingua" />
+                    <SelectValue placeholder="Seleziona lingua">
+                      {field.value ? (
+                        (() => {
+                          const selectedLanguage = languages.find(
+                            (language) => language.value === field.value
+                          );
+
+                          if (!selectedLanguage) {
+                            return field.value;
+                          }
+
+                          return (
+                            <span className="flex items-center gap-2">
+                              <Image
+                                src={`https://flagcdn.com/w20/${selectedLanguage.countryCode}.png`}
+                                alt={selectedLanguage.label}
+                                width={20}
+                                height={15}
+                                className="h-auto w-auto shrink-0 rounded-sm"
+                              />
+                              <span>{selectedLanguage.label}</span>
+                            </span>
+                          );
+                        })()
+                      ) : null}
+                    </SelectValue>
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
@@ -110,9 +144,18 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                     <SelectItem
                       className="hover:bg-slate-500 dark:hover:bg-slate-500"
                       key={lan.id}
-                      value={lan.name}
+                      value={lan.value}
                     >
-                      {lan.name}
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src={`https://flagcdn.com/w20/${lan.countryCode}.png`}
+                          alt={lan.label}
+                          width={20}
+                          height={15}
+                          className="h-auto w-auto shrink-0 rounded-sm"
+                        />
+                        <span>{lan.label}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -333,7 +376,6 @@ export const MainClientForm: FC<MainClientFormProps> = ({
         {/* Contact Information */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-foreground flex items-center">
-            {/* <span className="w-2 h-2  rounded-full mr-2"></span> */}
             Informazioni di contatto
           </h4>
 
@@ -378,6 +420,106 @@ export const MainClientForm: FC<MainClientFormProps> = ({
                 </FormItem>
               )}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-border/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h5 className="text-sm font-medium text-foreground">
+                  Persone di contatto
+                </h5>
+                <p className="text-xs text-muted-foreground">
+                  Aggiungi uno o piu referenti e specifica il loro ruolo.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => append(getEmptyClientContactPerson())}
+                disabled={isSubmitting}
+              >
+                <Plus className="h-4 w-4" />
+                Aggiungi persona
+              </Button>
+            </div>
+
+            {fields.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
+                Nessuna persona di contatto inserita.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {fields.map((contactField, index) => (
+                  <div
+                    key={contactField.id}
+                    className="rounded-md border border-border/60 bg-background/40 p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h6 className="text-sm font-medium text-foreground">
+                        Referente {index + 1}
+                      </h6>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(index)}
+                        disabled={isSubmitting}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Rimuovi
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          Nome contatto
+                        </FormLabel>
+                        <Input
+                          {...form.register(`contactPeople.${index}.name` as const)}
+                          disabled={isSubmitting}
+                          placeholder="Mario Rossi"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          Ruolo
+                        </FormLabel>
+                        <Input
+                          {...form.register(`contactPeople.${index}.role` as const)}
+                          disabled={isSubmitting}
+                          placeholder="Responsabile acquisti"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          Email
+                        </FormLabel>
+                        <Input
+                          {...form.register(`contactPeople.${index}.email` as const)}
+                          type="email"
+                          disabled={isSubmitting}
+                          placeholder="mario.rossi@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <FormLabel className="text-sm font-medium text-foreground">
+                          Telefono
+                        </FormLabel>
+                        <Input
+                          {...form.register(`contactPeople.${index}.phone` as const)}
+                          type="tel"
+                          disabled={isSubmitting}
+                          placeholder="+41 79 700 12 34"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

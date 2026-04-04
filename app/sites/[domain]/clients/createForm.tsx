@@ -12,6 +12,7 @@ import { useParams } from "next/navigation";
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
+import { getEmptyClientContactPerson } from "@/lib/client-contacts";
 import { logger } from "@/lib/logger";
 
 type FormData = z.infer<typeof validation>;
@@ -39,6 +40,7 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
       clientLanguage: "",
       email: "",
       phone: "",
+      contactPeople: [getEmptyClientContactPerson()],
 
       // Main address
       address: "",

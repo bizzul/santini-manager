@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { normalizeClientContactPeople } from "@/lib/client-contacts";
 import { getSiteContext } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 import { validation } from "@/validation/clients/create";
@@ -141,6 +142,7 @@ export async function POST(req: NextRequest) {
             landlinePhone: result.data.phone || "",
             zipCode: result.data.zipCode,
             clientLanguage: result.data.clientLanguage || "",
+            contactPeople: normalizeClientContactPeople(result.data.contactPeople),
             clientType,
             code: generatedCode,
             site_id: siteId,

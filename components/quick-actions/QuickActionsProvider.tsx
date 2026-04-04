@@ -272,7 +272,7 @@ export function QuickActionsProvider({
   const getDialogWidth = () => {
     switch (activeDialog) {
       case "client":
-        return "sm:max-w-[60%]";
+        return "sm:max-w-2xl";
       case "project":
         return "sm:max-w-[50%]";
       case "timetracking":

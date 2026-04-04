@@ -3,6 +3,13 @@ import { z } from "zod";
 /**
  * Auth0 user creation schema
  */
+const clientContactSchema = z.object({
+  name: z.string().optional(),
+  role: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+});
+
 export const validation = z.object({
   individualTitle: z.string().optional(),
   businessName: z.string().optional(),
@@ -16,6 +23,7 @@ export const validation = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   clientLanguage: z.string().optional(),
+  contactPeople: z.array(clientContactSchema).optional().default([]),
   zipCode: z.preprocess(
     (val) => {
       if (val === "" || val === undefined || val === null) return null;
