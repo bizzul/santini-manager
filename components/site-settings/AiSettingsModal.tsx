@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
     Dialog,
     DialogContent,
@@ -21,6 +21,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
     Loader2,
     CheckCircle,
@@ -30,6 +31,8 @@ import {
     Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getVoiceCommandScreenContexts, VOICE_COMMAND_INTENT_LABELS } from "@/lib/voice-command-config";
+import { VOICE_INTENT_REQUIREMENTS } from "@/lib/site-settings-guides";
 
 interface AiSettingsModalProps {
     siteId: string;
@@ -191,16 +194,16 @@ export default function AiSettingsModal({
     };
 
     const availableModels = AI_MODELS[aiProvider] || [];
+    const voiceContexts = useMemo(() => getVoiceCommandScreenContexts(), []);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[680px] max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Impostazioni AI & Voice</DialogTitle>
+                    <DialogTitle>AI, API & voice</DialogTitle>
                     <DialogDescription>
-                        Configura il provider AI e le impostazioni per l'input vocale.
-                        Le API key vengono salvate in modo sicuro.
+                        Configura provider AI, API key e regole base per usare il microfono nelle varie aree.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -368,6 +371,70 @@ export default function AiSettingsModal({
                                 </AlertDescription>
                             </Alert>
                         )}
+
+                        <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
+                            <div>
+                                <h3 className="text-sm font-semibold">Pannello guida comandi vocali</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Ogni area con microfono mostra le informazioni minime che conviene pronunciare.
+                                </p>
+                            </div>
+                            <Accordion type="single" collapsible className="w-full">
+                                {voiceContexts.map((context) => (
+                                    <AccordionItem key={context.key} value={context.key}>
+                                        <AccordionTrigger className="text-left">
+                                            <div>
+                                                <div className="font-medium">{context.label}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {context.description}
+                                                </div>
+                                            </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="space-y-3">
+                                            <div>
+                                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Azioni supportate
+                                                </p>
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {context.allowedIntents.map((intent) => (
+                                                        <span
+                                                            key={intent}
+                                                            className="rounded-full border border-border px-2.5 py-1 text-xs"
+                                                        >
+                                                            {VOICE_COMMAND_INTENT_LABELS[intent]}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Dati obbligatori nel vocale
+                                                </p>
+                                                <ul className="mt-2 space-y-1 text-sm text-foreground/85">
+                                                    {context.allowedIntents.flatMap((intent) =>
+                                                        (VOICE_INTENT_REQUIREMENTS[intent] || []).map((item) => (
+                                                            <li key={`${context.key}-${intent}-${item}`}>
+                                                                - {VOICE_COMMAND_INTENT_LABELS[intent]}: {item}
+                                                            </li>
+                                                        ))
+                                                    )}
+                                                </ul>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Esempi
+                                                </p>
+                                                <ul className="mt-2 space-y-1 text-sm text-foreground/85">
+                                                    {context.examples.map((example) => (
+                                                        <li key={`${context.key}-${example}`}>- {example}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
+                            </Accordion>
+                        </div>
                     </div>
                 )}
 

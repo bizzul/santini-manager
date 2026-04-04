@@ -13,7 +13,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "dashboard",
         label: "Dashboard",
-        description: "Main dashboard with overview and quick actions",
+        description: "Panoramica iniziale con riepilogo e azioni rapide",
         icon: "faWaveSquare",
         href: "/dashboard",
         enabledByDefault: true,
@@ -22,7 +22,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "kanban",
         label: "Kanban",
-        description: "Project management with kanban boards",
+        description: "Gestione attività e progetti con bacheche kanban",
         icon: "faTable",
         href: "/kanban",
         enabledByDefault: true,
@@ -31,7 +31,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "projects",
         label: "Progetti",
-        description: "Project management and tracking",
+        description: "Gestione progetti, avanzamento e monitoraggio",
         icon: "faTable",
         href: "/projects",
         enabledByDefault: false,
@@ -40,7 +40,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "calendar",
         label: "Calendario",
-        description: "Calendar and scheduling",
+        description: "Calendario operativo e pianificazione attività",
         icon: "faClock",
         href: "/calendar",
         enabledByDefault: false,
@@ -49,7 +49,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "clients",
         label: "Clienti",
-        description: "Client management and contacts",
+        description: "Anagrafica clienti e contatti commerciali",
         icon: "faUser",
         href: "/clients",
         enabledByDefault: true,
@@ -58,7 +58,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "errortracking",
         label: "Errori",
-        description: "Error tracking and management",
+        description: "Registro errori e gestione delle anomalie",
         icon: "faExclamation",
         href: "/errortracking",
         enabledByDefault: false,
@@ -67,7 +67,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "timetracking",
         label: "Ore",
-        description: "Time tracking and management",
+        description: "Rilevazione ore e controllo delle attività",
         icon: "faClock",
         href: "/timetracking",
         enabledByDefault: false,
@@ -121,7 +121,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "qualitycontrol",
         label: "Quality Control",
-        description: "Quality control management",
+        description: "Controllo qualità e verifiche operative",
         icon: "faCheckSquare",
         href: "/qualityControl",
         enabledByDefault: false,
@@ -130,7 +130,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "boxing",
         label: "Imballaggio",
-        description: "Packing and shipping management",
+        description: "Gestione imballaggio e spedizione",
         icon: "faBox",
         href: "/boxing",
         enabledByDefault: false,
@@ -139,7 +139,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "inventory",
         label: "Magazzino",
-        description: "Warehouse and inventory management",
+        description: "Magazzino, articoli e giacenze",
         icon: "faWarehouse",
         href: "/inventory",
         enabledByDefault: true,
@@ -157,7 +157,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "products",
         label: "Prodotti",
-        description: "Product catalog and management",
+        description: "Catalogo prodotti e relative configurazioni",
         icon: "faBox",
         href: "/products",
         enabledByDefault: true,
@@ -166,7 +166,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "suppliers",
         label: "Fornitori",
-        description: "Supplier management",
+        description: "Anagrafica e gestione fornitori",
         icon: "faHelmetSafety",
         href: "/suppliers",
         enabledByDefault: true,
@@ -175,7 +175,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "manufacturers",
         label: "Produttori",
-        description: "Manufacturer management",
+        description: "Anagrafica produttori e lavorazioni",
         icon: "faIndustry",
         href: "/manufacturers",
         enabledByDefault: true,
@@ -184,7 +184,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "collaborators",
         label: "Collaboratori",
-        description: "Collaborator management",
+        description: "Gestione collaboratori e accessi",
         icon: "faUserTie",
         href: "/collaborators",
         enabledByDefault: true,
@@ -193,7 +193,7 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
     {
         name: "categories",
         label: "Categorie",
-        description: "Category management",
+        description: "Gestione categorie operative",
         icon: "faListUl",
         href: "/categories",
         enabledByDefault: true,

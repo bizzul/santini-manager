@@ -60,7 +60,7 @@ export default async function EditSitePage({
                 className="text-white hover:bg-white/20 transition-all duration-300"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Site Details
+                Torna ai dettagli del sito
               </Button>
             </Link>
             <Link href={`/sites/${site.subdomain}`}>
@@ -74,7 +74,7 @@ export default async function EditSitePage({
             </Link>
           </div>
           <h1 className="text-4xl font-bold text-center text-white">
-            Edit Site {site.name}
+            Modifica sito {site.name}
           </h1>
         </div>
       </div>
@@ -86,7 +86,7 @@ export default async function EditSitePage({
             <div className="p-3 rounded-xl bg-white/10">
               <Globe className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-white">Edit Site Details</h2>
+            <h2 className="text-xl font-bold text-white">Dettagli del sito</h2>
           </div>
           <EditSiteForm
             site={site}

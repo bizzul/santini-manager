@@ -62,8 +62,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const { data: products } = await supabase
+      .from("SellProduct")
+      .select("category_id")
+      .eq("site_id", actualSiteId);
+
+    const productCounts = (products || []).reduce<Record<number, number>>(
+      (acc, product) => {
+        if (!product.category_id) return acc;
+        acc[product.category_id] = (acc[product.category_id] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
+
     return NextResponse.json({
-      categories: categories || [],
+      categories:
+        categories?.map((category) => ({
+          ...category,
+          productCount: productCounts[category.id] || 0,
+        })) || [],
       siteId: actualSiteId,
     });
   } catch (error) {
@@ -79,7 +97,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { siteId, name, description, color } = body;
+    const {
+      siteId,
+      name,
+      description,
+      color,
+      icon,
+      iconColor,
+      imageUrl,
+      supplierNames,
+    } = body;
 
     if (!siteId || !name) {
       return NextResponse.json(
@@ -97,6 +124,10 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         color: color || "#3B82F6",
+        icon: icon || "Package",
+        icon_color: iconColor || color || "#3B82F6",
+        image_url: imageUrl || null,
+        supplier_names: Array.isArray(supplierNames) ? supplierNames : [],
       })
       .select()
       .single();
@@ -130,7 +161,16 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, description, color } = body;
+    const {
+      id,
+      name,
+      description,
+      color,
+      icon,
+      iconColor,
+      imageUrl,
+      supplierNames,
+    } = body;
 
     if (!id || !name) {
       return NextResponse.json(
@@ -147,6 +187,10 @@ export async function PUT(request: NextRequest) {
         name: name.trim(),
         description: description?.trim() || null,
         color: color || "#3B82F6",
+        icon: icon || "Package",
+        icon_color: iconColor || color || "#3B82F6",
+        image_url: imageUrl || null,
+        supplier_names: Array.isArray(supplierNames) ? supplierNames : [],
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

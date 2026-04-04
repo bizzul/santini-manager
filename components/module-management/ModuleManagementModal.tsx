@@ -87,7 +87,7 @@ const categoryConfig: Record<
     icon: Layers,
     color: "text-blue-400",
     bgColor: "bg-blue-500/20",
-    label: "Core",
+    label: "Base",
   },
   management: {
     icon: Cog,
@@ -284,11 +284,11 @@ export default function ModuleManagementModal({
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
         <DialogHeader>
           <DialogTitle className="text-white text-xl">
-            Gestione Moduli
+            Moduli
           </DialogTitle>
           <DialogDescription className="text-white/70">
-            Abilita o disabilita i moduli per questo sito. Le modifiche
-            influenzeranno le funzionalità disponibili per gli utenti.
+            Attiva solo i moduli utili per questo sito. Le modifiche cambiano le
+            funzioni disponibili per gli utenti.
           </DialogDescription>
         </DialogHeader>
 

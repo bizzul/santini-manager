@@ -207,6 +207,11 @@ export interface SellProductCategory {
     name: string;
     description?: string;
     color?: string;
+    icon?: string | null;
+    icon_color?: string | null;
+    image_url?: string | null;
+    supplier_names?: string[];
+    productCount?: number;
     created_at?: string;
     updated_at?: string;
 }

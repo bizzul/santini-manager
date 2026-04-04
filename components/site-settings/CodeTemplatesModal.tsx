@@ -331,11 +331,10 @@ export default function CodeTemplatesModal({
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
         <DialogHeader>
           <DialogTitle className="text-white text-xl">
-            Impostazioni Codici e Offerte
+            Codici
           </DialogTitle>
           <DialogDescription className="text-white/70">
-            Configura il formato dei codici generati automaticamente e le
-            impostazioni di auto-archiviazione.
+            Configura i codici automatici e le regole del flusso offerte.
           </DialogDescription>
         </DialogHeader>
 

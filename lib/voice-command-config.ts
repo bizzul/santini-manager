@@ -91,7 +91,7 @@ export const VOICE_COMMAND_INTENT_LABELS: Record<
     move_card: "spostare progetto",
 };
 
-const VOICE_COMMAND_SCREEN_CONTEXTS: Record<
+export const VOICE_COMMAND_SCREEN_CONTEXTS: Record<
     VoiceCommandScreenKey,
     VoiceCommandScreenContext
 > = {
@@ -236,6 +236,10 @@ const VOICE_COMMAND_SCREEN_CONTEXTS: Record<
         ],
     },
 };
+
+export function getVoiceCommandScreenContexts() {
+  return Object.values(VOICE_COMMAND_SCREEN_CONTEXTS);
+}
 
 const CREATE_ACTION_GROUP: VoiceKeywordGroupRule = {
     id: "action",

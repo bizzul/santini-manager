@@ -201,10 +201,10 @@ export default function InventoryCategoryManagerModal({
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
           <DialogHeader>
             <DialogTitle className="text-white text-xl">
-              Gestione Categorie Inventario
+              Inventario
             </DialogTitle>
             <DialogDescription className="text-white/70">
-              Gestisci le categorie per organizzare i prodotti dell'inventario.
+              Gestisci le categorie per organizzare articoli e materiali di magazzino.
             </DialogDescription>
           </DialogHeader>
 

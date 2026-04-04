@@ -29,7 +29,7 @@ export default async function SelectSitePage({
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 py-12">
         {/* Logo and Header */}
-        <div className="w-full max-w-5xl mb-8">
+        <div className="w-full max-w-7xl mb-8">
           <div className="flex flex-col items-center justify-center mb-8 space-y-6">
             <Image
               src="/logo-bianco.svg"
@@ -66,7 +66,7 @@ export default async function SelectSitePage({
         </div>
 
         {/* Sites Grid */}
-        <div className="w-full max-w-5xl space-y-6">
+        <div className="w-full max-w-7xl space-y-6">
           <Suspense fallback={<SitesGridSkeleton />}>
             <SitesGrid />
           </Suspense>

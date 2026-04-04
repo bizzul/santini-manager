@@ -1128,7 +1128,7 @@ export async function getUsers() {
         if (error) throw new Error(error.message);
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
-            "authId, given_name, family_name, role, enabled",
+            "authId, given_name, family_name, role, enabled, picture",
         );
         return data.users.map((user: any) => {
             const profile = profiles?.find((p: any) => p.authId === user.id);
@@ -1139,6 +1139,7 @@ export async function getUsers() {
                 given_name: profile?.given_name || "",
                 family_name: profile?.family_name || "",
                 enabled: profile?.enabled ?? false,
+                picture: profile?.picture || null,
             };
         });
     } else {
@@ -1173,7 +1174,7 @@ export async function getUsers() {
 
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
-            "authId, given_name, family_name, role, enabled",
+            "authId, given_name, family_name, role, enabled, picture",
         );
 
         return orgUsers.map((user: any) => {
@@ -1185,6 +1186,7 @@ export async function getUsers() {
                 given_name: profile?.given_name || "",
                 family_name: profile?.family_name || "",
                 enabled: profile?.enabled ?? false,
+                picture: profile?.picture || null,
             };
         });
     }

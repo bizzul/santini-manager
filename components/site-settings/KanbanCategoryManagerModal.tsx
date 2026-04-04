@@ -306,11 +306,10 @@ export default function KanbanCategoryManagerModal({
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
           <DialogHeader>
             <DialogTitle className="text-white text-xl">
-              Gestione Categorie Kanban
+              Kanban
             </DialogTitle>
             <DialogDescription className="text-white/70">
-              Gestisci le categorie per organizzare le tue kanban boards. Le
-              categorie verranno visualizzate nella sidebar.
+              Gestisci le categorie per organizzare le kanban e la sidebar del sito.
             </DialogDescription>
           </DialogHeader>
 
