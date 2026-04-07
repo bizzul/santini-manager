@@ -43,7 +43,7 @@ export async function createDemoWorkspaceAction(
     try {
         const userContext = await requireSuperadmin();
         const templateKey = String(
-            formData.get("templateKey") || "full_suite_arredo",
+            formData.get("templateKey") || "full_suite_speedywood",
         );
         const template = getDemoTemplateByKey(templateKey);
         const customerName = String(formData.get("customerName") || "").trim();

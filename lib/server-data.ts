@@ -1,6 +1,11 @@
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { resolveFactoryDepartmentMeta } from "@/lib/factory/mock-data";
+import {
+    DEFAULT_SITE_VERTICAL_PROFILE,
+    resolveSiteVerticalProfile,
+    type SiteVerticalProfile,
+} from "@/lib/site-verticals";
 import type {
     FactoryDashboardData,
     FactoryDepartmentSeed,
@@ -73,6 +78,25 @@ export async function requireServerSiteContext(
     }
     return context;
 }
+
+export const fetchSiteVerticalProfile = cache(
+    async (siteId: string): Promise<SiteVerticalProfile> => {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("site_settings")
+            .select("setting_value")
+            .eq("site_id", siteId)
+            .eq("setting_key", "vertical_profile")
+            .maybeSingle();
+
+        if (error) {
+            log.warn("Error fetching site vertical profile:", error);
+            return DEFAULT_SITE_VERTICAL_PROFILE;
+        }
+
+        return resolveSiteVerticalProfile(data?.setting_value);
+    },
+);
 
 // ============================================
 // ENTITY FETCHERS (cached per request)

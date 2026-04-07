@@ -10,6 +10,7 @@ interface SiteDataForHydration {
   name: string;
   image: string | null;
   organization: { name: string };
+  verticalProfile?: unknown;
 }
 
 interface HydrationData {

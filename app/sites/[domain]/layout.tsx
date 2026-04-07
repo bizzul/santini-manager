@@ -166,6 +166,7 @@ export default async function SiteLayout({
                   id: data.id,
                   name: data.name || domain,
                   image: data.image || null,
+                  verticalProfile: data.verticalProfile || null,
                   organization: { name: data.organization?.name || "" },
                 },
                 domain,

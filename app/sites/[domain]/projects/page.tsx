@@ -1,7 +1,11 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
-import { requireServerSiteContext, fetchProjectsData } from "@/lib/server-data";
+import {
+  requireServerSiteContext,
+  fetchProjectsData,
+  fetchSiteVerticalProfile,
+} from "@/lib/server-data";
 import { ProjectsHeader } from "./ProjectsHeader";
 import SellProductWrapper from "./sellProductWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
@@ -31,6 +35,7 @@ export default async function Page({
 
   // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch all project data
   const data = await fetchProjectsData(siteId);
@@ -39,9 +44,9 @@ export default async function Page({
     <PageLayout>
       <PageHeader>
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">Gestione Progetti</h1>
+          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.projectsTitle}</h1>
           <p className="text-sm text-muted-foreground">
-            Gestione operativa progetti, stato avanzamento e documentazione
+            {verticalProfile.pageCopy.projectsSubtitle}
           </p>
         </div>
         <ProjectsHeader data={data} domain={domain} siteId={siteId} />

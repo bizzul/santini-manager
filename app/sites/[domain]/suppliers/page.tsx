@@ -5,6 +5,7 @@ import {
   requireServerSiteContext,
   fetchSuppliers,
   fetchSupplierCategories,
+  fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
@@ -27,6 +28,7 @@ export default async function Page({
 
   // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch data in parallel
   const [suppliers, categories] = await Promise.all([
@@ -37,7 +39,12 @@ export default async function Page({
   return (
     <PageLayout>
       <PageHeader>
-        <h1 className="text-2xl font-bold">Fornitori</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.suppliersTitle}</h1>
+          <p className="text-sm text-muted-foreground">
+            {verticalProfile.pageCopy.suppliersSubtitle}
+          </p>
+        </div>
         <div className="flex gap-2">
           <ButtonExportCSV />
           <DialogImportCSV />

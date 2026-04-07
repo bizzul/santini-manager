@@ -7,6 +7,7 @@ import { AVAILABLE_MODULES } from "@/lib/module-config";
 import { createServiceClient } from "@/utils/supabase/server";
 import { getDemoTemplateByKey } from "@/lib/demo/templates";
 import { getDemoLandingAvailability } from "@/lib/demo/list-utils";
+import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
 import type {
     DemoAccessEvent,
     DemoAccessEventType,
@@ -233,6 +234,74 @@ async function loadDemoArredoCatalog(): Promise<DemoCatalogData> {
             description: sampleSubcategories.length > 0
                 ? `Catalogo ${name} con sottocategorie ${sampleSubcategories.join(", ")}`
                 : `Catalogo ${name} della demo arredamento`,
+            color: palette[index % palette.length],
+        };
+    });
+
+    const products = rows.map((row) => ({
+        internal_code: row.COD_INT,
+        name: row.NOME_PRODOTTO,
+        type: row.SOTTOCATEGORIA || row.CATEGORIA,
+        description: row.DESCRIZIONE,
+        price_list: row.LISTINO_PREZZI.toUpperCase() === "SI",
+        image_url: row.URL_IMMAGINE || undefined,
+        doc_url: row.URL_DOC || undefined,
+        categoryName: row.CATEGORIA,
+    }));
+
+    return { categories, products };
+}
+
+async function loadDemoCatalog(templateKey: string): Promise<DemoCatalogData> {
+    const fileName = templateKey === "full_suite_speedywood"
+        ? "speedywood-products-import.csv"
+        : "dadesign-products-import.csv";
+    const defaultDescription = templateKey === "full_suite_speedywood"
+        ? "Catalogo demo Speedywood"
+        : "Catalogo demo arredamento";
+    const filePath = path.join(process.cwd(), "data", fileName);
+    const csvContent = await readFile(filePath, "utf8");
+    const lines = csvContent
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+    if (lines.length < 2) {
+        throw new Error("Demo catalog CSV is empty");
+    }
+
+    const headers = parseCsvLine(lines[0]);
+    const palette = [
+        "#7C5A34",
+        "#A16207",
+        "#15803D",
+        "#1D4ED8",
+        "#6D4C41",
+        "#0F766E",
+        "#B45309",
+        "#4D7C0F",
+    ];
+
+    const rows: DemoCatalogRow[] = lines.slice(1).map((line) => {
+        const values = parseCsvLine(line);
+        return headers.reduce((accumulator, header, index) => {
+            accumulator[header as keyof DemoCatalogRow] = values[index] || "";
+            return accumulator;
+        }, {} as DemoCatalogRow);
+    }).filter((row) => row.NOME_PRODOTTO && row.CATEGORIA);
+
+    const categoryNames = Array.from(new Set(rows.map((row) => row.CATEGORIA)));
+    const categories = categoryNames.map((name, index) => {
+        const categoryRows = rows.filter((row) => row.CATEGORIA === name);
+        const sampleSubcategories = Array.from(
+            new Set(categoryRows.map((row) => row.SOTTOCATEGORIA).filter(Boolean)),
+        ).slice(0, 3);
+
+        return {
+            name,
+            description: sampleSubcategories.length > 0
+                ? `${defaultDescription}: ${name} con ${sampleSubcategories.join(", ")}`
+                : `${defaultDescription}: ${name}`,
             color: palette[index % palette.length],
         };
     });
@@ -584,11 +653,17 @@ async function seedDemoWorkspaceData(
         customerLogoUrl?: string;
         ownerProfileId: number;
         ownerAuthId: string;
+        templateKey: string;
+        primaryColor?: string;
     } & Pick<CreateDemoWorkspaceInput, "enabledModules" | "dataIntensity">,
 ) {
     await upsertSiteModules(supabase, input.siteId, input.enabledModules);
 
     const currentYear = new Date().getFullYear();
+    const isSpeedywood = input.templateKey === "full_suite_speedywood";
+    const verticalProfile = resolveSiteVerticalProfile(
+        isSpeedywood ? "speedywood" : "default",
+    );
 
     await supabase.from("site_settings").upsert([
         {
@@ -605,6 +680,16 @@ async function seedDemoWorkspaceData(
             site_id: input.siteId,
             setting_key: "company_logo",
             setting_value: input.customerLogoUrl || null,
+        },
+        {
+            site_id: input.siteId,
+            setting_key: "vertical_profile",
+            setting_value: { key: verticalProfile.key },
+        },
+        {
+            site_id: input.siteId,
+            setting_key: "brand_primary_color",
+            setting_value: input.primaryColor || null,
         },
     ], {
         onConflict: "site_id,setting_key",
@@ -627,8 +712,59 @@ async function seedDemoWorkspaceData(
         onConflict: "site_id,sequence_type,year",
     });
 
-    const { data: clients, error: clientError } = await supabase.from("Client")
-        .insert([
+    const clientSeedRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                clientType: "BUSINESS",
+                businessName: "Falegnameria Bernasconi SA",
+                code: "CLI-001",
+                city: "Lugano",
+                address: "Via Industria 14",
+                zipCode: 6900,
+                countryCode: "CH",
+                email: "acquisti@bernasconiwood.ch",
+                mobilePhone: "+41 91 555 11 01",
+            },
+            {
+                site_id: input.siteId,
+                clientType: "BUSINESS",
+                businessName: "Interior Build Zurich AG",
+                code: "CLI-002",
+                city: "Zurich",
+                address: "Holzstrasse 8",
+                zipCode: 8004,
+                countryCode: "CH",
+                email: "orders@interiorbuild.ch",
+                mobilePhone: "+41 44 555 22 02",
+            },
+            {
+                site_id: input.siteId,
+                clientType: "BUSINESS",
+                businessName: "Montage Fenetre Romandie SA",
+                code: "CLI-003",
+                city: "Lausanne",
+                address: "Route du Bois 31",
+                zipCode: 1003,
+                countryCode: "CH",
+                email: "planning@fenetreromandie.ch",
+                mobilePhone: "+41 21 555 33 03",
+            },
+            {
+                site_id: input.siteId,
+                clientType: "INDIVIDUAL",
+                individualFirstName: "Marco",
+                individualLastName: "Rossi",
+                code: "CLI-004",
+                city: "Bellinzona",
+                address: "Via al Fiume 6",
+                zipCode: 6500,
+                countryCode: "CH",
+                email: "marco.rossi@example.com",
+                mobilePhone: "+41 79 555 44 04",
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 clientType: "BUSINESS",
@@ -665,7 +801,10 @@ async function seedDemoWorkspaceData(
                 email: "direzione@lidoblu.it",
                 mobilePhone: "+39 0541 900100",
             },
-        ])
+        ];
+
+    const { data: clients, error: clientError } = await supabase.from("Client")
+        .insert(clientSeedRows)
         .select("id, businessName")
         .order("id", { ascending: true });
 
@@ -673,9 +812,22 @@ async function seedDemoWorkspaceData(
         throw new Error(clientError?.message || "Unable to seed demo clients");
     }
 
-    const { data: supplierCategories, error: supplierCategoryError } = await supabase
-        .from("Supplier_category")
-        .insert([
+    const supplierCategoryRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Legno massello e lamellare",
+                code: "WOOD",
+                description: "Segherie e fornitori per massello, lamellare e profili",
+            },
+            {
+                site_id: input.siteId,
+                name: "Pannelli tecnici",
+                code: "PANEL",
+                description: "Fornitori di MDF, truciolare, multistrato e pannelli tecnici",
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Pannelli e semilavorati",
@@ -688,7 +840,11 @@ async function seedDemoWorkspaceData(
                 code: "HARD",
                 description: "Fornitori di ferramenta e accessori per assemblaggio",
             },
-        ])
+        ];
+
+    const { data: supplierCategories, error: supplierCategoryError } = await supabase
+        .from("Supplier_category")
+        .insert(supplierCategoryRows)
         .select("id, name")
         .order("id", { ascending: true });
 
@@ -699,9 +855,22 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const { data: manufacturerCategories, error: manufacturerCategoryError } = await supabase
-        .from("Manufacturer_category")
-        .insert([
+    const manufacturerCategoryRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Lavorazioni speciali",
+                code: "SPEC",
+                description: "Partner per sagomatura, piallatura e lavorazioni custom",
+            },
+            {
+                site_id: input.siteId,
+                name: "Finiture e trattamenti",
+                code: "FIN",
+                description: "Partner per impregnanti, vernici e trattamenti superficiali",
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Artigiani partner",
@@ -714,7 +883,11 @@ async function seedDemoWorkspaceData(
                 code: "FIN",
                 description: "Lavorazioni su verniciatura e finiture custom",
             },
-        ])
+        ];
+
+    const { data: manufacturerCategories, error: manufacturerCategoryError } = await supabase
+        .from("Manufacturer_category")
+        .insert(manufacturerCategoryRows)
         .select("id, name")
         .order("id", { ascending: true });
 
@@ -725,9 +898,30 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const { data: suppliers, error: supplierError } = await supabase
-        .from("Supplier")
-        .insert([
+    const supplierRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Swiss Timber Hub",
+                short_name: "Swiss Timber",
+                description: "Segheria partner per abete, larice, rovere e listelli",
+                location: "St. Gallen",
+                email: "sales@swisstimberhub.ch",
+                phone: "+41 71 555 60 10",
+                supplier_category_id: supplierCategories[0]?.id,
+            },
+            {
+                site_id: input.siteId,
+                name: "Panel Trade Suisse",
+                short_name: "Panel Trade",
+                description: "Distribuzione pannelli MDF, truciolare e multistrato",
+                location: "Lucerne",
+                email: "orders@paneltrade.ch",
+                phone: "+41 41 555 60 20",
+                supplier_category_id: supplierCategories[1]?.id,
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Pannelli Nord",
@@ -748,7 +942,11 @@ async function seedDemoWorkspaceData(
                 phone: "+39 0444 778899",
                 supplier_category_id: supplierCategories[1]?.id,
             },
-        ])
+        ];
+
+    const { data: suppliers, error: supplierError } = await supabase
+        .from("Supplier")
+        .insert(supplierRows)
         .select("id, name")
         .order("id", { ascending: true });
 
@@ -756,9 +954,28 @@ async function seedDemoWorkspaceData(
         throw new Error(supplierError?.message || "Unable to seed suppliers");
     }
 
-    const { data: manufacturers, error: manufacturerError } = await supabase
-        .from("Manufacturer")
-        .insert([
+    const manufacturerRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Douglas Custom Mill",
+                short_name: "Douglas Mill",
+                description: "Partner per profilatura e sagomatura su specifica",
+                location: "Aarau",
+                email: "planning@douglasmill.ch",
+                manufacturer_category_id: manufacturerCategories[0]?.id,
+            },
+            {
+                site_id: input.siteId,
+                name: "Wood Finish Partner",
+                short_name: "Wood Finish",
+                description: "Trattamenti protettivi e finiture per prodotti in legno",
+                location: "Bern",
+                email: "operations@woodfinish.ch",
+                manufacturer_category_id: manufacturerCategories[1]?.id,
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Finiture Sartoriali",
@@ -777,7 +994,11 @@ async function seedDemoWorkspaceData(
                 email: "planning@lablegnouno.it",
                 manufacturer_category_id: manufacturerCategories[0]?.id,
             },
-        ])
+        ];
+
+    const { data: manufacturers, error: manufacturerError } = await supabase
+        .from("Manufacturer")
+        .insert(manufacturerRows)
         .select("id, name")
         .order("id", { ascending: true });
 
@@ -787,7 +1008,7 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const demoCatalog = await loadDemoArredoCatalog();
+    const demoCatalog = await loadDemoCatalog(input.templateKey);
 
     const { data: productCategories, error: productCategoryError } = await supabase
         .from("sellproduct_categories")
@@ -839,39 +1060,73 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const roles = await ensureRoles(supabase, [
-        "Commerciale",
-        "Produzione",
-        "Montaggio",
-        "Magazzino",
-    ]);
+    const roles = await ensureRoles(supabase, isSpeedywood
+        ? [
+            "Commerciale",
+            "Acquisti",
+            "Magazzino",
+            "Logistica",
+        ]
+        : [
+            "Commerciale",
+            "Produzione",
+            "Montaggio",
+            "Magazzino",
+        ]);
 
-    const staffDefinitions = [
-        {
-            givenName: "Giulia",
-            familyName: "Bassi",
-            role: "user" as const,
-            color: "#2563EB",
-        },
-        {
-            givenName: "Marco",
-            familyName: "Rinaldi",
-            role: "user" as const,
-            color: "#14B8A6",
-        },
-        {
-            givenName: "Sara",
-            familyName: "Leoni",
-            role: "user" as const,
-            color: "#F97316",
-        },
-        {
-            givenName: "Luca",
-            familyName: "Neri",
-            role: "user" as const,
-            color: "#7C3AED",
-        },
-    ];
+    const staffDefinitions = isSpeedywood
+        ? [
+            {
+                givenName: "Giulia",
+                familyName: "Keller",
+                role: "user" as const,
+                color: "#8B5E3C",
+            },
+            {
+                givenName: "Marco",
+                familyName: "Frei",
+                role: "user" as const,
+                color: "#A16207",
+            },
+            {
+                givenName: "Sara",
+                familyName: "Meyer",
+                role: "user" as const,
+                color: "#15803D",
+            },
+            {
+                givenName: "Luca",
+                familyName: "Bernasconi",
+                role: "user" as const,
+                color: "#1D4ED8",
+            },
+        ]
+        : [
+            {
+                givenName: "Giulia",
+                familyName: "Bassi",
+                role: "user" as const,
+                color: "#2563EB",
+            },
+            {
+                givenName: "Marco",
+                familyName: "Rinaldi",
+                role: "user" as const,
+                color: "#14B8A6",
+            },
+            {
+                givenName: "Sara",
+                familyName: "Leoni",
+                role: "user" as const,
+                color: "#F97316",
+            },
+            {
+                givenName: "Luca",
+                familyName: "Neri",
+                role: "user" as const,
+                color: "#7C3AED",
+            },
+        ];
 
     const generatedUsers: DemoSeedConfig["generatedUsers"] = [];
     const seededProfiles: Array<{
@@ -933,19 +1188,22 @@ async function seedDemoWorkspaceData(
     const { data: kanbans, error: kanbanError } = await supabase.from("Kanban")
         .insert([
             {
-                title: "Offerte",
+                title: isSpeedywood ? "Richieste Offerta" : "Offerte",
                 identifier: buildDemoIdentifier("offerte", input.siteId),
-                color: "#2563EB",
+                color: isSpeedywood ? "#8B5E3C" : "#2563EB",
                 icon: "faHandshake",
                 site_id: input.siteId,
                 is_offer_kanban: true,
                 show_category_colors: true,
             },
             {
-                title: "Produzione",
-                identifier: buildDemoIdentifier("produzione", input.siteId),
-                color: "#14B8A6",
-                icon: "faIndustry",
+                title: isSpeedywood ? "Ordini" : "Produzione",
+                identifier: buildDemoIdentifier(
+                    isSpeedywood ? "ordini" : "produzione",
+                    input.siteId,
+                ),
+                color: isSpeedywood ? "#15803D" : "#14B8A6",
+                icon: isSpeedywood ? "faTruckField" : "faIndustry",
                 site_id: input.siteId,
                 is_work_kanban: true,
             },
@@ -967,65 +1225,125 @@ async function seedDemoWorkspaceData(
 
     const { data: columns, error: columnsError } = await supabase
         .from("KanbanColumn")
-        .insert([
-            {
-                title: "Nuova richiesta",
-                identifier: buildDemoIdentifier("nuova-richiesta", input.siteId),
-                position: 1,
-                kanbanId: offerKanbanId,
-                column_type: "normal",
-                is_creation_column: true,
-            },
-            {
-                title: "Offerta inviata",
-                identifier: buildDemoIdentifier("offerta-inviata", input.siteId),
-                position: 2,
-                kanbanId: offerKanbanId,
-                column_type: "normal",
-            },
-            {
-                title: "Trattativa",
-                identifier: buildDemoIdentifier("trattativa", input.siteId),
-                position: 3,
-                kanbanId: offerKanbanId,
-                column_type: "normal",
-            },
-            {
-                title: "Vinta",
-                identifier: buildDemoIdentifier("vinta", input.siteId),
-                position: 4,
-                kanbanId: offerKanbanId,
-                column_type: "won",
-            },
-            {
-                title: "Pianificazione",
-                identifier: buildDemoIdentifier("pianificazione", input.siteId),
-                position: 1,
-                kanbanId: workKanbanId,
-                column_type: "production",
-            },
-            {
-                title: "In produzione",
-                identifier: buildDemoIdentifier("in-produzione", input.siteId),
-                position: 2,
-                kanbanId: workKanbanId,
-                column_type: "production",
-            },
-            {
-                title: "Montaggio",
-                identifier: buildDemoIdentifier("montaggio", input.siteId),
-                position: 3,
-                kanbanId: workKanbanId,
-                column_type: "production",
-            },
-            {
-                title: "Consegnato",
-                identifier: buildDemoIdentifier("consegnato", input.siteId),
-                position: 4,
-                kanbanId: workKanbanId,
-                column_type: "won",
-            },
-        ])
+        .insert(isSpeedywood
+            ? [
+                {
+                    title: "Nuova richiesta",
+                    identifier: buildDemoIdentifier("nuova-richiesta", input.siteId),
+                    position: 1,
+                    kanbanId: offerKanbanId,
+                    column_type: "normal",
+                    is_creation_column: true,
+                },
+                {
+                    title: "Preventivo inviato",
+                    identifier: buildDemoIdentifier("preventivo-inviato", input.siteId),
+                    position: 2,
+                    kanbanId: offerKanbanId,
+                    column_type: "normal",
+                },
+                {
+                    title: "In trattativa",
+                    identifier: buildDemoIdentifier("in-trattativa", input.siteId),
+                    position: 3,
+                    kanbanId: offerKanbanId,
+                    column_type: "normal",
+                },
+                {
+                    title: "Confermata",
+                    identifier: buildDemoIdentifier("confermata", input.siteId),
+                    position: 4,
+                    kanbanId: offerKanbanId,
+                    column_type: "won",
+                },
+                {
+                    title: "In preparazione",
+                    identifier: buildDemoIdentifier("in-preparazione", input.siteId),
+                    position: 1,
+                    kanbanId: workKanbanId,
+                    column_type: "production",
+                },
+                {
+                    title: "Materiale allocato",
+                    identifier: buildDemoIdentifier("materiale-allocato", input.siteId),
+                    position: 2,
+                    kanbanId: workKanbanId,
+                    column_type: "production",
+                },
+                {
+                    title: "Pronto spedizione",
+                    identifier: buildDemoIdentifier("pronto-spedizione", input.siteId),
+                    position: 3,
+                    kanbanId: workKanbanId,
+                    column_type: "production",
+                },
+                {
+                    title: "Consegnato",
+                    identifier: buildDemoIdentifier("consegnato", input.siteId),
+                    position: 4,
+                    kanbanId: workKanbanId,
+                    column_type: "won",
+                },
+            ]
+            : [
+                {
+                    title: "Nuova richiesta",
+                    identifier: buildDemoIdentifier("nuova-richiesta", input.siteId),
+                    position: 1,
+                    kanbanId: offerKanbanId,
+                    column_type: "normal",
+                    is_creation_column: true,
+                },
+                {
+                    title: "Offerta inviata",
+                    identifier: buildDemoIdentifier("offerta-inviata", input.siteId),
+                    position: 2,
+                    kanbanId: offerKanbanId,
+                    column_type: "normal",
+                },
+                {
+                    title: "Trattativa",
+                    identifier: buildDemoIdentifier("trattativa", input.siteId),
+                    position: 3,
+                    kanbanId: offerKanbanId,
+                    column_type: "normal",
+                },
+                {
+                    title: "Vinta",
+                    identifier: buildDemoIdentifier("vinta", input.siteId),
+                    position: 4,
+                    kanbanId: offerKanbanId,
+                    column_type: "won",
+                },
+                {
+                    title: "Pianificazione",
+                    identifier: buildDemoIdentifier("pianificazione", input.siteId),
+                    position: 1,
+                    kanbanId: workKanbanId,
+                    column_type: "production",
+                },
+                {
+                    title: "In produzione",
+                    identifier: buildDemoIdentifier("in-produzione", input.siteId),
+                    position: 2,
+                    kanbanId: workKanbanId,
+                    column_type: "production",
+                },
+                {
+                    title: "Montaggio",
+                    identifier: buildDemoIdentifier("montaggio", input.siteId),
+                    position: 3,
+                    kanbanId: workKanbanId,
+                    column_type: "production",
+                },
+                {
+                    title: "Consegnato",
+                    identifier: buildDemoIdentifier("consegnato", input.siteId),
+                    position: 4,
+                    kanbanId: workKanbanId,
+                    column_type: "won",
+                },
+            ])
         .select("id, title, kanbanId")
         .order("id", { ascending: true });
 
@@ -1035,94 +1353,190 @@ async function seedDemoWorkspaceData(
 
     const byTitle = (title: string) => columns.find((column) => column.title === title);
 
-    const { data: tasks, error: taskError } = await supabase.from("Task").insert([
-        {
-            site_id: input.siteId,
-            title: "Reception showroom Milano",
-            name: "Reception showroom Milano",
-            unique_code: "OFF-2026-001",
-            status: "open",
-            clientId: clients[0]?.id,
-            sellProductId: sellProducts[0]?.id,
-            kanbanId: offerKanbanId,
-            kanbanColumnId: byTitle("Trattativa")?.id,
-            column_id: byTitle("Trattativa")?.id,
-            column_position: 1,
-            deliveryDate: addDays(new Date(), 21).toISOString(),
-            sellPrice: 18500,
-            percentStatus: 35,
-            positions: ["Bancone", "Retro banco", "Led integrati"],
-            task_type: "offer",
-            offer_send_date: subDays(new Date(), 2).toISOString(),
-            material: false,
-            ferramenta: false,
-            metalli: false,
-        },
-        {
-            site_id: input.siteId,
-            title: "Camere executive hotel",
-            name: "Camere executive hotel",
-            unique_code: "OFF-2026-002",
-            status: "sent",
-            clientId: clients[2]?.id,
-            sellProductId: sellProducts[1]?.id,
-            kanbanId: offerKanbanId,
-            kanbanColumnId: byTitle("Offerta inviata")?.id,
-            column_id: byTitle("Offerta inviata")?.id,
-            column_position: 2,
-            deliveryDate: addDays(new Date(), 35).toISOString(),
-            sellPrice: 29400,
-            percentStatus: 55,
-            positions: ["12 minibar", "12 scrivanie", "12 pannelli TV"],
-            task_type: "offer",
-            offer_send_date: subDays(new Date(), 1).toISOString(),
-            material: false,
-            ferramenta: false,
-            metalli: false,
-        },
-        {
-            site_id: input.siteId,
-            title: "Corner retail flagship",
-            name: "Corner retail flagship",
-            unique_code: "COM-2026-003",
-            status: "production",
-            clientId: clients[1]?.id,
-            sellProductId: sellProducts[3]?.id,
-            kanbanId: workKanbanId,
-            kanbanColumnId: byTitle("In produzione")?.id,
-            column_id: byTitle("In produzione")?.id,
-            column_position: 1,
-            deliveryDate: addDays(new Date(), 14).toISOString(),
-            sellPrice: 21800,
-            percentStatus: 72,
-            positions: ["Parete dogata", "Banco cassa", "Espositori"],
-            task_type: "work",
-            material: true,
-            ferramenta: true,
-            metalli: false,
-        },
-        {
-            site_id: input.siteId,
-            title: "Testate imbottite hotel",
-            name: "Testate imbottite hotel",
-            unique_code: "COM-2026-004",
-            status: "planning",
-            clientId: clients[2]?.id,
-            sellProductId: sellProducts[2]?.id,
-            kanbanId: workKanbanId,
-            kanbanColumnId: byTitle("Pianificazione")?.id,
-            column_id: byTitle("Pianificazione")?.id,
-            column_position: 2,
-            deliveryDate: addDays(new Date(), 18).toISOString(),
-            sellPrice: 9800,
-            percentStatus: 20,
-            positions: ["20 camere", "Tessuto ignifugo"],
-            task_type: "work",
-            material: true,
-            ferramenta: false,
-            metalli: false,
-        },
-    ]).select("id, title, unique_code, kanbanId, kanbanColumnId");
+    const taskRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                title: "Profili lamellari per serramenti",
+                name: "Profili lamellari per serramenti",
+                unique_code: "OFF-2026-001",
+                status: "open",
+                clientId: clients[0]?.id,
+                sellProductId: sellProducts[0]?.id,
+                kanbanId: offerKanbanId,
+                kanbanColumnId: byTitle("In trattativa")?.id,
+                column_id: byTitle("In trattativa")?.id,
+                column_position: 1,
+                deliveryDate: addDays(new Date(), 12).toISOString(),
+                sellPrice: 14600,
+                percentStatus: 40,
+                positions: ["Larice lamellare", "Profili finestra", "Taglio su misura"],
+                task_type: "OFFERTA",
+                offer_send_date: subDays(new Date(), 2).toISOString(),
+                material: true,
+                ferramenta: false,
+                metalli: false,
+                legno: true,
+            },
+            {
+                site_id: input.siteId,
+                title: "Pannelli MDF e multistrato per arredo retail",
+                name: "Pannelli MDF e multistrato per arredo retail",
+                unique_code: "OFF-2026-002",
+                status: "sent",
+                clientId: clients[1]?.id,
+                sellProductId: sellProducts[1]?.id,
+                kanbanId: offerKanbanId,
+                kanbanColumnId: byTitle("Preventivo inviato")?.id,
+                column_id: byTitle("Preventivo inviato")?.id,
+                column_position: 2,
+                deliveryDate: addDays(new Date(), 9).toISOString(),
+                sellPrice: 22400,
+                percentStatus: 55,
+                positions: ["MDF grezzo", "Multistrato betulla", "Pannelli su misura"],
+                task_type: "OFFERTA",
+                offer_send_date: subDays(new Date(), 1).toISOString(),
+                material: true,
+                ferramenta: false,
+                metalli: false,
+                legno: true,
+            },
+            {
+                site_id: input.siteId,
+                title: "Ordine tavole piallate per cantiere chalet",
+                name: "Ordine tavole piallate per cantiere chalet",
+                unique_code: "COM-2026-003",
+                status: "production",
+                clientId: clients[2]?.id,
+                sellProductId: sellProducts[2]?.id,
+                kanbanId: workKanbanId,
+                kanbanColumnId: byTitle("Materiale allocato")?.id,
+                column_id: byTitle("Materiale allocato")?.id,
+                column_position: 1,
+                deliveryDate: addDays(new Date(), 6).toISOString(),
+                sellPrice: 19800,
+                percentStatus: 72,
+                positions: ["Abete piallato", "Listelli supporto", "Preparazione pallet"],
+                task_type: "LAVORO",
+                material: true,
+                ferramenta: false,
+                metalli: false,
+                legno: true,
+            },
+            {
+                site_id: input.siteId,
+                title: "Ordine porte interne in rovere",
+                name: "Ordine porte interne in rovere",
+                unique_code: "COM-2026-004",
+                status: "planning",
+                clientId: clients[3]?.id || clients[0]?.id,
+                sellProductId: sellProducts[3]?.id,
+                kanbanId: workKanbanId,
+                kanbanColumnId: byTitle("In preparazione")?.id,
+                column_id: byTitle("In preparazione")?.id,
+                column_position: 2,
+                deliveryDate: addDays(new Date(), 15).toISOString(),
+                sellPrice: 9200,
+                percentStatus: 20,
+                positions: ["Rovere", "Elementi porta", "Finitura trasparente"],
+                task_type: "LAVORO",
+                material: true,
+                ferramenta: true,
+                metalli: false,
+                legno: true,
+            },
+        ]
+        : [
+            {
+                site_id: input.siteId,
+                title: "Reception showroom Milano",
+                name: "Reception showroom Milano",
+                unique_code: "OFF-2026-001",
+                status: "open",
+                clientId: clients[0]?.id,
+                sellProductId: sellProducts[0]?.id,
+                kanbanId: offerKanbanId,
+                kanbanColumnId: byTitle("Trattativa")?.id,
+                column_id: byTitle("Trattativa")?.id,
+                column_position: 1,
+                deliveryDate: addDays(new Date(), 21).toISOString(),
+                sellPrice: 18500,
+                percentStatus: 35,
+                positions: ["Bancone", "Retro banco", "Led integrati"],
+                task_type: "offer",
+                offer_send_date: subDays(new Date(), 2).toISOString(),
+                material: false,
+                ferramenta: false,
+                metalli: false,
+            },
+            {
+                site_id: input.siteId,
+                title: "Camere executive hotel",
+                name: "Camere executive hotel",
+                unique_code: "OFF-2026-002",
+                status: "sent",
+                clientId: clients[2]?.id,
+                sellProductId: sellProducts[1]?.id,
+                kanbanId: offerKanbanId,
+                kanbanColumnId: byTitle("Offerta inviata")?.id,
+                column_id: byTitle("Offerta inviata")?.id,
+                column_position: 2,
+                deliveryDate: addDays(new Date(), 35).toISOString(),
+                sellPrice: 29400,
+                percentStatus: 55,
+                positions: ["12 minibar", "12 scrivanie", "12 pannelli TV"],
+                task_type: "offer",
+                offer_send_date: subDays(new Date(), 1).toISOString(),
+                material: false,
+                ferramenta: false,
+                metalli: false,
+            },
+            {
+                site_id: input.siteId,
+                title: "Corner retail flagship",
+                name: "Corner retail flagship",
+                unique_code: "COM-2026-003",
+                status: "production",
+                clientId: clients[1]?.id,
+                sellProductId: sellProducts[3]?.id,
+                kanbanId: workKanbanId,
+                kanbanColumnId: byTitle("In produzione")?.id,
+                column_id: byTitle("In produzione")?.id,
+                column_position: 1,
+                deliveryDate: addDays(new Date(), 14).toISOString(),
+                sellPrice: 21800,
+                percentStatus: 72,
+                positions: ["Parete dogata", "Banco cassa", "Espositori"],
+                task_type: "work",
+                material: true,
+                ferramenta: true,
+                metalli: false,
+            },
+            {
+                site_id: input.siteId,
+                title: "Testate imbottite hotel",
+                name: "Testate imbottite hotel",
+                unique_code: "COM-2026-004",
+                status: "planning",
+                clientId: clients[2]?.id,
+                sellProductId: sellProducts[2]?.id,
+                kanbanId: workKanbanId,
+                kanbanColumnId: byTitle("Pianificazione")?.id,
+                column_id: byTitle("Pianificazione")?.id,
+                column_position: 2,
+                deliveryDate: addDays(new Date(), 18).toISOString(),
+                sellPrice: 9800,
+                percentStatus: 20,
+                positions: ["20 camere", "Tessuto ignifugo"],
+                task_type: "work",
+                material: true,
+                ferramenta: false,
+                metalli: false,
+            },
+        ];
+
+    const { data: tasks, error: taskError } = await supabase.from("Task").insert(taskRows)
+        .select("id, title, unique_code, kanbanId, kanbanColumnId");
 
     if (taskError || !tasks) {
         throw new Error(taskError?.message || "Unable to seed tasks");
@@ -1164,7 +1578,9 @@ async function seedDemoWorkspaceData(
                 hours: 4,
                 minutes: 30,
                 totalTime: 4.5,
-                description: `Avanzamento lavorazione ${relatedTask?.title}`,
+                description: isSpeedywood
+                    ? `Preparazione ordine ${relatedTask?.title}`
+                    : `Avanzamento lavorazione ${relatedTask?.title}`,
                 activity_type: "project",
                 startTime: new Date(day.setHours(8, 0, 0, 0)).toISOString(),
                 endTime: new Date(day.setHours(12, 30, 0, 0)).toISOString(),
@@ -1177,7 +1593,9 @@ async function seedDemoWorkspaceData(
                 hours: 1,
                 minutes: 0,
                 totalTime: 1,
-                description: "Riunione avanzamento commessa",
+                description: isSpeedywood
+                    ? "Allineamento commerciale e disponibilita materiali"
+                    : "Riunione avanzamento commessa",
                 activity_type: "internal",
                 internal_activity: "riunione",
                 startTime: new Date(day.setHours(14, 0, 0, 0)).toISOString(),
@@ -1216,7 +1634,9 @@ async function seedDemoWorkspaceData(
             date: format(subDays(today, statusIndex + index), "yyyy-MM-dd"),
             status,
             created_by: input.ownerAuthId,
-            notes: status === "smart_working" ? "Lavoro da casa" : null,
+            notes: status === "smart_working"
+                ? (isSpeedywood ? "Aggiornamento listini da remoto" : "Lavoro da casa")
+                : null,
         }));
     });
 
@@ -1234,13 +1654,26 @@ async function seedDemoWorkspaceData(
             status: "approved",
             reviewed_by: input.ownerAuthId,
             reviewed_at: new Date().toISOString(),
-            notes: "Ferie pianificate demo",
+            notes: isSpeedywood ? "Assenza pianificata demo" : "Ferie pianificate demo",
         },
     ]);
 
-    const { data: inventoryCategories, error: inventoryCategoryError } = await supabase
-        .from("inventory_categories")
-        .insert([
+    const inventoryCategoryRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Legno massello e lamellare",
+                code: "WOOD",
+                description: "Abete, larice, rovere e lavorati per serramenti e falegnameria",
+            },
+            {
+                site_id: input.siteId,
+                name: "Pannelli tecnici",
+                code: "PANEL",
+                description: "MDF, truciolare, multistrato e pannelli tecnici",
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Pannelli",
@@ -1253,7 +1686,11 @@ async function seedDemoWorkspaceData(
                 code: "FER",
                 description: "Accessori tecnici e ferramenta",
             },
-        ])
+        ];
+
+    const { data: inventoryCategories, error: inventoryCategoryError } = await supabase
+        .from("inventory_categories")
+        .insert(inventoryCategoryRows)
         .select("id, name")
         .order("created_at", { ascending: true });
 
@@ -1264,9 +1701,22 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const { data: inventorySuppliers, error: inventorySupplierError } = await supabase
-        .from("inventory_suppliers")
-        .insert([
+    const inventorySupplierRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Swiss Timber Hub Stock",
+                code: "INV-WOOD",
+                notes: "Disponibilita massello e lamellare sincronizzata con acquisti",
+            },
+            {
+                site_id: input.siteId,
+                name: "Panel Trade Suisse Stock",
+                code: "INV-PANEL",
+                notes: "Disponibilita pannelli tecnici e materiali compositi",
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Magazzino Pannelli Nord",
@@ -1279,7 +1729,11 @@ async function seedDemoWorkspaceData(
                 code: "INV-FER",
                 notes: "Fornitore demo ferramenta",
             },
-        ])
+        ];
+
+    const { data: inventorySuppliers, error: inventorySupplierError } = await supabase
+        .from("inventory_suppliers")
+        .insert(inventorySupplierRows)
         .select("id, name")
         .order("created_at", { ascending: true });
 
@@ -1290,9 +1744,22 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const { data: warehouses, error: warehouseError } = await supabase
-        .from("inventory_warehouses")
-        .insert([
+    const warehouseRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Magazzino centrale",
+                code: "WH-CEN",
+                description: "Deposito principale per tavole, pannelli e semilavorati",
+            },
+            {
+                site_id: input.siteId,
+                name: "Area spedizioni",
+                code: "WH-SHP",
+                description: "Materiali pronti per evasione ordine e consegna",
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Magazzino centrale",
@@ -1305,7 +1772,11 @@ async function seedDemoWorkspaceData(
                 code: "WH-MON",
                 description: "Materiali pronti per installazione",
             },
-        ])
+        ];
+
+    const { data: warehouses, error: warehouseError } = await supabase
+        .from("inventory_warehouses")
+        .insert(warehouseRows)
         .select("id, name")
         .order("created_at", { ascending: true });
 
@@ -1313,9 +1784,26 @@ async function seedDemoWorkspaceData(
         throw new Error(warehouseError?.message || "Unable to seed warehouses");
     }
 
-    const { data: inventoryItems, error: inventoryItemError } = await supabase
-        .from("inventory_items")
-        .insert([
+    const inventoryItemRows = isSpeedywood
+        ? [
+            {
+                site_id: input.siteId,
+                name: "Tavola abete piallata 27mm",
+                description: "Tavole piallate per strutture leggere e falegnameria",
+                item_type: "wood",
+                category_id: inventoryCategories[0]?.id,
+                supplier_id: inventorySuppliers[0]?.id,
+            },
+            {
+                site_id: input.siteId,
+                name: "Pannello MDF grezzo 19mm",
+                description: "Pannello MDF per taglio e lavorazioni su misura",
+                item_type: "panel",
+                category_id: inventoryCategories[1]?.id,
+                supplier_id: inventorySuppliers[1]?.id,
+            },
+        ]
+        : [
             {
                 site_id: input.siteId,
                 name: "Pannello rovere naturale 19mm",
@@ -1332,7 +1820,11 @@ async function seedDemoWorkspaceData(
                 category_id: inventoryCategories[1]?.id,
                 supplier_id: inventorySuppliers[1]?.id,
             },
-        ])
+        ];
+
+    const { data: inventoryItems, error: inventoryItemError } = await supabase
+        .from("inventory_items")
+        .insert(inventoryItemRows)
         .select("id, name")
         .order("created_at", { ascending: true });
 
@@ -1342,9 +1834,39 @@ async function seedDemoWorkspaceData(
         );
     }
 
-    const { data: variants, error: variantsError } = await supabase
-        .from("inventory_item_variants")
-        .insert([
+    const variantRows = isSpeedywood
+        ? [
+            {
+                item_id: inventoryItems[0]?.id,
+                site_id: input.siteId,
+                internal_code: "WOOD-ABE-27",
+                supplier_code: "STH-ABE-27",
+                producer: suppliers[0]?.name,
+                purchase_unit_price: 42,
+                attributes: {
+                    material: "Abete",
+                    category: "Tavole piallate",
+                    thickness: 27,
+                    length: 4000,
+                },
+            },
+            {
+                item_id: inventoryItems[1]?.id,
+                site_id: input.siteId,
+                internal_code: "PAN-MDF-19",
+                supplier_code: "PTS-MDF-19",
+                producer: suppliers[1]?.name,
+                purchase_unit_price: 31,
+                attributes: {
+                    material: "MDF",
+                    category: "Pannelli MDF",
+                    thickness: 19,
+                    width: 2070,
+                    length: 2800,
+                },
+            },
+        ]
+        : [
             {
                 item_id: inventoryItems[0]?.id,
                 site_id: input.siteId,
@@ -1363,7 +1885,11 @@ async function seedDemoWorkspaceData(
                 purchase_unit_price: 12,
                 attributes: { length: 500, soft_close: true },
             },
-        ])
+        ];
+
+    const { data: variants, error: variantsError } = await supabase
+        .from("inventory_item_variants")
+        .insert(variantRows)
         .select("id")
         .order("created_at", { ascending: true });
 
@@ -1379,7 +1905,7 @@ async function seedDemoWorkspaceData(
             variant_id: variants[0]?.id,
             warehouse_id: warehouses[0]?.id,
             movement_type: "opening",
-            quantity: 48,
+            quantity: isSpeedywood ? 160 : 48,
             reason: "Stock iniziale demo",
         },
         {
@@ -1387,7 +1913,7 @@ async function seedDemoWorkspaceData(
             variant_id: variants[1]?.id,
             warehouse_id: warehouses[0]?.id,
             movement_type: "opening",
-            quantity: 120,
+            quantity: isSpeedywood ? 96 : 120,
             reason: "Stock iniziale demo",
         },
         {
@@ -1395,8 +1921,8 @@ async function seedDemoWorkspaceData(
             variant_id: variants[1]?.id,
             warehouse_id: warehouses[1]?.id,
             movement_type: "out",
-            quantity: 12,
-            reason: "Preparazione kit montaggio",
+            quantity: isSpeedywood ? 18 : 12,
+            reason: isSpeedywood ? "Preparazione ordine cliente" : "Preparazione kit montaggio",
         },
     ]);
 
@@ -1595,6 +2121,8 @@ export async function createDemoWorkspace(
             customerLogoUrl: input.customerLogoUrl,
             ownerProfileId: ownerProfile.id,
             ownerAuthId: ownerAuthUser.id,
+            templateKey: input.templateKey,
+            primaryColor: input.primaryColor,
             enabledModules: input.enabledModules,
             dataIntensity: input.dataIntensity,
         });

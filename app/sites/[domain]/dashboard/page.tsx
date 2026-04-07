@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchDashboardData,
+  fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
@@ -44,6 +45,7 @@ export default async function SiteDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteContext.siteId);
 
   // Check dashboard permission
   const userContext = await getUserContext();
@@ -73,10 +75,10 @@ export default async function SiteDashboardPage({
       <PageHeader>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard - Overview
+            {verticalProfile.pageCopy.dashboardOverviewTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Panoramica generale dell&apos;azienda e KPI principali
+            {verticalProfile.pageCopy.dashboardOverviewSubtitle}
           </p>
         </div>
       </PageHeader>

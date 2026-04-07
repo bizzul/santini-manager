@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchProduzioneDashboardData,
+  fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
@@ -38,6 +39,7 @@ export default async function ProduzioneDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteContext.siteId);
 
   // Check dashboard permission
   const userContext = await getUserContext();
@@ -67,10 +69,10 @@ export default async function ProduzioneDashboardPage({
       <PageHeader>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard – Produzione
+            {verticalProfile.pageCopy.productionTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Monitoraggio lavori in produzione e carico reparti
+            {verticalProfile.pageCopy.productionSubtitle}
           </p>
         </div>
       </PageHeader>

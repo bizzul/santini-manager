@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchInventoryDashboardData,
+  fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
@@ -46,6 +47,7 @@ export default async function InventarioDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteContext.siteId);
 
   // Check dashboard permission
   const userContext = await getUserContext();
@@ -75,10 +77,10 @@ export default async function InventarioDashboardPage({
       <PageHeader>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard – Inventario
+            {verticalProfile.pageCopy.inventoryTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Valore stock, categorie e criticità
+            {verticalProfile.pageCopy.inventorySubtitle}
           </p>
         </div>
       </PageHeader>

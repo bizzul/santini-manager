@@ -38,6 +38,7 @@ import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useSiteModules } from "@/hooks/use-site-modules";
 import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faWaveSquare,
@@ -127,6 +128,7 @@ type SiteDataQueryResult = {
   id: string;
   name: string;
   image: string | null;
+  verticalProfile?: unknown;
   organization: { name: string };
 };
 
@@ -139,6 +141,7 @@ async function fetchSiteData(domain: string): Promise<SiteDataQueryResult> {
     id: data.id,
     name: data.name || domain,
     image: data.image || null,
+    verticalProfile: data.verticalProfile || null,
     organization: { name: data.organization?.name || "" },
   };
 }
@@ -188,7 +191,12 @@ const extractDomainFromPath = (pathname: string): string | null => {
 const getMenuItems = (
   pathname: string,
   enabledModules: string[] = [],
-  basePath: string = ""
+  basePath: string = "",
+  labels?: {
+    kanban?: string;
+    projects?: string;
+    reports?: string;
+  }
 ): MenuItem[] => {
   const allSiteItems: MenuItem[] = [
     {
@@ -199,7 +207,7 @@ const getMenuItems = (
       moduleName: "dashboard",
     },
     {
-      label: "Kanban",
+      label: labels?.kanban || "Kanban",
       icon: "faTable",
       alert: true,
       moduleName: "kanban",
@@ -319,7 +327,7 @@ const getMenuItems = (
       moduleName: "products",
     },
     {
-      label: "Progetti",
+      label: labels?.projects || "Progetti",
       icon: "faTable",
       href: `${basePath}/projects`,
       alert: false,
@@ -368,7 +376,7 @@ const getMenuItems = (
       moduleName: "errortracking",
     },
     {
-      label: "Reports",
+      label: labels?.reports || "Reports",
       icon: "faSquarePollVertical",
       href: `${basePath}/reports`,
       alert: false,
@@ -578,6 +586,10 @@ export function AppSidebar() {
     staleTime: 15 * 60 * 1000, // 15 minutes
     gcTime: 60 * 60 * 1000, // 1 hour
   });
+  const verticalProfile = useMemo(
+    () => resolveSiteVerticalProfile(siteData?.verticalProfile),
+    [siteData]
+  );
 
   // OPTIMIZED: Lazy load kanbans - only fetch when section is expanded
   const {
@@ -653,11 +665,12 @@ export function AppSidebar() {
     const items = getMenuItems(
       pathname,
       enabledModules.map((m) => m.name),
-      basePath
+      basePath,
+      verticalProfile.menuLabels
     );
 
     return items.map((item: MenuItem) => {
-      if (item.label === "Kanban") {
+      if (item.label === verticalProfile.menuLabels.kanban) {
         const isSuperAdmin = userContext?.role === "superadmin";
 
         // Se non ci sono categorie, mostra tutte le kanban senza raggruppamento
@@ -819,6 +832,7 @@ export function AppSidebar() {
     pathname,
     enabledModules,
     basePath,
+    verticalProfile,
     kanbansLocal,
     kanbanCategories,
     isLoadingKanbansLocal,
@@ -850,7 +864,7 @@ export function AppSidebar() {
     setCollapsedMenus((prev) => {
       const wasCollapsed = prev[label];
       // If opening Kanban section, mark it as opened for lazy loading
-      if (label === "Kanban" && wasCollapsed) {
+      if (label === verticalProfile.menuLabels.kanban && wasCollapsed) {
         setKanbanOpened(true);
       }
       return {
@@ -858,7 +872,7 @@ export function AppSidebar() {
         [label]: !wasCollapsed,
       };
     });
-  }, []);
+  }, [verticalProfile]);
 
   // Optimized display values
   const displayTitle = useMemo(() => {
@@ -874,15 +888,18 @@ export function AppSidebar() {
 
   // Raggruppa i menu items per categoria
   const groupedMenuItems = useMemo(() => {
+    const kanbanLabel = verticalProfile.menuLabels.kanban;
+    const projectsLabel = verticalProfile.menuLabels.projects;
+    const reportsLabel = verticalProfile.menuLabels.reports;
     const core = menuItems.filter((item) => item.label === "Dashboard");
-    const projects = menuItems.filter((item) => item.label === "Kanban");
+    const projects = menuItems.filter((item) => item.label === kanbanLabel);
     const calendars = menuItems.filter((item) => item.label === "Calendari");
     const contacts = menuItems.filter((item) => item.label === "Contatti");
     const warehouse = menuItems.filter((item) => item.label === "Magazzino");
     const factory = menuItems.filter((item) => item.label === "Fabbrica");
     const products = menuItems.filter((item) => item.label === "Prodotti");
     const projectsSection = menuItems.filter(
-      (item) => item.label === "Progetti"
+      (item) => item.label === projectsLabel
     );
     const categories = menuItems.filter((item) => item.label === "Categorie");
     const attendance = menuItems.filter((item) => item.label === "Presenze");
@@ -890,7 +907,7 @@ export function AppSidebar() {
       (item) =>
         ![
           "Dashboard",
-          "Kanban",
+          kanbanLabel,
           "Calendari",
           "Ore",
           "Presenze",
@@ -898,10 +915,10 @@ export function AppSidebar() {
           "Magazzino",
           "Fabbrica",
           "Prodotti",
-          "Progetti",
+          projectsLabel,
           "Categorie",
           "Errori",
-          "Reports",
+          reportsLabel,
         ].includes(item.label)
     );
 
@@ -918,7 +935,7 @@ export function AppSidebar() {
       categories,
       others,
     };
-  }, [menuItems]);
+  }, [menuItems, verticalProfile]);
 
   // Progressive loading: separate loading states for different parts
   // Header/footer load from hydration, so usually instant
@@ -1120,7 +1137,7 @@ export function AppSidebar() {
     // If item has subitems, use Collapsible
     if (item.items) {
       // Check if this is the Kanban menu for prefetch on hover
-      const isKanbanMenu = item.label === "Kanban";
+      const isKanbanMenu = item.label === verticalProfile.menuLabels.kanban;
 
       return (
         <Collapsible

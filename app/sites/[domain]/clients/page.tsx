@@ -1,7 +1,11 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
-import { requireServerSiteContext, fetchClients } from "@/lib/server-data";
+import {
+  requireServerSiteContext,
+  fetchClients,
+  fetchSiteVerticalProfile,
+} from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
@@ -23,6 +27,7 @@ export default async function Page({
 
   // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch data
   const clients = await fetchClients(siteId);
@@ -30,7 +35,12 @@ export default async function Page({
   return (
     <PageLayout>
       <PageHeader>
-        <h1 className="text-2xl font-bold">Clienti</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.clientsTitle}</h1>
+          <p className="text-sm text-muted-foreground">
+            {verticalProfile.pageCopy.clientsSubtitle}
+          </p>
+        </div>
         <div className="flex gap-2">
           <ButtonExportCSV />
           <DialogImportCSV />

@@ -4,6 +4,11 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  DEFAULT_SITE_VERTICAL_PROFILE,
+  resolveSiteVerticalProfile,
+} from "@/lib/site-verticals";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -14,17 +19,6 @@ import {
   Box,
   Tag,
 } from "lucide-react";
-
-const tabs = [
-  { name: "Overview", href: "", icon: LayoutDashboard },
-  { name: "Vendita", href: "/vendita", icon: ShoppingCart },
-  { name: "AVOR", href: "/avor", icon: ClipboardList },
-  { name: "Produzione", href: "/produzione", icon: Factory },
-  { name: "Fatturazione", href: "/fatturazione", icon: Receipt },
-  { name: "Interni", href: "/interni", icon: Users },
-  { name: "Inventario", href: "/inventario", icon: Box },
-  { name: "Prodotti", href: "/prodotti", icon: Tag },
-];
 
 export default function DashboardTabs() {
   const pathname = usePathname();
@@ -40,6 +34,32 @@ export default function DashboardTabs() {
   // Extract the current tab from pathname
   const isOverview = pathname.endsWith("/dashboard") || pathname.endsWith("/dashboard/");
   const currentPath = pathname.replace(/^.*\/dashboard/, "") || "";
+  const { data: verticalProfile = DEFAULT_SITE_VERTICAL_PROFILE } = useQuery({
+    queryKey: ["dashboard-vertical-profile", domain],
+    enabled: !!domain,
+    queryFn: async () => {
+      const response = await fetch(`/api/sites/${domain}`);
+      if (!response.ok) {
+        return DEFAULT_SITE_VERTICAL_PROFILE;
+      }
+
+      const data = await response.json();
+      return resolveSiteVerticalProfile(data.verticalProfile);
+    },
+  });
+  const tabs = useMemo(
+    () => [
+      { name: verticalProfile.dashboardTabs.overview, href: "", icon: LayoutDashboard },
+      { name: verticalProfile.dashboardTabs.vendita, href: "/vendita", icon: ShoppingCart },
+      { name: "AVOR", href: "/avor", icon: ClipboardList },
+      { name: verticalProfile.dashboardTabs.produzione, href: "/produzione", icon: Factory },
+      { name: "Fatturazione", href: "/fatturazione", icon: Receipt },
+      { name: "Interni", href: "/interni", icon: Users },
+      { name: verticalProfile.dashboardTabs.inventario, href: "/inventario", icon: Box },
+      { name: verticalProfile.dashboardTabs.prodotti, href: "/prodotti", icon: Tag },
+    ],
+    [verticalProfile]
+  );
 
   return (
     <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-slate-900/60 border-b border-slate-800">
@@ -48,7 +68,7 @@ export default function DashboardTabs() {
           {tabs.map((tab) => {
             const tabPath = tab.href || "";
             const isActive =
-              (tab.name === "Overview" && isOverview) ||
+              (tab.href === "" && isOverview) ||
               (!isOverview && currentPath === tabPath);
             const Icon = tab.icon;
 

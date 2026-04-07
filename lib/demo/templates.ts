@@ -1,7 +1,15 @@
 import { AVAILABLE_MODULES } from "@/lib/module-config";
 
-export const DEMO_TEMPLATE_KEYS = ["full_suite_arredo"] as const;
-export const DEMO_SECTOR_KEYS = ["arredo", "falegnameria", "contract"] as const;
+export const DEMO_TEMPLATE_KEYS = [
+    "full_suite_arredo",
+    "full_suite_speedywood",
+] as const;
+export const DEMO_SECTOR_KEYS = [
+    "arredo",
+    "falegnameria",
+    "contract",
+    "rivendita_legno",
+] as const;
 export const DEMO_SCENARIO_KEYS = ["full_suite", "commerciale", "operations"] as const;
 export const DEMO_DATA_INTENSITIES = ["low", "medium", "high"] as const;
 
@@ -40,6 +48,18 @@ const FULL_SUITE_ARREDO_MODULES = [
     "voice-input",
 ];
 
+const FULL_SUITE_SPEEDYWOOD_MODULES = [
+    "dashboard",
+    "kanban",
+    "clients",
+    "products",
+    "inventory",
+    "suppliers",
+    "projects",
+    "report-inventory",
+    "report-projects",
+];
+
 export const DEMO_TEMPLATES: DemoTemplateDefinition[] = [
     {
         key: "full_suite_arredo",
@@ -74,6 +94,41 @@ export const DEMO_TEMPLATES: DemoTemplateDefinition[] = [
             "Presenze",
         ],
         defaultCtaLabel: "Entra nella demo",
+    },
+    {
+        key: "full_suite_speedywood",
+        label: "Full Data Manager - Speedywood",
+        sector: "rivendita_legno",
+        scenario: "full_suite",
+        description:
+            "Demo verticale per Speedywood con richieste offerta, catalogo legno, magazzino e ordini riutilizzando il backend esistente.",
+        defaultEnabledModules: FULL_SUITE_SPEEDYWOOD_MODULES,
+        defaultPainPoints: [
+            "Richieste offerta, listini e disponibilita sono distribuiti tra email, fogli e telefonate",
+            "Lead time e disponibilita fornitori non sono visibili fin dal primo contatto commerciale",
+            "Magazzino e ordini non hanno una vista unica su essenze, pannelli e semilavorati",
+            "Privati e aziende seguono flussi diversi ma senza un controllo centralizzato",
+        ],
+        defaultDesiredOutcomes: [
+            "Ridurre il tempo medio di preparazione offerte e conferma ordine",
+            "Centralizzare catalogo, disponibilita, lead time e storico clienti",
+            "Avere KPI chiari su offerte, stock critico e ordini in evasione",
+        ],
+        defaultLandingTitle:
+            "Una demo costruita sui flussi commerciali e operativi di Speedywood",
+        defaultLandingSubtitle:
+            "Troverai richieste offerta, prodotti in legno, magazzino e ordini con dati gia' coerenti per il mercato privati e B2B.",
+        defaultIntroNarrative:
+            "Abbiamo preparato un ambiente demo dedicato a speedywood.ch con clienti privati e aziende, prodotti in legno e semilavorati, fornitori, richieste offerta e ordini gia' pronti da esplorare.",
+        defaultRecommendedModules: [
+            "Dashboard",
+            "Richieste Offerta",
+            "Prodotti",
+            "Magazzino",
+            "Ordini",
+            "Analisi",
+        ],
+        defaultCtaLabel: "Entra nella demo Speedywood",
     },
 ];
 

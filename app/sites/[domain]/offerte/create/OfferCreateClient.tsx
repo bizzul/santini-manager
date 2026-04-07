@@ -7,6 +7,7 @@ import { Client, SellProduct, Task } from "@/types/supabase";
 import { Badge } from "@/components/ui/badge";
 import { FileEdit } from "lucide-react";
 import { downloadOfferPdf } from "@/lib/offer-pdf";
+import { useSiteVerticalProfile } from "@/hooks/use-site-vertical-profile";
 
 interface OfferCreateClientProps {
   domain: string;
@@ -31,6 +32,7 @@ export default function OfferCreateClient({
 }: OfferCreateClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { data: verticalProfile } = useSiteVerticalProfile(domain);
   
   const isCompletingDraft = !!draftTask;
 
@@ -137,7 +139,9 @@ export default function OfferCreateClient({
     <div>
       <div className="flex items-center justify-center gap-3 mb-8">
         <h1 className="text-2xl font-bold text-center">
-          {isCompletingDraft ? "Completa Offerta" : "Crea Nuova Offerta"}
+          {isCompletingDraft
+            ? "Completa Offerta"
+            : (verticalProfile?.pageCopy.offerCreateTitle || "Crea Nuova Offerta")}
         </h1>
         {isCompletingDraft && (
           <Badge className="bg-amber-500 hover:bg-amber-600">
@@ -155,6 +159,12 @@ export default function OfferCreateClient({
             {draftTask.clientId && " Cliente e prodotti sono già pre-selezionati."}
           </p>
         </div>
+      )}
+
+      {!isCompletingDraft && verticalProfile?.pageCopy.offerCreateSubtitle && (
+        <p className="mb-6 text-center text-sm text-muted-foreground">
+          {verticalProfile.pageCopy.offerCreateSubtitle}
+        </p>
       )}
       
       <OfferWizard

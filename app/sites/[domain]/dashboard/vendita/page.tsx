@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchVenditaDashboardData,
+  fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
@@ -43,6 +44,7 @@ export default async function VenditaDashboardPage({
 }) {
   const { domain } = await params;
   const siteContext = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteContext.siteId);
 
   // Check dashboard permission
   const userContext = await getUserContext();
@@ -72,10 +74,10 @@ export default async function VenditaDashboardPage({
       <PageHeader>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard – Vendita
+            {verticalProfile.pageCopy.salesTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Pipeline commerciale, gestione offerte e analisi conversioni
+            {verticalProfile.pageCopy.salesSubtitle}
           </p>
         </div>
       </PageHeader>

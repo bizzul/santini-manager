@@ -23,7 +23,7 @@ export default async function CreateDemoPage() {
         redirect("/administration");
     }
 
-    const template = getDemoTemplateByKey("full_suite_arredo");
+    const template = getDemoTemplateByKey("full_suite_speedywood");
     const moduleOptions = getDemoModuleOptions();
 
     return (

@@ -1,7 +1,12 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
-import { requireServerSiteContext, fetchSellProducts, fetchSellProductCategories } from "@/lib/server-data";
+import {
+  requireServerSiteContext,
+  fetchSellProducts,
+  fetchSellProductCategories,
+  fetchSiteVerticalProfile,
+} from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
@@ -23,6 +28,7 @@ export default async function Page({
 
   // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
+  const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch data
   const products = await fetchSellProducts(siteId);
@@ -31,7 +37,12 @@ export default async function Page({
   return (
     <PageLayout>
       <PageHeader>
-        <h1 className="text-2xl font-bold">Prodotti in vendita</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.productsPageTitle}</h1>
+          <p className="text-sm text-muted-foreground">
+            {verticalProfile.pageCopy.productsPageSubtitle}
+          </p>
+        </div>
         <div className="flex gap-2">
           <ButtonExportCSV />
           <DialogImportCSV />

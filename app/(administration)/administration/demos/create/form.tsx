@@ -13,31 +13,31 @@ import { initialCreateDemoState } from "./state";
 
 const RANDOM_PROSPECTS = [
     {
-        customerName: "Rossi Contract",
-        customerCompany: "Rossi Contract SRL",
-        customerContactName: "Luca Rossi",
-        customerContactEmail: "luca.rossi@example.com",
-        sectorKey: "contract",
+        customerName: "Speedywood Demo",
+        customerCompany: "Speedywood AG",
+        customerContactName: "Luca Bernasconi",
+        customerContactEmail: "luca.bernasconi@speedywood.ch",
+        sectorKey: "rivendita_legno",
         scenarioType: "full_suite",
-        primaryColor: "#0F172A",
+        primaryColor: "#7C5A34",
     },
     {
-        customerName: "Bianchi Arredi",
-        customerCompany: "Bianchi Arredi SA",
-        customerContactName: "Giulia Bianchi",
-        customerContactEmail: "giulia.bianchi@example.com",
-        sectorKey: "arredo",
+        customerName: "Speedywood B2B",
+        customerCompany: "Speedywood Trade SA",
+        customerContactName: "Giulia Keller",
+        customerContactEmail: "giulia.keller@speedywood.ch",
+        sectorKey: "rivendita_legno",
         scenarioType: "commerciale",
-        primaryColor: "#1D4ED8",
+        primaryColor: "#8B5E3C",
     },
     {
-        customerName: "Falegnameria Moderna",
-        customerCompany: "Falegnameria Moderna SNC",
-        customerContactName: "Marco Leoni",
-        customerContactEmail: "marco.leoni@example.com",
-        sectorKey: "falegnameria",
+        customerName: "Speedywood Operations",
+        customerCompany: "Speedywood Operations GmbH",
+        customerContactName: "Marco Frei",
+        customerContactEmail: "marco.frei@speedywood.ch",
+        sectorKey: "rivendita_legno",
         scenarioType: "operations",
-        primaryColor: "#166534",
+        primaryColor: "#6B4F2E",
     },
 ];
 
@@ -122,11 +122,11 @@ export function CreateDemoForm({
         setValue("tokenPolicy", tokenPolicy);
         setValue(
             "currentProcessIssues",
-            "Preventivi, avanzamento lavori e materiali sono distribuiti su troppi strumenti diversi.",
+            "Richieste offerta, listini e disponibilita fornitori sono distribuiti su troppi strumenti diversi.",
         );
         setValue(
             "salesNotes",
-            "Prospect generato in automatico per test rapido del flusso demo.",
+            "Prospect Speedywood generato in automatico per test rapido del flusso demo.",
         );
         setValue(
             "landingTitle",
@@ -134,45 +134,46 @@ export function CreateDemoForm({
         );
         setValue(
             "landingSubtitle",
-            "Mostra offerte, produzione, magazzino e presenze con dati pronti da esplorare.",
+            "Mostra richieste offerta, catalogo legno, magazzino e ordini con dati pronti da esplorare.",
         );
         setValue(
             "introNarrative",
-            "Questa demo e' stata compilata automaticamente per testare il provisioning end-to-end e simulare un prospect realistico.",
+            "Questa demo e' stata compilata automaticamente per simulare il provisioning end-to-end di Speedywood e un prospect realistico nel settore legno.",
         );
-        setValue("ctaLabel", "Apri demo di test");
+        setValue("ctaLabel", "Apri demo Speedywood");
         setValue(
             "painPoints",
             [
-                "Offerte e commesse su file diversi",
-                "Nessuna vista unica sull'avanzamento lavori",
-                "Magazzino non sincronizzato con la produzione",
+                "Preventivi e disponibilita su canali diversi",
+                "Lead time fornitori poco visibili fin dal primo contatto",
+                "Magazzino e ordini non sincronizzati su essenze e pannelli",
             ].join("\n"),
         );
         setValue(
             "desiredOutcomes",
             [
-                "Ridurre i tempi di coordinamento",
-                "Avere KPI chiari per commerciale e produzione",
-                "Tracciare materiali, ore e presenze in un solo posto",
+                "Ridurre il tempo di preparazione offerta",
+                "Avere KPI chiari su richieste, stock e ordini",
+                "Centralizzare clienti, materiali e fornitori in un solo posto",
             ].join("\n"),
         );
         setValue(
             "recommendedModules",
             [
                 "Dashboard",
-                "Kanban offerte",
-                "Produzione",
+                "Richieste Offerta",
+                "Prodotti",
                 "Magazzino",
-                "Timetracking",
+                "Ordini",
+                "Analisi",
             ].join("\n"),
         );
 
         const enabledModules = new Set(
             randomItem([
                 defaultValues.enabledModules,
-                ["dashboard", "kanban", "clients", "inventory", "timetracking"],
-                ["dashboard", "kanban", "products", "suppliers", "attendance"],
+                ["dashboard", "kanban", "clients", "products", "inventory", "suppliers"],
+                ["dashboard", "kanban", "products", "inventory", "projects", "report-inventory"],
             ]),
         );
 
@@ -202,7 +203,7 @@ export function CreateDemoForm({
                             1. Identita&apos; Demo
                         </h2>
                         <div className="grid gap-4">
-                            <Input name="demoName" placeholder="Demo Santini Contract" />
+                            <Input name="demoName" placeholder="Demo Speedywood" />
                             <Input name="customerName" placeholder="Nome cliente / prospect" required />
                             <Input name="customerCompany" placeholder="Azienda" />
                             <Input name="customerContactName" placeholder="Referente" />
@@ -222,16 +223,16 @@ export function CreateDemoForm({
                             2. Scenario
                         </h2>
                         <div className="grid gap-4">
-                            <input type="hidden" name="templateKey" value="full_suite_arredo" />
+                            <input type="hidden" name="templateKey" value="full_suite_speedywood" />
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-white/80">
                                     Template demo
                                 </label>
-                                <Input value="full_suite_arredo" readOnly disabled />
+                                <Input value="full_suite_speedywood" readOnly disabled />
                                 <p className="text-xs leading-5 text-white/60">
-                                    E' la base tecnica e narrativa della demo. Per ora l'MVP usa
-                                    solo `full_suite_arredo`, cioe' una demo completa per aziende
-                                    arredo/contract.
+                                    E' la base tecnica e narrativa della demo. Questa configurazione
+                                    usa `full_suite_speedywood`, cioe' la verticale dedicata alla
+                                    rivendita di prodotti in legno e semilavorati.
                                 </p>
                             </div>
                             <div className="space-y-2">
@@ -240,14 +241,14 @@ export function CreateDemoForm({
                                 </label>
                                 <Input
                                     name="sectorKey"
-                                    defaultValue="arredo"
+                                    defaultValue="rivendita_legno"
                                     required
-                                    placeholder="es. arredo, contract, falegnameria"
+                                    placeholder="es. rivendita_legno, falegnameria"
                                 />
                                 <p className="text-xs leading-5 text-white/60">
                                     Serve a contestualizzare la demo per il tipo di azienda che la
                                     ricevera'. Usalo per descrivere il mercato del prospect, ad
-                                    esempio `arredo` o `contract`.
+                                    esempio `rivendita_legno` o `falegnameria`.
                                 </p>
                             </div>
                             <div className="space-y-2">
