@@ -250,7 +250,6 @@ export default async function Page({
   ]);
 
   const borderColor = getBorderColor(data);
-  const isDraft = data.is_draft || data.isDraft;
   const deliveryDate = data.deliveryDate ? new Date(data.deliveryDate) : null;
   const isValidDelivery = deliveryDate && !isNaN(deliveryDate.getTime());
   const weekNumber = isValidDelivery ? getWeekNumber(deliveryDate) : null;
@@ -357,14 +356,6 @@ export default async function Page({
             borderLeftColor: borderColor,
           }}
         >
-          {isDraft && (
-            <div className="absolute top-3 right-3 z-10">
-              <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
-                Bozza
-              </Badge>
-            </div>
-          )}
-
           <div className="p-5 lg:p-6 space-y-6">
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_320px]">
               <div className="space-y-5">
