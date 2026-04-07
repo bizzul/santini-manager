@@ -278,146 +278,147 @@ const Column = ({
     });
   };
 
+  const renderStat = (label: string, value: any) => (
+    <div className="rounded-md border bg-muted/40 px-2 py-1.5">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="text-sm font-semibold leading-tight">{value}</p>
+    </div>
+  );
+
   return (
     <div
       key={column.id}
-      className="w-72 shrink-0 flex flex-col border p-4 max-h-full"
+      className="flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-lg border bg-background shadow-sm"
     >
-      <div className="flex flex-row justify-between shrink-0">
-        <h2 className="mb-4 text-xl font-semibold flex items-center gap-2">
-          {column.title}{" "}
-          {(() => {
-            const IconComponent = getKanbanIcon(column.icon);
-            return <IconComponent className="h-5 w-5" />;
-          })()}
-        </h2>
-        {/* Column stats - different display for offer kanbans */}
-        <div className="text-xs">
-          {isOfferKanban ? (
-            <>
-              <p>
-                N° offerte: <span className="font-bold">{totalOffers}</span>
-              </p>
-              <p>
-                Valore totale:{" "}
-                <span className="font-bold">
-                  {(parseFloat(totalColumn) / 1000).toFixed(2)} K
-                </span>
-              </p>
-            </>
-          ) : (
-            <>
-              <p>
-                Progetti: <span className="font-bold">{totalTasks}</span>
-              </p>
-              <p>
-                Posizioni: <span className="font-bold">{totalPositions}</span>
-              </p>
-              <p>
-                V.Attuale:{" "}
-                <span className="font-bold">
-                  {" "}
-                  {(parseFloat(totalValue) / 1000).toFixed(2)} K
-                </span>
-              </p>
-              <p>
-                V.Totale :{" "}
-                <span className="font-bold">
-                  {" "}
-                  {(parseFloat(totalColumn) / 1000).toFixed(2)} K
-                </span>
-              </p>
-            </>
-          )}
-        </div>
-        {/* Quick Add button for TODO column in offer kanbans */}
-        {isTodoColumn && (
-          <Dialog
-            open={modalQuickAdd}
-            onOpenChange={() => setModalQuickAdd(!modalQuickAdd)}
-          >
-            <DialogTrigger asChild>
-              <button
-                className="border p-2 rounded bg-amber-500 hover:bg-amber-600 text-white cursor-pointer transition-colors"
-                onClick={() => setModalQuickAdd(true)}
-                title="Aggiungi richiesta offerta rapida"
+      <div className="shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-lg font-semibold leading-tight">
+              <span className="truncate">{column.title}</span>
+              {(() => {
+                const IconComponent = getKanbanIcon(column.icon);
+                return <IconComponent className="h-4 w-4 shrink-0" />;
+              })()}
+            </h2>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Quick Add button for TODO column in offer kanbans */}
+            {isTodoColumn && (
+              <Dialog
+                open={modalQuickAdd}
+                onOpenChange={() => setModalQuickAdd(!modalQuickAdd)}
               >
-                <FileEdit className="h-4 w-4" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Nuova Richiesta Offerta</DialogTitle>
-                <DialogDescription>
-                  Aggiungi una richiesta rapida in TODO. Potrai completare i
-                  dettagli quando lavori l&apos;offerta.
-                </DialogDescription>
-              </DialogHeader>
-              <OfferQuickAdd
-                clients={data.clients || []}
-                categories={data.categories || []}
-                kanbanId={(kanban as any)?.id}
-                domain={domain}
-                onSuccess={() => {
-                  setModalQuickAdd(false);
-                  if (onTaskCreated) {
-                    onTaskCreated();
-                  }
-                }}
-                onCancel={() => setModalQuickAdd(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-        {/* Create button - different behavior for offer kanbans */}
-        {isCreationColumn &&
-          (isOfferKanban ? (
-            <button
-              className="border p-2 rounded bg-red-600 hover:bg-red-700 text-white cursor-pointer transition-colors"
-              onClick={() =>
-                router.push(
-                  `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`
-                )
-              }
-              title="Crea nuova offerta"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          ) : (
-            <Dialog
-              open={modalCreate}
-              onOpenChange={() => setModalCreate(!modalCreate)}
-            >
-              <DialogTrigger asChild>
+                <DialogTrigger asChild>
+                  <button
+                    className="cursor-pointer rounded border bg-amber-500 p-2 text-white transition-colors hover:bg-amber-600"
+                    onClick={() => setModalQuickAdd(true)}
+                    title="Aggiungi richiesta offerta rapida"
+                  >
+                    <FileEdit className="h-4 w-4" />
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Nuova Richiesta Offerta</DialogTitle>
+                    <DialogDescription>
+                      Aggiungi una richiesta rapida in TODO. Potrai completare i
+                      dettagli quando lavori l&apos;offerta.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <OfferQuickAdd
+                    clients={data.clients || []}
+                    categories={data.categories || []}
+                    kanbanId={(kanban as any)?.id}
+                    domain={domain}
+                    onSuccess={() => {
+                      setModalQuickAdd(false);
+                      if (onTaskCreated) {
+                        onTaskCreated();
+                      }
+                    }}
+                    onCancel={() => setModalQuickAdd(false)}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
+            {/* Create button - different behavior for offer kanbans */}
+            {isCreationColumn &&
+              (isOfferKanban ? (
                 <button
-                  className="border p-2 rounded hover:bg-accent cursor-pointer"
-                  onClick={() => setModalCreate(true)}
+                  className="cursor-pointer rounded border bg-red-600 p-2 text-white transition-colors hover:bg-red-700"
+                  onClick={() =>
+                    router.push(
+                      `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`
+                    )
+                  }
+                  title="Crea nuova offerta"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
-                <DialogHeader>
-                  <DialogTitle>Crea progetto</DialogTitle>
-                  <DialogDescription>Crea un progetto nuovo</DialogDescription>
-                </DialogHeader>
-                <CreateProductForm
-                  data={data}
-                  handleClose={(success?: boolean) => {
-                    setModalCreate(false);
-                    if (success && onTaskCreated) {
-                      onTaskCreated();
-                    }
-                  }}
-                  kanbanId={(kanban as any)?.id}
-                  domain={domain}
-                />
-              </DialogContent>
-            </Dialog>
-          ))}
+              ) : (
+                <Dialog
+                  open={modalCreate}
+                  onOpenChange={() => setModalCreate(!modalCreate)}
+                >
+                  <DialogTrigger asChild>
+                    <button
+                      className="cursor-pointer rounded border p-2 hover:bg-accent"
+                      onClick={() => setModalCreate(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
+                    <DialogHeader>
+                      <DialogTitle>Crea progetto</DialogTitle>
+                      <DialogDescription>Crea un progetto nuovo</DialogDescription>
+                    </DialogHeader>
+                    <CreateProductForm
+                      data={data}
+                      handleClose={(success?: boolean) => {
+                        setModalCreate(false);
+                        if (success && onTaskCreated) {
+                          onTaskCreated();
+                        }
+                      }}
+                      kanbanId={(kanban as any)?.id}
+                      domain={domain}
+                    />
+                  </DialogContent>
+                </Dialog>
+              ))}
+          </div>
+        </div>
+        {/* Column stats - different display for offer kanbans */}
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          {isOfferKanban ? (
+            <>
+              {renderStat("Offerte", totalOffers)}
+              {renderStat(
+                "Valore",
+                `${(parseFloat(totalColumn) / 1000).toFixed(2)} K`
+              )}
+            </>
+          ) : (
+            <>
+              {renderStat("Progetti", totalTasks)}
+              {renderStat("Posizioni", totalPositions)}
+              {renderStat(
+                "V. attuale",
+                `${(parseFloat(totalValue) / 1000).toFixed(2)} K`
+              )}
+              {renderStat(
+                "V. totale",
+                `${(parseFloat(totalColumn) / 1000).toFixed(2)} K`
+              )}
+            </>
+          )}
+        </div>
       </div>
       <div
-        className={`flex-1 overflow-y-auto p-1 ${
+        className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 ${
           isOver && !isPreviewMode ? "bg-green-500 border border-zinc-400" : ""
         }`}
         ref={setNodeRef}
@@ -1355,9 +1356,9 @@ function KanbanBoard({
           <div
             className={`${
               loading ? "opacity-50" : ""
-            } transition-all duration-500 flex-1 overflow-auto px-8 pb-4`}
+            } flex-1 overflow-x-auto overflow-y-hidden px-8 py-4 transition-all duration-500`}
           >
-            <div className="flex gap-4 pt-4 min-w-max">
+            <div className="flex h-full min-h-0 min-w-max items-stretch gap-4">
               {(kanban.columns || [])
                 .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
                 .map((column: KanbanColumn) => {
