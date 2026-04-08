@@ -57,6 +57,15 @@ const getCategoryIcon = (categoryName?: string | null): LucideIcon => {
   return CATEGORY_ICONS[normalizedName] || DEFAULT_CATEGORY_ICON;
 };
 
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
+
+const isImagePath = (value?: string | null): boolean => {
+  if (!value || typeof value !== "string") return false;
+  const cleanValue = value.split("?")[0] || "";
+  const extension = cleanValue.split(".").pop()?.toLowerCase() || "";
+  return IMAGE_EXTENSIONS.includes(extension);
+};
+
 // Funzione per generare colori derivati da un colore base
 const getDerivedColors = (baseColor: string | null | undefined) => {
   if (!baseColor) {
@@ -153,6 +162,7 @@ export default function Card({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
+  const cardCoverPreferenceStorageKey = `card-cover-preference-${id}`;
 
   // Determina se la card deve essere small in base a display_mode
   const displayMode = data.display_mode || data.displayMode || "normal";
@@ -189,6 +199,16 @@ export default function Card({
     return isSmallInitial;
   });
 
+  const [preferProjectCoverImage, setPreferProjectCoverImage] = useState(() => {
+    try {
+      const saved = localStorage.getItem(cardCoverPreferenceStorageKey);
+      return saved === "project";
+    } catch (error) {
+      logger.warn("Error reading card cover preference:", error);
+      return false;
+    }
+  });
+
   // Sync con il comando globale "Chiudi tutte le tab" / "Apri tutte le tab"
   useEffect(() => {
     // isSmallInitial: null = non attivato (ignora), true = chiudi tutte, false = apri tutte
@@ -210,6 +230,21 @@ export default function Card({
       logger.warn("Error saving to localStorage:", error);
     }
   };
+
+  const persistCoverPreference = useCallback(
+    (preferProject: boolean) => {
+      try {
+        localStorage.setItem(
+          cardCoverPreferenceStorageKey,
+          preferProject ? "project" : "product"
+        );
+      } catch (error) {
+        logger.warn("Error saving card cover preference:", error);
+      }
+      setPreferProjectCoverImage(preferProject);
+    },
+    [cardCoverPreferenceStorageKey]
+  );
 
   useEffect(() => {
     // Check if delivery date is past
@@ -431,6 +466,30 @@ export default function Card({
     return imageUrl;
   }, [data.sellProduct, data.sell_product]);
 
+  const projectImageUrl = useMemo(() => {
+    if (!Array.isArray(data.files)) {
+      return null;
+    }
+
+    const projectImage = data.files.find((file: any) =>
+      isImagePath(file?.name) || isImagePath(file?.url)
+    );
+
+    const imageUrl = projectImage?.url;
+    if (typeof imageUrl !== "string" || imageUrl.trim().length === 0) {
+      return null;
+    }
+
+    return imageUrl;
+  }, [data.files]);
+
+  const cardImageUrl = useMemo(() => {
+    if (preferProjectCoverImage && projectImageUrl) {
+      return projectImageUrl;
+    }
+    return productImageUrl || projectImageUrl || null;
+  }, [preferProjectCoverImage, projectImageUrl, productImageUrl]);
+
   // Determina il colore del bordo sinistro in base allo stato
   const getBorderColor = () => {
     // Bozza ha priorità - bordo arancione
@@ -628,10 +687,10 @@ export default function Card({
 
                 {isFieldVisible("image") && (
                   <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
-                    {productImageUrl ? (
+                    {cardImageUrl ? (
                       <img
-                        src={productImageUrl}
-                        alt={getProductDisplay() || "Immagine prodotto"}
+                        src={cardImageUrl}
+                        alt={getProductDisplay() || "Immagine progetto"}
                         className="h-24 w-full rounded-md object-cover"
                       />
                     ) : (
@@ -860,10 +919,10 @@ export default function Card({
 
                 {isFieldVisible("image") && (
                   <div className="mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
-                    {productImageUrl ? (
+                    {cardImageUrl ? (
                       <img
-                        src={productImageUrl}
-                        alt={getProductDisplay() || "Immagine prodotto"}
+                        src={cardImageUrl}
+                        alt={getProductDisplay() || "Immagine progetto"}
                         className="h-14 w-full rounded object-cover"
                       />
                     ) : (
@@ -1021,6 +1080,8 @@ export default function Card({
                 resource={data}
                 history={history}
                 domain={domain}
+                preferProjectCoverImage={preferProjectCoverImage}
+                onPreferProjectCoverImageChange={persistCoverPreference}
               />
             </DialogContent>
           </Dialog>

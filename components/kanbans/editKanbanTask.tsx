@@ -86,6 +86,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useRouter } from "next/navigation";
+import { Switch } from "@/components/ui/switch";
 import {
   normalizeOfferProducts,
   sanitizeOfferProducts,
@@ -109,6 +110,8 @@ type Props = {
   resource: any;
   history: any;
   domain?: string;
+  preferProjectCoverImage?: boolean;
+  onPreferProjectCoverImageChange?: (preferProject: boolean) => void;
 };
 
 type Supplier = {
@@ -208,7 +211,14 @@ function isImageFilename(filename: string | null | undefined): boolean {
   return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(extension);
 }
 
-const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
+const EditTaskKanban = ({
+  handleClose,
+  resource,
+  history,
+  domain,
+  preferProjectCoverImage = false,
+  onPreferProjectCoverImageChange,
+}: Props) => {
   const router = useRouter();
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
@@ -766,6 +776,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
         }
 
         setProjectFiles((current) => [result.data, ...current]);
+        router.refresh();
         toast({
           description: "Immagine progetto caricata con successo",
         });
@@ -812,6 +823,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
       setProjectFiles((current) =>
         current.filter((file) => file.id !== projectImageFile.id)
       );
+      router.refresh();
       toast({
         description: "Immagine progetto rimossa",
       });
@@ -1199,6 +1211,20 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
             <Package className="h-3.5 w-3.5" />
             Prodotto
           </h4>
+          <div className="rounded-md border bg-background/50 px-2 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">
+                Usa immagine progetto sulla card
+              </span>
+              <Switch
+                checked={preferProjectCoverImage}
+                onCheckedChange={(checked) =>
+                  onPreferProjectCoverImageChange?.(Boolean(checked))
+                }
+                disabled={!onPreferProjectCoverImageChange}
+              />
+            </div>
+          </div>
           <div className="space-y-2 rounded-md border bg-background/50 p-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Immagine prodotto
