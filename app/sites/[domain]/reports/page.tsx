@@ -54,6 +54,7 @@ export default async function Page({
         clients={data.clients}
         sellProducts={data.sellProducts}
         users={data.users}
+        kanbans={data.kanbans}
         domain={domain}
         isAdmin={isAdmin}
         enabledModules={enabledModules}

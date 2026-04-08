@@ -228,6 +228,8 @@ export interface SellProduct {
     id: number;
     name?: string; // Nome del prodotto
     type?: string; // Sottocategoria
+    subcategory?: string; // Sottocategoria esplicita
+    product_type?: string; // Tipo prodotto
     description?: string; // Descrizione
     price_list?: boolean; // Listino prezzi (checkbox)
     image_url?: string; // Immagine
@@ -236,7 +238,9 @@ export interface SellProduct {
     active?: boolean;
     site_id?: string;
     category_id?: number; // Riferimento a sellproduct_categories
+    supplier_id?: number | null; // Riferimento al fornitore
     category?: SellProductCategory; // Relazione
+    supplier?: Supplier; // Relazione opzionale
     created_at?: string;
     updated_at?: string;
 }

@@ -5,6 +5,7 @@ import { createClient } from "@/utils/server";
 import { validation } from "@/validation/sellProducts/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { formatSellProductCode } from "@/lib/sell-product-code";
 
 export async function createSellProduct(
   props: any,
@@ -52,12 +53,15 @@ export async function createSellProduct(
 
     const insertData: any = {
       name: props.name,
-      type: props.type || null,
+      type: props.subcategory || props.type || null,
+      subcategory: props.subcategory || props.type || null,
+      product_type: props.product_type || null,
       description: props.description || null,
       price_list: props.price_list ?? false,
       image_url: props.image_url || null,
       doc_url: props.doc_url || null,
       category_id: categoryId,
+      supplier_id: props.supplier_id ?? null,
     };
 
     if (siteId) {
@@ -75,14 +79,27 @@ export async function createSellProduct(
       throw new Error("Failed to create sell product");
     }
 
+    const generatedCode = formatSellProductCode(props.category, sellProduct.id);
+    const { data: sellProductWithCode, error: codeError } = await supabase
+      .from("SellProduct")
+      .update({ internal_code: generatedCode })
+      .eq("id", sellProduct.id)
+      .select()
+      .single();
+
+    if (codeError) {
+      console.error("Error updating sell product code:", codeError);
+      throw new Error("Failed to generate sell product code");
+    }
+
     // Create a new Action record to track the user action
-    if (sellProduct && userId) {
+    if (sellProductWithCode && userId) {
       const { error: actionError } = await supabase
         .from("Action")
         .insert({
           type: "sell_product_create",
           data: {
-            sellProductId: sellProduct.id,
+            sellProductId: sellProductWithCode.id,
           },
           user_id: userId,
         });
@@ -92,7 +109,7 @@ export async function createSellProduct(
       }
     }
 
-    return { success: true, data: sellProduct };
+    return { success: true, data: sellProductWithCode };
   } else if (!result.success) {
     return { success: false, error: result.error.format() };
   }

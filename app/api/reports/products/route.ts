@@ -16,7 +16,18 @@ type ProductExportRow = {
   Attivo: string;
 };
 
-export async function GET(req: NextRequest) {
+function getCategoryName(product: any) {
+  const category = Array.isArray(product.category)
+    ? product.category[0]
+    : product.category;
+  return category?.name || "-";
+}
+
+async function buildProductsReport(
+  req: NextRequest,
+  categoryIds: number[],
+  subcategories: string[],
+) {
   const siteContext = await getSiteContext(req);
   if (!hasSiteId(siteContext)) {
     return NextResponse.json(
@@ -26,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("SellProduct")
     .select(`
       *,
@@ -35,13 +46,31 @@ export async function GET(req: NextRequest) {
     .eq("site_id", siteContext.siteId)
     .order("name", { ascending: true });
 
+  if (categoryIds.length > 0) {
+    query = query.in("category_id", categoryIds);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const rows: ProductExportRow[] = (data || []).map((product: any) => ({
+  const filteredProducts = (data || []).filter((product: any) => {
+    if (categoryIds.length > 0 && !categoryIds.includes(Number(product.category_id))) {
+      return false;
+    }
+
+    if (subcategories.length > 0 && !subcategories.includes(product.type || "")) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const rows: ProductExportRow[] = filteredProducts.map((product: any) => ({
     Nome: product.name || "-",
-    Categoria: product.category?.name || "-",
+    Categoria: getCategoryName(product),
     Tipologia: product.type || "-",
     Descrizione: product.description || "-",
     "Listino prezzi": product.price_list || "-",
@@ -66,6 +95,30 @@ export async function GET(req: NextRequest) {
       { key: "Url documento", header: "Url documento", width: 32 },
       { key: "Attivo", header: "Attivo", width: 10 },
     ],
-    metaLines: [`Prodotti esportati: ${rows.length}`],
+    metaLines: [
+      `Categorie selezionate: ${categoryIds.length > 0 ? categoryIds.length : "tutte"}`,
+      `Sottocategorie selezionate: ${subcategories.length > 0 ? subcategories.length : "tutte"}`,
+      `Prodotti esportati: ${rows.length}`,
+    ],
   });
+}
+
+export async function GET(req: NextRequest) {
+  return buildProductsReport(req, [], []);
+}
+
+export async function POST(req: NextRequest) {
+  const payload = await req.json().catch(() => null);
+  const categoryIds = Array.isArray(payload?.categoryIds)
+    ? payload.categoryIds
+        .map((categoryId: unknown) => Number(categoryId))
+        .filter((categoryId: number) => Number.isInteger(categoryId))
+    : [];
+  const subcategories = Array.isArray(payload?.subcategories)
+    ? payload.subcategories
+        .map((subcategory: unknown) => String(subcategory).trim())
+        .filter((subcategory: string) => subcategory.length > 0)
+    : [];
+
+  return buildProductsReport(req, categoryIds, subcategories);
 }

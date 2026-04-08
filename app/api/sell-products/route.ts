@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getSiteContext } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 import { validation } from "@/validation/sellProducts/create";
+import { formatSellProductCode } from "@/lib/sell-product-code";
 
 const log = logger.scope("SellProducts");
 
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
             .from("SellProduct")
             .select(`
                 *,
-                category:sellproduct_categories(id, name)
+                category:sellproduct_categories(id, name),
+                supplier:supplier_id(id, name)
             `)
             .eq("site_id", siteId)
             .eq("active", true);
@@ -106,13 +108,16 @@ export async function POST(req: NextRequest) {
 
         const insertData = {
             name: result.data.name,
-            type: result.data.type || null,
+            type: result.data.subcategory || result.data.type || null,
+            subcategory: result.data.subcategory || result.data.type || null,
+            product_type: result.data.product_type || null,
             description: result.data.description || null,
             price_list: result.data.price_list ?? false,
             image_url: result.data.image_url || null,
             doc_url: result.data.doc_url || null,
             active: result.data.active ?? true,
             category_id: category.id,
+            supplier_id: result.data.supplier_id ?? null,
             site_id: siteId,
         };
 
@@ -130,10 +135,26 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const generatedCode = formatSellProductCode(category.name, createdProduct.id);
+        const { data: createdProductWithCode, error: codeError } = await supabase
+            .from("SellProduct")
+            .update({ internal_code: generatedCode })
+            .eq("id", createdProduct.id)
+            .select("*")
+            .single();
+
+        if (codeError) {
+            log.error("Error generating sell product code:", codeError);
+            return NextResponse.json(
+                { error: codeError.message },
+                { status: 500 }
+            );
+        }
+
         const { error: actionError } = await supabase.from("Action").insert({
             type: "sell_product_create",
             data: {
-                sellProductId: createdProduct.id,
+                sellProductId: createdProductWithCode.id,
                 source: "voice_command",
             },
             user_id: user.id,
@@ -146,7 +167,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            data: createdProduct,
+            data: createdProductWithCode,
         });
     } catch (err: unknown) {
         log.error("SellProducts POST API error:", err);

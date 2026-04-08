@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Upload,
@@ -19,19 +18,44 @@ import {
   CheckCircle,
   Loader2,
   Download,
+  FileDown,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { useSiteId } from "@/hooks/use-site-id";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { buildSellProductImportReportCsv } from "@/lib/sell-product-import";
 
 interface ImportResult {
   success: boolean;
+  mode: "preview" | "apply";
+  categoryFilter: string | null;
   totalRows: number;
+  filteredOut: number;
   imported: number;
   updated: number;
+  deactivated: number;
   skipped: number;
   errors: string[];
-  duplicates: string[];
+  entries: Array<{
+    rowNumber: number;
+    action: "insert" | "update" | "skip" | "error";
+    reason?: string;
+    categoryName: string | null;
+    code: string | null;
+    name: string | null;
+    targetId?: number;
+    changes: Array<{ field: string; from: string; to: string }>;
+    duplicateIdsToDeactivate: number[];
+  }>;
 }
+
+type ImportPreviewEntry = ImportResult["entries"][number];
 
 // CSV columns definition with required/optional status
 const CSV_COLUMNS = [
@@ -44,10 +68,10 @@ const CSV_COLUMNS = [
   {
     name: "CATEGORIA",
     description: "Categoria (dalla tabella categorie)",
-    required: false,
+    required: true,
   },
   { name: "NOME_PRODOTTO", description: "Nome del prodotto", required: true },
-  { name: "SOTTOCATEGORIA", description: "Sottocategoria", required: false },
+  { name: "SOTTOCATEGORIA", description: "Sottocategoria", required: true },
   { name: "DESCRIZIONE", description: "Descrizione", required: false },
   {
     name: "LISTINO_PREZZI",
@@ -56,6 +80,7 @@ const CSV_COLUMNS = [
   },
   { name: "URL_IMMAGINE", description: "URL Immagine", required: false },
   { name: "URL_DOC", description: "URL Cartella Documenti", required: false },
+  { name: "ATTIVO", description: "Prodotto attivo (SI/NO)", required: false },
 ];
 
 // Example row data for the CSV template
@@ -69,13 +94,24 @@ const EXAMPLE_ROW = {
   LISTINO_PREZZI: "SI",
   URL_IMMAGINE: "https://example.com/image.jpg",
   URL_DOC: "https://drive.google.com/folder/documents",
+  ATTIVO: "SI",
 };
+
+const CATEGORY_OPTIONS = [
+  "Accessori",
+  "Arredamento",
+  "Porte",
+  "Posa",
+  "Serramenti",
+  "Service",
+  "Vario",
+];
 
 function DialogImportCSV() {
   const [isOpen, setOpen] = useState(false);
   const [isLoading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState("Accessori");
   const [result, setResult] = useState<ImportResult | null>(null);
   const [showColumns, setShowColumns] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -86,6 +122,11 @@ function DialogImportCSV() {
   // Extract domain from pathname (e.g., /sites/santini/products -> santini)
   const domain = pathname.split("/")[2] || "";
   const { siteId } = useSiteId(domain);
+
+  const previewEntries = useMemo<ImportPreviewEntry[]>(
+    () => result?.entries.slice(0, 12) ?? [],
+    [result],
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -122,7 +163,7 @@ function DialogImportCSV() {
     e.preventDefault();
   };
 
-  const handleImport = async () => {
+  const runImport = async (mode: "preview" | "apply") => {
     if (!selectedFile) {
       toast({
         variant: "destructive",
@@ -140,12 +181,15 @@ function DialogImportCSV() {
     }
 
     setLoading(true);
-    setResult(null);
+    if (mode === "preview") {
+      setResult(null);
+    }
 
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
-      formData.append("skipDuplicates", skipDuplicates.toString());
+      formData.append("mode", mode);
+      formData.append("categoryFilter", categoryFilter);
 
       const response = await fetch("/api/sell-products/import-csv", {
         method: "POST",
@@ -163,12 +207,17 @@ function DialogImportCSV() {
 
       setResult(data);
 
-      if (data.imported > 0 || data.updated > 0) {
+      if (mode === "preview") {
+        toast({
+          description: `Anteprima pronta per ${categoryFilter}: ${data.imported} nuovi, ${data.updated} aggiornati, ${data.deactivated} duplicati da disattivare.`,
+        });
+      } else if (data.imported > 0 || data.updated > 0 || data.deactivated > 0) {
         const messages = [];
         if (data.imported > 0) messages.push(`${data.imported} nuovi`);
         if (data.updated > 0) messages.push(`${data.updated} aggiornati`);
+        if (data.deactivated > 0) messages.push(`${data.deactivated} disattivati`);
         toast({
-          description: `Prodotti: ${messages.join(", ")}!`,
+          description: `Import ${categoryFilter}: ${messages.join(", ")}.`,
         });
         router.refresh();
       }
@@ -180,6 +229,33 @@ function DialogImportCSV() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePreview = async () => {
+    await runImport("preview");
+  };
+
+  const handleApply = async () => {
+    await runImport("apply");
+  };
+
+  const downloadReport = () => {
+    if (!result) {
+      return;
+    }
+
+    const csvContent = buildSellProductImportReportCsv(result.entries);
+    const blob = new Blob(["\ufeff" + csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `prodotti_import_report_${categoryFilter.toLowerCase()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const downloadExampleCSV = () => {
@@ -251,8 +327,9 @@ function DialogImportCSV() {
         <DialogHeader>
           <DialogTitle>Importa Prodotti da CSV</DialogTitle>
           <DialogDescription>
-            Carica un file CSV con i dati dei prodotti. Se il file contiene la
-            colonna ID con valori esistenti, i record verranno aggiornati.
+            Import non distruttivo: prima esegui l&apos;anteprima, poi applichi
+            solo la categoria selezionata. I record esistenti non vengono
+            cancellati.
           </DialogDescription>
         </DialogHeader>
 
@@ -320,18 +397,29 @@ function DialogImportCSV() {
             )}
           </div>
 
-          {/* Options */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="skipDuplicates"
-              checked={skipDuplicates}
-              onCheckedChange={(checked) =>
-                setSkipDuplicates(checked as boolean)
-              }
-            />
-            <Label htmlFor="skipDuplicates" className="text-sm">
-              Salta prodotti duplicati (stesso codice interno)
-            </Label>
+          <div className="space-y-2">
+            <Label className="text-sm">Categoria da importare</Label>
+            <Select
+              value={categoryFilter}
+              onValueChange={(value) => {
+                setCategoryFilter(value);
+                setResult(null);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleziona categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Prima applicazione operativa consigliata: <strong>Accessori</strong>.
+            </p>
           </div>
 
           {/* CSV Columns Info */}
@@ -394,10 +482,16 @@ function DialogImportCSV() {
 
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
-            <br />• <strong>Per aggiornare:</strong> esporta i prodotti,
-            modifica il CSV e reimporta (l'ID identifica i record)
+            <br />• <strong>Matching principale:</strong> se l&apos;ID del CSV
+            esiste, il record viene aggiornato senza cambiare ID
+            <br />• <strong>Nuovi record:</strong> se l&apos;ID manca o non
+            esiste, viene creato un nuovo prodotto
+            <br />• <strong>No delete:</strong> i record assenti nel CSV non
+            vengono eliminati
+            <br />• <strong>Duplicati storici:</strong> vengono disattivati, non
+            cancellati
             <br />• LISTINO_PREZZI accetta valori: SI, NO, 1, 0, TRUE, FALSE
-            <br />• I campi URL devono essere link validi (https://...)
+            <br />• ATTIVO accetta valori: SI, NO, 1, 0, TRUE, FALSE
           </p>
 
           {/* Results */}
@@ -415,27 +509,87 @@ function DialogImportCSV() {
                 )}
                 <div className="flex-1">
                   <p className="font-medium">
-                    {result.success
-                      ? "Importazione completata"
-                      : "Importazione con errori"}
+                    {result.mode === "preview"
+                      ? result.success
+                        ? "Anteprima completata"
+                        : "Anteprima con errori"
+                      : result.success
+                        ? "Importazione completata"
+                        : "Importazione con errori"}
                   </p>
                   <div className="text-sm mt-2 space-y-1">
                     <p>Righe totali: {result.totalRows}</p>
+                    <p>Categoria: {result.categoryFilter || "Tutte"}</p>
+                    {result.filteredOut > 0 && (
+                      <p className="text-muted-foreground">
+                        Fuori filtro: {result.filteredOut}
+                      </p>
+                    )}
                     <p className="text-green-600">
-                      Nuovi importati: {result.imported}
+                      Nuovi {result.mode === "preview" ? "previsti" : "importati"}:{" "}
+                      {result.imported}
                     </p>
                     {result.updated > 0 && (
                       <p className="text-blue-600">
-                        Aggiornati: {result.updated}
+                        Aggiornati {result.mode === "preview" ? "previsti" : ""}:{" "}
+                        {result.updated}
+                      </p>
+                    )}
+                    {result.deactivated > 0 && (
+                      <p className="text-orange-600">
+                        Duplicati storici{" "}
+                        {result.mode === "preview" ? "da disattivare" : "disattivati"}:{" "}
+                        {result.deactivated}
                       </p>
                     )}
                     <p className="text-yellow-600">Saltati: {result.skipped}</p>
-                    {result.duplicates.length > 0 && (
-                      <p className="text-orange-600">
-                        Duplicati: {result.duplicates.length}
-                      </p>
-                    )}
                   </div>
+                  {previewEntries.length > 0 && (
+                    <div className="mt-3 rounded border bg-background/60 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-medium">Prime differenze</p>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={downloadReport}
+                        >
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Report
+                        </Button>
+                      </div>
+                      <div className="max-h-48 space-y-2 overflow-y-auto text-xs">
+                        {previewEntries.map((entry) => (
+                          <div key={`${entry.rowNumber}-${entry.action}`} className="rounded border p-2">
+                            <p className="font-medium">
+                              Riga {entry.rowNumber} - {entry.action.toUpperCase()} -{" "}
+                              {entry.name || entry.code || "Senza nome"}
+                            </p>
+                            {entry.targetId && <p>ID target: {entry.targetId}</p>}
+                            {entry.reason && (
+                              <p className="text-muted-foreground">{entry.reason}</p>
+                            )}
+                            {entry.duplicateIdsToDeactivate.length > 0 && (
+                              <p className="text-orange-600">
+                                Disattiva ID: {entry.duplicateIdsToDeactivate.join(", ")}
+                              </p>
+                            )}
+                            {entry.changes.length > 0 && (
+                              <p className="text-muted-foreground">
+                                {entry.changes
+                                  .slice(0, 3)
+                                  .map(
+                                    (change) =>
+                                      `${change.field}: ${change.from} -> ${change.to}`,
+                                  )
+                                  .join(" | ")}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {result.errors.length > 0 && (
                     <div className="mt-2">
                       <p className="text-sm font-medium text-red-600">
@@ -459,12 +613,29 @@ function DialogImportCSV() {
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-            {result?.success ? "Chiudi" : "Annulla"}
+            {result?.mode === "apply" ? "Chiudi" : "Annulla"}
           </Button>
-          {!result?.success && (
+          <Button
+            variant="secondary"
+            onClick={handlePreview}
+            disabled={!selectedFile || isLoading}
+          >
+            {isLoading && result?.mode !== "preview" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Elaborazione...
+              </>
+            ) : (
+              <>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Anteprima
+              </>
+            )}
+          </Button>
+          {result?.mode === "preview" && (
             <Button
-              onClick={handleImport}
-              disabled={!selectedFile || isLoading}
+              onClick={handleApply}
+              disabled={!selectedFile || isLoading || !result.success}
             >
               {isLoading ? (
                 <>
@@ -474,7 +645,7 @@ function DialogImportCSV() {
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
-                  Importa
+                  Applica import
                 </>
               )}
             </Button>

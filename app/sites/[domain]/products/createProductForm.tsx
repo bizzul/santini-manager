@@ -36,7 +36,7 @@ import { createSellProductAction } from "./actions/create-item.action";
 import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Plus, Loader2 } from "lucide-react";
-import { SellProductCategory } from "@/types/supabase";
+import { SellProductCategory, Supplier } from "@/types/supabase";
 import { DocumentUpload } from "@/components/ui/document-upload";
 
 type Props = {
@@ -48,7 +48,9 @@ type Props = {
 const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
   const { toast } = useToast();
   const [categories, setCategories] = useState<SellProductCategory[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
@@ -57,9 +59,11 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
     resolver: zodResolver(validation),
     defaultValues: {
       category: "",
+      subcategory: "",
+      product_type: "",
       name: "",
-      type: "",
       description: "",
+      supplier_id: undefined,
       price_list: false,
       image_url: "",
       doc_url: "",
@@ -70,25 +74,38 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
   useEffect(() => {
     const loadData = async () => {
       setLoadingCategories(true);
+      setLoadingSuppliers(true);
       try {
-        const catRes = await fetch(
-          `/api/sell-products/categories?siteId=${siteId}`
-        );
+        const [catRes, suppliersRes] = await Promise.all([
+          fetch(`/api/sell-products/categories?siteId=${siteId}`),
+          fetch("/api/suppliers", {
+            headers: {
+              "x-site-domain": domain,
+            },
+          }),
+        ]);
+
         if (catRes.ok) {
           const catData = await catRes.json();
           setCategories(catData.categories || []);
+        }
+
+        if (suppliersRes.ok) {
+          const suppliersData = await suppliersRes.json();
+          setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
         }
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
         setLoadingCategories(false);
+        setLoadingSuppliers(false);
       }
     };
 
     if (siteId) {
       loadData();
     }
-  }, [siteId]);
+  }, [siteId, domain]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || !siteId) return;
@@ -176,7 +193,13 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
                     <SelectContent>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.name}>
-                          {cat.name}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full border border-white/20"
+                              style={{ backgroundColor: cat.color || "#3B82F6" }}
+                            />
+                            <span>{cat.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -246,12 +269,12 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
         />
         <FormField
           control={form.control}
-          name="name"
+          name="subcategory"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome Prodotto</FormLabel>
+              <FormLabel>Sottocategoria</FormLabel>
               <FormControl>
-                <Input placeholder="Armadio" {...field} />
+                <Input placeholder="Inserisci sottocategoria" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -259,12 +282,25 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
         />
         <FormField
           control={form.control}
-          name="type"
+          name="product_type"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Sottocategoria</FormLabel>
+              <FormLabel>Tipo</FormLabel>
               <FormControl>
-                <Input placeholder="(opzionale)" {...field} />
+                <Input placeholder="Inserisci tipo" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome Prodotto</FormLabel>
+              <FormControl>
+                <Input placeholder="Armadio" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -289,21 +325,35 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
         />
         <FormField
           control={form.control}
-          name="price_list"
+          name="supplier_id"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem>
+              <FormLabel>Fornitore</FormLabel>
               <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
+                <Select
+                  value={field.value ? String(field.value) : undefined}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  disabled={loadingSuppliers}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        loadingSuppliers
+                          ? "Caricamento..."
+                          : "Seleziona fornitore"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={String(supplier.id)}>
+                        {supplier.name || `Fornitore ${supplier.id}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel>Listino Prezzi</FormLabel>
-                <FormDescription>
-                  Includi questo prodotto nel listino prezzi
-                </FormDescription>
-              </div>
+              <FormMessage />
             </FormItem>
           )}
         />
@@ -312,12 +362,26 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
           name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL Immagine</FormLabel>
+              <FormLabel>Carica immagine</FormLabel>
               <FormControl>
-                <Input placeholder="https://..." {...field} />
+                <DocumentUpload
+                  siteId={siteId}
+                  folder="sell-products/images"
+                  currentUrl={field.value || undefined}
+                  onUploadComplete={(url) => field.onChange(url)}
+                  onRemove={() => field.onChange("")}
+                  onError={(error) => {
+                    toast({
+                      variant: "destructive",
+                      description: error,
+                    });
+                  }}
+                  accept="image/png,image/jpeg,image/webp"
+                  maxSizeMB={10}
+                />
               </FormControl>
               <FormDescription>
-                Link all&apos;immagine del prodotto
+                Carica l&apos;immagine del prodotto
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -348,6 +412,26 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
                 Carica la scheda tecnica del prodotto (PDF)
               </FormDescription>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="price_list"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Listino Prezzi</FormLabel>
+                <FormDescription>
+                  Includi questo prodotto nel listino prezzi
+                </FormDescription>
+              </div>
             </FormItem>
           )}
         />

@@ -33,6 +33,10 @@ interface ReportMultiSelectProps {
   emptyMessage?: string;
   disabled?: boolean;
   maxPreview?: number;
+  selectionMode?: "multiple" | "single";
+  showSelectAll?: boolean;
+  searchPlaceholder?: string;
+  allowClear?: boolean;
 }
 
 export function ReportMultiSelect({
@@ -43,6 +47,10 @@ export function ReportMultiSelect({
   emptyMessage = "Nessun elemento trovato.",
   disabled = false,
   maxPreview = 2,
+  selectionMode = "multiple",
+  showSelectAll = selectionMode === "multiple",
+  searchPlaceholder = "Cerca...",
+  allowClear = true,
 }: ReportMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -65,6 +73,12 @@ export function ReportMultiSelect({
   }, [options, search]);
 
   const toggleOption = (optionValue: string) => {
+    if (selectionMode === "single") {
+      onValueChange(value.includes(optionValue) ? [] : [optionValue]);
+      setOpen(false);
+      return;
+    }
+
     if (value.includes(optionValue)) {
       onValueChange(value.filter((currentValue) => currentValue !== optionValue));
       return;
@@ -109,16 +123,20 @@ export function ReportMultiSelect({
               selectedOptions.map((option) => (
                 <Badge key={option.value} variant="secondary" className="gap-1">
                   <span className="max-w-[180px] truncate">{option.label}</span>
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={(event) => handleRemove(option.value, event)}
-                  />
+                  {allowClear ? (
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={(event) => handleRemove(option.value, event)}
+                    />
+                  ) : null}
                 </Badge>
               ))
             ) : (
               <Badge variant="secondary" className="gap-1">
                 {selectedOptions.length} selezionati
-                <X className="h-3 w-3 cursor-pointer" onClick={handleClear} />
+                {allowClear ? (
+                  <X className="h-3 w-3 cursor-pointer" onClick={handleClear} />
+                ) : null}
               </Badge>
             )}
           </div>
@@ -126,16 +144,19 @@ export function ReportMultiSelect({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="w-[380px] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0"
+        align="start"
+      >
         <Command shouldFilter={false}>
           <CommandInput
-            placeholder="Cerca..."
+            placeholder={searchPlaceholder}
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
             <CommandGroup>
-              {options.length > 0 && (
+              {showSelectAll && options.length > 0 && (
                 <CommandItem
                   value="__all__"
                   onSelect={handleToggleAll}

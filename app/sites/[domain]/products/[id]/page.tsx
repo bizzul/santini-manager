@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductDocuments } from "@/components/product/product-documents";
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext } from "@/lib/server-data";
+import { getSellProductDisplayCode } from "@/lib/sell-product-code";
 import type { File as ManagedFile } from "@/types/supabase";
 import { createClient } from "@/utils/server";
 
@@ -76,7 +77,7 @@ export default async function ProductPage({
   const { product, files, linkedProjectsCount } = data;
   const category = Array.isArray(product.category) ? product.category[0] : product.category;
   const categoryColor = category?.color || "#64748b";
-  const code = product.internal_code || `PROD-${product.id}`;
+  const code = getSellProductDisplayCode(product);
   const metricPanelClass =
     "rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80";
   const subtlePanelClass =

@@ -85,7 +85,7 @@ function toProjectRows(tasks: any[]): ProjectRow[] {
 
 async function buildProjectsReport(
   req: NextRequest,
-  productIds: number[],
+  productCategoryIds: number[],
   areaIds: number[],
 ) {
   const siteContext = await getSiteContext(req);
@@ -108,8 +108,25 @@ async function buildProjectsReport(
     `)
     .eq("site_id", siteContext.siteId);
 
-  if (productIds.length > 0) {
-    tasksQuery = tasksQuery.in("sellProductId", productIds);
+  if (productCategoryIds.length > 0) {
+    const { data: sellProducts, error: sellProductsError } = await supabase
+      .from("SellProduct")
+      .select("id")
+      .eq("site_id", siteContext.siteId)
+      .in("category_id", productCategoryIds);
+
+    if (sellProductsError) {
+      return NextResponse.json(
+        { error: sellProductsError.message },
+        { status: 500 },
+      );
+    }
+
+    const productIds = (sellProducts || []).map((product) => product.id);
+    tasksQuery = tasksQuery.in(
+      "sellProductId",
+      productIds.length > 0 ? productIds : [-1],
+    );
   }
 
   if (areaIds.length > 0) {
@@ -165,7 +182,9 @@ async function buildProjectsReport(
     title: "Report progetti completo",
     subtitle: "Progetti del sito corrente filtrati per prodotto e area",
     metaLines: [
-      `Prodotti selezionati: ${productIds.length > 0 ? productIds.length : "tutti"}`,
+      `Categorie prodotto selezionate: ${
+        productCategoryIds.length > 0 ? productCategoryIds.length : "tutte"
+      }`,
       `Aree selezionate: ${areaIds.length > 0 ? areaIds.length : "tutte"}`,
       `Totale progetti: ${projectRows.length}`,
     ],
@@ -231,16 +250,19 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => null);
-  const productIds = Array.isArray(payload?.productIds)
-    ? payload.productIds
-        .map((productId: unknown) => Number(productId))
-        .filter((productId: number) => Number.isInteger(productId))
-    : [];
+  const rawProductCategoryIds = Array.isArray(payload?.productCategoryIds)
+    ? payload.productCategoryIds
+    : Array.isArray(payload?.productIds)
+      ? payload.productIds
+      : [];
+  const productCategoryIds = rawProductCategoryIds
+    .map((productCategoryId: unknown) => Number(productCategoryId))
+    .filter((productCategoryId: number) => Number.isInteger(productCategoryId));
   const areaIds = Array.isArray(payload?.areaIds)
     ? payload.areaIds
         .map((areaId: unknown) => Number(areaId))
         .filter((areaId: number) => Number.isInteger(areaId))
     : [];
 
-  return buildProjectsReport(req, productIds, areaIds);
+  return buildProjectsReport(req, productCategoryIds, areaIds);
 }

@@ -960,7 +960,7 @@ export const fetchErrorTracking = cache(async (siteId: string) => {
  * Includes task relations with client info for project name display
  */
 export const fetchReportsData = cache(async (siteId: string) => {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const [
     suppliersResult,
@@ -968,9 +968,10 @@ export const fetchReportsData = cache(async (siteId: string) => {
     packingResult,
     tasksResult,
     inventoryCategoriesResult,
-    clients,
-    sellProducts,
+    clientsResult,
+    sellProductsResult,
     siteUsersResult,
+    kanbansResult,
   ] = await Promise.all([
     supabase.from("Supplier").select("*").eq("site_id", siteId),
     supabase
@@ -1007,9 +1008,21 @@ export const fetchReportsData = cache(async (siteId: string) => {
       .select("id, name, description, color")
       .eq("site_id", siteId)
       .order("name", { ascending: true }),
-    fetchClients(siteId),
-    fetchSellProducts(siteId),
+    supabase
+      .from("Client")
+      .select("id, businessName, individualFirstName, individualLastName, email, city")
+      .eq("site_id", siteId)
+      .order("businessName", { ascending: true }),
+    supabase
+      .from("SellProduct")
+      .select("id, name, type, category_id, category:category_id(id, name, color)")
+      .eq("site_id", siteId),
     supabase.from("user_sites").select("user_id").eq("site_id", siteId),
+    supabase
+      .from("Kanban")
+      .select("id, title, name, identifier, is_work_kanban, is_offer_kanban")
+      .eq("site_id", siteId)
+      .order("title", { ascending: true }),
   ]);
 
   let users: any[] = [];
@@ -1032,9 +1045,27 @@ export const fetchReportsData = cache(async (siteId: string) => {
     packingControl: packingResult.data || [],
     tasks: tasksResult.data || [],
     inventoryCategories: inventoryCategoriesResult.data || [],
-    clients: clients || [],
-    sellProducts: sellProducts || [],
+    clients: clientsResult.data || [],
+    sellProducts: (sellProductsResult.data || [])
+      .map((product: any) => ({
+        ...product,
+        category: Array.isArray(product.category)
+          ? product.category[0] || undefined
+          : product.category,
+      }))
+      .sort((a: any, b: any) => {
+      const catA = a.category?.name?.toLowerCase() || "";
+      const catB = b.category?.name?.toLowerCase() || "";
+      if (catA !== catB) {
+        return catA.localeCompare(catB, "it");
+      }
+
+      const nameA = a.name?.toLowerCase() || "";
+      const nameB = b.name?.toLowerCase() || "";
+      return nameA.localeCompare(nameB, "it");
+    }),
     users,
+    kanbans: kanbansResult.data || [],
   };
 });
 

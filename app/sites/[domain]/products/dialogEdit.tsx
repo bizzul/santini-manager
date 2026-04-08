@@ -18,7 +18,15 @@ type Props = {
 
 function DialogEdit({ data, setData, isOpen = false, setOpen, domain }: Props) {
   return (
-    <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        setOpen(open);
+        if (!open) {
+          setData(null);
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-scroll">
         <DialogHeader>
           <DialogTitle>Modifica prodotto </DialogTitle>

@@ -6,6 +6,10 @@ import { createClient } from "@/utils/server";
 import { validation } from "@/validation/sellProducts/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import {
+  formatSellProductCode,
+  isManagedSellProductCode,
+} from "@/lib/sell-product-code";
 
 export async function editSellProductAction(
   formData: any,
@@ -37,6 +41,11 @@ export async function editSellProductAction(
   if (result.success) {
     try {
       const supabase = await createClient();
+      const { data: existingProduct } = await supabase
+        .from("SellProduct")
+        .select("id, internal_code")
+        .eq("id", id)
+        .single();
 
       // Trova category_id dal nome della categoria
       let categoryId = null;
@@ -55,17 +64,27 @@ export async function editSellProductAction(
 
       const updateData: any = {
         name: formData.name,
-        type: formData.type || null,
+        type: formData.subcategory || formData.type || null,
+        subcategory: formData.subcategory || formData.type || null,
+        product_type: formData.product_type || null,
         description: formData.description || null,
         price_list: formData.price_list ?? false,
         image_url: formData.image_url || null,
         doc_url: formData.doc_url || null,
         active: formData.active,
         category_id: categoryId,
+        supplier_id: formData.supplier_id ?? null,
       };
 
       if (siteId) {
         updateData.site_id = siteId;
+      }
+
+      if (
+        !existingProduct?.internal_code ||
+        isManagedSellProductCode(existingProduct.internal_code, id)
+      ) {
+        updateData.internal_code = formatSellProductCode(formData.category, id);
       }
 
       const { data: sellProduct, error: sellProductError } = await supabase

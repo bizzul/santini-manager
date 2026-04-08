@@ -18,6 +18,7 @@ import { it } from "date-fns/locale";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editSellProductAction } from "./actions/edit-item.action";
 import Link from "next/link";
+import { getSellProductDisplayCode } from "@/lib/sell-product-code";
 
 // Extended SellProduct type with lastAction
 export type SellProductWithAction = SellProduct & {
@@ -43,13 +44,16 @@ const createProductEditHandler = (domain?: string) => {
     // Build form data with all current values plus the changed field
     const formData = {
       name: rowData.name,
-      type: rowData.type,
+      type: rowData.subcategory || rowData.type,
+      subcategory: rowData.subcategory || rowData.type,
+      product_type: rowData.product_type,
       description: rowData.description,
       price_list: rowData.price_list,
       image_url: rowData.image_url,
       doc_url: rowData.doc_url,
       active: rowData.active,
       category: rowData.category?.name,
+      supplier_id: rowData.supplier_id,
       [field]: newValue,
     };
 
@@ -203,7 +207,7 @@ export const createColumns = (
           href={`/sites/${domain}/products/${row.original.id}`}
           className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
         >
-          <span>{row.original.internal_code || `PROD-${row.original.id}`}</span>
+          <span>{getSellProductDisplayCode(row.original)}</span>
           <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       ),
@@ -219,15 +223,15 @@ export const createColumns = (
       size: 130,
     },
     {
-      accessorKey: "type",
+      accessorKey: "subcategory",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Sottocategoria" />
       ),
       cell: ({ row }) => (
         <EditableCell
-          value={row.original.type || ""}
+          value={row.original.subcategory || row.original.type || ""}
           row={row}
-          field="type"
+          field="subcategory"
           type="text"
           onSave={handleProductEdit}
         />
@@ -235,16 +239,16 @@ export const createColumns = (
       size: 140,
     },
     {
-      accessorKey: "type",
+      accessorKey: "product_type",
       id: "product_type",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Tipo" />
       ),
       cell: ({ row }) => (
         <EditableCell
-          value={row.original.type || ""}
+          value={row.original.product_type || ""}
           row={row}
-          field="type"
+          field="product_type"
           type="text"
           onSave={handleProductEdit}
         />
@@ -300,10 +304,7 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Fornitore" />
       ),
-      cell: ({ row }) => {
-        // Supplier field doesn't exist in SellProduct yet, showing placeholder
-        return <span className="text-muted-foreground">-</span>;
-      },
+      cell: ({ row }) => <span>{row.original.supplier?.name || "-"}</span>,
       size: 150,
     },
     {

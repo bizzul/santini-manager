@@ -2,6 +2,8 @@
 
 import { Pencil } from "lucide-react";
 import { Row } from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +14,11 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/use-toast";
 
 import DialogDelete from "./dialogDelete";
-import { useState } from "react";
 import DialogEdit from "./dialogEdit";
+import { duplicateSellProductAction } from "./actions/duplicate-item.action";
 
 interface DataTableRowActionsProps<TData> {
   row: Row<TData>;
@@ -27,23 +30,53 @@ export function DataTableRowActions<TData>({
   domain,
 }: DataTableRowActionsProps<TData>) {
   const data = row.original;
+  const router = useRouter();
+  const { toast } = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedData, setSelectedData] = useState();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedData, setSelectedData] = useState<any>();
+  const [isDuplicating, startDuplicating] = useTransition();
 
   function handleDeleteClick(row: any) {
     setSelectedData(row);
+    setMenuOpen(false);
     setDeleteOpen(true);
   }
 
   function handleEditClick(row: any) {
     setSelectedData(row);
+    setMenuOpen(false);
     setEditOpen(true);
+  }
+
+  function handleDuplicateClick(row: any) {
+    setMenuOpen(false);
+    startDuplicating(async () => {
+      const response = await duplicateSellProductAction(
+        Number(row.id),
+        domain,
+        row.site_id,
+      );
+
+      if (response?.error) {
+        toast({
+          variant: "destructive",
+          description: response.error,
+        });
+        return;
+      }
+
+      toast({
+        description: response?.message || "Prodotto duplicato correttamente.",
+      });
+      router.refresh();
+    });
   }
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
@@ -56,15 +89,20 @@ export function DataTableRowActions<TData>({
         <DropdownMenuContent align="end" className="w-[160px]">
           <DropdownMenuItem
             //@ts-expect-error
-            onClick={() => navigator.clipboard.writeText(data.id.toString())}
+            onSelect={() => navigator.clipboard.writeText(data.id.toString())}
           >
             Copia ID
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleEditClick(data)}>
+          <DropdownMenuItem onSelect={() => handleEditClick(data)}>
             Modifica
           </DropdownMenuItem>
-          <DropdownMenuItem>Duplica</DropdownMenuItem>
+          <DropdownMenuItem
+            onSelect={() => handleDuplicateClick(data)}
+            disabled={isDuplicating}
+          >
+            {isDuplicating ? "Duplicazione..." : "Duplica"}
+          </DropdownMenuItem>
           {/* <DropdownMenuItem>Favorite</DropdownMenuItem> */}
           <DropdownMenuSeparator />
           {/* <DropdownMenuSub>
@@ -80,7 +118,7 @@ export function DataTableRowActions<TData>({
           </DropdownMenuSubContent>
         </DropdownMenuSub> */}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleDeleteClick(data)}>
+          <DropdownMenuItem onSelect={() => handleDeleteClick(data)}>
             Elimina
             <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
           </DropdownMenuItem>

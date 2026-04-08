@@ -34,7 +34,8 @@ import {
 import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
 import { useFormStatus } from "react-dom";
-import { SellProduct, SellProductCategory } from "@/types/supabase";
+import { useRouter } from "next/navigation";
+import { SellProduct, SellProductCategory, Supplier } from "@/types/supabase";
 import { editSellProductAction } from "./actions/edit-item.action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
@@ -49,8 +50,11 @@ type Props = {
 
 const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
   const { toast } = useToast();
+  const router = useRouter();
   const [categories, setCategories] = useState<SellProductCategory[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(true);
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
@@ -59,9 +63,11 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     resolver: zodResolver(validation),
     defaultValues: {
       category: "",
+      subcategory: "",
+      product_type: "",
       name: "",
-      type: "",
       description: "",
+      supplier_id: undefined,
       price_list: false,
       image_url: "",
       doc_url: "",
@@ -76,10 +82,16 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     const loadData = async () => {
       if (!siteId) return;
       setLoadingCategories(true);
+      setLoadingSuppliers(true);
       try {
-        const catRes = await fetch(
-          `/api/sell-products/categories?siteId=${siteId}`
-        );
+        const [catRes, suppliersRes] = await Promise.all([
+          fetch(`/api/sell-products/categories?siteId=${siteId}`),
+          fetch("/api/suppliers", {
+            headers: {
+              "x-site-domain": domain || "",
+            },
+          }),
+        ]);
         if (catRes.ok) {
           const catData = await catRes.json();
           setCategories(catData.categories || []);
@@ -88,10 +100,15 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
           const categoryName = data.category?.name || "";
           setValue("category", categoryName);
         }
+        if (suppliersRes.ok) {
+          const suppliersData = await suppliersRes.json();
+          setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
+        }
       } catch (error) {
         console.error("Error loading data:", error);
       } finally {
         setLoadingCategories(false);
+        setLoadingSuppliers(false);
       }
     };
 
@@ -101,8 +118,10 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
   useEffect(() => {
     // Imposta gli altri campi
     setValue("name", data.name || "");
-    setValue("type", data.type || "");
+    setValue("subcategory", data.subcategory || data.type || "");
+    setValue("product_type", data.product_type || "");
     setValue("description", data.description || "");
+    setValue("supplier_id", data.supplier_id ?? undefined);
     setValue("price_list", data.price_list ?? false);
     setValue("image_url", data.image_url || "");
     setValue("doc_url", data.doc_url || "");
@@ -159,6 +178,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       });
     } else {
       handleClose(false);
+      router.refresh();
       toast({
         description: `Prodotto "${d.name}" aggiornato correttamente!`,
       });
@@ -194,14 +214,26 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
                     <SelectContent>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.name}>
-                          {cat.name}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full border border-white/20"
+                              style={{ backgroundColor: cat.color || "#3B82F6" }}
+                            />
+                            <span>{cat.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                       {/* Se la categoria corrente non è nella lista, aggiungila */}
                       {field.value &&
                         !categories.find((c) => c.name === field.value) && (
                           <SelectItem value={field.value}>
-                            {field.value}
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="h-2.5 w-2.5 rounded-full border border-white/20"
+                                style={{ backgroundColor: "#3B82F6" }}
+                              />
+                              <span>{field.value}</span>
+                            </div>
                           </SelectItem>
                         )}
                     </SelectContent>

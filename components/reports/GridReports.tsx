@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   DateRangePicker,
@@ -51,6 +50,15 @@ type ReportInventoryCategory = {
   color?: string | null;
 };
 
+type ReportKanban = {
+  id: number | string;
+  title?: string | null;
+  name?: string | null;
+  identifier?: string | null;
+  is_work_kanban?: boolean | null;
+  is_offer_kanban?: boolean | null;
+};
+
 function Section({
   title,
   description,
@@ -66,7 +74,9 @@ function Section({
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="grid gap-4 xl:grid-cols-3">{children}</div>
+      <div className="grid auto-rows-fr gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {children}
+      </div>
     </section>
   );
 }
@@ -87,8 +97,8 @@ function ReportCard({
   className?: string;
 }) {
   return (
-    <Card className={className}>
-      <CardHeader className="space-y-3">
+    <Card className={`flex h-full min-h-[320px] flex-col ${className || ""}`}>
+      <CardHeader className="space-y-3 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>{title}</CardTitle>
@@ -103,9 +113,27 @@ function ReportCard({
           </div>
         </div>
       </CardHeader>
-      {children ? <CardContent>{children}</CardContent> : null}
-      <CardFooter>{footer}</CardFooter>
+      {children ? <CardContent className="flex flex-1 flex-col">{children}</CardContent> : null}
+      <CardFooter className="mt-auto pt-0">{footer}</CardFooter>
     </Card>
+  );
+}
+
+function ReportField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">{label}</div>
+      {children}
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+    </div>
   );
 }
 
@@ -118,6 +146,7 @@ function GridReports({
   clients = [],
   sellProducts = [],
   users = [],
+  kanbans = [],
   domain,
   isAdmin = true,
   enabledModules = [],
@@ -130,6 +159,7 @@ function GridReports({
   clients?: Client[];
   sellProducts?: SellProduct[];
   users?: ReportUser[];
+  kanbans?: ReportKanban[];
   domain: string;
   isAdmin?: boolean;
   enabledModules?: string[];
@@ -150,12 +180,18 @@ function GridReports({
   >([]);
   const [selectedInventoryCategoryIds, setSelectedInventoryCategoryIds] =
     useState<string[]>([]);
-  const [selectedProjectProductIds, setSelectedProjectProductIds] = useState<
+  const [selectedProjectCategoryIds, setSelectedProjectCategoryIds] = useState<
     string[]
   >([]);
   const [selectedProjectAreaIds, setSelectedProjectAreaIds] = useState<string[]>(
     [],
   );
+  const [selectedProductCategoryIds, setSelectedProductCategoryIds] = useState<
+    string[]
+  >([]);
+  const [selectedProductSubcategories, setSelectedProductSubcategories] = useState<
+    string[]
+  >([]);
   const [selectedTimeUserIds, setSelectedTimeUserIds] = useState<string[]>([]);
   const [selectedConsuntivoTaskIds, setSelectedConsuntivoTaskIds] = useState<
     string[]
@@ -190,6 +226,10 @@ function GridReports({
     { length: 5 },
     (_, index) => (currentYear - 2 + index).toString(),
   );
+  const timeReportYearOptions = timeReportYears.map((year) => ({
+    value: year,
+    label: year,
+  }));
   const timeReportMonths = [
     { value: "1", label: "Gennaio" },
     { value: "2", label: "Febbraio" },
@@ -204,6 +244,10 @@ function GridReports({
     { value: "11", label: "Novembre" },
     { value: "12", label: "Dicembre" },
   ];
+  const exportFormatOptions = [
+    { value: "excel", label: "Excel" },
+    { value: "pdf", label: "PDF" },
+  ];
 
   const formatDateForFilename = (date: Date) =>
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
@@ -216,13 +260,79 @@ function GridReports({
     description: category.description || undefined,
   }));
 
-  const projectProductOptions = sellProducts.map((product) => ({
-    value: String(product.id),
-    label: product.name || `Prodotto ${product.id}`,
-    description: [product.type, product.category?.name].filter(Boolean).join(" • "),
-  }));
+  const projectProductOptions = Array.from(
+    sellProducts.reduce((map, product) => {
+      const categoryId = product.category?.id || product.category_id;
+      const categoryName = product.category?.name;
 
-  const projectAreaOptions = Array.from(
+      if (categoryId && categoryName && !map.has(String(categoryId))) {
+        map.set(String(categoryId), {
+          value: String(categoryId),
+          label: categoryName,
+          description: "Categoria prodotto",
+        });
+      }
+
+      return map;
+    }, new Map<string, { value: string; label: string; description?: string }>()),
+  )
+    .map(([, option]) => option)
+    .sort((left, right) => left.label.localeCompare(right.label, "it"));
+
+  const productCategoryOptions = Array.from(
+    sellProducts.reduce((map, product) => {
+      const categoryId = product.category?.id || product.category_id;
+      const categoryName = product.category?.name;
+
+      if (categoryId && categoryName && !map.has(String(categoryId))) {
+        map.set(String(categoryId), {
+          value: String(categoryId),
+          label: categoryName,
+          description: "Categoria prodotto",
+        });
+      }
+
+      return map;
+    }, new Map<string, { value: string; label: string; description?: string }>()),
+  )
+    .map(([, option]) => option)
+    .sort((left, right) => left.label.localeCompare(right.label, "it"));
+
+  const availableProductSubcategories = sellProducts.filter((product) => {
+    if (selectedProductCategoryIds.length === 0) {
+      return true;
+    }
+
+    const categoryId = product.category?.id || product.category_id;
+    return categoryId ? selectedProductCategoryIds.includes(String(categoryId)) : false;
+  });
+
+  const productSubcategoryOptions = Array.from(
+    availableProductSubcategories.reduce((map, product) => {
+      const subcategory = product.type?.trim();
+
+      if (subcategory && !map.has(subcategory)) {
+        map.set(subcategory, {
+          value: subcategory,
+          label: subcategory,
+          description: "Sottocategoria",
+        });
+      }
+
+      return map;
+    }, new Map<string, { value: string; label: string; description?: string }>()),
+  )
+    .map(([, option]) => option)
+    .sort((left, right) => left.label.localeCompare(right.label, "it"));
+
+  const taskKanbanIds = new Set(
+    task
+      .map((currentTask: any) => currentTask.kanban?.id || currentTask.kanbanId)
+      .filter(Boolean)
+      .map((kanbanId) => String(kanbanId)),
+  );
+
+  const derivedProjectAreaOptions = Array.from(
     task.reduce((map, currentTask: any) => {
       const areaId = currentTask.kanban?.id || currentTask.kanbanId;
       const areaLabel =
@@ -234,12 +344,54 @@ function GridReports({
         map.set(String(areaId), {
           value: String(areaId),
           label: areaLabel,
-          description: "Area progetto",
+          description: "Kanban principale",
         });
       }
       return map;
     }, new Map<string, { value: string; label: string; description?: string }>()),
-  ).map(([, option]) => option);
+  )
+    .map(([, option]) => option)
+    .sort((left, right) => left.label.localeCompare(right.label, "it"));
+
+  const projectAreaOptions = (
+    kanbans
+      .filter((kanban) => {
+        if (kanban.is_offer_kanban) {
+          return false;
+        }
+
+        return kanban.is_work_kanban || taskKanbanIds.has(String(kanban.id));
+      })
+      .map((kanban) => ({
+        value: String(kanban.id),
+        label:
+          kanban.title ||
+          kanban.name ||
+          kanban.identifier ||
+          `Kanban ${kanban.id}`,
+        description: "Kanban principale",
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, "it"))
+  ).length > 0
+    ? kanbans
+        .filter((kanban) => {
+          if (kanban.is_offer_kanban) {
+            return false;
+          }
+
+          return kanban.is_work_kanban || taskKanbanIds.has(String(kanban.id));
+        })
+        .map((kanban) => ({
+          value: String(kanban.id),
+          label:
+            kanban.title ||
+            kanban.name ||
+            kanban.identifier ||
+            `Kanban ${kanban.id}`,
+          description: "Kanban principale",
+        }))
+        .sort((left, right) => left.label.localeCompare(right.label, "it"))
+    : derivedProjectAreaOptions;
 
   const userOptions = users.map((user) => ({
     value: String(user.id),
@@ -319,7 +471,7 @@ function GridReports({
       setLoadingProjects(true);
       const res = await fetch("/api/reports/tasks", {
         method:
-          selectedProjectProductIds.length > 0 || selectedProjectAreaIds.length > 0
+          selectedProjectCategoryIds.length > 0 || selectedProjectAreaIds.length > 0
             ? "POST"
             : "GET",
         headers: {
@@ -327,9 +479,9 @@ function GridReports({
           "x-site-domain": domain,
         },
         body:
-          selectedProjectProductIds.length > 0 || selectedProjectAreaIds.length > 0
+          selectedProjectCategoryIds.length > 0 || selectedProjectAreaIds.length > 0
             ? JSON.stringify({
-                productIds: selectedProjectProductIds,
+                productCategoryIds: selectedProjectCategoryIds,
                 areaIds: selectedProjectAreaIds,
               })
             : undefined,
@@ -367,16 +519,6 @@ function GridReports({
     to.setMinutes(59);
 
     return { from, to };
-  };
-
-  const toggleTimeReportMonth = (month: string) => {
-    setSelectedTimeReportMonths((currentMonths) => {
-      if (currentMonths.includes(month)) {
-        return currentMonths.filter((currentMonth) => currentMonth !== month);
-      }
-
-      return [...currentMonths, month].sort((a, b) => Number(a) - Number(b));
-    });
   };
 
   const timeExcel = async () => {
@@ -430,7 +572,7 @@ function GridReports({
     try {
       setLoadingErrors(true);
       let supplierName: string | null = null;
-      if (supplier && supplier !== "all") {
+      if (supplier) {
         supplierName =
           suppliers.find((sup) => sup.id == Number(supplier))?.name || null;
       }
@@ -531,11 +673,23 @@ function GridReports({
     try {
       setLoadingProducts(true);
       const res = await fetch("/api/reports/products", {
-        method: "GET",
+        method:
+          selectedProductCategoryIds.length > 0 ||
+          selectedProductSubcategories.length > 0
+            ? "POST"
+            : "GET",
         headers: {
           "Content-Type": "application/json",
           "x-site-domain": domain,
         },
+        body:
+          selectedProductCategoryIds.length > 0 ||
+          selectedProductSubcategories.length > 0
+            ? JSON.stringify({
+                categoryIds: selectedProductCategoryIds,
+                subcategories: selectedProductSubcategories,
+              })
+            : undefined,
       });
 
       if (res.ok) {
@@ -687,7 +841,7 @@ function GridReports({
     <div className="space-y-8">
       <Section
         title="Report operativi"
-        description="Esporta inventario, progetti, ore ed errori con filtri mirati per il sito corrente."
+        description="Esporta inventario, progetti e ore con filtri mirati e menu coerenti per il sito corrente."
       >
         {isReportEnabled("report-inventory") && (
           <ReportCard
@@ -705,8 +859,10 @@ function GridReports({
             }
           >
             <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Categorie inventario</div>
+              <ReportField
+                label="Categorie inventario"
+                hint="Se non selezioni nulla viene esportato l'inventario completo del sito."
+              >
                 <ReportMultiSelect
                   options={inventoryCategoryOptions}
                   value={selectedInventoryCategoryIds}
@@ -714,10 +870,7 @@ function GridReports({
                   placeholder="Tutte le categorie"
                   emptyMessage="Nessuna categoria inventario trovata."
                 />
-                <p className="text-xs text-muted-foreground">
-                  Se non selezioni nulla viene esportato l'inventario completo del sito.
-                </p>
-              </div>
+              </ReportField>
             </div>
           </ReportCard>
         )}
@@ -725,7 +878,7 @@ function GridReports({
         {isReportEnabled("report-projects") && (
           <ReportCard
             title="Progetti"
-            description="Esporta solo i progetti del sito loggato con foglio completo e un foglio dedicato per ogni area."
+            description="Esporta i progetti del sito filtrando per categoria prodotto e area progetto del kanban principale."
             formats={["Excel"]}
             footer={
               <Button
@@ -738,18 +891,16 @@ function GridReports({
             }
           >
             <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Tipologia progetto</div>
+              <ReportField label="Prodotto">
                 <ReportMultiSelect
                   options={projectProductOptions}
-                  value={selectedProjectProductIds}
-                  onValueChange={setSelectedProjectProductIds}
-                  placeholder="Tutti i prodotti"
-                  emptyMessage="Nessun prodotto disponibile."
+                  value={selectedProjectCategoryIds}
+                  onValueChange={setSelectedProjectCategoryIds}
+                  placeholder="Tutte le categorie prodotto"
+                  emptyMessage="Nessuna categoria prodotto disponibile."
                 />
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Aree progetto</div>
+              </ReportField>
+              <ReportField label="Area progetto">
                 <ReportMultiSelect
                   options={projectAreaOptions}
                   value={selectedProjectAreaIds}
@@ -757,7 +908,7 @@ function GridReports({
                   placeholder="Tutte le aree"
                   emptyMessage="Nessuna area disponibile."
                 />
-              </div>
+              </ReportField>
             </div>
           </ReportCard>
         )}
@@ -782,25 +933,8 @@ function GridReports({
             }
           >
             <div className="space-y-4">
-              <Select
-                value={selectedTimeReportYear}
-                onValueChange={setSelectedTimeReportYear}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona anno" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeReportYears.map((year) => (
-                    <SelectItem key={year} value={year}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
               {isAdmin ? (
-                <div className="space-y-2">
-                  <div className="text-sm font-medium">Collaboratori</div>
+                <ReportField label="Collaboratori">
                   <ReportMultiSelect
                     options={userOptions}
                     value={selectedTimeUserIds}
@@ -808,36 +942,52 @@ function GridReports({
                     placeholder="Tutti i collaboratori"
                     emptyMessage="Nessun collaboratore disponibile."
                   />
-                </div>
+                </ReportField>
               ) : null}
 
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Mesi</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {timeReportMonths.map((month) => (
-                    <button
-                      key={month.value}
-                      type="button"
-                      onClick={() => toggleTimeReportMonth(month.value)}
-                      className="flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm"
-                    >
-                      <Checkbox
-                        className="pointer-events-none"
-                        checked={selectedTimeReportMonths.includes(month.value)}
-                        aria-hidden="true"
-                      />
-                      <span>{month.label}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Seleziona uno o piu mesi dello stesso anno.
-                </p>
-              </div>
+              <ReportField label="Anno">
+                <ReportMultiSelect
+                  options={timeReportYearOptions}
+                  value={[selectedTimeReportYear]}
+                  onValueChange={(values) => {
+                    if (values[0]) {
+                      setSelectedTimeReportYear(values[0]);
+                    }
+                  }}
+                  placeholder="Seleziona anno"
+                  emptyMessage="Nessun anno disponibile."
+                  selectionMode="single"
+                  showSelectAll={false}
+                  searchPlaceholder="Cerca anno..."
+                  allowClear={false}
+                />
+              </ReportField>
+
+              <ReportField
+                label="Mese"
+                hint="Seleziona uno o piu mesi dello stesso anno."
+              >
+                <ReportMultiSelect
+                  options={timeReportMonths}
+                  value={selectedTimeReportMonths}
+                  onValueChange={(values) =>
+                    setSelectedTimeReportMonths(
+                      [...values].sort((a, b) => Number(a) - Number(b)),
+                    )
+                  }
+                  placeholder="Seleziona uno o piu mesi"
+                  emptyMessage="Nessun mese disponibile."
+                />
+              </ReportField>
             </div>
           </ReportCard>
         )}
+      </Section>
 
+      <Section
+        title="Anagrafiche e consuntivi"
+        description="Raccogli errori, esportazioni tabellari e schede dettagliate per prodotti, clienti, fornitori, collaboratori e consuntivi."
+      >
         {isReportEnabled("report-errors") && (
           <ReportCard
             title="Errori"
@@ -858,48 +1008,46 @@ function GridReports({
             }
           >
             <div className="space-y-4">
-              <Select value={supplier} onValueChange={setSupplier}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona fornitore" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tutti</SelectItem>
-                  {suppliers.map((supplier) => (
-                    <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                      {supplier.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ReportField label="Fornitore">
+                <ReportMultiSelect
+                  options={suppliers.map((currentSupplier) => ({
+                    value: currentSupplier.id.toString(),
+                    label: currentSupplier.name || `Fornitore ${currentSupplier.id}`,
+                  }))}
+                  value={supplier ? [supplier] : []}
+                  onValueChange={(values) => setSupplier(values[0])}
+                  placeholder="Tutti i fornitori"
+                  emptyMessage="Nessun fornitore disponibile."
+                  selectionMode="single"
+                  showSelectAll={false}
+                />
+              </ReportField>
 
-              <DateRangePicker
-                className="max-w-md"
-                value={valueError}
-                onValueChange={setValueError}
-                presets={[
-                  {
-                    key: "ytd",
-                    label: "Anno precedente",
-                    from: new Date(lastYear, 0, 1),
-                    to: new Date(lastYear, 11, 31),
-                  },
-                  {
-                    key: "half",
-                    label: "Primo semestre",
-                    from: new Date(currentYear, 0, 1),
-                    to: new Date(currentYear, 5, 31),
-                  },
-                ]}
-              />
+              <ReportField label="Periodo">
+                <DateRangePicker
+                  className="w-full"
+                  value={valueError}
+                  onValueChange={setValueError}
+                  presets={[
+                    {
+                      key: "ytd",
+                      label: "Anno precedente",
+                      from: new Date(lastYear, 0, 1),
+                      to: new Date(lastYear, 11, 31),
+                    },
+                    {
+                      key: "half",
+                      label: "Primo semestre",
+                      from: new Date(currentYear, 0, 1),
+                      to: new Date(currentYear, 5, 31),
+                    },
+                  ]}
+                />
+              </ReportField>
             </div>
           </ReportCard>
         )}
-      </Section>
 
-      <Section
-        title="Anagrafiche e consuntivi"
-        description="Raccogli esportazioni tabellari e schede dettagliate per prodotti, clienti, fornitori, collaboratori e consuntivi."
-      >
         <ReportCard
           title="Prodotti"
           description="Tabella completa di tutti i prodotti con categoria, titolo, descrizione e riferimenti disponibili."
@@ -913,7 +1061,43 @@ function GridReports({
               Scarica prodotti
             </Button>
           }
-        />
+        >
+          <div className="space-y-4">
+            <ReportField label="Categoria">
+              <ReportMultiSelect
+                options={productCategoryOptions}
+                value={selectedProductCategoryIds}
+                onValueChange={(values) => {
+                  setSelectedProductCategoryIds(values);
+                  setSelectedProductSubcategories((currentValues) =>
+                    currentValues.filter((value) =>
+                      sellProducts.some((product) => {
+                        const categoryId = product.category?.id || product.category_id;
+                        const matchesCategory =
+                          values.length === 0 ||
+                          (categoryId
+                            ? values.includes(String(categoryId))
+                            : false);
+                        return matchesCategory && product.type?.trim() === value;
+                      }),
+                    ),
+                  );
+                }}
+                placeholder="Tutte le categorie"
+                emptyMessage="Nessuna categoria disponibile."
+              />
+            </ReportField>
+            <ReportField label="Sottocategoria">
+              <ReportMultiSelect
+                options={productSubcategoryOptions}
+                value={selectedProductSubcategories}
+                onValueChange={setSelectedProductSubcategories}
+                placeholder="Tutte le sottocategorie"
+                emptyMessage="Nessuna sottocategoria disponibile."
+              />
+            </ReportField>
+          </div>
+        </ReportCard>
 
         <ReportCard
           title="Consuntivo"
@@ -930,8 +1114,7 @@ function GridReports({
           }
         >
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Progetti</div>
+            <ReportField label="Progetti">
               <ReportMultiSelect
                 options={taskOptions}
                 value={selectedConsuntivoTaskIds}
@@ -939,21 +1122,24 @@ function GridReports({
                 placeholder="Seleziona uno o piu progetti"
                 emptyMessage="Nessun progetto disponibile."
               />
-            </div>
-            <Select
-              value={consuntivoFormat}
-              onValueChange={(value) =>
-                setConsuntivoFormat(value as ExportFormat)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Formato export" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="excel">Excel</SelectItem>
-                <SelectItem value="pdf">PDF</SelectItem>
-              </SelectContent>
-            </Select>
+            </ReportField>
+            <ReportField label="Formato">
+              <ReportMultiSelect
+                options={exportFormatOptions}
+                value={[consuntivoFormat]}
+                onValueChange={(values) => {
+                  if (values[0]) {
+                    setConsuntivoFormat(values[0] as ExportFormat);
+                  }
+                }}
+                placeholder="Formato export"
+                emptyMessage="Nessun formato disponibile."
+                selectionMode="single"
+                showSelectAll={false}
+                searchPlaceholder="Cerca formato..."
+                allowClear={false}
+              />
+            </ReportField>
           </div>
         </ReportCard>
 
@@ -972,30 +1158,34 @@ function GridReports({
           }
         >
           <div className="space-y-4">
-            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clientOptions.map((client) => (
-                  <SelectItem key={client.value} value={client.value}>
-                    {client.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={clientFormat}
-              onValueChange={(value) => setClientFormat(value as ExportFormat)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Formato export" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="excel">Excel</SelectItem>
-                <SelectItem value="pdf">PDF</SelectItem>
-              </SelectContent>
-            </Select>
+            <ReportField label="Cliente">
+              <ReportMultiSelect
+                options={clientOptions}
+                value={selectedClientId ? [selectedClientId] : []}
+                onValueChange={(values) => setSelectedClientId(values[0])}
+                placeholder="Seleziona cliente"
+                emptyMessage="Nessun cliente disponibile."
+                selectionMode="single"
+                showSelectAll={false}
+              />
+            </ReportField>
+            <ReportField label="Formato">
+              <ReportMultiSelect
+                options={exportFormatOptions}
+                value={[clientFormat]}
+                onValueChange={(values) => {
+                  if (values[0]) {
+                    setClientFormat(values[0] as ExportFormat);
+                  }
+                }}
+                placeholder="Formato export"
+                emptyMessage="Nessun formato disponibile."
+                selectionMode="single"
+                showSelectAll={false}
+                searchPlaceholder="Cerca formato..."
+                allowClear={false}
+              />
+            </ReportField>
           </div>
         </ReportCard>
 
@@ -1013,18 +1203,23 @@ function GridReports({
             </Button>
           }
         >
-          <Select
-            value={suppliersFormat}
-            onValueChange={(value) => setSuppliersFormat(value as ExportFormat)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Formato export" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="excel">Excel</SelectItem>
-              <SelectItem value="pdf">PDF</SelectItem>
-            </SelectContent>
-          </Select>
+          <ReportField label="Formato">
+            <ReportMultiSelect
+              options={exportFormatOptions}
+              value={[suppliersFormat]}
+              onValueChange={(values) => {
+                if (values[0]) {
+                  setSuppliersFormat(values[0] as ExportFormat);
+                }
+              }}
+              placeholder="Formato export"
+              emptyMessage="Nessun formato disponibile."
+              selectionMode="single"
+              showSelectAll={false}
+              searchPlaceholder="Cerca formato..."
+              allowClear={false}
+            />
+          </ReportField>
         </ReportCard>
 
         <ReportCard
@@ -1042,35 +1237,34 @@ function GridReports({
           }
         >
           <div className="space-y-4">
-            <Select
-              value={selectedCollaboratorId}
-              onValueChange={setSelectedCollaboratorId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona collaboratore" />
-              </SelectTrigger>
-              <SelectContent>
-                {userOptions.map((user) => (
-                  <SelectItem key={user.value} value={user.value}>
-                    {user.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={collaboratorFormat}
-              onValueChange={(value) =>
-                setCollaboratorFormat(value as ExportFormat)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Formato export" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="excel">Excel</SelectItem>
-                <SelectItem value="pdf">PDF</SelectItem>
-              </SelectContent>
-            </Select>
+            <ReportField label="Collaboratore">
+              <ReportMultiSelect
+                options={userOptions}
+                value={selectedCollaboratorId ? [selectedCollaboratorId] : []}
+                onValueChange={(values) => setSelectedCollaboratorId(values[0])}
+                placeholder="Seleziona collaboratore"
+                emptyMessage="Nessun collaboratore disponibile."
+                selectionMode="single"
+                showSelectAll={false}
+              />
+            </ReportField>
+            <ReportField label="Formato">
+              <ReportMultiSelect
+                options={exportFormatOptions}
+                value={[collaboratorFormat]}
+                onValueChange={(values) => {
+                  if (values[0]) {
+                    setCollaboratorFormat(values[0] as ExportFormat);
+                  }
+                }}
+                placeholder="Formato export"
+                emptyMessage="Nessun formato disponibile."
+                selectionMode="single"
+                showSelectAll={false}
+                searchPlaceholder="Cerca formato..."
+                allowClear={false}
+              />
+            </ReportField>
           </div>
         </ReportCard>
       </Section>
