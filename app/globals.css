@@ -178,6 +178,9 @@ body:has(.home-gradient-bg) {
   /* Glassmorphism sidebar - light theme */
   --sidebar: 42 24% 94%;
   --sidebar-foreground: 24 10% 22%;
+  --sidebar-card: 45 42% 97.5%;
+  --sidebar-card-strong: 42 28% 92.5%;
+  --sidebar-card-shadow: 34 26% 88.5%;
   --sidebar-primary: 217.2 91.2% 59.8%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 38 26% 89%;
@@ -194,6 +197,9 @@ body:has(.home-gradient-bg) {
   /* Glassmorphism sidebar - dark theme */
   --sidebar: 220 13% 10%;
   --sidebar-foreground: 0 0% 100%;
+  --sidebar-card: 220 13% 14%;
+  --sidebar-card-strong: 220 13% 18%;
+  --sidebar-card-shadow: 224 30% 7%;
   --sidebar-primary: 217.2 91.2% 59.8%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 0 0% 100%;

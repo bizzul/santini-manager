@@ -19,6 +19,11 @@ import { logger } from "@/lib/logger";
 import { QueryHydration } from "@/components/QueryHydration";
 import { ManagerGuideButton, ManagerGuideProvider } from "@/components/manager-guide";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
+import {
+  resolveSiteThemeSettings,
+  SITE_THEME_SETTING_KEY,
+} from "@/lib/site-theme";
+import { SiteThemeStyle } from "@/components/site-theme-style";
 
 /**
  * Check if user has access to a specific site
@@ -153,11 +158,20 @@ export default async function SiteLayout({
 
     const cookieStore = await cookies();
     const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+    const supabase = await createClient();
+    const { data: themeSetting } = await supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("site_id", data.id)
+      .eq("setting_key", SITE_THEME_SETTING_KEY)
+      .maybeSingle();
+    const siteThemeSettings = resolveSiteThemeSettings(themeSetting?.setting_value);
 
     return (
       <KanbanModalProvider>
         <QuickActionsProvider>
           <SidebarProvider defaultOpen={defaultOpen}>
+            <SiteThemeStyle themeSettings={siteThemeSettings} />
             {/* Hydrate React Query cache with server-side data to avoid duplicate fetches */}
             <QueryHydration
               data={{

@@ -68,14 +68,14 @@ export const NavUser = memo(function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.92)] px-3 shadow-[0_10px_24px_hsl(var(--page-shadow)/0.12)] data-[state=open]:bg-[hsl(var(--background))] data-[state=open]:text-[hsl(var(--sidebar-foreground))] dark:rounded-xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none dark:data-[state=open]:bg-white/15 dark:data-[state=open]:text-white"
+              className="rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.92)] px-3 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] data-[state=open]:bg-[hsl(var(--sidebar-card))] data-[state=open]:text-[hsl(var(--sidebar-foreground))] dark:rounded-xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none dark:data-[state=open]:bg-white/15 dark:data-[state=open]:text-white"
             >
               <Avatar className="h-8 w-8 rounded-lg border border-[hsl(var(--sidebar-border))] dark:border-white/20">
                 <AvatarImage
                   src={userProfile?.picture || undefined}
                   alt={displayName}
                 />
-                <AvatarFallback className="rounded-lg bg-[hsl(var(--page-glow))] text-[hsl(var(--sidebar-foreground))] dark:bg-white/10 dark:text-white">
+                <AvatarFallback className="rounded-lg bg-[hsl(var(--sidebar-card-strong))] text-[hsl(var(--sidebar-foreground))] dark:bg-white/10 dark:text-white">
                   {displayName
                     .split(" ")
                     .map((n: string) => n[0])

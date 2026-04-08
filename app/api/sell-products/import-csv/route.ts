@@ -15,6 +15,8 @@ import { formatSellProductCode } from "@/lib/sell-product-code";
 
 const log = logger.scope("SellProductImportCsv");
 const SELL_PRODUCT_SELECT =
+  "id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)";
+const SELL_PRODUCT_LEGACY_SELECT =
   "id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)";
 
 interface ImportResult {
@@ -29,6 +31,60 @@ interface ImportResult {
   skipped: number;
   errors: string[];
   entries: SellProductImportPlanEntry[];
+}
+
+function isMissingColumnError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const message = "message" in error ? String(error.message ?? "") : "";
+  const code = "code" in error ? String(error.code ?? "") : "";
+
+  return code === "42703" || message.toLowerCase().includes("does not exist");
+}
+
+async function fetchExistingProductsForImport(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteId: string,
+) {
+  const result = await supabase
+    .from("SellProduct")
+    .select(SELL_PRODUCT_SELECT)
+    .eq("site_id", siteId);
+
+  if (result.error && isMissingColumnError(result.error)) {
+    return supabase
+      .from("SellProduct")
+      .select(SELL_PRODUCT_LEGACY_SELECT)
+      .eq("site_id", siteId);
+  }
+
+  return result;
+}
+
+async function fetchImportedProduct(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteId: string,
+  productId: number,
+) {
+  const result = await supabase
+    .from("SellProduct")
+    .select(SELL_PRODUCT_SELECT)
+    .eq("id", productId)
+    .eq("site_id", siteId)
+    .single();
+
+  if (result.error && isMissingColumnError(result.error)) {
+    return supabase
+      .from("SellProduct")
+      .select(SELL_PRODUCT_LEGACY_SELECT)
+      .eq("id", productId)
+      .eq("site_id", siteId)
+      .single();
+  }
+
+  return result;
 }
 
 async function ensureCategoryId(params: {
@@ -129,10 +185,10 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
-    const { data: existingProducts, error: existingProductsError } = await supabase
-      .from("SellProduct")
-      .select(SELL_PRODUCT_SELECT)
-      .eq("site_id", siteId);
+    const {
+      data: existingProducts,
+      error: existingProductsError,
+    } = await fetchExistingProductsForImport(supabase, siteId);
 
     if (existingProductsError) {
       log.error("Errore recupero prodotti esistenti per import", {
@@ -240,6 +296,9 @@ export async function POST(request: NextRequest) {
         const payload = {
           name: entry.csvRow.name,
           type: entry.csvRow.subcategory || "",
+          subcategory: entry.csvRow.subcategory || "",
+          tipo: entry.csvRow.tipo || null,
+          product_type: entry.csvRow.tipo || null,
           description: entry.csvRow.description || null,
           price_list: entry.csvRow.price_list,
           image_url: entry.csvRow.image_url || null,
@@ -248,7 +307,7 @@ export async function POST(request: NextRequest) {
           category_id: categoryId,
         };
 
-        const { data: insertedProduct, error: insertError } = await supabase
+        let { data: insertedProduct, error: insertError } = await supabase
           .from("SellProduct")
           .insert({
             ...payload,
@@ -256,6 +315,50 @@ export async function POST(request: NextRequest) {
           })
           .select(SELL_PRODUCT_SELECT)
           .single();
+
+        if (insertError && isMissingColumnError(insertError)) {
+          const legacyPayload = {
+            name: entry.csvRow.name,
+            type: entry.csvRow.subcategory || "",
+            description: entry.csvRow.description || null,
+            price_list: entry.csvRow.price_list,
+            image_url: entry.csvRow.image_url || null,
+            doc_url: entry.csvRow.doc_url || null,
+            active: entry.csvRow.active,
+            category_id: categoryId,
+          };
+
+          const legacyInsertResult = await supabase
+            .from("SellProduct")
+            .insert({
+              ...legacyPayload,
+              site_id: siteId,
+            })
+            .select("id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+            .single();
+
+          insertedProduct = legacyInsertResult.data as typeof insertedProduct;
+          insertError = legacyInsertResult.error;
+
+          if (!legacyInsertResult.error && entry.csvRow.tipo) {
+            const tipoUpdateResult = await supabase
+              .from("SellProduct")
+              .update({
+                tipo: entry.csvRow.tipo,
+                product_type: entry.csvRow.tipo,
+                subcategory: entry.csvRow.subcategory || "",
+              })
+              .eq("id", legacyInsertResult.data.id)
+              .eq("site_id", siteId);
+
+            if (tipoUpdateResult.error && !isMissingColumnError(tipoUpdateResult.error)) {
+              throw new Error(
+                tipoUpdateResult.error.message ||
+                  `Impossibile salvare il tipo per il prodotto ${legacyInsertResult.data.id}`,
+              );
+            }
+          }
+        }
 
         if (insertError || !insertedProduct) {
           throw new Error(insertError?.message || "Impossibile creare il nuovo prodotto");
@@ -265,13 +368,24 @@ export async function POST(request: NextRequest) {
           !desiredCode || codeConflict
             ? formatSellProductCode(entry.csvRow.category_name, insertedProduct.id)
             : desiredCode;
-        const { data: insertedWithCode, error: codeError } = await supabase
+        const { error: codeUpdateError } = await supabase
           .from("SellProduct")
           .update({ internal_code: finalCode })
           .eq("id", insertedProduct.id)
-          .eq("site_id", siteId)
-          .select(SELL_PRODUCT_SELECT)
-          .single();
+          .eq("site_id", siteId);
+
+        if (codeUpdateError) {
+          throw new Error(
+            codeUpdateError.message ||
+              `Impossibile assegnare il codice al nuovo prodotto ${insertedProduct.id}`,
+          );
+        }
+
+        const { data: insertedWithCode, error: codeError } = await fetchImportedProduct(
+          supabase,
+          siteId,
+          insertedProduct.id,
+        );
 
         if (codeError || !insertedWithCode) {
           throw new Error(

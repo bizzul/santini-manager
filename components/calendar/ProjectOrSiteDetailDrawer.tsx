@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ArrowUpRight,
   BellRing,
@@ -60,6 +61,13 @@ export function ProjectOrSiteDetailDrawer({
           ? Math.max(0.5, (end.getTime() - start.getTime()) / 3_600_000)
           : 0)
       : 0;
+  const collaborators =
+    item?.collaborators && item.collaborators.length > 0
+      ? item.collaborators
+      : item?.assignedUser
+        ? [item.assignedUser]
+        : [];
+  const primaryCollaborator = collaborators[0] || null;
 
   useEffect(() => {
     if (!open) {
@@ -128,14 +136,35 @@ export function ProjectOrSiteDetailDrawer({
                       : "Non definita"}
                   </p>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Collaboratore
+                    Collaboratori
                   </p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <UserRound className="h-4 w-4 text-muted-foreground" />
-                    <span>{item.assignedUser?.name || "Non assegnato"}</span>
-                  </div>
+                  {primaryCollaborator ? (
+                    <div className="flex items-center gap-3 rounded-lg border bg-background/70 p-2.5">
+                      <Avatar className="h-14 w-14 border">
+                        <AvatarImage src={primaryCollaborator.avatarUrl || undefined} />
+                        <AvatarFallback
+                          className="text-sm font-semibold text-white"
+                          style={{ backgroundColor: primaryCollaborator.color || "#6366f1" }}
+                        >
+                          {primaryCollaborator.initials || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{primaryCollaborator.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {collaborators.length} collaborator
+                          {collaborators.length === 1 ? "e" : "i"} coinvolti
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm">
+                      <UserRound className="h-4 w-4 text-muted-foreground" />
+                      <span>Non assegnato</span>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

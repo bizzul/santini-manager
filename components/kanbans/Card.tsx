@@ -29,7 +29,10 @@ import {
   LucideIcon,
   Copy,
   Trash2,
-  Archive
+  Archive,
+  Users,
+  Truck,
+  Cog
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
@@ -99,6 +102,10 @@ import {
 import { archiveItem } from "@/app/sites/[domain]/kanban/actions/archived-item-action";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import { duplicateItem } from "@/app/sites/[domain]/kanban/actions/duplicate-item.action";
+import {
+  DEFAULT_CARD_FIELD_CONFIG,
+  type CardFieldConfig,
+} from "./card-display-config";
 
 type Supplier = {
   id: number;
@@ -123,6 +130,7 @@ export default function Card({
   isSmall: isSmallInitial,
   domain,
   onTaskDeleted,
+  cardFieldConfig,
 }: {
   id: number;
   title: string;
@@ -132,6 +140,7 @@ export default function Card({
   isSmall: boolean;
   domain?: string;
   onTaskDeleted?: () => void;
+  cardFieldConfig?: CardFieldConfig;
 }) {
   const { siteId } = useSiteId(domain);
   const [showModal, setShowModal] = useState(false);
@@ -477,6 +486,47 @@ export default function Card({
     return "-";
   };
 
+  const resolvedFieldConfig = useMemo(() => {
+    const normalConfig = {
+      ...DEFAULT_CARD_FIELD_CONFIG.normal,
+      ...(cardFieldConfig?.normal || {}),
+    };
+    const smallConfig = {
+      ...DEFAULT_CARD_FIELD_CONFIG.small,
+      ...(cardFieldConfig?.small || {}),
+    };
+    return { normal: normalConfig, small: smallConfig };
+  }, [cardFieldConfig]);
+
+  const isFieldVisible = (field: keyof typeof DEFAULT_CARD_FIELD_CONFIG.normal) => {
+    return isSmall
+      ? resolvedFieldConfig.small[field]
+      : resolvedFieldConfig.normal[field];
+  };
+
+  const activeCollaborators = useMemo(() => {
+    if (!Array.isArray(data.activeCollaborators)) {
+      return [];
+    }
+    return data.activeCollaborators;
+  }, [data.activeCollaborators]);
+
+  const activeSuppliersCount = useMemo(() => {
+    const todayStr = formatLocalDate(new Date());
+    return taskSuppliers.filter((ts) => {
+      if (!ts.deliveryDate) return true;
+      const deliveryDateStr = formatLocalDate(parseLocalDate(ts.deliveryDate));
+      return deliveryDateStr >= todayStr;
+    }).length;
+  }, [taskSuppliers]);
+
+  const activeMachinesCount = useMemo(() => {
+    const value = Number(data.activeMachinesCount || 0);
+    return Number.isFinite(value) ? value : 0;
+  }, [data.activeMachinesCount]);
+
+  const showActivity = isFieldVisible("activity");
+
   return (
     <ContextMenu>
       <div
@@ -519,7 +569,9 @@ export default function Card({
               <div className="px-2.5 pt-2.5 pb-1.5">
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
-                  <span className="font-bold text-sm">{data.unique_code}</span>
+                  <span className="font-bold text-sm">
+                    {isFieldVisible("projectCode") ? data.unique_code : ""}
+                  </span>
                   <div className="flex items-center gap-1">
                     <ManagerGuideButton
                       label="Apri guida card progetto"
@@ -529,7 +581,7 @@ export default function Card({
                       showMascot={false}
                       className="h-7 w-7 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     />
-                    {data.deliveryDate && (
+                    {isFieldVisible("date") && data.deliveryDate && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
                         <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
                         <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
@@ -541,115 +593,132 @@ export default function Card({
                 </div>
 
                 {/* Badge Categoria Prodotto - Solo se abilitato nelle impostazioni Kanban */}
-                {showCategoryColors && (productCategory || getProductDisplay()) && (
-                  <div 
-                    className="flex items-center gap-1.5 px-2 py-1 rounded-md mb-2 -mx-0.5"
-                    style={{ 
-                      backgroundColor: categoryColors.bgColor,
-                      borderLeft: `3px solid ${categoryColors.color}`
-                    }}
-                  >
-                    <CategoryIcon 
-                      className="h-4 w-4 shrink-0" 
-                      style={{ color: categoryColors.color }}
-                    />
-                    <span 
-                      className="font-semibold text-sm truncate"
-                      style={{ color: categoryColors.textColor }}
+                {isFieldVisible("productCategory") &&
+                  showCategoryColors &&
+                  (productCategory || getProductDisplay()) && (
+                    <div
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md mb-2 -mx-0.5"
+                      style={{
+                        backgroundColor: categoryColors.bgColor,
+                        borderLeft: `3px solid ${categoryColors.color}`,
+                      }}
                     >
-                      {productCategory?.name || getProductDisplay() || "Prodotto"}
-                    </span>
-                    {productCategory && getProductDisplay() && productCategory.name !== getProductDisplay() && (
-                      <span 
-                        className="text-xs opacity-75 truncate"
+                      <CategoryIcon
+                        className="h-4 w-4 shrink-0"
+                        style={{ color: categoryColors.color }}
+                      />
+                      <span
+                        className="font-semibold text-sm truncate"
                         style={{ color: categoryColors.textColor }}
                       >
-                        · {getProductDisplay()}
+                        {productCategory?.name || getProductDisplay() || "Prodotto"}
                       </span>
+                      {productCategory &&
+                        getProductDisplay() &&
+                        productCategory.name !== getProductDisplay() && (
+                          <span
+                            className="text-xs opacity-75 truncate"
+                            style={{ color: categoryColors.textColor }}
+                          >
+                            · {getProductDisplay()}
+                          </span>
+                        )}
+                    </div>
+                )}
+
+                {isFieldVisible("image") && (
+                  <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                    {productImageUrl ? (
+                      <img
+                        src={productImageUrl}
+                        alt={getProductDisplay() || "Immagine prodotto"}
+                        className="h-24 w-full rounded-md object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-24 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        <span>Nessuna immagine</span>
+                      </div>
                     )}
                   </div>
                 )}
 
-                <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
-                  {productImageUrl ? (
-                    <img
-                      src={productImageUrl}
-                      alt={getProductDisplay() || "Immagine prodotto"}
-                      className="h-24 w-full rounded-md object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-24 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
-                      <ImageIcon className="h-3.5 w-3.5" />
-                      <span>Nessuna immagine</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Nome Cliente */}
-                <div className="font-semibold text-base mb-1 truncate">
-                  {getClientName()}
-                </div>
-
-                {/* Luogo · Nome oggetto */}
-                <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mb-2">
-                  {data.luogo && (
-                    <>
-                      <MapPin className="h-3 w-3" />
-                      <span>{data.luogo}</span>
-                      <span className="mx-1">·</span>
-                    </>
-                  )}
-                  <span className="truncate">{data.name || "-"}</span>
-                </div>
-
-                {/* Pezzi e Valore */}
-                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2">
-                  <div className="text-center">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
-                      Pezzi
-                    </span>
-                    <span className="font-bold text-sm">
-                      {getPiecesDisplay()}
-                    </span>
+                {isFieldVisible("client") && (
+                  <div className="font-semibold text-base mb-1 truncate">
+                    {getClientName()}
                   </div>
-                  <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-                  <div className="text-center">
-                    <span className="text-xs text-slate-500 dark:text-slate-400 block">
-                      Valore
-                    </span>
-                    <span className="font-bold text-sm">
-                      {((data.sellPrice || 0) / 1000).toFixed(1)}K
-                    </span>
-                  </div>
-                </div>
+                )}
 
-                {/* Note */}
-                {data.other && (
+                {(isFieldVisible("location") || isFieldVisible("objectName")) && (
+                  <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                    {isFieldVisible("location") && data.luogo && (
+                      <>
+                        <MapPin className="h-3 w-3" />
+                        <span>{data.luogo}</span>
+                        {isFieldVisible("objectName") && <span className="mx-1">·</span>}
+                      </>
+                    )}
+                    {isFieldVisible("objectName") && (
+                      <span className="truncate">{data.name || "-"}</span>
+                    )}
+                  </div>
+                )}
+
+                {(isFieldVisible("pieces") || isFieldVisible("value")) && (
+                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2">
+                    {isFieldVisible("pieces") && (
+                      <div className="text-center">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                          Pezzi
+                        </span>
+                        <span className="font-bold text-sm">
+                          {getPiecesDisplay()}
+                        </span>
+                      </div>
+                    )}
+                    {isFieldVisible("pieces") && isFieldVisible("value") && (
+                      <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                    )}
+                    {isFieldVisible("value") && (
+                      <div className="text-center">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                          Valore
+                        </span>
+                        <span className="font-bold text-sm">
+                          {((data.sellPrice || 0) / 1000).toFixed(1)}K
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isFieldVisible("notes") && data.other && (
                   <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2 line-clamp-2">
                     {data.other}
                   </div>
                 )}
 
-                {/* Fornitori */}
-                {taskSuppliers && taskSuppliers.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
-                      Fornitori
-                    </span>
-                    <div className="flex flex-wrap gap-1">
-                      {taskSuppliers.map((ts) => {
-                        const todayStr = formatLocalDate(new Date());
-                        const deliveryDateStr = ts.deliveryDate
-                          ? formatLocalDate(parseLocalDate(ts.deliveryDate))
-                          : null;
-                        const isDeliveryToday = deliveryDateStr === todayStr;
-                        const isDeliveryLate =
-                          deliveryDateStr && deliveryDateStr < todayStr;
+                {isFieldVisible("suppliers") &&
+                  taskSuppliers &&
+                  taskSuppliers.length > 0 && (
+                    <div className="mb-2">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+                        Fornitori
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {taskSuppliers.map((ts) => {
+                          const todayStr = formatLocalDate(new Date());
+                          const deliveryDateStr = ts.deliveryDate
+                            ? formatLocalDate(parseLocalDate(ts.deliveryDate))
+                            : null;
+                          const isDeliveryToday = deliveryDateStr === todayStr;
+                          const isDeliveryLate =
+                            deliveryDateStr && deliveryDateStr < todayStr;
 
-                        return (
-                          <div
-                            key={ts.id}
-                            className={`
+                          return (
+                            <div
+                              key={ts.id}
+                              className={`
                               text-xs px-1.5 py-0.5 rounded-md
                               ${
                                 isDeliveryToday
@@ -659,21 +728,66 @@ export default function Card({
                                   : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                               }
                             `}
-                          >
-                            <span className="font-medium">
-                              {ts.supplier?.short_name ||
-                                ts.supplier?.name ||
-                                "?"}
-                            </span>
-                            {ts.deliveryDate && (
-                              <span className="ml-1 opacity-75">
-                                {DateManager.format(ts.deliveryDate, "dd.MM")}
+                            >
+                              <span className="font-medium">
+                                {ts.supplier?.short_name ||
+                                  ts.supplier?.name ||
+                                  "?"}
                               </span>
+                              {ts.deliveryDate && (
+                                <span className="ml-1 opacity-75">
+                                  {DateManager.format(ts.deliveryDate, "dd.MM")}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                {showActivity && (
+                  <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                    <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
+                        <Users className="h-3 w-3" />
+                        {activeCollaborators.length}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        <Truck className="h-3 w-3" />
+                        {activeSuppliersCount}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                        <Cog className="h-3 w-3" />
+                        {activeMachinesCount}
+                      </span>
+                    </div>
+                    {activeCollaborators.length > 0 && (
+                      <div className="mt-1.5 flex items-center gap-1">
+                        {activeCollaborators.slice(0, 5).map((collab: any) => (
+                          <div
+                            key={collab.id}
+                            title={collab.fullName || collab.email || "Collaboratore"}
+                            className="h-6 w-6 overflow-hidden rounded-full border border-white/60 bg-slate-200 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100"
+                          >
+                            {collab.picture ? (
+                              <img
+                                src={collab.picture}
+                                alt={collab.fullName || "Collaboratore"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                {collab.initials || "?"}
+                              </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -697,13 +811,17 @@ export default function Card({
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-1.5">
                     {/* Icona categoria prodotto - solo se abilitato */}
-                    {showCategoryColors && productCategory && (
+                    {isFieldVisible("productCategory") &&
+                      showCategoryColors &&
+                      productCategory && (
                       <CategoryIcon 
                         className="h-3.5 w-3.5 shrink-0" 
                         style={{ color: categoryColors.color }}
                       />
                     )}
-                    <span className="font-bold text-sm">{data.unique_code}</span>
+                    {isFieldVisible("projectCode") && (
+                      <span className="font-bold text-sm">{data.unique_code}</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <ManagerGuideButton
@@ -714,7 +832,7 @@ export default function Card({
                       showMascot={false}
                       className="h-6 w-6 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
                     />
-                    {data.deliveryDate && (
+                    {isFieldVisible("date") && data.deliveryDate && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                         <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
                         <span className="font-semibold">
@@ -726,56 +844,140 @@ export default function Card({
                 </div>
 
                 {/* Riga 2: Categoria Prodotto - solo se abilitato nelle impostazioni Kanban */}
-                {showCategoryColors && (productCategory || getProductDisplay()) && (
-                  <div 
-                    className="text-xs font-medium truncate mb-1 px-1.5 py-0.5 rounded inline-flex items-center gap-1"
-                    style={{ 
-                      backgroundColor: `${categoryColors.color}15`,
-                      color: categoryColors.textColor
-                    }}
-                  >
-                    {productCategory?.name || getProductDisplay()}
+                {isFieldVisible("productCategory") &&
+                  showCategoryColors &&
+                  (productCategory || getProductDisplay()) && (
+                    <div
+                      className="text-xs font-medium truncate mb-1 px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                      style={{
+                        backgroundColor: `${categoryColors.color}15`,
+                        color: categoryColors.textColor,
+                      }}
+                    >
+                      {productCategory?.name || getProductDisplay()}
+                    </div>
+                )}
+
+                {isFieldVisible("image") && (
+                  <div className="mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+                    {productImageUrl ? (
+                      <img
+                        src={productImageUrl}
+                        alt={getProductDisplay() || "Immagine prodotto"}
+                        className="h-14 w-full rounded object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-full items-center justify-center gap-1 rounded border border-dashed border-slate-300 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                        <ImageIcon className="h-3 w-3" />
+                        <span>Nessuna immagine</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <div className="mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
-                  {productImageUrl ? (
-                    <img
-                      src={productImageUrl}
-                      alt={getProductDisplay() || "Immagine prodotto"}
-                      className="h-14 w-full rounded object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-14 w-full items-center justify-center gap-1 rounded border border-dashed border-slate-300 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
-                      <ImageIcon className="h-3 w-3" />
-                      <span>Nessuna immagine</span>
-                    </div>
-                  )}
-                </div>
+                {(isFieldVisible("client") || isFieldVisible("objectName")) && (
+                  <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
+                    {isFieldVisible("client") && (
+                      <span className="font-medium">{getClientName()}</span>
+                    )}
+                    {isFieldVisible("objectName") && data.name && (
+                      <>
+                        {isFieldVisible("client") && (
+                          <span className="mx-1 text-slate-400">·</span>
+                        )}
+                        <span className="text-slate-500 dark:text-slate-400">
+                          {data.name}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
 
-                {/* Riga 3: Cliente · Oggetto */}
-                <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
-                  <span className="font-medium">{getClientName()}</span>
-                  {data.name && (
-                    <>
-                      <span className="mx-1 text-slate-400">·</span>
-                      <span className="text-slate-500 dark:text-slate-400">
-                        {data.name}
+                {(isFieldVisible("location") || isFieldVisible("pieces") || isFieldVisible("value")) && (
+                  <div className="flex items-center gap-1.5 text-xs mb-1">
+                    {isFieldVisible("location") && data.luogo && (
+                      <>
+                        <MapPin className="h-3 w-3 text-slate-500" />
+                        <span className="text-slate-600 dark:text-slate-400 truncate max-w-[110px]">
+                          {data.luogo}
+                        </span>
+                        {(isFieldVisible("pieces") || isFieldVisible("value")) && (
+                          <span className="text-slate-400">|</span>
+                        )}
+                      </>
+                    )}
+                    {isFieldVisible("pieces") && (
+                      <span className="text-slate-600 dark:text-slate-400">
+                        {getPiecesDisplay()}
                       </span>
-                    </>
-                  )}
-                </div>
+                    )}
+                    {isFieldVisible("pieces") && isFieldVisible("value") && (
+                      <span className="text-slate-400">|</span>
+                    )}
+                    {isFieldVisible("value") && (
+                      <span className="font-semibold">
+                        {((data.sellPrice || 0) / 1000).toFixed(1)}K
+                      </span>
+                    )}
+                  </div>
+                )}
 
-                {/* Riga 4: Pezzi, Valore */}
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {getPiecesDisplay()}
-                  </span>
-                  <span className="text-slate-400">|</span>
-                  <span className="font-semibold">
-                    {((data.sellPrice || 0) / 1000).toFixed(1)}K
-                  </span>
-                </div>
+                {showActivity && (
+                  <div className="mb-1 flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-sky-500" />
+                      {activeCollaborators.length}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      {activeSuppliersCount}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      {activeMachinesCount}
+                    </span>
+                    {activeCollaborators.length > 0 && (
+                      <div className="ml-1 flex -space-x-1">
+                        {activeCollaborators.slice(0, 3).map((collab: any) => (
+                          <div
+                            key={`small-${collab.id}`}
+                            className="h-5 w-5 overflow-hidden rounded-full border border-white bg-slate-200 dark:border-slate-700 dark:bg-slate-700"
+                          >
+                            {collab.picture ? (
+                              <img
+                                src={collab.picture}
+                                alt={collab.fullName || "Collaboratore"}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-slate-700 dark:text-slate-100">
+                                {collab.initials || "?"}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isFieldVisible("notes") && data.other && (
+                  <div className="mb-1 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                    {data.other}
+                  </div>
+                )}
+
+                {isFieldVisible("suppliers") && taskSuppliers.length > 0 && (
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    {taskSuppliers
+                      .slice(0, 2)
+                      .map(
+                        (ts) => ts.supplier?.short_name || ts.supplier?.name || "?"
+                      )
+                      .join(", ")}
+                    {taskSuppliers.length > 2 && " ..."}
+                  </div>
+                )}
               </div>
 
               {/* Progress bar integrata nella base */}

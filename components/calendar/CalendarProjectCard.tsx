@@ -40,6 +40,14 @@ export function CalendarProjectCard({
       : null;
   const scheduleLabel = getScheduleLabel(scheduleDisplay, start, end);
   const isTimePending = scheduleDisplay === "time-pending";
+  const collaborators =
+    item.collaborators && item.collaborators.length > 0
+      ? item.collaborators
+      : item.assignedUser
+        ? [item.assignedUser]
+        : [];
+  const visibleCollaborators = collaborators.slice(0, 3);
+  const hiddenCollaboratorsCount = Math.max(collaborators.length - visibleCollaborators.length, 0);
 
   const card = (
     <button
@@ -137,26 +145,45 @@ export function CalendarProjectCard({
 
       <div className={cn("flex items-center justify-between gap-2", compact ? "mt-2" : "mt-3")}>
         <div className="min-w-0">
-          {item.assignedUser ? (
+          {collaborators.length > 0 ? (
             <div className="flex items-center gap-2">
-              <Avatar
-                className={cn(
-                  "border border-slate-200 dark:border-slate-700",
-                  compact ? "h-5 w-5" : "h-6 w-6"
+              <div className="flex items-center">
+                {visibleCollaborators.map((collaborator, index) => (
+                  <Avatar
+                    key={`${collaborator.id}-${index}`}
+                    className={cn(
+                      "border-2 border-white dark:border-slate-900",
+                      compact ? "h-5 w-5" : "h-6 w-6"
+                    )}
+                    style={{ marginLeft: index === 0 ? 0 : compact ? -6 : -8 }}
+                  >
+                    <AvatarImage src={collaborator.avatarUrl || undefined} />
+                    <AvatarFallback
+                      className="text-[9px] font-semibold text-white"
+                      style={{ backgroundColor: collaborator.color || "#6366f1" }}
+                    >
+                      {collaborator.initials || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+                {hiddenCollaboratorsCount > 0 && (
+                  <span
+                    className={cn(
+                      "ml-1 rounded-full border bg-slate-100 font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200",
+                      compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-0.5 text-[10px]"
+                    )}
+                  >
+                    +{hiddenCollaboratorsCount}
+                  </span>
                 )}
-              >
-                <AvatarImage src={item.assignedUser.avatarUrl || undefined} />
-                <AvatarFallback className="text-[10px] font-semibold">
-                  {item.assignedUser.initials || "U"}
-                </AvatarFallback>
-              </Avatar>
+              </div>
               <span
                 className={cn(
                   "truncate text-slate-600 dark:text-slate-300",
                   compact ? "text-[10px]" : "text-xs"
                 )}
               >
-                {item.assignedUser.name}
+                {collaborators.length} collaborator{collaborators.length === 1 ? "e" : "i"}
               </span>
             </div>
           ) : (
@@ -219,8 +246,10 @@ export function CalendarProjectCard({
               )}
             </p>
           </div>
-          {item.assignedUser && (
-            <p className="text-xs">Collaboratore: {item.assignedUser.name}</p>
+          {collaborators.length > 0 && (
+            <p className="text-xs">
+              Collaboratori: {collaborators.map((collaborator) => collaborator.name).join(", ")}
+            </p>
           )}
           {(item.category || item.activityType) && (
             <p className="text-xs">Tipo: {item.category || item.activityType}</p>
