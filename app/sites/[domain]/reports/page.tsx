@@ -50,6 +50,10 @@ export default async function Page({
         qc={data.qualityControl}
         imb={data.packingControl}
         task={data.tasks}
+        inventoryCategories={data.inventoryCategories}
+        clients={data.clients}
+        sellProducts={data.sellProducts}
+        users={data.users}
         domain={domain}
         isAdmin={isAdmin}
         enabledModules={enabledModules}

@@ -16,6 +16,7 @@ import { it } from "date-fns/locale";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
 import { User, Factory } from "lucide-react";
+import { ClientManagerSummaryTooltip } from "./client-manager-summary-tooltip";
 
 // Extended Client type with lastAction
 export type ClientWithAction = Client & {
@@ -175,7 +176,15 @@ export const createColumns = (
       ),
       cell: ({ row }) => {
         const value = row.getValue("name") as string;
-        return value || "-";
+        if (!value) return "-";
+
+        return (
+          <ClientManagerSummaryTooltip clientId={row.original.id} domain={domain}>
+            <span className="cursor-help underline decoration-dotted underline-offset-4">
+              {value}
+            </span>
+          </ClientManagerSummaryTooltip>
+        );
       },
     },
     {

@@ -27,8 +27,19 @@ export default async function Page({
   const data = await fetchTimetrackingData(siteId);
 
   // Filter timetracking entries based on user role
-  // Regular users can only see their own entries
-  const isRegularUser = userContext.role === "user";
+  // Prefer DB role, but fall back to auth app_metadata role for superadmin/admin users
+  // that might not be aligned yet in the User table.
+  const metadataRoleRaw = userContext.user?.app_metadata?.role;
+  const metadataRole =
+    typeof metadataRoleRaw === "string"
+      ? metadataRoleRaw.toLowerCase()
+      : undefined;
+  const effectiveRole =
+    userContext.role === "user" &&
+    (metadataRole === "admin" || metadataRole === "superadmin")
+      ? metadataRole
+      : userContext.role;
+  const isRegularUser = effectiveRole === "user";
   // userContext.user.id is the auth UUID, but employee_id references User.id (integer)
   // We need to find the current user's User table record to get the integer ID
   const currentUserRecord = data.users.find(

@@ -960,42 +960,82 @@ export const fetchErrorTracking = cache(async (siteId: string) => {
  * Includes task relations with client info for project name display
  */
 export const fetchReportsData = cache(async (siteId: string) => {
-    const supabase = await createClient();
+  const supabase = await createClient();
 
-    const [suppliersResult, qcResult, packingResult, tasksResult] =
-        await Promise.all([
-            supabase.from("Supplier").select("*").eq("site_id", siteId),
-            supabase
-                .from("QualityControl")
-                .select(`
+  const [
+    suppliersResult,
+    qcResult,
+    packingResult,
+    tasksResult,
+    inventoryCategoriesResult,
+    clients,
+    sellProducts,
+    siteUsersResult,
+  ] = await Promise.all([
+    supabase.from("Supplier").select("*").eq("site_id", siteId),
+    supabase
+      .from("QualityControl")
+      .select(`
                     *,
                     task:taskId(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
                     user:userId(id, given_name, family_name)
                 `)
-                .eq("site_id", siteId),
-            supabase
-                .from("PackingControl")
-                .select(`
+      .eq("site_id", siteId),
+    supabase
+      .from("PackingControl")
+      .select(`
                     *,
                     task:taskId(unique_code, title, Client:clientId(businessName, individualFirstName, individualLastName)),
                     user:userId(id, given_name, family_name)
                 `)
-                .eq("site_id", siteId),
-            supabase
-                .from("Task")
-                .select(
-                    "*, column:kanbanColumnId(*), Client:clientId(businessName, individualFirstName, individualLastName)",
-                )
-                .eq("site_id", siteId)
-                .eq("archived", false),
-        ]);
+      .eq("site_id", siteId),
+    supabase
+      .from("Task")
+      .select(
+        `
+                    *,
+                    column:kanbanColumnId(*),
+                    kanban:kanbanId(id, title, name),
+                    Client:clientId(id, businessName, individualFirstName, individualLastName),
+                    SellProduct:sellProductId(id, name, type, category:category_id(id, name))
+                `,
+      )
+      .eq("site_id", siteId)
+      .eq("archived", false),
+    supabase
+      .from("inventory_categories")
+      .select("id, name, description, color")
+      .eq("site_id", siteId)
+      .order("name", { ascending: true }),
+    fetchClients(siteId),
+    fetchSellProducts(siteId),
+    supabase.from("user_sites").select("user_id").eq("site_id", siteId),
+  ]);
 
-    return {
-        suppliers: suppliersResult.data || [],
-        qualityControl: qcResult.data || [],
-        packingControl: packingResult.data || [],
-        tasks: tasksResult.data || [],
-    };
+  let users: any[] = [];
+  const siteAuthIds = (siteUsersResult.data || []).map((siteUser: any) => siteUser.user_id);
+
+  if (siteAuthIds.length > 0) {
+    const { data: siteUsers } = await supabase
+      .from("User")
+      .select("id, authId, given_name, family_name, email, initials, enabled")
+      .eq("enabled", true)
+      .in("authId", siteAuthIds)
+      .order("family_name", { ascending: true });
+
+    users = siteUsers || [];
+  }
+
+  return {
+    suppliers: suppliersResult.data || [],
+    qualityControl: qcResult.data || [],
+    packingControl: packingResult.data || [],
+    tasks: tasksResult.data || [],
+    inventoryCategories: inventoryCategoriesResult.data || [],
+    clients: clients || [],
+    sellProducts: sellProducts || [],
+    users,
+  };
 });
 
 /**

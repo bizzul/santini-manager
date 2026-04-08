@@ -32,6 +32,18 @@ function normalizeSelectedMonths(months: unknown) {
   ).sort((a, b) => a - b);
 }
 
+function normalizeSelectedUserIds(userIds: unknown) {
+  if (!Array.isArray(userIds)) return [];
+
+  return Array.from(
+    new Set(
+      userIds
+        .map((userId) => Number(userId))
+        .filter((userId) => Number.isInteger(userId) && userId > 0),
+    ),
+  ).sort((a, b) => a - b);
+}
+
 function buildTimeReportSelection(data: any): TimeReportSelection {
   const selectedMonths = normalizeSelectedMonths(data?.months);
   const year = Number(data?.year);
@@ -327,6 +339,7 @@ function prepareTimetrackingsData(
 export const POST = async (req: NextRequest) => {
   const requestBody = await req.json();
   const selection = buildTimeReportSelection(requestBody.data);
+  const selectedUserIds = normalizeSelectedUserIds(requestBody.data?.userIds);
   const { from, to } = selection;
 
   logger.debug("range", from, to);
@@ -396,6 +409,12 @@ export const POST = async (req: NextRequest) => {
       }
     }
 
+    if (!isRegularUser && selectedUserIds.length > 0) {
+      filteredTimetrackings = filteredTimetrackings.filter((tracking: any) =>
+        selectedUserIds.includes(Number(tracking.employee_id)),
+      );
+    }
+
     // Get users for the report (only enabled users)
     let userQuery = supabase.from("User").select("*").eq("enabled", true);
 
@@ -427,6 +446,10 @@ export const POST = async (req: NextRequest) => {
         .single();
 
       userEnabled = currentUser ? [currentUser] : [];
+    } else if (selectedUserIds.length > 0) {
+      userEnabled = userEnabled.filter((user: any) =>
+        selectedUserIds.includes(Number(user.id)),
+      );
     }
 
     const newData = userEnabled.map((user: any) => {
@@ -543,7 +566,12 @@ export const POST = async (req: NextRequest) => {
       subtitle: isRegularUser
         ? "Dettaglio delle ore lavorate dall'utente"
         : "Dettaglio delle ore lavorate da tutti i collaboratori",
-      metaLines: [formatSelectionLabel(selection)],
+      metaLines: [
+        formatSelectionLabel(selection),
+        !isRegularUser && selectedUserIds.length > 0
+          ? `Collaboratori selezionati: ${selectedUserIds.length}`
+          : null,
+      ],
     });
     styleWorkbookTable(allTimetrackingsSheet, {
       headerRowNumber: 5,
