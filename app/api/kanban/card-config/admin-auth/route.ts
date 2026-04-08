@@ -4,6 +4,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { getSiteContext } from "@/lib/site-context";
 
 const SETTING_KEY = "kanban_card_admin_code";
+const NORMALIZE_REGEX = /[^A-Za-z0-9]/g;
 
 function extractCodeFromSetting(value: unknown): string | null {
   if (typeof value === "string" && value.trim().length > 0) {
@@ -26,6 +27,52 @@ function extractCodeFromSetting(value: unknown): string | null {
   return null;
 }
 
+function normalizeCode(value: string | null | undefined): string {
+  return (value || "").replace(NORMALIZE_REGEX, "").trim().toUpperCase();
+}
+
+function deriveInitialsFromUser(user: any): string | null {
+  const candidates = [
+    user?.initials,
+    user?.user_metadata?.initials,
+  ].filter((value) => typeof value === "string" && value.trim().length > 0);
+
+  if (candidates.length > 0) {
+    return normalizeCode(candidates[0]);
+  }
+
+  const givenName =
+    user?.given_name ||
+    user?.user_metadata?.given_name ||
+    user?.user_metadata?.first_name ||
+    "";
+  const familyName =
+    user?.family_name ||
+    user?.user_metadata?.family_name ||
+    user?.user_metadata?.last_name ||
+    "";
+
+  const first = String(givenName).trim().charAt(0);
+  const last = String(familyName).trim().charAt(0);
+  const combined = `${first}${last}`.trim();
+  if (combined.length >= 2) {
+    return normalizeCode(combined);
+  }
+
+  const email = String(user?.email || "").trim();
+  if (email.length > 0) {
+    const localPart = email.split("@")[0] || "";
+    const parts = localPart.split(/[.\-_]/).filter(Boolean);
+    const fromEmail =
+      parts.length >= 2
+        ? `${parts[0].charAt(0)}${parts[1].charAt(0)}`
+        : localPart.slice(0, 2);
+    return normalizeCode(fromEmail);
+  }
+
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const userContext = await getUserContext();
@@ -34,7 +81,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => null);
-    const inputCode = typeof body?.code === "string" ? body.code.trim() : "";
+    const inputCode = normalizeCode(
+      typeof body?.code === "string" ? body.code : ""
+    );
     if (!inputCode) {
       return NextResponse.json(
         { error: "Codice admin richiesto" },
@@ -58,9 +107,10 @@ export async function POST(req: NextRequest) {
       .eq("setting_key", SETTING_KEY)
       .single();
 
-    const siteCode = extractCodeFromSetting(data?.setting_value);
-    const fallbackCode = process.env.KANBAN_CARD_ADMIN_CODE?.trim() || "admin";
-    const expectedCode = siteCode || fallbackCode;
+    const siteCode = normalizeCode(extractCodeFromSetting(data?.setting_value));
+    const envCode = normalizeCode(process.env.KANBAN_CARD_ADMIN_CODE?.trim());
+    const userInitials = deriveInitialsFromUser(userContext.user);
+    const expectedCode = siteCode || envCode || userInitials || "ADMIN";
 
     if (inputCode !== expectedCode) {
       return NextResponse.json({ valid: false }, { status: 403 });
