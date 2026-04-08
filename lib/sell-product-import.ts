@@ -26,9 +26,6 @@ export interface SellProductImportExistingRecord {
   internal_code?: string | null;
   name?: string | null;
   type?: string | null;
-  subcategory?: string | null;
-  tipo?: string | null;
-  product_type?: string | null;
   description?: string | null;
   price_list?: boolean | null;
   image_url?: string | null;
@@ -261,7 +258,7 @@ function getDiffs(
     },
     {
       field: "SOTTOCATEGORIA",
-      current: existing.subcategory || existing.type,
+      current: existing.type,
       next: csvRow.subcategory,
     },
     { field: "NOME_PRODOTTO", current: existing.name, next: csvRow.name },
@@ -275,7 +272,7 @@ function getDiffs(
   if (hasTipoColumn) {
     comparisons.splice(4, 0, {
       field: "TIPO",
-      current: existing.tipo || existing.product_type,
+      current: "-",
       next: csvRow.tipo,
     });
   }
@@ -308,18 +305,16 @@ export function buildSellProductImportPlan(params: {
   );
 
   const existingById = new Map<number, SellProductImportExistingRecord>();
-  const existingByFingerprint = new Map<string, SellProductImportExistingRecord[]>();
+  const existingByInternalCode = new Map<string, SellProductImportExistingRecord[]>();
 
   params.existingProducts.forEach((product) => {
     existingById.set(product.id, product);
-    const fingerprint = getSellProductFingerprint({
-      categoryName: getCategoryRecordName(product.category),
-      subcategory: product.subcategory || product.type,
-      name: product.name,
-    });
-    const current = existingByFingerprint.get(fingerprint) || [];
-    current.push(product);
-    existingByFingerprint.set(fingerprint, current);
+    const internalCode = product.internal_code?.trim();
+    if (internalCode) {
+      const current = existingByInternalCode.get(internalCode) || [];
+      current.push(product);
+      existingByInternalCode.set(internalCode, current);
+    }
   });
 
   const errors: string[] = [];
@@ -446,15 +441,14 @@ export function buildSellProductImportPlan(params: {
     seenFingerprints.add(fingerprint);
 
     const target = csvRow.id ? existingById.get(csvRow.id) : undefined;
-    const duplicates = dedupeNumbers(
-      (existingByFingerprint.get(fingerprint) || [])
-        .filter((product) => product.id !== target?.id)
+    const codeConflicts = dedupeNumbers(
+      (existingByInternalCode.get(csvRow.internal_code || "") || [])
         .map((product) => product.id),
     );
 
     if (target) {
       const changes = getDiffs(target, csvRow, params.headers);
-      const isMeaningfulUpdate = changes.length > 0 || duplicates.length > 0;
+      const isMeaningfulUpdate = changes.length > 0;
 
       if (!isMeaningfulUpdate) {
         skipped += 1;
@@ -474,34 +468,40 @@ export function buildSellProductImportPlan(params: {
         return;
       }
 
-      plannedUpdates += 1;
-      plannedDeactivations += duplicates.length;
+      plannedInserts += 1;
       entries.push({
         rowNumber: csvRow.rowNumber,
-        action: "update",
+        action: "insert",
+        reason:
+          codeConflicts.length > 0
+            ? `Nuova versione del prodotto: il record storico ID ${target.id} resta invariato e il nuovo record ricevera un COD_INT automatico`
+            : `Nuova versione del prodotto: il record storico ID ${target.id} resta invariato`,
         categoryName: csvRow.category_name,
         code: csvRow.internal_code,
         name: csvRow.name,
         targetId: target.id,
         fingerprint,
         changes,
-        duplicateIdsToDeactivate: duplicates,
+        duplicateIdsToDeactivate: [],
         csvRow,
       });
       return;
     }
 
     plannedInserts += 1;
-    plannedDeactivations += duplicates.length;
     entries.push({
       rowNumber: csvRow.rowNumber,
       action: "insert",
+      reason:
+        codeConflicts.length > 0
+          ? `COD_INT gia usato dal prodotto ${codeConflicts[0]}: al nuovo record verra assegnato un COD_INT automatico`
+          : undefined,
       categoryName: csvRow.category_name,
       code: csvRow.internal_code,
       name: csvRow.name,
       fingerprint,
       changes: [],
-      duplicateIdsToDeactivate: duplicates,
+      duplicateIdsToDeactivate: [],
       csvRow,
     });
   });

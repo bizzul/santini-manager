@@ -80,7 +80,7 @@ export default async function ProductPage({
   const categoryColor = category?.color || "#64748b";
   const code = getSellProductDisplayCode(product);
   const metricPanelClass =
-    "rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80";
+    "rounded-xl border border-border/80 bg-card/95 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80";
   const subtlePanelClass =
     "rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-700 dark:bg-slate-800/50";
 
@@ -98,7 +98,7 @@ export default async function ProductPage({
         </div>
 
         <div
-          className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-900"
+          className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-md dark:border-slate-700 dark:bg-slate-900"
           style={{
             borderLeftWidth: "6px",
             borderLeftStyle: "solid",

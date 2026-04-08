@@ -14,6 +14,8 @@ import {
 import { formatSellProductCode } from "@/lib/sell-product-code";
 
 const log = logger.scope("SellProductImportCsv");
+const SELL_PRODUCT_SELECT =
+  "id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)";
 
 interface ImportResult {
   success: boolean;
@@ -27,21 +29,6 @@ interface ImportResult {
   skipped: number;
   errors: string[];
   entries: SellProductImportPlanEntry[];
-}
-
-function buildArchivedCode(code: string | null | undefined, id: number) {
-  const safeCode = (code || `ARCHIVIATO_${id}`).replace(/\s+/g, "_");
-  return `${safeCode}__OLD_${id}`.slice(0, 120);
-}
-
-function getCategoryName(
-  category:
-    | { id?: number | null; name?: string | null }
-    | Array<{ id?: number | null; name?: string | null }>
-    | null
-    | undefined,
-) {
-  return (Array.isArray(category) ? category[0] : category)?.name || null;
 }
 
 async function ensureCategoryId(params: {
@@ -73,48 +60,6 @@ async function ensureCategoryId(params: {
 
   params.categoryMap.set(normalizedName, data.id);
   return data.id;
-}
-
-async function deactivateHistoricalDuplicates(params: {
-  supabase: Awaited<ReturnType<typeof createClient>>;
-  siteId: string;
-  duplicates: SellProductImportExistingRecord[];
-  protectedCode: string | null;
-}) {
-  let deactivated = 0;
-
-  for (const duplicate of params.duplicates) {
-    const updatePayload: Record<string, unknown> = {
-      active: false,
-    };
-
-    if (
-      params.protectedCode &&
-      duplicate.internal_code &&
-      duplicate.internal_code === params.protectedCode
-    ) {
-      updatePayload.internal_code = buildArchivedCode(
-        duplicate.internal_code,
-        duplicate.id,
-      );
-    }
-
-    const { error } = await params.supabase
-      .from("SellProduct")
-      .update(updatePayload)
-      .eq("id", duplicate.id)
-      .eq("site_id", params.siteId);
-
-    if (error) {
-      throw new Error(
-        `Impossibile disattivare il duplicato storico ${duplicate.id}: ${error.message}`,
-      );
-    }
-
-    deactivated += 1;
-  }
-
-  return deactivated;
 }
 
 export async function POST(request: NextRequest) {
@@ -186,7 +131,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: existingProducts, error: existingProductsError } = await supabase
       .from("SellProduct")
-      .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+      .select(SELL_PRODUCT_SELECT)
       .eq("site_id", siteId);
 
     if (existingProductsError) {
@@ -281,68 +226,20 @@ export async function POST(request: NextRequest) {
         });
 
         const targetRecord = entry.targetId ? mutableProducts.get(entry.targetId) : undefined;
-        const duplicates = entry.duplicateIdsToDeactivate
-          .map((id) => mutableProducts.get(id))
-          .filter(Boolean) as SellProductImportExistingRecord[];
-        const desiredCode =
-          entry.csvRow.internal_code ||
-          targetRecord?.internal_code ||
-          (entry.action === "update" && entry.targetId
-            ? formatSellProductCode(entry.csvRow.category_name, entry.targetId)
-            : null);
-
-        const unrelatedCodeConflict = desiredCode
+        const desiredCode = entry.csvRow.internal_code || null;
+        const codeConflict = desiredCode
           ? Array.from(mutableProducts.values()).find((product) => {
               if (product.internal_code !== desiredCode) {
                 return false;
               }
 
-              if (product.id === targetRecord?.id) {
-                return false;
-              }
-
-              return !entry.duplicateIdsToDeactivate.includes(product.id);
+              return product.id !== targetRecord?.id;
             })
           : undefined;
-
-        if (unrelatedCodeConflict) {
-          entry.action = "error";
-          entry.reason = `COD_INT già usato dal prodotto ${unrelatedCodeConflict.id}`;
-          result.errors.push(
-            `Riga ${entry.rowNumber}: COD_INT ${desiredCode} già usato dal prodotto ${unrelatedCodeConflict.id}`,
-          );
-          continue;
-        }
-
-        if (duplicates.length > 0) {
-          result.deactivated += await deactivateHistoricalDuplicates({
-            supabase,
-            siteId,
-            duplicates,
-            protectedCode: desiredCode,
-          });
-          duplicates.forEach((duplicate) => {
-            mutableProducts.set(duplicate.id, {
-              ...duplicate,
-              active: false,
-              internal_code:
-                duplicate.internal_code === desiredCode
-                  ? buildArchivedCode(duplicate.internal_code, duplicate.id)
-                  : duplicate.internal_code,
-            });
-          });
-        }
 
         const payload = {
           name: entry.csvRow.name,
           type: entry.csvRow.subcategory || "",
-          subcategory: entry.csvRow.subcategory || "",
-          tipo: headers.includes("TIPO")
-            ? entry.csvRow.tipo || null
-            : targetRecord?.tipo || targetRecord?.product_type || null,
-          product_type: headers.includes("TIPO")
-            ? entry.csvRow.tipo || null
-            : targetRecord?.tipo || targetRecord?.product_type || null,
           description: entry.csvRow.description || null,
           price_list: entry.csvRow.price_list,
           image_url: entry.csvRow.image_url || null,
@@ -351,41 +248,13 @@ export async function POST(request: NextRequest) {
           category_id: categoryId,
         };
 
-        if (entry.action === "update" && entry.targetId) {
-          const finalCode =
-            desiredCode ||
-            formatSellProductCode(entry.csvRow.category_name, entry.targetId);
-
-          const { data: updatedProduct, error } = await supabase
-            .from("SellProduct")
-            .update({
-              ...payload,
-              internal_code: finalCode,
-            })
-            .eq("id", entry.targetId)
-            .eq("site_id", siteId)
-            .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
-            .single();
-
-          if (error || !updatedProduct) {
-            throw new Error(
-              error?.message ||
-                `Impossibile aggiornare il prodotto ${entry.targetId}`,
-            );
-          }
-
-          result.updated += 1;
-          mutableProducts.set(updatedProduct.id, updatedProduct as SellProductImportExistingRecord);
-          continue;
-        }
-
         const { data: insertedProduct, error: insertError } = await supabase
           .from("SellProduct")
           .insert({
             ...payload,
             site_id: siteId,
           })
-          .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+          .select(SELL_PRODUCT_SELECT)
           .single();
 
         if (insertError || !insertedProduct) {
@@ -393,20 +262,27 @@ export async function POST(request: NextRequest) {
         }
 
         const finalCode =
-          desiredCode ||
-          formatSellProductCode(entry.csvRow.category_name, insertedProduct.id);
+          !desiredCode || codeConflict
+            ? formatSellProductCode(entry.csvRow.category_name, insertedProduct.id)
+            : desiredCode;
         const { data: insertedWithCode, error: codeError } = await supabase
           .from("SellProduct")
           .update({ internal_code: finalCode })
           .eq("id", insertedProduct.id)
           .eq("site_id", siteId)
-          .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+          .select(SELL_PRODUCT_SELECT)
           .single();
 
         if (codeError || !insertedWithCode) {
           throw new Error(
             codeError?.message || `Impossibile assegnare il codice al nuovo prodotto ${insertedProduct.id}`,
           );
+        }
+
+        if (codeConflict) {
+          entry.reason = entry.reason
+            ? `${entry.reason}. COD_INT assegnato: ${finalCode}`
+            : `COD_INT ${desiredCode} gia usato dal prodotto ${codeConflict.id}. Assegnato automaticamente ${finalCode}`;
         }
 
         entry.targetId = insertedWithCode.id;

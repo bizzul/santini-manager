@@ -1,0 +1,22 @@
+﻿ID,COD_INT,CATEGORIA,SOTTOCATEGORIA,TIPO,NOME_PRODOTTO,DESCRIZIONE,LISTINO_PREZZI,URL_IMMAGINE,URL_DOC,ATTIVO
+,ACC-0195,Accessori,Chiusura tecnica,Tamponamento,Chiusura tecnica in MDF prelaccato,Chiusura tecnica in MDF prelaccato per tamponamenti o finiture,NO,,,SI
+,ACC-0190,Accessori,Corrimano,Standard,Corrimano in legno,"Corrimano in legno per scale, parapetti o passaggi interni",NO,,,SI
+,20,Accessori,Davanzale,Interno,Davanzale interno in legno,Davanzale interno in legno su misura per finitura serramento,NO,,,SI
+,ACC-0138,Accessori,Davanzale,Esterno,Davanzale esterno in alluminio,Davanzale esterno in alluminio resistente agli agenti atmosferici,NO,,,SI
+,ACC-0206,Accessori,Chiusura tecnica,Vano elettrico,Facciata vano elettrico,Chiusura con facciata non EI30 di vano elettrico,NO,,,SI
+,16,Accessori,Gattaiola,Standard,Gattaiola standard,"Gattaiola standard integrabile in porta, pannello o vetro",NO,,,SI
+,19,Accessori,Gelosia,Fissa,Gelosia fissa in alluminio,"Gelosia in alluminio per schermatura, aerazione e privacy",NO,,,SI
+,ACC-0139,Accessori,Gelosia,Fissa,Gelosia fissa in legno,Gelosia in legno per schermatura esterna o decorativa,NO,,,SI
+,ACC-0194,Accessori,Lista,Finitura,Lista in legno,"Lista in legno per finitura, copertura o rivestimento",NO,,,SI
+,ACC-0208,Accessori,Vetro,Ricambio,Nuovo vetro,Fornitura e posa di nuovo vetro,NO,,,SI
+,26,Accessori,Parapetto,Standard,Parapetto in vetro,Parapetto in vetro per interno o esterno con sistema di fissaggio dedicato,NO,,,SI
+,ACC-0140,Accessori,Pavimentazione,Interno,Pavimento interno,Pavimentazione interna in legno o materiale coordinato,NO,,,SI
+,ACC-0141,Accessori,Pavimentazione,Esterno,Pavimento esterno,"Pavimentazione esterna per terrazze, balconi o passaggi",NO,,,SI
+,ACC-0185,Accessori,Rivestimento,Parete,Perline in legno,Perline in legno per rivestimento pareti o soffitti,NO,,,SI
+,ACC-0181,Accessori,Profilo,Finitura,Profilo in alluminio,"Profilo in alluminio per finitura, raccordo o protezione",NO,,,SI
+,25,Accessori,Scala,Interna,Scala in legno,Scala in legno su misura per interno,NO,,,SI
+,ACC-0187,Accessori,Rivestimento,Soffitto,Soffitto in legno,Rivestimento a soffitto in legno,NO,,,SI
+,ACC-0188,Accessori,Accessorio speciale,Decorativo,Trave camino in legno,Trave camino in rovere massiccio,NO,,,SI
+,ACC-0137,Accessori,Zanzariera,A rullo,Zanzariera a rullo,Zanzariera a rullo per finestra o portafinestra,NO,,,SI
+,11,Accessori,Zanzariera,Plissé,Zanzariera plissé,Zanzariera plissé per finestra o portafinestra,NO,,,SI
+,ACC-0189,Accessori,Zoccolino,Standard,Zoccolino in legno,Zoccolino in legno per finitura perimetrale a pavimento,NO,,,SI

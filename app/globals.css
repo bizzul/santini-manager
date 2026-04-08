@@ -4,26 +4,28 @@
 
 /* CSS Variables for component backgrounds */
 :root {
-  --background: 0 0% 100%;
-  --page: 210 25% 97%;
-  --page-soft: 210 30% 94%;
+  --background: 38 34% 91%;
+  --page: 42 24% 95.8%;
+  --page-soft: 38 20% 92.8%;
+  --page-glow: 45 42% 97.5%;
+  --page-shadow: 34 26% 88.5%;
   --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
+  --card: 38 38% 89%;
   --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
+  --popover: 38 34% 90%;
   --popover-foreground: 222.2 84% 4.9%;
   --primary: 222.2 47.4% 11.2%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
+  --secondary: 38 24% 87%;
   --secondary-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
+  --muted: 38 22% 88%;
   --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
+  --accent: 38 28% 86%;
   --accent-foreground: 222.2 84% 4.9%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
+  --border: 35 18% 81%;
+  --input: 35 18% 83%;
   --ring: 222.2 84% 4.9%;
   --error: 0 84.2% 60.2%;
   --error-foreground: 210 40% 98%;
@@ -33,6 +35,8 @@
   --background: 222.2 84% 4.9%;
   --page: 222 30% 12.5%;
   --page-soft: 224 34% 9%;
+  --page-glow: 222 22% 18%;
+  --page-shadow: 224 30% 7%;
   --foreground: 210 40% 98%;
   --card: 222.2 84% 4.9%;
   --card-foreground: 210 40% 98%;
@@ -172,13 +176,13 @@ body:has(.home-gradient-bg) {
 
 :root {
   /* Glassmorphism sidebar - light theme */
-  --sidebar: 0 0% 98%;
-  --sidebar-foreground: 240 5.3% 26.1%;
+  --sidebar: 42 24% 94%;
+  --sidebar-foreground: 24 10% 22%;
   --sidebar-primary: 217.2 91.2% 59.8%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4.8% 95.9%;
-  --sidebar-accent-foreground: 240 5.9% 10%;
-  --sidebar-border: 220 13% 91%;
+  --sidebar-accent: 38 26% 89%;
+  --sidebar-accent-foreground: 24 12% 14%;
+  --sidebar-border: 35 18% 82%;
   --sidebar-ring: 217.2 91.2% 59.8%;
 }
 
@@ -224,8 +228,8 @@ body:has(.home-gradient-bg) {
   body {
     background-color: hsl(var(--page));
     background-image:
-      radial-gradient(circle at top left, hsl(var(--foreground) / 0.05), transparent 26%),
-      radial-gradient(circle at top right, hsl(var(--primary) / 0.06), transparent 30%),
+      radial-gradient(circle at top left, hsl(var(--page-glow) / 0.92), transparent 30%),
+      radial-gradient(circle at bottom right, hsl(var(--page-shadow) / 0.38), transparent 36%),
       linear-gradient(180deg, hsl(var(--page)) 0%, hsl(var(--page-soft)) 100%);
     background-attachment: fixed;
     @apply text-foreground;

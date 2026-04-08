@@ -120,6 +120,16 @@ export function DataTable<TData extends { id: number }, TValue>({
   const isSomeSelected =
     selectedCategories.length > 0 && !allCategoriesSelected;
 
+  const categoryGridStyle = useMemo(
+    () =>
+      categories.length > 0
+        ? {
+            gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))`,
+          }
+        : undefined,
+    [categories.length]
+  );
+
   // Clear all filters
   const clearAllFilters = useCallback(() => {
     setGlobalFilter("");
@@ -189,59 +199,97 @@ export function DataTable<TData extends { id: number }, TValue>({
   return (
     <>
       <div className="mb-4 rounded-lg border bg-card p-4 shadow-sm">
-        {/* Category Filter Row */}
-        {categories.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center gap-4">
-            <span className="text-sm font-medium">Categoria:</span>
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="all-categories"
-                  checked={
-                    isSomeSelected ? "indeterminate" : allCategoriesSelected
-                  }
-                  onCheckedChange={handleSelectAllCategories}
-                />
-                <Label
-                  htmlFor="all-categories"
-                  className="cursor-pointer text-sm font-normal"
-                >
-                  Tutte le categorie
-                </Label>
-              </div>
-              {categories.map((category) => {
-                const isSelected = selectedCategories.includes(category.id);
-                return (
-                  <div
-                    key={category.id}
-                    className="flex items-center space-x-2"
-                  >
-                    <Checkbox
-                      id={`category-${category.id}`}
-                      checked={isSelected}
-                      onCheckedChange={() => handleCategoryToggle(category.id)}
-                    />
+        <div className="flex flex-col gap-4">
+          {categories.length > 0 && (
+            <>
+              <div
+                className={cn(
+                  "rounded-lg border p-4",
+                  allCategoriesSelected
+                    ? "border-primary/50 bg-primary/5"
+                    : "border-border/70 bg-background/40"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="all-categories"
+                    checked={
+                      isSomeSelected ? "indeterminate" : allCategoriesSelected
+                    }
+                    onCheckedChange={handleSelectAllCategories}
+                    className="mt-0.5"
+                  />
+                  <div className="space-y-1">
                     <Label
-                      htmlFor={`category-${category.id}`}
-                      className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+                      htmlFor="all-categories"
+                      className="cursor-pointer text-sm font-medium"
                     >
-                      {category.color && (
-                        <span
-                          className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: category.color }}
-                        />
-                      )}
-                      {category.name}
+                      Tutte le categorie
                     </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Mostra l&apos;intero catalogo del sito.
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
 
-        {/* Search Row with Clear Button */}
-        <div className="flex items-center justify-between gap-4">
+              <div className="grid gap-3" style={categoryGridStyle}>
+                {categories.map((category) => {
+                  const isSelected = selectedCategories.includes(category.id);
+                  return (
+                    <div
+                      key={category.id}
+                      className={cn(
+                        "rounded-lg border p-4 transition-colors",
+                        isSelected
+                          ? "border-primary/50 bg-primary/5"
+                          : "border-border/70 bg-background/40 hover:bg-accent/40"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-3">
+                          <Checkbox
+                            id={`category-${category.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() =>
+                              handleCategoryToggle(category.id)
+                            }
+                            className="mt-0.5"
+                          />
+                          <div className="min-w-0">
+                            <Label
+                              htmlFor={`category-${category.id}`}
+                              className="flex cursor-pointer items-center gap-2 text-sm font-medium"
+                            >
+                              {category.color && (
+                                <span
+                                  className="h-3 w-3 shrink-0 rounded-full"
+                                  style={{ backgroundColor: category.color }}
+                                />
+                              )}
+                              <span className="break-words">
+                                {category.name}
+                              </span>
+                            </Label>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Filtra i prodotti di questa categoria.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <div
+            className={cn(
+              "flex items-center justify-between gap-4",
+              categories.length > 0 && "border-t pt-4"
+            )}
+          >
           <div className="flex flex-1 items-center gap-2">
             <div className="relative max-w-sm flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
@@ -280,6 +328,7 @@ export function DataTable<TData extends { id: number }, TValue>({
               Elimina {selectedCount} selezionati
             </Button>
           )}
+        </div>
         </div>
       </div>
 

@@ -40,6 +40,7 @@ import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Settings, ShieldCheck } from "lucide-react";
 import {
   faWaveSquare,
   faTable,
@@ -885,6 +886,19 @@ export function AppSidebar() {
   }, [siteData]);
 
   const siteImage = useMemo(() => siteData?.image || null, [siteData]);
+  const canManageSettings =
+    userContext?.role === "admin" || userContext?.role === "superadmin";
+  const settingsHref = useMemo(() => {
+    if (!canManageSettings) return null;
+    if (domain) {
+      return siteData?.id ? `/administration/sites/${siteData.id}/edit` : null;
+    }
+    return "/administration";
+  }, [canManageSettings, domain, siteData?.id]);
+  const settingsTitle = domain ? "Impostazioni sito" : "Administration";
+  const settingsDescription = domain
+    ? "Configura moduli, categorie e parametri operativi del sito."
+    : "Gestisci configurazioni e impostazioni generali della piattaforma.";
 
   // Raggruppa i menu items per categoria
   const groupedMenuItems = useMemo(() => {
@@ -1559,17 +1573,64 @@ export function AppSidebar() {
                 </SidebarGroup>
               </>
             )}
+
+            {state !== "collapsed" && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup className="mt-auto flex-1">
+                  <SidebarGroupLabel>Impostazioni</SidebarGroupLabel>
+                  <SidebarGroupContent className="flex flex-1 flex-col">
+                    <div className="flex flex-1 flex-col gap-4">
+                      <div className="flex flex-1 flex-col rounded-2xl border border-[hsl(var(--sidebar-border)/0.75)] bg-[hsl(var(--background)/0.5)] p-4 shadow-[inset_0_1px_0_hsl(var(--background)/0.5)] dark:border-white/10 dark:bg-white/[0.03]">
+                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[hsl(var(--background)/0.92)] text-[hsl(var(--sidebar-foreground))] shadow-[0_10px_20px_hsl(var(--page-shadow)/0.1)] dark:bg-white/10 dark:text-white dark:shadow-none">
+                          <Settings className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-[hsl(var(--sidebar-foreground))] dark:text-white">
+                            {settingsTitle}
+                          </p>
+                          <p className="text-xs leading-5 text-[hsl(var(--sidebar-foreground)/0.62)] dark:text-white/60">
+                            {settingsDescription}
+                          </p>
+                        </div>
+                        <div className="mt-auto pt-4">
+                          {settingsHref ? (
+                            <SidebarMenu>
+                              <SidebarMenuItem>
+                                <SidebarMenuButton
+                                  asChild
+                                  className="h-10 rounded-xl bg-[hsl(var(--background)/0.82)] shadow-[0_8px_18px_hsl(var(--page-shadow)/0.12)] dark:bg-white/10 dark:shadow-none"
+                                >
+                                  <Link href={settingsHref}>
+                                    <ShieldCheck className="h-4 w-4" />
+                                    <span>Apri impostazioni</span>
+                                  </Link>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            </SidebarMenu>
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-[hsl(var(--sidebar-border)/0.8)] px-3 py-2 text-xs text-[hsl(var(--sidebar-foreground)/0.62)] dark:border-white/10 dark:text-white/60">
+                              Disponibile per admin e superadmin.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
           </>
         )}
       </SidebarContent>
       <SidebarFooter>
         {/* Footer loads progressively - theme switcher always visible */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {/* Quick access icons for Ore, Errori, Reports */}
           {domain && (
             <div
               className={cn(
-                "flex items-center py-2 border-b border-border",
+                "rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.9)] py-2 shadow-[0_10px_24px_hsl(var(--page-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none",
                 state === "collapsed"
                   ? "flex-col gap-1 justify-center px-0"
                   : "flex-row justify-around px-2"
@@ -1579,11 +1640,11 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/timetracking`}
                   title="Ore"
-                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
                     icon={faClock}
-                    className="w-5 h-5 text-muted-foreground hover:text-foreground"
+                    className="h-5 w-5"
                   />
                 </Link>
               )}
@@ -1591,11 +1652,11 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/errortracking`}
                   title="Errori"
-                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
                     icon={faExclamation}
-                    className="w-5 h-5 text-muted-foreground hover:text-foreground"
+                    className="h-5 w-5"
                   />
                 </Link>
               )}
@@ -1605,11 +1666,11 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/reports`}
                   title="Reports"
-                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
                     icon={faSquarePollVertical}
-                    className="w-5 h-5 text-muted-foreground hover:text-foreground"
+                    className="h-5 w-5"
                   />
                 </Link>
               )}
@@ -1620,7 +1681,7 @@ export function AppSidebar() {
             <UserSection user={userContext} domain={domain ?? undefined} />
           ) : (
             /* Show skeleton only while user context is loading */
-            <div className="flex items-center gap-3 px-2 py-2 rounded-md">
+            <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.9)] px-3 py-3 shadow-[0_10px_24px_hsl(var(--page-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
               <Skeleton className="h-9 w-9 rounded-md shrink-0 bg-gray-200 dark:bg-white/10" />
               <div className="flex flex-col gap-1 flex-1 min-w-0">
                 <Skeleton className="h-4 w-32 bg-gray-200 dark:bg-white/10" />

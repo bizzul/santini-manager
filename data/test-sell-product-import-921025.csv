@@ -1,0 +1,3 @@
+ID,COD_INT,CATEGORIA,SOTTOCATEGORIA,TIPO,NOME_PRODOTTO,DESCRIZIONE,LISTINO_PREZZI,URL_IMMAGINE,URL_DOC,ATTIVO
+120,11,Accessori,Zanzariera,Versione,Zanzariera plissé TEST IMPORT 921025,Tipo: plissé - nuova versione 921025,NO,,,SI
+,IMP-TEST-921025,Accessori,Test import,Nuovo,Nuovo prodotto test import 921025,Creato automaticamente per test import 921025,SI,,,SI

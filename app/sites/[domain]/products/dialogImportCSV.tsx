@@ -61,7 +61,7 @@ type ImportPreviewEntry = ImportResult["entries"][number];
 const CSV_COLUMNS = [
   {
     name: "ID",
-    description: "ID prodotto (per aggiornare record esistenti)",
+    description: "ID prodotto storico (serve per confrontare senza sovrascrivere)",
     required: false,
   },
   { name: "COD_INT", description: "Codice Interno (univoco)", required: true },
@@ -211,13 +211,12 @@ function DialogImportCSV() {
 
       if (mode === "preview") {
         toast({
-          description: `Anteprima pronta per ${categoryFilter}: ${data.imported} nuovi, ${data.updated} aggiornati, ${data.deactivated} duplicati da disattivare.`,
+          description: `Anteprima pronta per ${categoryFilter}: ${data.imported} nuovi previsti.`,
         });
-      } else if (data.imported > 0 || data.updated > 0 || data.deactivated > 0) {
+      } else if (data.imported > 0 || data.updated > 0) {
         const messages = [];
         if (data.imported > 0) messages.push(`${data.imported} nuovi`);
         if (data.updated > 0) messages.push(`${data.updated} aggiornati`);
-        if (data.deactivated > 0) messages.push(`${data.deactivated} disattivati`);
         toast({
           description: `Import ${categoryFilter}: ${messages.join(", ")}.`,
         });
@@ -329,9 +328,9 @@ function DialogImportCSV() {
         <DialogHeader>
           <DialogTitle>Importa Prodotti da CSV</DialogTitle>
           <DialogDescription>
-            Import non distruttivo: prima esegui l&apos;anteprima, poi applichi
-            solo la categoria selezionata. I record esistenti non vengono
-            cancellati.
+            Import conservativo: prima esegui l&apos;anteprima, poi applichi
+            solo la categoria selezionata. I record storici restano invariati
+            per non rompere i progetti attivi.
           </DialogDescription>
         </DialogHeader>
 
@@ -485,13 +484,15 @@ function DialogImportCSV() {
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
             <br />• <strong>Matching principale:</strong> se l&apos;ID del CSV
-            esiste, il record viene aggiornato senza cambiare ID
+            esiste e i dati sono cambiati, viene creata una nuova versione del
+            prodotto lasciando invariato il record storico
             <br />• <strong>Nuovi record:</strong> se l&apos;ID manca o non
             esiste, viene creato un nuovo prodotto
+            <br />• <strong>No update distruttivi:</strong> i prodotti gia
+            collegati ai progetti restano disponibili finche non vengono
+            riallineati manualmente
             <br />• <strong>No delete:</strong> i record assenti nel CSV non
-            vengono eliminati
-            <br />• <strong>Duplicati storici:</strong> vengono disattivati, non
-            cancellati
+            vengono eliminati ne disattivati automaticamente
             <br />• LISTINO_PREZZI accetta valori: SI, NO, 1, 0, TRUE, FALSE
             <br />• ATTIVO accetta valori: SI, NO, 1, 0, TRUE, FALSE
           </p>
@@ -537,13 +538,6 @@ function DialogImportCSV() {
                         {result.updated}
                       </p>
                     )}
-                    {result.deactivated > 0 && (
-                      <p className="text-orange-600">
-                        Duplicati storici{" "}
-                        {result.mode === "preview" ? "da disattivare" : "disattivati"}:{" "}
-                        {result.deactivated}
-                      </p>
-                    )}
                     <p className="text-yellow-600">Saltati: {result.skipped}</p>
                   </div>
                   {previewEntries.length > 0 && (
@@ -567,7 +561,11 @@ function DialogImportCSV() {
                               Riga {entry.rowNumber} - {entry.action.toUpperCase()} -{" "}
                               {entry.name || entry.code || "Senza nome"}
                             </p>
-                            {entry.targetId && <p>ID target: {entry.targetId}</p>}
+                            {entry.targetId && (
+                              <p>
+                                ID riferimento: {entry.targetId}
+                              </p>
+                            )}
                             {entry.reason && (
                               <p className="text-muted-foreground">{entry.reason}</p>
                             )}

@@ -95,7 +95,7 @@ export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
             }}
             className="absolute top-full right-0 mt-2 z-50"
           >
-            <div className="bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-2 min-w-[200px]">
+            <div className="min-w-[200px] rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.96)] p-2 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95">
               {/* Header */}
               <div className="px-3 py-2 border-b border-border/50 mb-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -125,7 +125,7 @@ export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
                   >
                     <div
                       className={cn(
-                        "flex items-center justify-center w-9 h-9 rounded-lg bg-background shadow-sm",
+                        "flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--page-glow))] shadow-sm dark:bg-slate-800",
                         action.color
                       )}
                     >
@@ -156,11 +156,11 @@ export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
         className={cn(
           "relative flex items-center justify-center",
           "w-10 h-10 rounded-xl",
-          "bg-gradient-to-br from-primary to-primary/80",
-          "text-primary-foreground shadow-lg",
-          "hover:shadow-xl hover:shadow-primary/25",
+          "bg-gradient-to-br from-[hsl(var(--background))] to-[hsl(var(--page-glow))] dark:from-primary dark:to-primary/80",
+          "text-[hsl(var(--sidebar-foreground))] shadow-lg dark:text-primary-foreground",
+          "hover:shadow-xl hover:shadow-[hsl(var(--page-shadow)/0.2)] dark:hover:shadow-primary/25",
           "transition-all duration-300",
-          "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background"
+          "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-[hsl(var(--sidebar))]"
         )}
       >
         <motion.div

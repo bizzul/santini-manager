@@ -187,7 +187,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="backdrop-blur-xl bg-gradient-to-b from-gray-50/95 via-white/95 to-gray-100/95 dark:from-gray-900/95 dark:via-slate-900/95 dark:to-gray-950/95 text-gray-900 dark:text-white w-(--sidebar-width) p-0 [&>button]:hidden border-r border-gray-200/50 dark:border-white/10"
+          className="w-(--sidebar-width) border-r border-[hsl(var(--sidebar-border)/0.75)] bg-[hsl(var(--sidebar))] p-0 text-[hsl(var(--sidebar-foreground))] shadow-[inset_-1px_0_0_hsl(var(--sidebar-border)/0.25)] backdrop-blur-xl [&>button]:hidden dark:border-white/10 dark:bg-slate-950/95 dark:text-white dark:shadow-none"
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
@@ -244,7 +244,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="backdrop-blur-xl bg-gradient-to-b from-gray-50/95 via-white/95 to-gray-100/95 dark:from-gray-900/95 dark:via-slate-900/95 dark:to-gray-950/95 border-r border-gray-200/50 dark:border-white/10 flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-lg"
+          className="flex h-full w-full flex-col border-r border-[hsl(var(--sidebar-border)/0.75)] bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] shadow-[inset_-1px_0_0_hsl(var(--sidebar-border)/0.25)] backdrop-blur-xl group-data-[variant=floating]:rounded-[1.5rem] group-data-[variant=floating]:border dark:border-white/10 dark:bg-slate-950/95 dark:text-white dark:shadow-none group-data-[variant=floating]:shadow-lg"
         >
           {children}
         </div>
@@ -291,10 +291,10 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
       onClick={toggleSidebar}
       title="Toggle Sidebar"
       className={cn(
-        "hover:after:bg-gray-300 dark:hover:after:bg-white/20 absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
+        "hover:after:bg-[hsl(var(--sidebar-border))] dark:hover:after:bg-white/20 absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] sm:flex",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "hover:group-data-[collapsible=offcanvas]:bg-gray-100 dark:hover:group-data-[collapsible=offcanvas]:bg-white/5 group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
+        "hover:group-data-[collapsible=offcanvas]:bg-[hsl(var(--page-glow)/0.65)] dark:hover:group-data-[collapsible=offcanvas]:bg-white/5 group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
         "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
         className
@@ -337,7 +337,10 @@ function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-header"
       data-sidebar="header"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn(
+        "mx-2 mb-2 flex flex-col gap-2 rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--page-glow)/0.94)] p-2 shadow-[0_12px_30px_hsl(var(--page-shadow)/0.18)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none",
+        className
+      )}
       {...props}
     />
   );
@@ -362,7 +365,7 @@ function SidebarSeparator({
     <Separator
       data-slot="sidebar-separator"
       data-sidebar="separator"
-      className={cn("bg-gray-200 dark:bg-white/10 mx-2 w-auto", className)}
+      className={cn("mx-2 h-0.5 w-auto bg-transparent dark:bg-white/10", className)}
       {...props}
     />
   );
@@ -374,7 +377,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="sidebar-content"
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden px-2 py-3 group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:px-1.5",
         className
       )}
       {...props}
@@ -387,7 +390,10 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="sidebar-group"
       data-sidebar="group"
-      className={cn("relative flex w-full min-w-0 flex-col p-2", className)}
+      className={cn(
+        "relative flex w-full min-w-0 flex-col rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--page-glow)/0.94)] p-2 shadow-[0_12px_30px_hsl(var(--page-shadow)/0.18)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-none",
+        className
+      )}
       {...props}
     />
   );
@@ -405,7 +411,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "text-gray-500 dark:text-white/60 ring-gray-300 dark:ring-white/30 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "flex h-8 shrink-0 items-center rounded-xl px-3 text-xs font-medium text-[hsl(var(--sidebar-foreground)/0.62)] outline-hidden ring-[hsl(var(--sidebar-border))] transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 dark:text-white/60 dark:ring-white/30",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}
@@ -426,7 +432,7 @@ function SidebarGroupAction({
       data-slot="sidebar-group-action"
       data-sidebar="group-action"
       className={cn(
-        "text-gray-500 dark:text-white/70 ring-gray-300 dark:ring-white/30 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-all duration-200 focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-[hsl(var(--sidebar-foreground)/0.6)] outline-hidden ring-[hsl(var(--sidebar-border))] transition-all duration-200 hover:bg-[hsl(var(--background)/0.7)] hover:text-[hsl(var(--sidebar-foreground))] focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 dark:text-white/70 dark:ring-white/30 dark:hover:bg-white/10 dark:hover:text-white",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
         "group-data-[collapsible=icon]:hidden",
@@ -474,14 +480,14 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-hidden ring-gray-300 dark:ring-white/30 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white focus-visible:ring-2 active:bg-gray-200 dark:active:bg-white/15 active:text-gray-900 dark:active:text-white disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-gray-200 dark:data-[active=true]:bg-white/15 data-[active=true]:font-medium data-[active=true]:text-gray-900 dark:data-[active=true]:text-white data-[state=open]:hover:bg-gray-100 dark:data-[state=open]:hover:bg-white/10 data-[state=open]:hover:text-gray-900 dark:data-[state=open]:hover:text-white group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 text-gray-700 dark:text-white/80",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-xl p-2 text-left text-sm text-[hsl(var(--sidebar-foreground)/0.82)] outline-hidden ring-[hsl(var(--sidebar-border))] transition-all duration-200 hover:bg-[hsl(var(--background)/0.68)] hover:text-[hsl(var(--sidebar-foreground))] focus-visible:ring-2 active:bg-[hsl(var(--background)/0.9)] active:text-[hsl(var(--sidebar-foreground))] disabled:pointer-events-none disabled:opacity-50 group-has-data-[sidebar=menu-action]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-[hsl(var(--background)/0.96)] data-[active=true]:font-medium data-[active=true]:text-[hsl(var(--sidebar-foreground))] data-[active=true]:shadow-[0_8px_18px_hsl(var(--page-shadow)/0.18)] data-[state=open]:hover:bg-[hsl(var(--background)/0.82)] data-[state=open]:hover:text-[hsl(var(--sidebar-foreground))] group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 dark:text-white/80 dark:ring-white/30 dark:hover:bg-white/10 dark:hover:text-white dark:active:bg-white/15 dark:active:text-white dark:data-[active=true]:bg-white/15 dark:data-[active=true]:text-white dark:data-[active=true]:shadow-none dark:data-[state=open]:hover:bg-white/10 dark:data-[state=open]:hover:text-white",
   {
     variants: {
       variant: {
         default:
-          "hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white",
+          "hover:bg-[hsl(var(--background)/0.68)] hover:text-[hsl(var(--sidebar-foreground))] dark:hover:bg-white/10 dark:hover:text-white",
         outline:
-          "bg-gray-50 dark:bg-white/5 shadow-[0_0_0_1px_rgba(0,0,0,0.1)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white hover:shadow-[0_0_0_1px_rgba(0,0,0,0.15)] dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.2)]",
+          "bg-[hsl(var(--background)/0.55)] shadow-[inset_0_0_0_1px_hsl(var(--sidebar-border)/0.7)] hover:bg-[hsl(var(--background)/0.78)] hover:text-[hsl(var(--sidebar-foreground))] hover:shadow-[inset_0_0_0_1px_hsl(var(--sidebar-border)/0.95)] dark:bg-white/5 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1)] dark:hover:bg-white/10 dark:hover:text-white dark:hover:shadow-[0_0_0_1px_rgba(255,255,255,0.2)]",
       },
       size: {
         default: "h-8 text-sm",
@@ -562,7 +568,7 @@ function SidebarMenuAction({
       data-slot="sidebar-menu-action"
       data-sidebar="menu-action"
       className={cn(
-        "text-gray-500 dark:text-white/70 ring-gray-300 dark:ring-white/30 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white peer-hover/menu-button:text-gray-900 dark:peer-hover/menu-button:text-white absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-all duration-200 focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-[hsl(var(--sidebar-foreground)/0.6)] outline-hidden ring-[hsl(var(--sidebar-border))] transition-all duration-200 hover:bg-[hsl(var(--background)/0.72)] hover:text-[hsl(var(--sidebar-foreground))] peer-hover/menu-button:text-[hsl(var(--sidebar-foreground))] focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0 dark:text-white/70 dark:ring-white/30 dark:hover:bg-white/10 dark:hover:text-white dark:peer-hover/menu-button:text-white",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
@@ -570,7 +576,7 @@ function SidebarMenuAction({
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
         showOnHover &&
-          "peer-data-[active=true]/menu-button:text-gray-900 dark:peer-data-[active=true]/menu-button:text-white group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
+          "peer-data-[active=true]/menu-button:text-[hsl(var(--sidebar-foreground))] dark:peer-data-[active=true]/menu-button:text-white group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className
       )}
       {...props}
@@ -587,8 +593,8 @@ function SidebarMenuBadge({
       data-slot="sidebar-menu-badge"
       data-sidebar="menu-badge"
       className={cn(
-        "text-gray-500 dark:text-white/70 pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums select-none",
-        "peer-hover/menu-button:text-gray-900 dark:peer-hover/menu-button:text-white peer-data-[active=true]/menu-button:text-gray-900 dark:peer-data-[active=true]/menu-button:text-white",
+        "pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium text-[hsl(var(--sidebar-foreground)/0.58)] tabular-nums select-none dark:text-white/70",
+        "peer-hover/menu-button:text-[hsl(var(--sidebar-foreground))] dark:peer-hover/menu-button:text-white peer-data-[active=true]/menu-button:text-[hsl(var(--sidebar-foreground))] dark:peer-data-[active=true]/menu-button:text-white",
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
         "peer-data-[size=lg]/menu-button:top-2.5",
@@ -644,7 +650,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "border-gray-200 dark:border-white/20 mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l px-2.5 py-0.5",
+        "mx-4 flex min-w-0 translate-x-px flex-col gap-1 border-l border-[hsl(var(--sidebar-border)/0.65)] px-3 py-1 dark:border-white/20",
         "group-data-[collapsible=icon]:hidden",
         className
       )}
@@ -687,8 +693,8 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        "text-gray-600 dark:text-white/70 ring-gray-300 dark:ring-white/30 hover:bg-gray-100 dark:hover:bg-white/10 hover:text-gray-900 dark:hover:text-white active:bg-gray-200 dark:active:bg-white/15 active:text-gray-900 dark:active:text-white [&>svg]:text-gray-500 dark:[&>svg]:text-white/80 flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 outline-hidden focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 transition-all duration-200",
-        "data-[active=true]:bg-gray-200 dark:data-[active=true]:bg-white/15 data-[active=true]:text-gray-900 dark:data-[active=true]:text-white",
+        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-lg px-2 text-[hsl(var(--sidebar-foreground)/0.76)] outline-hidden ring-[hsl(var(--sidebar-border))] transition-all duration-200 hover:bg-[hsl(var(--background)/0.62)] hover:text-[hsl(var(--sidebar-foreground))] active:bg-[hsl(var(--background)/0.82)] active:text-[hsl(var(--sidebar-foreground))] [&>svg]:text-[hsl(var(--sidebar-foreground)/0.52)] focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 dark:text-white/70 dark:ring-white/30 dark:hover:bg-white/10 dark:hover:text-white dark:active:bg-white/15 dark:active:text-white dark:[&>svg]:text-white/80",
+        "data-[active=true]:bg-[hsl(var(--background)/0.88)] data-[active=true]:text-[hsl(var(--sidebar-foreground))] dark:data-[active=true]:bg-white/15 dark:data-[active=true]:text-white",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",

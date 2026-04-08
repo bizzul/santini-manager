@@ -68,14 +68,14 @@ export const NavUser = memo(function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-gray-200 dark:data-[state=open]:bg-white/15 data-[state=open]:text-gray-900 dark:data-[state=open]:text-white"
+              className="rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.92)] px-3 shadow-[0_10px_24px_hsl(var(--page-shadow)/0.12)] data-[state=open]:bg-[hsl(var(--background))] data-[state=open]:text-[hsl(var(--sidebar-foreground))] dark:rounded-xl dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none dark:data-[state=open]:bg-white/15 dark:data-[state=open]:text-white"
             >
-              <Avatar className="h-8 w-8 rounded-lg border border-gray-200 dark:border-white/20">
+              <Avatar className="h-8 w-8 rounded-lg border border-[hsl(var(--sidebar-border))] dark:border-white/20">
                 <AvatarImage
                   src={userProfile?.picture || undefined}
                   alt={displayName}
                 />
-                <AvatarFallback className="rounded-lg bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white">
+                <AvatarFallback className="rounded-lg bg-[hsl(var(--page-glow))] text-[hsl(var(--sidebar-foreground))] dark:bg-white/10 dark:text-white">
                   {displayName
                     .split(" ")
                     .map((n: string) => n[0])
@@ -85,19 +85,19 @@ export const NavUser = memo(function NavUser({
                 </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold text-gray-900 dark:text-white">
+                <span className="truncate font-semibold text-[hsl(var(--sidebar-foreground))] dark:text-white">
                   {displayName}
                 </span>
-                <span className="truncate text-xs text-gray-500 dark:text-white/60">
+                <span className="truncate text-xs text-[hsl(var(--sidebar-foreground)/0.62)] dark:text-white/60">
                   {userData?.email}
                 </span>
                 {roleDisplay && (
-                  <span className="truncate text-xs text-gray-500 dark:text-white/60">
+                  <span className="truncate text-xs text-[hsl(var(--sidebar-foreground)/0.62)] dark:text-white/60">
                     {roleDisplay}
                   </span>
                 )}
               </div>
-              <ChevronsUpDown className="ml-auto size-4 text-gray-500 dark:text-white/70" />
+              <ChevronsUpDown className="ml-auto size-4 text-[hsl(var(--sidebar-foreground)/0.6)] dark:text-white/70" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
