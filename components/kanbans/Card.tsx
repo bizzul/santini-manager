@@ -615,7 +615,10 @@ export default function Card({
         entries: Number(item?.entries || 0),
       }))
       .filter((item: CollaboratorTimeSummary) => item.id && item.hours > 0)
-      .sort((a, b) => b.hours - a.hours);
+      .sort(
+        (a: CollaboratorTimeSummary, b: CollaboratorTimeSummary) =>
+          b.hours - a.hours
+      );
   }, [data.collaboratorTimeSummaries]);
   const workedCollaboratorsCount =
     collaboratorTimeSummaries.length > 0

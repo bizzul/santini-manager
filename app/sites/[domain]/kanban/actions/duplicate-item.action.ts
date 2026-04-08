@@ -113,6 +113,9 @@ export async function duplicateItem(taskId: number, domain?: string) {
       site_id: siteId,
     };
 
+    // Backward-compat: some deployments may still expose legacy keys not present in DB schema.
+    delete duplicateData.percent_status;
+
     // Create the duplicated task
     const { data: newTask, error: createError } = await supabase
       .from("Task")

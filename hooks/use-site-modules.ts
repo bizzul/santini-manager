@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { ModuleConfig } from "@/lib/module-config";
+import { AVAILABLE_MODULES, ModuleConfig } from "@/lib/module-config";
 
 interface ModuleWithStatus extends ModuleConfig {
     isEnabled: boolean;
@@ -8,11 +8,21 @@ interface ModuleWithStatus extends ModuleConfig {
 
 // Fetch function for modules
 async function fetchSiteModules(domain: string): Promise<ModuleWithStatus[]> {
+    const fallbackModules: ModuleWithStatus[] = AVAILABLE_MODULES.map((module) => ({
+        ...module,
+        isEnabled: module.enabledByDefault,
+    }));
+
     const response = await fetch(`/api/sites/${domain}/modules`);
     if (!response.ok) {
-        throw new Error("Failed to fetch modules");
+        return fallbackModules;
     }
+
     const data = await response.json();
+    if (!Array.isArray(data?.modules)) {
+        return fallbackModules;
+    }
+
     return data.modules;
 }
 
