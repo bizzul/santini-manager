@@ -14,6 +14,7 @@ type SummaryBucket = {
 };
 
 type ClientManagerSummary = {
+  offersSent: SummaryBucket;
   offersWon: SummaryBucket;
   offersLost: SummaryBucket;
   projectsInProgress: SummaryBucket;
@@ -96,6 +97,7 @@ export function ClientManagerSummaryTooltip({
             <div className="text-xs">{error}</div>
           ) : (
             <div className="space-y-1 text-xs">
+              <div>Offerte inviate: {formatBucket(summary?.offersSent)}</div>
               <div>Offerte vinte: {formatBucket(summary?.offersWon)}</div>
               <div>Offerte perse: {formatBucket(summary?.offersLost)}</div>
               <div>Progetti in corso: {formatBucket(summary?.projectsInProgress)}</div>

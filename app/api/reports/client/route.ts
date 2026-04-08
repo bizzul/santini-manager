@@ -101,6 +101,7 @@ export async function POST(req: NextRequest) {
     { Campo: "Email", Valore: client.email || "-" },
     { Campo: "Referenti", Valore: contactPeople || "-" },
     { Campo: "Creato il", Valore: client.created_at ? new Date(client.created_at).toLocaleString("it-IT") : "-" },
+    { Campo: "Offerte inviate", Valore: buildMetricValue(commercialSummary.offersSent.count, commercialSummary.offersSent.totalValue) },
     { Campo: "Offerte vinte", Valore: buildMetricValue(commercialSummary.offersWon.count, commercialSummary.offersWon.totalValue) },
     { Campo: "Offerte perse", Valore: buildMetricValue(commercialSummary.offersLost.count, commercialSummary.offersLost.totalValue) },
     { Campo: "Progetti in corso", Valore: buildMetricValue(commercialSummary.projectsInProgress.count, commercialSummary.projectsInProgress.totalValue) },
