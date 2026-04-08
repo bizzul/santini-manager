@@ -1332,6 +1332,18 @@ function KanbanBoard({
     >
       <div className="flex flex-col h-full overflow-hidden">
         {kanban && (
+          <Button
+            type="button"
+            size="sm"
+            className="absolute right-8 top-16 z-40 border border-amber-400/80 bg-amber-500/85 text-black hover:bg-amber-500"
+            onClick={openCardConfigDialog}
+            title="Configura campi card progetto"
+          >
+            <Settings2 className="h-4 w-4 mr-1" />
+            Config Card
+          </Button>
+        )}
+        {kanban && (
           <div className="shrink-0 w-full pt-4 pb-2 px-8 overflow-x-auto">
             <div style={{ width: `${boardColumnsWidthRem}rem` }} className="min-w-max">
               <div
