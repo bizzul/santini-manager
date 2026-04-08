@@ -100,6 +100,7 @@ import { downloadOfferPdf } from "@/lib/offer-pdf";
 import { DocumentUpload } from "@/components/ui/document-upload";
 import { createClient } from "@/utils/supabase/client";
 import { updateSellProductImageAction } from "@/app/sites/[domain]/products/actions/update-image.action";
+import { resolveCoverImage } from "@/lib/cover-image";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -693,16 +694,69 @@ const EditTaskKanban = ({
     return imageUrl;
   }, [selectedProjectProduct]);
 
-  const currentProductImageUrl = selectedProjectProductImage;
-  const productImagePreviewUrl = productImageDraftUrl ?? currentProductImageUrl;
-  const hasPendingProductImageChanges =
-    productImageDraftUrl !== null && productImageDraftUrl !== currentProductImageUrl;
-
   const projectImageFile = useMemo(
     () => projectFiles.find((file) => isImageFilename(file.name)),
     [projectFiles]
   );
   const projectImageUrl = projectImageFile?.url || null;
+  const currentProductImageUrl = selectedProjectProductImage;
+  const productImagePreview = useMemo(() => {
+    if (productImageDraftUrl) {
+      return {
+        imageUrl: productImageDraftUrl,
+        source: "product" as const,
+      };
+    }
+    return resolveCoverImage({
+      productImageUrl: currentProductImageUrl,
+      projectImageUrl,
+      productCategoryName: selectedProjectProduct?.category?.name || null,
+      productType: selectedProjectProduct?.type || null,
+      productName: selectedProjectProduct?.name || null,
+      projectName: resource?.name || null,
+      projectLocation: resource?.luogo || null,
+      projectNotes: resource?.other || null,
+    });
+  }, [
+    currentProductImageUrl,
+    productImageDraftUrl,
+    projectImageUrl,
+    resource?.luogo,
+    resource?.other,
+    resource?.name,
+    selectedProjectProduct?.category?.name,
+    selectedProjectProduct?.name,
+    selectedProjectProduct?.type,
+  ]);
+  const productImagePreviewUrl = productImagePreview.imageUrl;
+  const hasPendingProductImageChanges =
+    productImageDraftUrl !== null && productImageDraftUrl !== currentProductImageUrl;
+  const projectImagePreview = useMemo(
+    () =>
+      resolveCoverImage({
+        productImageUrl: currentProductImageUrl,
+        projectImageUrl,
+        preferProjectCoverImage: true,
+        productCategoryName: selectedProjectProduct?.category?.name || null,
+        productType: selectedProjectProduct?.type || null,
+        productName: selectedProjectProduct?.name || null,
+        projectName: resource?.name || null,
+        projectLocation: resource?.luogo || null,
+        projectNotes: resource?.other || null,
+      }),
+    [
+      currentProductImageUrl,
+      projectImageUrl,
+      resource?.luogo,
+      resource?.other,
+      resource?.name,
+      selectedProjectProduct?.category?.name,
+      selectedProjectProduct?.name,
+      selectedProjectProduct?.type,
+    ]
+  );
+  const projectImagePreviewUrl = projectImagePreview.imageUrl;
+  const showCoverSourceBadge = process.env.NODE_ENV !== "production";
 
   useEffect(() => {
     setProductImageDraftUrl(null);
@@ -1225,6 +1279,11 @@ const EditTaskKanban = ({
               Immagine prodotto
             </p>
             <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
+              {showCoverSourceBadge && (
+                <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                  {productImagePreview.source}
+                </span>
+              )}
               {productImagePreviewUrl ? (
                 <Image
                   src={productImagePreviewUrl}
@@ -1293,9 +1352,14 @@ const EditTaskKanban = ({
               Immagine progetto
             </p>
             <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
-              {projectImageUrl ? (
+              {showCoverSourceBadge && (
+                <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                  {projectImagePreview.source}
+                </span>
+              )}
+              {projectImagePreviewUrl ? (
                 <Image
-                  src={projectImageUrl}
+                  src={projectImagePreviewUrl}
                   alt="Immagine progetto"
                   fill
                   className="object-cover"

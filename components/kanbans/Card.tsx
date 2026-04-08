@@ -115,6 +115,7 @@ import {
   DEFAULT_CARD_FIELD_CONFIG,
   type CardFieldConfig,
 } from "./card-display-config";
+import { resolveCoverImage } from "@/lib/cover-image";
 
 type Supplier = {
   id: number;
@@ -446,11 +447,11 @@ export default function Card({
   }, [productCategory?.color]);
 
   // Get product display name
-  const getProductDisplay = () => {
+  const productDisplayName = useMemo(() => {
     const sellProduct = data.sellProduct || data.sell_product;
     if (!sellProduct) return null;
     return sellProduct.name || sellProduct.type || null;
-  };
+  }, [data.sellProduct, data.sell_product]);
 
   const productImageUrl = useMemo(() => {
     const sellProduct = data.sellProduct || data.sell_product;
@@ -483,12 +484,32 @@ export default function Card({
     return imageUrl;
   }, [data.files]);
 
-  const cardImageUrl = useMemo(() => {
-    if (preferProjectCoverImage && projectImageUrl) {
-      return projectImageUrl;
-    }
-    return productImageUrl || projectImageUrl || null;
-  }, [preferProjectCoverImage, projectImageUrl, productImageUrl]);
+  const cardImage = useMemo(() => {
+    return resolveCoverImage({
+      productImageUrl,
+      projectImageUrl,
+      preferProjectCoverImage,
+      productCategoryName: productCategory?.name || null,
+      productType: data.sellProduct?.type || data.sell_product?.type || null,
+      productName: productDisplayName,
+      projectName: data.name || null,
+      projectLocation: data.luogo || null,
+      projectNotes: data.other || null,
+    });
+  }, [
+    data.name,
+    data.luogo,
+    data.other,
+    data.sellProduct?.type,
+    data.sell_product?.type,
+    preferProjectCoverImage,
+    productCategory?.name,
+    productDisplayName,
+    productImageUrl,
+    projectImageUrl,
+  ]);
+  const cardImageUrl = cardImage.imageUrl;
+  const showCoverSourceBadge = process.env.NODE_ENV !== "production";
 
   // Determina il colore del bordo sinistro in base allo stato
   const getBorderColor = () => {
@@ -654,7 +675,7 @@ export default function Card({
                 {/* Badge Categoria Prodotto - Solo se abilitato nelle impostazioni Kanban */}
                 {isFieldVisible("productCategory") &&
                   showCategoryColors &&
-                  (productCategory || getProductDisplay()) && (
+                  (productCategory || productDisplayName) && (
                     <div
                       className="flex items-center gap-1.5 px-2 py-1 rounded-md mb-2 -mx-0.5"
                       style={{
@@ -670,27 +691,32 @@ export default function Card({
                         className="font-semibold text-sm truncate"
                         style={{ color: categoryColors.textColor }}
                       >
-                        {productCategory?.name || getProductDisplay() || "Prodotto"}
+                        {productCategory?.name || productDisplayName || "Prodotto"}
                       </span>
                       {productCategory &&
-                        getProductDisplay() &&
-                        productCategory.name !== getProductDisplay() && (
+                        productDisplayName &&
+                        productCategory.name !== productDisplayName && (
                           <span
                             className="text-xs opacity-75 truncate"
                             style={{ color: categoryColors.textColor }}
                           >
-                            · {getProductDisplay()}
+                            · {productDisplayName}
                           </span>
                         )}
                     </div>
                 )}
 
                 {isFieldVisible("image") && (
-                  <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                  <div className="relative mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                    {showCoverSourceBadge && (
+                      <span className="absolute right-2 top-2 z-10 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                        {cardImage.source}
+                      </span>
+                    )}
                     {cardImageUrl ? (
                       <img
                         src={cardImageUrl}
-                        alt={getProductDisplay() || "Immagine progetto"}
+                        alt={productDisplayName || "Immagine progetto"}
                         className="h-24 w-full rounded-md object-cover"
                       />
                     ) : (
@@ -905,7 +931,7 @@ export default function Card({
                 {/* Riga 2: Categoria Prodotto - solo se abilitato nelle impostazioni Kanban */}
                 {isFieldVisible("productCategory") &&
                   showCategoryColors &&
-                  (productCategory || getProductDisplay()) && (
+                  (productCategory || productDisplayName) && (
                     <div
                       className="text-xs font-medium truncate mb-1 px-1.5 py-0.5 rounded inline-flex items-center gap-1"
                       style={{
@@ -913,16 +939,21 @@ export default function Card({
                         color: categoryColors.textColor,
                       }}
                     >
-                      {productCategory?.name || getProductDisplay()}
+                      {productCategory?.name || productDisplayName}
                     </div>
                 )}
 
                 {isFieldVisible("image") && (
-                  <div className="mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+                  <div className="relative mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+                    {showCoverSourceBadge && (
+                      <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                        {cardImage.source}
+                      </span>
+                    )}
                     {cardImageUrl ? (
                       <img
                         src={cardImageUrl}
-                        alt={getProductDisplay() || "Immagine progetto"}
+                        alt={productDisplayName || "Immagine progetto"}
                         className="h-14 w-full rounded object-cover"
                       />
                     ) : (

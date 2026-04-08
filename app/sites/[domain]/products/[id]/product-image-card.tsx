@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DocumentUpload } from "@/components/ui/document-upload";
 import { useToast } from "@/components/ui/use-toast";
 import { updateSellProductImageAction } from "../actions/update-image.action";
+import { resolveCoverImage } from "@/lib/cover-image";
 
 type ProductImageCardProps = {
   productId: number;
@@ -30,10 +31,16 @@ export function ProductImageCard({
   const [uploadKey, setUploadKey] = useState(0);
   const [isSaving, startSaving] = useTransition();
 
-  const previewImageUrl = useMemo(
-    () => draftImageUrl ?? savedImageUrl,
-    [draftImageUrl, savedImageUrl],
+  const previewImage = useMemo(
+    () =>
+      resolveCoverImage({
+        productImageUrl: draftImageUrl ?? savedImageUrl,
+        productName: productName || null,
+      }),
+    [draftImageUrl, productName, savedImageUrl],
   );
+  const previewImageUrl = previewImage.imageUrl;
+  const showCoverSourceBadge = process.env.NODE_ENV !== "production";
   const hasPendingChanges = draftImageUrl !== null && draftImageUrl !== savedImageUrl;
 
   const resetUploader = () => {
@@ -117,11 +124,18 @@ export function ProductImageCard({
       </div>
 
       {previewImageUrl ? (
-        <img
-          src={previewImageUrl}
-          alt={productName || "Immagine prodotto"}
-          className="h-64 w-full object-cover"
-        />
+        <div className="relative">
+          {showCoverSourceBadge && (
+            <span className="absolute right-3 top-3 z-10 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+              {previewImage.source}
+            </span>
+          )}
+          <img
+            src={previewImageUrl}
+            alt={productName || "Immagine prodotto"}
+            className="h-64 w-full object-cover"
+          />
+        </div>
       ) : (
         <div className="flex h-64 flex-col items-center justify-center gap-3 px-6 text-center text-slate-500 dark:text-slate-400">
           <ImageIcon className="h-10 w-10" />

@@ -1,0 +1,8 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="32" fill="#ffffff"/>
+  <rect x="150" y="90" width="900" height="450" rx="24" fill="#f8fafc" stroke="#d1d5db" stroke-width="2"/>
+  <rect x="460" y="150" width="280" height="350" rx="18" fill="#f1f5f9"/>
+  <rect x="500" y="190" width="200" height="260" rx="10" stroke="#475569" stroke-width="14"/>
+  <circle cx="668" cy="320" r="11" fill="#475569"/>
+  <text x="600" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" fill="#334155">Porte</text>
+</svg>
