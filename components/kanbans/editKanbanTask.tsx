@@ -101,6 +101,7 @@ import { DocumentUpload } from "@/components/ui/document-upload";
 import { createClient } from "@/utils/supabase/client";
 import { updateSellProductImageAction } from "@/app/sites/[domain]/products/actions/update-image.action";
 import { resolveCoverImage } from "@/lib/cover-image";
+import { formatHours } from "@/lib/project-consuntivo";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -137,6 +138,8 @@ type CollaboratorBadge = {
   name: string;
   initials: string;
   picture: string | null;
+  hours: number;
+  entries: number;
 };
 
 function parseSupplyDaysValue(
@@ -586,46 +589,63 @@ const EditTaskKanban = ({
   );
 
   const involvedCollaborators = useMemo<CollaboratorBadge[]>(() => {
-    const seen = new Set<string>();
+    const byKey = new Map<string, CollaboratorBadge>();
 
-    return (filteredHistory as any[]).reduce<CollaboratorBadge[]>(
-      (acc, item) => {
-        const user = item?.User;
-        if (!user) {
-          return acc;
-        }
+    const timetrackingCollaborators = Array.isArray(resource?.collaboratorTimeSummaries)
+      ? resource.collaboratorTimeSummaries
+      : [];
 
-        const key = String(
-          user.id ||
-            user.authId ||
-            user.picture ||
-            `${user.given_name || ""}-${user.family_name || ""}`
-        );
+    timetrackingCollaborators.forEach((item: any) => {
+      const key = String(item?.id || item?.employeeId || "");
+      if (!key) return;
+      byKey.set(key, {
+        key,
+        name: String(item?.name || "Collaboratore"),
+        initials: String(item?.initials || "CL"),
+        picture: typeof item?.picture === "string" ? item.picture : null,
+        hours: Number(item?.hours || 0),
+        entries: Number(item?.entries || 0),
+      });
+    });
 
-        if (seen.has(key)) {
-          return acc;
-        }
-        seen.add(key);
+    (filteredHistory as any[]).forEach((item) => {
+      const user = item?.User;
+      if (!user) return;
 
-        const fullName =
-          `${user.given_name || ""} ${user.family_name || ""}`.trim() ||
-          "Collaboratore";
-        const initials =
-          `${user.given_name?.charAt(0) || ""}${user.family_name?.charAt(0) || ""}`.toUpperCase() ||
-          "CL";
+      const key = String(
+        user.id ||
+          user.authId ||
+          user.picture ||
+          `${user.given_name || ""}-${user.family_name || ""}`
+      );
+      if (!key) return;
 
-        acc.push({
-          key,
-          name: fullName,
-          initials,
-          picture: user.picture || null,
-        });
+      const fullName =
+        `${user.given_name || ""} ${user.family_name || ""}`.trim() ||
+        "Collaboratore";
+      const initials =
+        `${user.given_name?.charAt(0) || ""}${user.family_name?.charAt(0) || ""}`.toUpperCase() ||
+        "CL";
 
-        return acc;
-      },
-      []
-    );
-  }, [filteredHistory]);
+      const existing = byKey.get(key);
+      byKey.set(key, {
+        key,
+        name: existing?.name || fullName,
+        initials: existing?.initials || initials,
+        picture: existing?.picture || user.picture || null,
+        hours: existing?.hours || 0,
+        entries: existing?.entries || 0,
+      });
+    });
+
+    const ordered = Array.from(byKey.values()).sort((a, b) => {
+      if (b.hours !== a.hours) return b.hours - a.hours;
+      return a.name.localeCompare(b.name, "it");
+    });
+
+    const withHours = ordered.filter((collaborator) => collaborator.hours > 0);
+    return withHours.length > 0 ? withHours : ordered;
+  }, [filteredHistory, resource?.collaboratorTimeSummaries]);
 
   // Get the selected client for contact info display
   const selectedClient = useMemo(() => {
@@ -1480,32 +1500,38 @@ const EditTaskKanban = ({
           </div>
 
           {involvedCollaborators.length > 0 && (
-            <div className="flex flex-col items-center -space-y-2 pt-1">
+            <div className="flex min-w-[220px] flex-col gap-2 pt-1">
               {involvedCollaborators.slice(0, 4).map((collaborator) => (
                 <button
                   key={collaborator.key}
                   type="button"
                   title={`Apri ${collaborator.name}`}
                   onClick={() => setSelectedCollaborator(collaborator)}
-                  className="rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="flex items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
-                  <Avatar
-                    className="h-9 w-9 border-2 border-background shadow-sm cursor-pointer"
-                    title={collaborator.name}
-                  >
-                    <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
-                    <AvatarFallback
-                      className="text-[10px] font-semibold text-white"
-                      style={{ backgroundColor: getAvatarColor(collaborator.key) }}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Avatar
+                      className="h-9 w-9 border-2 border-background shadow-sm cursor-pointer"
+                      title={collaborator.name}
                     >
-                      {collaborator.initials}
-                    </AvatarFallback>
-                  </Avatar>
+                      <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
+                      <AvatarFallback
+                        className="text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: getAvatarColor(collaborator.key) }}
+                      >
+                        {collaborator.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate text-xs font-medium">{collaborator.name}</span>
+                  </div>
+                  <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                    {formatHours(collaborator.hours)}
+                  </span>
                 </button>
               ))}
               {involvedCollaborators.length > 4 && (
                 <div
-                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-slate-200 text-[10px] font-semibold text-slate-700 shadow-sm dark:bg-slate-700 dark:text-slate-100"
+                  className="rounded px-1 text-[11px] text-muted-foreground"
                   title={`${involvedCollaborators.length - 4} collaboratori aggiuntivi`}
                 >
                   +{involvedCollaborators.length - 4}
@@ -2544,6 +2570,12 @@ const EditTaskKanban = ({
                 </AvatarFallback>
               </Avatar>
               <p className="text-sm font-medium text-center">{selectedCollaborator.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Ore registrate: {formatHours(selectedCollaborator.hours)}
+                {selectedCollaborator.entries > 0
+                  ? ` (${selectedCollaborator.entries} registrazioni)`
+                  : ""}
+              </p>
             </div>
           )}
         </DialogContent>

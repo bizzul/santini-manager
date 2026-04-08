@@ -116,6 +116,7 @@ import {
   type CardFieldConfig,
 } from "./card-display-config";
 import { resolveCoverImage } from "@/lib/cover-image";
+import { formatHours } from "@/lib/project-consuntivo";
 
 type Supplier = {
   id: number;
@@ -129,6 +130,15 @@ type TaskSupplier = {
   supplierId: number;
   supplier: Supplier;
   deliveryDate: string | null;
+};
+
+type CollaboratorTimeSummary = {
+  id: string;
+  name: string;
+  initials: string;
+  picture: string | null;
+  hours: number;
+  entries: number;
 };
 
 export default function Card({
@@ -591,6 +601,23 @@ export default function Card({
     return data.activeCollaborators;
   }, [data.activeCollaborators]);
 
+  const collaboratorTimeSummaries = useMemo<CollaboratorTimeSummary[]>(() => {
+    if (!Array.isArray(data.collaboratorTimeSummaries)) {
+      return [];
+    }
+    return data.collaboratorTimeSummaries
+      .map((item: any) => ({
+        id: String(item?.id || ""),
+        name: String(item?.name || "Collaboratore"),
+        initials: String(item?.initials || ""),
+        picture: typeof item?.picture === "string" ? item.picture : null,
+        hours: Number(item?.hours || 0),
+        entries: Number(item?.entries || 0),
+      }))
+      .filter((item: CollaboratorTimeSummary) => item.id && item.hours > 0)
+      .sort((a, b) => b.hours - a.hours);
+  }, [data.collaboratorTimeSummaries]);
+
   const activeSuppliersCount = useMemo(() => {
     const todayStr = formatLocalDate(new Date());
     return taskSuppliers.filter((ts) => {
@@ -850,7 +877,44 @@ export default function Card({
                         {activeMachinesCount}
                       </span>
                     </div>
-                    {activeCollaborators.length > 0 && (
+                    {collaboratorTimeSummaries.length > 0 ? (
+                      <div className="mt-2 space-y-1.5">
+                        {collaboratorTimeSummaries.slice(0, 4).map((collab) => (
+                          <div
+                            key={collab.id}
+                            title={`${collab.name} - ${formatHours(collab.hours)}`}
+                            className="flex items-center justify-between gap-2"
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <div className="h-6 w-6 overflow-hidden rounded-full border border-white/60 bg-slate-200 text-[10px] font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                                {collab.picture ? (
+                                  <img
+                                    src={collab.picture}
+                                    alt={collab.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center">
+                                    {collab.initials || "?"}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="truncate text-[11px] font-medium text-slate-700 dark:text-slate-200">
+                                {collab.name}
+                              </span>
+                            </div>
+                            <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                              {formatHours(collab.hours)}
+                            </span>
+                          </div>
+                        ))}
+                        {collaboratorTimeSummaries.length > 4 && (
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                            +{collaboratorTimeSummaries.length - 4} collaboratori con ore registrate
+                          </p>
+                        )}
+                      </div>
+                    ) : activeCollaborators.length > 0 ? (
                       <div className="mt-1.5 flex items-center gap-1">
                         {activeCollaborators.slice(0, 5).map((collab: any) => (
                           <div
@@ -872,7 +936,7 @@ export default function Card({
                           </div>
                         ))}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -1026,7 +1090,35 @@ export default function Card({
                       <span className="h-2 w-2 rounded-full bg-amber-500" />
                       {activeMachinesCount}
                     </span>
-                    {activeCollaborators.length > 0 && (
+                    {collaboratorTimeSummaries.length > 0 ? (
+                      <div className="ml-1 flex items-center gap-1.5">
+                        {collaboratorTimeSummaries.slice(0, 2).map((collab) => (
+                          <div key={`small-${collab.id}`} className="flex items-center gap-1">
+                            <div className="h-5 w-5 overflow-hidden rounded-full border border-white bg-slate-200 dark:border-slate-700 dark:bg-slate-700">
+                              {collab.picture ? (
+                                <img
+                                  src={collab.picture}
+                                  alt={collab.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-slate-700 dark:text-slate-100">
+                                  {collab.initials || "?"}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-200">
+                              {formatHours(collab.hours)}
+                            </span>
+                          </div>
+                        ))}
+                        {collaboratorTimeSummaries.length > 2 && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                            +{collaboratorTimeSummaries.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    ) : activeCollaborators.length > 0 ? (
                       <div className="ml-1 flex -space-x-1">
                         {activeCollaborators.slice(0, 3).map((collab: any) => (
                           <div
@@ -1047,7 +1139,7 @@ export default function Card({
                           </div>
                         ))}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
 
