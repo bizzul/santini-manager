@@ -1332,18 +1332,6 @@ function KanbanBoard({
     >
       <div className="flex flex-col h-full overflow-hidden">
         {kanban && (
-          <Button
-            type="button"
-            size="sm"
-            className="absolute right-8 top-16 z-40 border border-amber-400/80 bg-amber-500/85 text-black hover:bg-amber-500"
-            onClick={openCardConfigDialog}
-            title="Configura campi card progetto"
-          >
-            <Settings2 className="h-4 w-4 mr-1" />
-            Config Card
-          </Button>
-        )}
-        {kanban && (
           <div className="shrink-0 w-full pt-4 pb-2 px-8 overflow-x-auto">
             <div style={{ width: `${boardColumnsWidthRem}rem` }} className="min-w-max">
               <div
@@ -1372,17 +1360,6 @@ function KanbanBoard({
                   isTimelineOpen ? "opacity-0" : "opacity-100"
                 } transition-all duration-300`}
               >
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs border-amber-400/80 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30"
-                  onClick={openCardConfigDialog}
-                  title="Configura campi card progetto"
-                >
-                  <Settings2 className="h-4 w-4 mr-1" />
-                  Config Card
-                </Button>
                 <button
                   className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md"
                   onClick={closeAllTabs}
@@ -1412,17 +1389,6 @@ function KanbanBoard({
               </div>
 
               <div className="flex items-center gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-xs bg-amber-500/15 border-amber-400/70 text-amber-300 hover:bg-amber-500/25"
-                  onClick={openCardConfigDialog}
-                  title="Configura campi card progetto"
-                >
-                  <Settings2 className="h-4 w-4 mr-1" />
-                  Card
-                </Button>
                 <KanbanManagementModal
                   kanban={kanban}
                   onSave={handleSaveKanban}
