@@ -617,6 +617,10 @@ export default function Card({
       .filter((item: CollaboratorTimeSummary) => item.id && item.hours > 0)
       .sort((a, b) => b.hours - a.hours);
   }, [data.collaboratorTimeSummaries]);
+  const workedCollaboratorsCount =
+    collaboratorTimeSummaries.length > 0
+      ? collaboratorTimeSummaries.length
+      : activeCollaborators.length;
 
   const activeSuppliersCount = useMemo(() => {
     const todayStr = formatLocalDate(new Date());
@@ -864,7 +868,7 @@ export default function Card({
                       <span className="inline-flex items-center gap-1">
                         <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
                         <Users className="h-3 w-3" />
-                        {activeCollaborators.length}
+                        {workedCollaboratorsCount}
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
@@ -1080,7 +1084,7 @@ export default function Card({
                   <div className="mb-1 flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
                     <span className="inline-flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-sky-500" />
-                      {activeCollaborators.length}
+                      {workedCollaboratorsCount}
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />

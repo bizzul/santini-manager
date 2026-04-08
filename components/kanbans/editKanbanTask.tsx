@@ -653,8 +653,7 @@ const EditTaskKanban = ({
       return a.name.localeCompare(b.name, "it");
     });
 
-    const withHours = ordered.filter((collaborator) => collaborator.hours > 0);
-    return withHours.length > 0 ? withHours : ordered;
+    return ordered.filter((collaborator) => collaborator.hours > 0);
   }, [filteredHistory, resource?.collaboratorTimeSummaries, taskCollaboratorSummaries]);
 
   // Get the selected client for contact info display
@@ -725,7 +724,12 @@ const EditTaskKanban = ({
   }, [selectedProjectProduct]);
 
   const projectImageFile = useMemo(
-    () => projectFiles.find((file) => isImageFilename(file.name)),
+    () =>
+      projectFiles.find((file) =>
+        isImageFilename(file.name) ||
+        isImageFilename(file.url) ||
+        isImageFilename(file.storage_path || null)
+      ) || null,
     [projectFiles]
   );
   const projectImageUrl = projectImageFile?.url || null;
@@ -1308,79 +1312,6 @@ const EditTaskKanban = ({
           </div>
           <div className="space-y-2 rounded-md border bg-background/50 p-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Immagine prodotto
-            </p>
-            <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
-              {showCoverSourceBadge && (
-                <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
-                  {productImagePreview.source}
-                </span>
-              )}
-              {productImagePreviewUrl ? (
-                <Image
-                  src={productImagePreviewUrl}
-                  alt={selectedProjectProduct?.name || "Immagine prodotto"}
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">
-                  Nessuna immagine
-                </div>
-              )}
-            </div>
-            <p className="text-xs leading-snug text-muted-foreground">
-              {selectedProjectProduct?.name ||
-                selectedProjectProduct?.type ||
-                "Prodotto non selezionato"}
-            </p>
-            <DocumentUpload
-              key={productImageUploadKey}
-              siteId={siteId || ""}
-              folder="sell-products/images"
-              onUploadComplete={handleProductImageUploadComplete}
-              onError={(error) =>
-                toast({
-                  variant: "destructive",
-                  description: error,
-                })
-              }
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              maxSizeMB={10}
-              disabled={!siteId || !selectedProjectProduct?.id || isSavingProductImage}
-              dropzoneLabel="Carica immagine prodotto"
-              dropzoneHint="PNG, JPG, WEBP, GIF - Max 10MB"
-              className="p-3"
-            />
-            {hasPendingProductImageChanges && (
-              <Button
-                type="button"
-                size="sm"
-                className="w-full"
-                onClick={handleSaveProductImage}
-                disabled={isSavingProductImage}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Salva immagine
-              </Button>
-            )}
-            {(currentProductImageUrl || productImageDraftUrl) && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={handleRemoveProductImage}
-                disabled={isSavingProductImage}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Elimina immagine prodotto
-              </Button>
-            )}
-          </div>
-
-          <div className="space-y-2 rounded-md border bg-background/50 p-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Immagine progetto
             </p>
             <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
@@ -1511,7 +1442,7 @@ const EditTaskKanban = ({
 
           {involvedCollaborators.length > 0 && (
             <div className="flex min-w-[220px] flex-col gap-2 pt-1">
-              {involvedCollaborators.slice(0, 4).map((collaborator) => (
+              {involvedCollaborators.map((collaborator) => (
                 <button
                   key={collaborator.key}
                   type="button"
@@ -1539,14 +1470,6 @@ const EditTaskKanban = ({
                   </span>
                 </button>
               ))}
-              {involvedCollaborators.length > 4 && (
-                <div
-                  className="rounded px-1 text-[11px] text-muted-foreground"
-                  title={`${involvedCollaborators.length - 4} collaboratori aggiuntivi`}
-                >
-                  +{involvedCollaborators.length - 4}
-                </div>
-              )}
             </div>
           )}
         </div>
