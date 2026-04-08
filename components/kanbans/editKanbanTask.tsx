@@ -1,5 +1,12 @@
 "use client";
-import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useTransition,
+} from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -12,6 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "../../components/ui/form";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Input } from "../../components/ui/input";
 import { SearchSelect } from "../../components/ui/search-select";
 import { Textarea } from "../../components/ui/textarea";
@@ -48,6 +56,8 @@ import {
   Download,
   Loader2,
   Package,
+  Save,
+  Upload,
 } from "lucide-react";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
@@ -60,6 +70,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { logger } from "@/lib/logger";
 import { useSiteId } from "@/hooks/use-site-id";
 import { Calendar } from "@/components/ui/calendar";
@@ -79,6 +96,9 @@ import {
   ProjectFile,
 } from "@/components/project/project-documents";
 import { downloadOfferPdf } from "@/lib/offer-pdf";
+import { DocumentUpload } from "@/components/ui/document-upload";
+import { createClient } from "@/utils/supabase/client";
+import { updateSellProductImageAction } from "@/app/sites/[domain]/products/actions/update-image.action";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -173,6 +193,21 @@ function calculateDeliveryDateFromOrder(
   return formatLocalDate(calculatedDate);
 }
 
+function getAvatarColor(seed: string): string {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = seed.charCodeAt(index) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 72% 46%)`;
+}
+
+function isImageFilename(filename: string | null | undefined): boolean {
+  if (!filename) return false;
+  const extension = filename.split(".").pop()?.toLowerCase() || "";
+  return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(extension);
+}
+
 const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const router = useRouter();
   const { toast } = useToast();
@@ -181,6 +216,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const newOrderDateInputRef = useRef<HTMLInputElement>(null);
   const newDeliveryDateInputRef = useRef<HTMLInputElement>(null);
   const pendingSupplierUpdatesRef = useRef(new Set<Promise<void>>());
+  const projectImageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -208,6 +244,12 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [isUploadingProjectImage, setIsUploadingProjectImage] = useState(false);
+  const [productImageDraftUrl, setProductImageDraftUrl] = useState<string | null>(
+    null
+  );
+  const [productImageUploadKey, setProductImageUploadKey] = useState(0);
+  const [isSavingProductImage, startSavingProductImage] = useTransition();
   const [offerProducts, setOfferProducts] = useState<OfferProductLine[]>([]);
   const [productionRequired, setProductionRequired] = useState(
     Boolean(resource?.termine_produzione)
@@ -227,6 +269,12 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [selectedCollaborator, setSelectedCollaborator] = useState<{
+    key: string;
+    name: string;
+    initials: string;
+    picture: string | null;
+  } | null>(null);
 
   // Helper to build headers with siteId
   const getHeaders = (): HeadersInit => {
@@ -523,6 +571,56 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     (action: any) => action.taskId === resource.id
   );
 
+  const involvedCollaborators = useMemo(() => {
+    const seen = new Set<string>();
+
+    return filteredHistory.reduce(
+      (
+        acc: Array<{
+          key: string;
+          name: string;
+          initials: string;
+          picture: string | null;
+        }>,
+        item: any
+      ) => {
+        const user = item?.User;
+        if (!user) {
+          return acc;
+        }
+
+        const key = String(
+          user.id ||
+            user.authId ||
+            user.picture ||
+            `${user.given_name || ""}-${user.family_name || ""}`
+        );
+
+        if (seen.has(key)) {
+          return acc;
+        }
+        seen.add(key);
+
+        const fullName =
+          `${user.given_name || ""} ${user.family_name || ""}`.trim() ||
+          "Collaboratore";
+        const initials =
+          `${user.given_name?.charAt(0) || ""}${user.family_name?.charAt(0) || ""}`.toUpperCase() ||
+          "CL";
+
+        acc.push({
+          key,
+          name: fullName,
+          initials,
+          picture: user.picture || null,
+        });
+
+        return acc;
+      },
+      []
+    );
+  }, [filteredHistory]);
+
   // Get the selected client for contact info display
   const selectedClient = useMemo(() => {
     const clientId = form.watch("clientId") || resource?.clientId;
@@ -589,6 +687,275 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
 
     return imageUrl;
   }, [selectedProjectProduct]);
+
+  const currentProductImageUrl = selectedProjectProductImage;
+  const productImagePreviewUrl = productImageDraftUrl ?? currentProductImageUrl;
+  const hasPendingProductImageChanges =
+    productImageDraftUrl !== null && productImageDraftUrl !== currentProductImageUrl;
+
+  const projectImageFile = useMemo(
+    () => projectFiles.find((file) => isImageFilename(file.name)),
+    [projectFiles]
+  );
+  const projectImageUrl = projectImageFile?.url || null;
+
+  useEffect(() => {
+    setProductImageDraftUrl(null);
+    setProductImageUploadKey((current) => current + 1);
+  }, [selectedProjectProduct?.id]);
+
+  const uploadProjectImage = useCallback(
+    async (file: File) => {
+      if (!siteId) {
+        toast({
+          variant: "destructive",
+          description: "Contesto sito non disponibile per caricare immagini",
+        });
+        return;
+      }
+
+      const maxSizeMB = 10;
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        toast({
+          variant: "destructive",
+          description: `File troppo grande. Max ${maxSizeMB}MB`,
+        });
+        return;
+      }
+
+      setIsUploadingProjectImage(true);
+      try {
+        const supabase = createClient();
+        const fileExt = file.name.split(".").pop();
+        const safeName = file.name
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[^a-zA-Z0-9-_]/g, "_")
+          .substring(0, 50);
+        const fileName = `${safeName}-${Date.now()}.${fileExt}`;
+        const filePath = `${siteId}/projects/${resource.id}/images/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("documents")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("documents").getPublicUrl(filePath);
+
+        const response = await fetch("/api/files/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: file.name,
+            url: publicUrl,
+            storage_path: filePath,
+            taskId: resource.id,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || result.error || !result.data) {
+          throw new Error(result.error || "Errore durante il salvataggio del file");
+        }
+
+        setProjectFiles((current) => [result.data, ...current]);
+        toast({
+          description: "Immagine progetto caricata con successo",
+        });
+      } catch (error) {
+        logger.error("Error uploading project image:", error);
+        toast({
+          variant: "destructive",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Errore durante il caricamento immagine progetto",
+        });
+      } finally {
+        setIsUploadingProjectImage(false);
+      }
+    },
+    [resource.id, siteId, toast]
+  );
+
+  const handleProjectImageInputChange = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      await uploadProjectImage(file);
+    },
+    [uploadProjectImage]
+  );
+
+  const handleDeleteProjectImage = useCallback(async () => {
+    if (!projectImageFile) return;
+
+    setIsUploadingProjectImage(true);
+    try {
+      const response = await fetch(`/api/files/${projectImageFile.id}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || "Errore durante l'eliminazione");
+      }
+
+      setProjectFiles((current) =>
+        current.filter((file) => file.id !== projectImageFile.id)
+      );
+      toast({
+        description: "Immagine progetto rimossa",
+      });
+    } catch (error) {
+      logger.error("Error deleting project image:", error);
+      toast({
+        variant: "destructive",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Errore durante la rimozione immagine progetto",
+      });
+    } finally {
+      setIsUploadingProjectImage(false);
+    }
+  }, [projectImageFile, toast]);
+
+  const handleProductImageUploadComplete = useCallback(
+    (nextUrl: string) => {
+      setProductImageDraftUrl(nextUrl);
+      toast({
+        description: "Immagine caricata. Premi Salva per confermare.",
+      });
+    },
+    [toast]
+  );
+
+  const handleSaveProductImage = useCallback(() => {
+    const productId = selectedProjectProduct?.id;
+    if (!productId || !siteId) {
+      toast({
+        variant: "destructive",
+        description: "Seleziona un prodotto e assicurati che il contesto sito sia carico",
+      });
+      return;
+    }
+
+    if (!hasPendingProductImageChanges) {
+      return;
+    }
+
+    startSavingProductImage(async () => {
+      const response = await updateSellProductImageAction({
+        productId: Number(productId),
+        imageUrl: productImageDraftUrl,
+        domain,
+        siteId,
+      });
+
+      if (response?.error) {
+        toast({
+          variant: "destructive",
+          description: response.error,
+        });
+        return;
+      }
+
+      setProducts((current) =>
+        current.map((product) =>
+          product.id === Number(productId)
+            ? { ...product, image_url: productImageDraftUrl }
+            : product
+        )
+      );
+      setProductImageDraftUrl(null);
+      setProductImageUploadKey((current) => current + 1);
+      router.refresh();
+      toast({
+        description: "Immagine prodotto aggiornata",
+      });
+    });
+  }, [
+    selectedProjectProduct?.id,
+    siteId,
+    hasPendingProductImageChanges,
+    productImageDraftUrl,
+    domain,
+    router,
+    toast,
+  ]);
+
+  const handleRemoveProductImage = useCallback(() => {
+    if (hasPendingProductImageChanges) {
+      setProductImageDraftUrl(null);
+      setProductImageUploadKey((current) => current + 1);
+      toast({
+        description: "Modifica immagine annullata",
+      });
+      return;
+    }
+
+    if (!currentProductImageUrl) {
+      return;
+    }
+
+    setProductImageDraftUrl(null);
+    setProductImageUploadKey((current) => current + 1);
+    startSavingProductImage(async () => {
+      const productId = selectedProjectProduct?.id;
+      if (!productId || !siteId) {
+        toast({
+          variant: "destructive",
+          description:
+            "Seleziona un prodotto e assicurati che il contesto sito sia carico",
+        });
+        return;
+      }
+
+      const response = await updateSellProductImageAction({
+        productId: Number(productId),
+        imageUrl: null,
+        domain,
+        siteId,
+      });
+
+      if (response?.error) {
+        toast({
+          variant: "destructive",
+          description: response.error,
+        });
+        return;
+      }
+
+      setProducts((current) =>
+        current.map((product) =>
+          product.id === Number(productId)
+            ? { ...product, image_url: null }
+            : product
+        )
+      );
+      router.refresh();
+      toast({
+        description: "Immagine prodotto rimossa",
+      });
+    });
+  }, [
+    hasPendingProductImageChanges,
+    currentProductImageUrl,
+    selectedProjectProduct?.id,
+    siteId,
+    domain,
+    router,
+    toast,
+  ]);
 
   const handleOfferProductChange = (
     index: number,
@@ -827,16 +1194,19 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   return (
     <div className="flex flex-row-reverse flex-nowrap gap-8 w-full justify-between">
       <div className="flex flex-col gap-6">
-        <div className="w-48 p-3 bg-muted/40 rounded-lg border space-y-2">
+        <div className="w-60 p-3 bg-muted/40 rounded-lg border space-y-3">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Package className="h-3.5 w-3.5" />
             Prodotto
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-2 rounded-md border bg-background/50 p-2">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Immagine prodotto
+            </p>
             <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
-              {selectedProjectProductImage ? (
+              {productImagePreviewUrl ? (
                 <Image
-                  src={selectedProjectProductImage}
+                  src={productImagePreviewUrl}
                   alt={selectedProjectProduct?.name || "Immagine prodotto"}
                   fill
                   className="object-cover"
@@ -852,68 +1222,208 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
                 selectedProjectProduct?.type ||
                 "Prodotto non selezionato"}
             </p>
+            <DocumentUpload
+              key={productImageUploadKey}
+              siteId={siteId || ""}
+              folder="sell-products/images"
+              onUploadComplete={handleProductImageUploadComplete}
+              onError={(error) =>
+                toast({
+                  variant: "destructive",
+                  description: error,
+                })
+              }
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              maxSizeMB={10}
+              disabled={!siteId || !selectedProjectProduct?.id || isSavingProductImage}
+              dropzoneLabel="Carica immagine prodotto"
+              dropzoneHint="PNG, JPG, WEBP, GIF - Max 10MB"
+              className="p-3"
+            />
+            {hasPendingProductImageChanges && (
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                onClick={handleSaveProductImage}
+                disabled={isSavingProductImage}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Salva immagine
+              </Button>
+            )}
+            {(currentProductImageUrl || productImageDraftUrl) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={handleRemoveProductImage}
+                disabled={isSavingProductImage}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Elimina immagine prodotto
+              </Button>
+            )}
+          </div>
+
+          <div className="space-y-2 rounded-md border bg-background/50 p-2">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Immagine progetto
+            </p>
+            <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
+              {projectImageUrl ? (
+                <Image
+                  src={projectImageUrl}
+                  alt="Immagine progetto"
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">
+                  Nessuna immagine
+                </div>
+              )}
+            </div>
+            <input
+              ref={projectImageInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={handleProjectImageInputChange}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full"
+              onClick={() => projectImageInputRef.current?.click()}
+              disabled={!siteId || isUploadingProjectImage}
+            >
+              {isUploadingProjectImage ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Caricamento...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Carica immagine progetto
+                </>
+              )}
+            </Button>
+            {projectImageUrl && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={handleDeleteProjectImage}
+                disabled={isUploadingProjectImage}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Elimina immagine progetto
+              </Button>
+            )}
           </div>
         </div>
 
         {/* Project Contact Info Panel - Replaces QR Code */}
-        <div className="w-48 p-4 bg-muted/50 rounded-lg border space-y-3">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-            <Info className="h-4 w-4" />
-            Info Cantiere
-          </h4>
-          
-          {/* Contact Phone */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Phone className="h-4 w-4 text-muted-foreground" />
-              <span>Telefono</span>
-            </div>
-            {contactPhone ? (
-              <a 
-                href={`tel:${contactPhone}`}
-                className="text-sm text-primary hover:underline ml-6 block"
-              >
-                {contactPhone}
-              </a>
-            ) : (
-              <span className="text-sm text-muted-foreground italic ml-6 block">
-                Non disponibile
-              </span>
-            )}
-          </div>
-
-          {/* Construction Site Address */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>Cantiere</span>
-            </div>
-            {hasDifferentSiteAddress ? (
-              <span className="text-sm ml-6 block">
-                {currentLuogo}
-              </span>
-            ) : currentLuogo ? (
-              <span className="text-sm text-muted-foreground ml-6 block">
-                Come cliente
-              </span>
-            ) : (
-              <span className="text-sm text-muted-foreground italic ml-6 block">
-                Non specificato
-              </span>
-            )}
-          </div>
-
-          {/* Client Name for reference */}
-          {selectedClient && (
-            <div className="pt-2 border-t">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <User className="h-3 w-3" />
-                <span>
-                  {selectedClient.businessName || 
-                   `${selectedClient.individualLastName || ''} ${selectedClient.individualFirstName || ''}`.trim() ||
-                   'Cliente'}
-                </span>
+        <div className="flex items-start gap-2.5">
+          <div className="w-48 p-4 bg-muted/50 rounded-lg border space-y-3">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Info Cantiere
+            </h4>
+            
+            {/* Contact Phone */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                <span>Telefono</span>
               </div>
+              {contactPhone ? (
+                <a 
+                  href={`tel:${contactPhone}`}
+                  className="text-sm text-primary hover:underline ml-6 block"
+                >
+                  {contactPhone}
+                </a>
+              ) : (
+                <span className="text-sm text-muted-foreground italic ml-6 block">
+                  Non disponibile
+                </span>
+              )}
+            </div>
+
+            {/* Construction Site Address */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span>Cantiere</span>
+              </div>
+              {hasDifferentSiteAddress ? (
+                <span className="text-sm ml-6 block">
+                  {currentLuogo}
+                </span>
+              ) : currentLuogo ? (
+                <span className="text-sm text-muted-foreground ml-6 block">
+                  Come cliente
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground italic ml-6 block">
+                  Non specificato
+                </span>
+              )}
+            </div>
+
+            {/* Client Name for reference */}
+            {selectedClient && (
+              <div className="pt-2 border-t">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <User className="h-3 w-3" />
+                  <span>
+                    {selectedClient.businessName || 
+                     `${selectedClient.individualLastName || ''} ${selectedClient.individualFirstName || ''}`.trim() ||
+                     'Cliente'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {involvedCollaborators.length > 0 && (
+            <div className="flex flex-col items-center -space-y-2 pt-1">
+              {involvedCollaborators.slice(0, 4).map((collaborator) => (
+                <button
+                  key={collaborator.key}
+                  type="button"
+                  title={`Apri ${collaborator.name}`}
+                  onClick={() => setSelectedCollaborator(collaborator)}
+                  className="rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <Avatar
+                    className="h-9 w-9 border-2 border-background shadow-sm cursor-pointer"
+                    title={collaborator.name}
+                  >
+                    <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
+                    <AvatarFallback
+                      className="text-[10px] font-semibold text-white"
+                      style={{ backgroundColor: getAvatarColor(collaborator.key) }}
+                    >
+                      {collaborator.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              ))}
+              {involvedCollaborators.length > 4 && (
+                <div
+                  className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-slate-200 text-[10px] font-semibold text-slate-700 shadow-sm dark:bg-slate-700 dark:text-slate-100"
+                  title={`${involvedCollaborators.length - 4} collaboratori aggiuntivi`}
+                >
+                  +{involvedCollaborators.length - 4}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1919,6 +2429,38 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={Boolean(selectedCollaborator)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedCollaborator(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Collaboratore</DialogTitle>
+            <DialogDescription>Dettaglio rapido dalla scheda progetto</DialogDescription>
+          </DialogHeader>
+          {selectedCollaborator && (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <Avatar className="h-24 w-24 border shadow-sm">
+                <AvatarImage
+                  src={selectedCollaborator.picture || undefined}
+                  alt={selectedCollaborator.name}
+                />
+                <AvatarFallback
+                  className="text-xl font-semibold text-white"
+                  style={{ backgroundColor: getAvatarColor(selectedCollaborator.key) }}
+                >
+                  {selectedCollaborator.initials}
+                </AvatarFallback>
+              </Avatar>
+              <p className="text-sm font-medium text-center">{selectedCollaborator.name}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

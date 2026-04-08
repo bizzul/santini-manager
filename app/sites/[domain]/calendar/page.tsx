@@ -25,7 +25,48 @@ export type TaskWithKanban = Task & {
     title?: string | null;
     identifier?: string | null;
   } | null;
+  projectCollaborators?: Array<{
+    id?: string | number | null;
+    authId?: string | null;
+    given_name?: string | null;
+    family_name?: string | null;
+    initials?: string | null;
+    picture?: string | null;
+  }>;
 };
+
+async function getProjectCollaboratorsByTaskId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteId: string,
+  taskIds: number[]
+) {
+  const collaboratorsByTask = new Map<number, TaskWithKanban["projectCollaborators"]>();
+  if (taskIds.length === 0) {
+    return collaboratorsByTask;
+  }
+
+  const { data: timetrackingUsers } = await supabase
+    .from("Timetracking")
+    .select("task_id, user:employee_id(id, authId, given_name, family_name, initials, picture)")
+    .eq("site_id", siteId)
+    .in("task_id", taskIds);
+
+  (timetrackingUsers || []).forEach((entry: any) => {
+    const taskId = Number(entry.task_id);
+    if (!taskId || !entry.user) return;
+    const users = collaboratorsByTask.get(taskId) || [];
+    const userId = entry.user.authId || entry.user.id;
+    if (!userId) return;
+    const alreadyPresent = users.some(
+      (user: any) => String(user.authId || user.id) === String(userId)
+    );
+    if (alreadyPresent) return;
+    users.push(entry.user);
+    collaboratorsByTask.set(taskId, users);
+  });
+
+  return collaboratorsByTask;
+}
 
 async function getData(siteId: string): Promise<TaskWithKanban[]> {
   // Fetch data from your API here.
@@ -120,11 +161,21 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
       return [];
     }
     
+    const taskIds = tasksAltWithDate
+      .map((task) => task.id)
+      .filter((value): value is number => Boolean(value));
+    const collaboratorsByTask = await getProjectCollaboratorsByTaskId(
+      supabase,
+      siteId,
+      taskIds
+    );
+
     // For tasks using termine_produzione, copy it to deliveryDate for calendar display
     return tasksAltWithDate.map(task => ({
       ...task,
       deliveryDate: task.deliveryDate || task.termine_produzione,
       Kanban: kanbansMap[task.kanban_id] || null,
+      projectCollaborators: collaboratorsByTask.get(task.id) || [],
     }));
   }
   
@@ -133,6 +184,14 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     ...task,
     deliveryDate: task.deliveryDate || task.termine_produzione,
   }));
+  const taskIds = tasksNormalized
+    .map((task) => task.id)
+    .filter((value): value is number => Boolean(value));
+  const collaboratorsByTask = await getProjectCollaboratorsByTaskId(
+    supabase,
+    siteId,
+    taskIds
+  );
 
   // Combine tasks with kanbans
   const tasksWithKanbans: TaskWithKanban[] = tasksNormalized.map(task => {
@@ -140,6 +199,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     return {
       ...task,
       Kanban: kanbanId ? kanbansMap[kanbanId] || null : null,
+      projectCollaborators: collaboratorsByTask.get(task.id) || [],
     };
   });
 

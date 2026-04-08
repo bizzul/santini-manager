@@ -1,0 +1,6 @@
+ID,COD_INT,CATEGORIA,SOTTOCATEGORIA,TIPO,NOME_PRODOTTO,DESCRIZIONE,LISTINO_PREZZI,URL_IMMAGINE,URL_DOC,ATTIVO
+120,11,Accessori,Zanzariera,,Zanzariera plissé,Tipo: plissé,NO,,,SI
+137,,Accessori,Zanzariera,a rullo,Zanzariera a rullo,Tipo: a rullo,NO,https://jzxffusiwtrvjwmpjztu.supabase.co/storage/v1/object/public/documents/7ce3bca0-2293-4328-bee3-b8347c581b5b/sell-products/images/zanzariera_rullo-1775612794507.jpeg,,SI
+311,,Accessori,Zanzariera,verticale,Zanzariera verticale,Tipo: verticale,NO,https://jzxffusiwtrvjwmpjztu.supabase.co/storage/v1/object/public/documents/7ce3bca0-2293-4328-bee3-b8347c581b5b/sell-products/images/zanzariera_verticale-1775615224899.jpg,,SI
+312,,Accessori,Zanzariera,scorrevole,Zanzariera scorrevole,Tipo: scorrevole,NO,https://jzxffusiwtrvjwmpjztu.supabase.co/storage/v1/object/public/documents/7ce3bca0-2293-4328-bee3-b8347c581b5b/sell-products/images/zanzariera_rullo-1775616421772.jpeg,,SI
+313,,Accessori,Zanzariera,fissa,Zanzariera fissa,Tipo: fissa,NO,https://jzxffusiwtrvjwmpjztu.supabase.co/storage/v1/object/public/documents/7ce3bca0-2293-4328-bee3-b8347c581b5b/sell-products/images/zanzariera_fissa-1775615263453.jpeg,,SI

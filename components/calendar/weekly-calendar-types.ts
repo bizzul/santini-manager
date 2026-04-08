@@ -11,6 +11,7 @@ export interface CalendarAssignedUser {
   name: string;
   initials?: string | null;
   avatarUrl?: string | null;
+  color?: string | null;
 }
 
 export interface WeeklyCalendarItem {
@@ -24,6 +25,7 @@ export interface WeeklyCalendarItem {
   projectIcon?: string | null;
   status?: string | null;
   assignedUser?: CalendarAssignedUser | null;
+  collaborators?: CalendarAssignedUser[];
   startDatetime: string;
   endDatetime: string;
   estimatedHours?: number | null;

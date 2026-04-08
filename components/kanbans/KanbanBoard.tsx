@@ -64,6 +64,13 @@ import {
   getOfferTrattativaSortPriority,
   OFFER_LOSS_REASON_OPTIONS,
 } from "@/lib/offers";
+import {
+  CARD_FIELD_LABELS,
+  DEFAULT_CARD_FIELD_CONFIG,
+  type CardDisplayField,
+  type CardDisplayMode,
+  type CardFieldConfig,
+} from "./card-display-config";
 
 const getTaskCategoryIds = (task: any): number[] => {
   const ids = new Set<number>();
@@ -116,6 +123,7 @@ const Column = ({
   onMiniCardClick,
   onTaskCreated,
   onTaskDeleted,
+  cardFieldConfig,
 }: any) => {
   const router = useRouter();
   const [isMovingTask, setIsMovingTask] = useState(false);
@@ -451,6 +459,7 @@ const Column = ({
                   isSmall={areAllTabsClosed}
                   domain={domain}
                   onTaskDeleted={onTaskDeleted}
+                  cardFieldConfig={cardFieldConfig}
                 />
               )
             )}
@@ -490,6 +499,9 @@ function KanbanBoard({
   });
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
+  const [cardFieldConfig, setCardFieldConfig] = useState<CardFieldConfig>(
+    DEFAULT_CARD_FIELD_CONFIG
+  );
 
   // Sync tasks state when kanban changes (e.g., user clicks on a different kanban)
   // This is needed because useState only uses the initial value on first render
@@ -590,6 +602,8 @@ function KanbanBoard({
   // Check if this is an offer kanban
   const isOfferKanban =
     kanban?.is_offer_kanban || kanban?.isOfferKanban || false;
+
+  const cardFieldStorageKey = useRef<string | null>(null);
 
   const updateTaskInState = useCallback((updatedTask: any) => {
     if (!updatedTask?.id) return;
@@ -968,6 +982,61 @@ function KanbanBoard({
     };
   }, [hasLoadedSnapshots, isTimelineOpen, siteId, toast]);
 
+  useEffect(() => {
+    const key = kanban?.id ? `kanban-card-fields-${kanban.id}` : null;
+    cardFieldStorageKey.current = key;
+    if (!key) {
+      setCardFieldConfig(DEFAULT_CARD_FIELD_CONFIG);
+      return;
+    }
+
+    try {
+      const savedConfig = localStorage.getItem(key);
+      if (!savedConfig) {
+        setCardFieldConfig(DEFAULT_CARD_FIELD_CONFIG);
+        return;
+      }
+
+      const parsed = JSON.parse(savedConfig);
+      setCardFieldConfig({
+        normal: {
+          ...DEFAULT_CARD_FIELD_CONFIG.normal,
+          ...(parsed?.normal || {}),
+        },
+        small: {
+          ...DEFAULT_CARD_FIELD_CONFIG.small,
+          ...(parsed?.small || {}),
+        },
+      });
+    } catch (error) {
+      logger.warn("Error loading card field config:", error);
+      setCardFieldConfig(DEFAULT_CARD_FIELD_CONFIG);
+    }
+  }, [kanban?.id]);
+
+  useEffect(() => {
+    const key = cardFieldStorageKey.current;
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(cardFieldConfig));
+    } catch (error) {
+      logger.warn("Error saving card field config:", error);
+    }
+  }, [cardFieldConfig]);
+
+  const toggleCardField = useCallback(
+    (mode: CardDisplayMode, field: CardDisplayField) => {
+      setCardFieldConfig((current) => ({
+        ...current,
+        [mode]: {
+          ...current[mode],
+          [field]: !current[mode][field],
+        },
+      }));
+    },
+    []
+  );
+
   const handleSaveKanban = async (kanbanData: any) => {
     try {
       // Use the domain passed as prop instead of window.location.hostname
@@ -1332,6 +1401,37 @@ function KanbanBoard({
                 </div>
               </div>
             )}
+            <div className="mt-3 rounded-lg border bg-background/80 px-4 py-3 shadow-sm">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                <span className="text-sm font-medium">Card progetto:</span>
+                {(["normal", "small"] as CardDisplayMode[]).map((mode) => (
+                  <div key={mode} className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">
+                      {mode === "normal" ? "Versione estesa" : "Versione ridotta"}
+                    </span>
+                    {(
+                      Object.keys(CARD_FIELD_LABELS) as CardDisplayField[]
+                    ).map((field) => {
+                      const checked = cardFieldConfig[mode][field];
+                      return (
+                        <button
+                          key={`${mode}-${field}`}
+                          type="button"
+                          onClick={() => toggleCardField(mode, field)}
+                          className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                            checked
+                              ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                              : "border-slate-300 bg-background text-slate-500 dark:border-slate-700 dark:text-slate-400"
+                          }`}
+                        >
+                          {CARD_FIELD_LABELS[field]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
             {isTimelineOpen && (
               <div className="max-w-[1000px] mx-auto mt-2">
                 {isLoadingSnapshots ? (
@@ -1391,6 +1491,7 @@ function KanbanBoard({
                       onMiniCardClick={handleMiniCardClick}
                       onTaskCreated={refetchTasks}
                       onTaskDeleted={refetchTasks}
+                      cardFieldConfig={cardFieldConfig}
                     />
                   );
                 })}

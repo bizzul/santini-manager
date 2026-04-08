@@ -26,6 +26,9 @@ export interface SellProductImportExistingRecord {
   internal_code?: string | null;
   name?: string | null;
   type?: string | null;
+  subcategory?: string | null;
+  tipo?: string | null;
+  product_type?: string | null;
   description?: string | null;
   price_list?: boolean | null;
   image_url?: string | null;
@@ -258,7 +261,7 @@ function getDiffs(
     },
     {
       field: "SOTTOCATEGORIA",
-      current: existing.type,
+      current: existing.subcategory || existing.type,
       next: csvRow.subcategory,
     },
     { field: "NOME_PRODOTTO", current: existing.name, next: csvRow.name },
@@ -272,7 +275,7 @@ function getDiffs(
   if (hasTipoColumn) {
     comparisons.splice(4, 0, {
       field: "TIPO",
-      current: "-",
+      current: existing.tipo || existing.product_type,
       next: csvRow.tipo,
     });
   }

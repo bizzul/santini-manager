@@ -88,6 +88,14 @@ type ProjectTaskSource = {
       color?: string | null;
     } | null;
   } | null;
+  projectCollaborators?: Array<{
+    id?: string | number | null;
+    authId?: string | null;
+    given_name?: string | null;
+    family_name?: string | null;
+    initials?: string | null;
+    picture?: string | null;
+  }>;
 };
 
 type TimetrackingSource = {
@@ -253,7 +261,50 @@ function createAssignedUser(
     name,
     avatarUrl: avatarUrl || null,
     initials: buildInitials(name),
+    color: getAvatarColorFromKey(id),
   };
+}
+
+function getAvatarColorFromKey(key: string): string {
+  let hash = 0;
+  for (let index = 0; index < key.length; index += 1) {
+    hash = key.charCodeAt(index) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 78% 48%)`;
+}
+
+function normalizeProjectCollaborators(task: ProjectTaskSource): CalendarAssignedUser[] {
+  if (!Array.isArray(task.projectCollaborators) || task.projectCollaborators.length === 0) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const collaborators: CalendarAssignedUser[] = [];
+
+  task.projectCollaborators.forEach((collaborator) => {
+    const collaboratorId = collaborator.authId || collaborator.id;
+    if (!collaboratorId) return;
+
+    const key = String(collaboratorId);
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const fullName = [collaborator.given_name, collaborator.family_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    collaborators.push({
+      id: key,
+      name: fullName || "Collaboratore",
+      initials: collaborator.initials || buildInitials(fullName),
+      avatarUrl: collaborator.picture || null,
+      color: getAvatarColorFromKey(key),
+    });
+  });
+
+  return collaborators;
 }
 
 function normalizeDurationHours(hours?: number | null, minutes?: number | null): number {
@@ -446,13 +497,12 @@ export function buildProjectCalendarItems(
     const clientName = getProjectClientName(task);
     const objectName = getProjectObjectName(task);
     const status = task.column?.title || task.status || "Programmato";
-    const assignedUser =
+    const collaborators = normalizeProjectCollaborators(task);
+    const fallbackAssignedUser =
       task.squadra !== null && task.squadra !== undefined
-        ? createAssignedUser(
-            `squadra-${task.squadra}`,
-            `Squadra ${task.squadra}`
-          )
+        ? createAssignedUser(`squadra-${task.squadra}`, `Squadra ${task.squadra}`)
         : null;
+    const assignedUser = collaborators[0] || fallbackAssignedUser;
 
     items.push({
       id: `task-${task.id}`,
@@ -463,6 +513,7 @@ export function buildProjectCalendarItems(
       projectIcon: task.SellProduct?.category?.name || task.SellProduct?.name || null,
       status,
       assignedUser,
+      collaborators: collaborators.length > 0 ? collaborators : assignedUser ? [assignedUser] : [],
       startDatetime: start.toISOString(),
       endDatetime: end.toISOString(),
       estimatedHours:

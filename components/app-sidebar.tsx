@@ -1581,8 +1581,8 @@ export function AppSidebar() {
                   <SidebarGroupLabel>Impostazioni</SidebarGroupLabel>
                   <SidebarGroupContent className="flex flex-1 flex-col">
                     <div className="flex flex-1 flex-col gap-4">
-                      <div className="flex flex-1 flex-col rounded-2xl border border-[hsl(var(--sidebar-border)/0.75)] bg-[hsl(var(--background)/0.5)] p-4 shadow-[inset_0_1px_0_hsl(var(--background)/0.5)] dark:border-white/10 dark:bg-white/[0.03]">
-                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[hsl(var(--background)/0.92)] text-[hsl(var(--sidebar-foreground))] shadow-[0_10px_20px_hsl(var(--page-shadow)/0.1)] dark:bg-white/10 dark:text-white dark:shadow-none">
+                      <div className="flex flex-1 flex-col rounded-2xl border border-[hsl(var(--sidebar-border)/0.75)] bg-[hsl(var(--sidebar-card)/0.72)] p-4 shadow-[inset_0_1px_0_hsl(var(--sidebar-card)/0.55)] dark:border-white/10 dark:bg-white/[0.03]">
+                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[hsl(var(--sidebar-card))] text-[hsl(var(--sidebar-foreground))] shadow-[0_10px_20px_hsl(var(--sidebar-card-shadow)/0.1)] dark:bg-white/10 dark:text-white dark:shadow-none">
                           <Settings className="h-5 w-5" />
                         </div>
                         <div className="space-y-2">
@@ -1599,7 +1599,7 @@ export function AppSidebar() {
                               <SidebarMenuItem>
                                 <SidebarMenuButton
                                   asChild
-                                  className="h-10 rounded-xl bg-[hsl(var(--background)/0.82)] shadow-[0_8px_18px_hsl(var(--page-shadow)/0.12)] dark:bg-white/10 dark:shadow-none"
+                                  className="h-10 rounded-xl bg-[hsl(var(--sidebar-card-strong)/0.9)] shadow-[0_8px_18px_hsl(var(--sidebar-card-shadow)/0.12)] dark:bg-white/10 dark:shadow-none"
                                 >
                                   <Link href={settingsHref}>
                                     <ShieldCheck className="h-4 w-4" />
@@ -1630,7 +1630,7 @@ export function AppSidebar() {
           {domain && (
             <div
               className={cn(
-                "rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.9)] py-2 shadow-[0_10px_24px_hsl(var(--page-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none",
+                "rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.9)] py-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none",
                 state === "collapsed"
                   ? "flex-col gap-1 justify-center px-0"
                   : "flex-row justify-around px-2"
@@ -1640,7 +1640,7 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/timetracking`}
                   title="Ore"
-                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
                     icon={faClock}
@@ -1652,7 +1652,7 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/errortracking`}
                   title="Errori"
-                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
                     icon={faExclamation}
@@ -1666,7 +1666,7 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/reports`}
                   title="Reports"
-                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--background))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+                  className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
                     icon={faSquarePollVertical}
@@ -1681,7 +1681,7 @@ export function AppSidebar() {
             <UserSection user={userContext} domain={domain ?? undefined} />
           ) : (
             /* Show skeleton only while user context is loading */
-            <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--background)/0.9)] px-3 py-3 shadow-[0_10px_24px_hsl(var(--page-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
+            <div className="flex items-center gap-3 rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.9)] px-3 py-3 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none">
               <Skeleton className="h-9 w-9 rounded-md shrink-0 bg-gray-200 dark:bg-white/10" />
               <div className="flex flex-col gap-1 flex-1 min-w-0">
                 <Skeleton className="h-4 w-32 bg-gray-200 dark:bg-white/10" />

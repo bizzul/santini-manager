@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
       qualityControlResult,
       packingControlResult,
       taskSuppliersResult,
+      timetrackingResult,
     ] = await Promise.all([
       // Columns filtered by kanban IDs
       hasKanbanFilter
@@ -132,6 +133,13 @@ export async function GET(req: NextRequest) {
           .select("*, supplier:Supplier(*)")
           .in("taskId", taskIds)
         : Promise.resolve({ data: [], error: null }),
+      taskIds.length > 0
+        ? supabase
+          .from("Timetracking")
+          .select("task_id, user_id, use_cnc, end_time")
+          .in("task_id", taskIds)
+          .eq("site_id", siteId)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     // Handle errors from parallel queries
@@ -149,6 +157,8 @@ export async function GET(req: NextRequest) {
       { name: "packingControl", error: packingControlResult.error },
       taskSuppliersResult.error &&
       { name: "taskSuppliers", error: taskSuppliersResult.error },
+      timetrackingResult.error &&
+      { name: "timetracking", error: timetrackingResult.error },
     ].filter(Boolean);
 
     if (errors.length > 0) {
@@ -167,6 +177,30 @@ export async function GET(req: NextRequest) {
     const qualityControl = qualityControlResult.data || [];
     const packingControl = packingControlResult.data || [];
     const taskSuppliers = taskSuppliersResult.data || [];
+    const timetracking = timetrackingResult.data || [];
+
+    const activeUserIds = Array.from(
+      new Set(
+        timetracking
+          .filter((entry) => !entry.end_time && entry.user_id)
+          .map((entry) => entry.user_id as string)
+      )
+    );
+
+    const userProfilesResult =
+      activeUserIds.length > 0
+        ? await supabase
+          .from("User")
+          .select("id, given_name, family_name, initials, picture, email")
+          .in("id", activeUserIds)
+        : { data: [], error: null };
+
+    if (userProfilesResult.error) {
+      log.error("Error fetching user profiles:", userProfilesResult.error);
+      throw new Error("Failed to fetch related data: userProfiles");
+    }
+
+    const userProfiles = userProfilesResult.data || [];
 
     // Create lookup maps for O(1) access instead of O(n) find operations
     const columnMap = new Map(columns.map((c) => [c.id, c]));
@@ -203,6 +237,18 @@ export async function GET(req: NextRequest) {
       suppliersByTaskId.set(item.taskId, existing);
     });
 
+    const activeEntriesByTaskId = new Map<number, typeof timetracking>();
+    timetracking.forEach((entry) => {
+      if (entry.end_time) return;
+      const existing = activeEntriesByTaskId.get(entry.task_id) || [];
+      existing.push(entry);
+      activeEntriesByTaskId.set(entry.task_id, existing);
+    });
+
+    const userProfileMap = new Map(userProfiles.map((user) => [user.id, user]));
+
+    const todayIso = new Date().toISOString().slice(0, 10);
+
     // Build the response with relationships using O(1) lookups
     const tasksWithRelations = tasks.map((task) => ({
       ...task,
@@ -214,6 +260,35 @@ export async function GET(req: NextRequest) {
       sellProduct: sellProductMap.get(task.sellProductId),
       QualityControl: qcByTaskId.get(task.id) || [],
       PackingControl: packingByTaskId.get(task.id) || [],
+      activeSuppliersCount: (suppliersByTaskId.get(task.id) || []).filter((item) => {
+        if (!item.deliveryDate) return true;
+        return item.deliveryDate.slice(0, 10) >= todayIso;
+      }).length,
+      activeMachinesCount: (activeEntriesByTaskId.get(task.id) || []).filter(
+        (entry) => entry.use_cnc === true
+      ).length,
+      activeCollaborators: Array.from(
+        new Set(
+          (activeEntriesByTaskId.get(task.id) || [])
+            .map((entry) => entry.user_id)
+            .filter(Boolean)
+        )
+      )
+        .map((userId) => {
+          const profile = userProfileMap.get(userId as string);
+          if (!profile) return null;
+          const fullName = `${profile.family_name || ""} ${profile.given_name || ""}`
+            .trim()
+            .replace(/\s+/g, " ");
+          return {
+            id: profile.id,
+            fullName: fullName || profile.email || "Collaboratore",
+            initials: profile.initials || "",
+            picture: profile.picture || null,
+            email: profile.email || "",
+          };
+        })
+        .filter(Boolean),
     }));
 
     return NextResponse.json(tasksWithRelations, {

@@ -25,6 +25,14 @@ export type TaskWithKanban = Task & {
     title?: string | null;
     identifier?: string | null;
   } | null;
+  projectCollaborators?: Array<{
+    id?: string | number | null;
+    authId?: string | null;
+    given_name?: string | null;
+    family_name?: string | null;
+    initials?: string | null;
+    picture?: string | null;
+  }>;
 };
 
 async function getData(siteId: string): Promise<TaskWithKanban[]> {
@@ -67,12 +75,39 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     }
   }
 
+  const taskIds = tasks.map((task) => task.id).filter((value): value is number => Boolean(value));
+  const collaboratorsByTask = new Map<number, TaskWithKanban["projectCollaborators"]>();
+  if (taskIds.length > 0) {
+    const { data: timetrackingUsers } = await supabase
+      .from("Timetracking")
+      .select(
+        "task_id, user:employee_id(id, authId, given_name, family_name, initials, picture)"
+      )
+      .eq("site_id", siteId)
+      .in("task_id", taskIds);
+
+    (timetrackingUsers || []).forEach((entry: any) => {
+      const taskId = Number(entry.task_id);
+      if (!taskId || !entry.user) return;
+      const users = collaboratorsByTask.get(taskId) || [];
+      const userId = entry.user.authId || entry.user.id;
+      if (!userId) return;
+      const alreadyPresent = users.some(
+        (user: any) => String(user.authId || user.id) === String(userId)
+      );
+      if (alreadyPresent) return;
+      users.push(entry.user);
+      collaboratorsByTask.set(taskId, users);
+    });
+  }
+
   // Combine tasks with kanbans
   const tasksWithKanbans: TaskWithKanban[] = tasks.map(task => {
     const kanbanId = task.kanbanId || task.kanban_id;
     return {
       ...task,
       Kanban: kanbanId ? kanbansMap[kanbanId] || null : null,
+      projectCollaborators: collaboratorsByTask.get(task.id) || [],
     };
   });
 
