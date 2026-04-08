@@ -1389,6 +1389,17 @@ function KanbanBoard({
               </div>
 
               <div className="flex items-center gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs bg-amber-500/15 border-amber-400/70 text-amber-300 hover:bg-amber-500/25"
+                  onClick={openCardConfigDialog}
+                  title="Configura campi card progetto"
+                >
+                  <Settings2 className="h-4 w-4 mr-1" />
+                  Card
+                </Button>
                 <KanbanManagementModal
                   kanban={kanban}
                   onSave={handleSaveKanban}
