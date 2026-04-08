@@ -54,6 +54,16 @@ function normalizeRateMap(
   );
 }
 
+function buildInitials(name: string): string {
+  const parts = name
+    .split(" ")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) return "CL";
+  return parts.map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
 export function ProjectConsuntivoSummary({
   domain,
   taskId,
@@ -244,7 +254,7 @@ export function ProjectConsuntivoSummary({
           <div className="flex items-center gap-2">
             <Clock3 className="h-4 w-4 text-slate-400" />
             <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Consuntivo ore
+              Ore registrate
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -288,79 +298,59 @@ export function ProjectConsuntivoSummary({
         </div>
 
         <div className="mt-4 space-y-3">
-          <div className={innerCardClass}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Tariffa oraria base
-                </p>
-                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Usata automaticamente per chi non ha una tariffa personalizzata.
-                </p>
-              </div>
-              <div className="w-28">
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={defaultHourlyRateInput}
-                  onChange={(event) => setDefaultHourlyRateInput(event.target.value)}
-                  className="text-right"
-                />
-              </div>
-            </div>
-          </div>
-
           {snapshot.collaborators.length > 0 ? (
-            snapshot.collaborators.map((collaborator) => (
-              <div
-                key={collaborator.employeeId}
-                className="grid gap-3 rounded-lg border border-white/80 bg-white/90 px-3 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 md:grid-cols-[minmax(0,1.4fr)_100px_120px_120px_auto]"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {collaborator.name}
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {collaborator.entries} rapporti · {formatHours(collaborator.hours)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Ore</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {formatHours(collaborator.hours)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Tariffa</p>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={
-                      collaboratorRateInputs[collaborator.employeeId] ??
-                      String(snapshot.defaultHourlyRate)
-                    }
-                    onChange={(event) =>
-                      handleCollaboratorRateChange(
-                        collaborator.employeeId,
-                        event.target.value,
-                      )
-                    }
-                    className="mt-1 text-right"
-                  />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Totale</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {formatSwissCurrency(collaborator.totalCost)}
-                  </p>
-                </div>
-                <div className="flex items-end justify-end">
+            <div className="space-y-2.5">
+              {snapshot.collaborators.map((collaborator) => (
+                <div
+                  key={collaborator.employeeId}
+                  className="grid gap-2 rounded-lg border border-white/80 bg-white/90 px-3 py-2.5 shadow-sm dark:border-slate-700 dark:bg-slate-900/70 md:grid-cols-[minmax(0,1fr)_170px_120px_auto] md:items-center"
+                >
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                      style={{ backgroundColor: collaborator.color || "#6366f1" }}
+                    >
+                      {buildInitials(collaborator.name)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {collaborator.name}
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {collaborator.entries} rapporti
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Tariffa</p>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={
+                        collaboratorRateInputs[collaborator.employeeId] ??
+                        String(snapshot.defaultHourlyRate)
+                      }
+                      onChange={(event) =>
+                        handleCollaboratorRateChange(
+                          collaborator.employeeId,
+                          event.target.value,
+                        )
+                      }
+                      className="mt-1 h-9 text-right"
+                    />
+                  </div>
+                  <div className="md:text-right">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">Totale ore</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {formatHours(collaborator.hours)}
+                    </p>
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
+                    className="justify-self-start md:justify-self-end"
                     onClick={() => handleResetRate(collaborator.employeeId)}
                     disabled={!collaborator.usesCustomRate}
                   >
@@ -368,8 +358,8 @@ export function ProjectConsuntivoSummary({
                     Usa base
                   </Button>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
             <p className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
               Nessun rapporto ore registrato per questo progetto.

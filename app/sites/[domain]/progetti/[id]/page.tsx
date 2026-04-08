@@ -6,12 +6,12 @@ import { logger } from "@/lib/logger";
 import { requireServerSiteContext, fetchProjectFiles } from "@/lib/server-data";
 import { ProjectDocuments } from "@/components/project/project-documents";
 import { ProjectConsuntivoSummary } from "@/components/project/ProjectConsuntivoSummary";
+import { ProjectStatusPanel } from "@/components/project/ProjectStatusPanel";
 import { buildCollaboratorTimeSummaries } from "@/lib/project-consuntivo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
-  Calendar,
   CheckCircle2,
   CircleDashed,
   ClipboardList,
@@ -53,6 +53,11 @@ function formatCompactCurrency(value?: number | null): string {
     return `${(safeValue / 1000).toFixed(1)}K CHF`;
   }
   return formatCurrency(safeValue);
+}
+
+function isImageFilename(name?: string | null): boolean {
+  if (!name) return false;
+  return /\.(png|jpe?g|webp|gif|svg)$/i.test(name);
 }
 
 function getControlStatusMeta(status?: string | null): {
@@ -171,7 +176,7 @@ async function getData(id: number, siteId: string): Promise<any> {
         totalTime,
         created_at,
         description,
-        user:employee_id(id, given_name, family_name, picture)
+        user:employee_id(id, given_name, family_name, picture, initials, color)
       `
       )
       .eq("site_id", siteId)
@@ -288,6 +293,37 @@ export default async function Page({
     }
     return "-";
   })();
+  const projectImageUrl =
+    (files || []).find((file: any) => isImageFilename(file?.name))?.url || null;
+  const projectProductLabels = (() => {
+    const labels = new Set<string>();
+    const offerProducts = Array.isArray(data.offer_products) ? data.offer_products : [];
+    offerProducts.forEach((line: any) => {
+      const row = line && typeof line === "object" ? line : null;
+      if (!row) return;
+      const resolvedName =
+        row.productName ||
+        row.product_name ||
+        row.name ||
+        row.sellProductName ||
+        row?.product?.name ||
+        row?.sellProduct?.name ||
+        null;
+      const resolvedType =
+        row.productType ||
+        row.product_type ||
+        row.type ||
+        row?.product?.type ||
+        row?.sellProduct?.type ||
+        null;
+      const label = [resolvedName, resolvedType].filter(Boolean).join(" ").trim();
+      if (label) labels.add(label);
+    });
+    if (labels.size === 0 && productName) {
+      labels.add([productName, productType].filter(Boolean).join(" ").trim());
+    }
+    return Array.from(labels);
+  })();
 
   const taskSuppliers = data.taskSuppliers || [];
   const timeEntries = data.timeEntries || [];
@@ -356,9 +392,18 @@ export default async function Page({
             borderLeftColor: borderColor,
           }}
         >
-          <div className="p-5 lg:p-6 space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_320px]">
-              <div className="space-y-5">
+          <div className="absolute left-0 right-0 top-0 h-1 bg-slate-200/80 dark:bg-slate-700/80">
+            <div
+              style={{ width: `${percentStatus}%` }}
+              className="h-full bg-green-500 transition-all duration-300"
+            />
+          </div>
+          <div className="absolute right-4 top-1.5 z-10 text-xs font-semibold text-slate-200">
+            {percentStatus}%
+          </div>
+          <div className="p-5 lg:p-6 space-y-5">
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_320px]">
+              <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4 dark:border-slate-700">
                   <Badge
                     variant={data.archived ? "secondary" : "default"}
@@ -404,29 +449,51 @@ export default async function Page({
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Cliente
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className={`${metricPanelClass} sm:col-span-2`}>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Dati progetto
                     </p>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-                      {clientName}
-                    </h1>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Commessa / oggetto
-                    </p>
-                    <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                      {data.name || data.title || "-"}
-                    </p>
-                  </div>
-                  {data.luogo && (
-                    <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                      <MapPin className="h-4 w-4 shrink-0" />
-                      <span>{data.luogo}</span>
+                    <div className="mt-2 space-y-2">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Cliente
+                        </p>
+                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                          {clientName}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Commessa / oggetto
+                        </p>
+                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                          {data.name || data.title || "-"}
+                        </p>
+                      </div>
+                      {data.luogo && (
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                          <MapPin className="h-4 w-4 shrink-0" />
+                          <span>{data.luogo}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div className="rounded-xl border border-border/80 bg-card/95 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
+                    <div className="h-[148px] overflow-hidden rounded-lg border border-border/70 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60">
+                      {projectImageUrl ? (
+                        <img
+                          src={projectImageUrl}
+                          alt={`Progetto ${data.unique_code || id}`}
+                          className="h-full w-full object-cover object-center"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                          Nessuna immagine progetto caricata
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -437,6 +504,14 @@ export default async function Page({
                     <span className="mt-2 block text-2xl font-bold text-slate-900 dark:text-slate-100">
                       {piecesDisplay}
                     </span>
+                    {projectProductLabels.length > 0 && (
+                      <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                        {projectProductLabels.slice(0, 3).join(" · ")}
+                        {projectProductLabels.length > 3
+                          ? ` +${projectProductLabels.length - 3}`
+                          : ""}
+                      </p>
+                    )}
                   </div>
                   <div className={metricPanelClass}>
                     <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -457,93 +532,21 @@ export default async function Page({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-background p-4 dark:border-slate-700 dark:bg-slate-800/60">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Consegna
-                    </span>
-                    {weekNumber && (
-                      <span className="rounded-full bg-card px-2.5 py-1 text-[11px] font-semibold text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-200">
-                        S.{weekNumber}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-3 flex items-center gap-3">
-                    <div className="rounded-full bg-card p-2 shadow-sm dark:bg-slate-900">
-                      <Calendar className="h-5 w-5 text-slate-500 dark:text-slate-300" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {isValidDelivery
-                          ? deliveryDate.toLocaleDateString("it-IT")
-                          : "Data non definita"}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Data pianificata del progetto
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Avanzamento
-                    </span>
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                      {percentStatus}%
-                    </span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                    <div
-                      style={{ width: `${percentStatus}%` }}
-                      className="h-full rounded-full bg-green-500 transition-all duration-300"
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                    Progresso combinato di stato commessa e materiali lavorati.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <div className={subtlePanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Creato
-                    </span>
-                    <span className="mt-2 block text-sm font-semibold text-slate-900 dark:text-slate-100" suppressHydrationWarning>
-                      {created.toLocaleDateString("it-IT")}
-                    </span>
-                  </div>
-                  <div className={subtlePanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Aggiornato
-                    </span>
-                    <span className="mt-2 block text-sm font-semibold text-slate-900 dark:text-slate-100" suppressHydrationWarning>
-                      {update.toLocaleDateString("it-IT")}
-                    </span>
-                  </div>
-                  <div className={subtlePanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Materiale
-                    </span>
-                    <span className="mt-2 block text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {data.material ? "Sì" : "No"}
-                    </span>
-                  </div>
-                  <div className={subtlePanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Kanban
-                    </span>
-                    <span className="mt-2 block text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {data.kanban?.title || "-"}
-                    </span>
-                  </div>
-                </div>
+              <div className="xl:pt-[104px]">
+                <ProjectStatusPanel
+                  taskId={id}
+                  domain={domain}
+                  deliveryDateValue={isValidDelivery ? deliveryDate.toISOString() : null}
+                  weekNumber={weekNumber}
+                  createdAtLabel={created.toLocaleDateString("it-IT")}
+                  updatedAtLabel={update.toLocaleDateString("it-IT")}
+                  hasMaterial={Boolean(data.material)}
+                  kanbanTitle={data.kanban?.title || null}
+                />
               </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,0.95fr)_minmax(0,0.85fr)]">
               <ProjectConsuntivoSummary
                 domain={domain}
                 taskId={id}
@@ -561,7 +564,7 @@ export default async function Page({
                 }
               />
 
-              <div className="rounded-2xl border border-border bg-background/90 p-5 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="rounded-2xl border border-border bg-background/90 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                 <div className="flex items-center gap-2 mb-3">
                   <ClipboardList className="h-4 w-4 text-slate-400" />
                   <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">

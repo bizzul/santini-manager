@@ -3,6 +3,7 @@ export const DEFAULT_PROJECT_HOURLY_RATE = 65;
 export interface CollaboratorTimeSummary {
   employeeId: string;
   name: string;
+  color?: string | null;
   hours: number;
   entries: number;
 }
@@ -125,10 +126,12 @@ export function buildCollaboratorTimeSummaries(
       id?: string | number | null;
       given_name?: string | null;
       family_name?: string | null;
+      color?: string | null;
     } | Array<{
       id?: string | number | null;
       given_name?: string | null;
       family_name?: string | null;
+      color?: string | null;
     }> | null;
     totalTime?: unknown;
     hours?: unknown;
@@ -150,10 +153,14 @@ export function buildCollaboratorTimeSummaries(
     const current = map.get(employeeId) || {
       employeeId,
       name,
+      color: rawUser?.color || null,
       hours: 0,
       entries: 0,
     };
 
+    if (!current.color && rawUser?.color) {
+      current.color = rawUser.color;
+    }
     current.hours += getEntryHours(entry);
     current.entries += 1;
     map.set(employeeId, current);

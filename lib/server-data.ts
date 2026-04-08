@@ -632,6 +632,7 @@ export const fetchKanbanWithTasks = cache(
             packingResult,
             historyResult,
             taskSuppliersResult,
+            timetrackingResult,
         ] = await Promise.all([
             supabase.from("File").select("*").in("taskId", taskIds),
             supabase.from("QualityControl").select("*").in("taskId", taskIds),
@@ -644,12 +645,18 @@ export const fetchKanbanWithTasks = cache(
                 .from("TaskSupplier")
                 .select("*, supplier:Supplier(*)")
                 .in("taskId", taskIds),
+            supabase
+                .from("Timetracking")
+                .select("task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
+                .eq("site_id", siteId)
+                .in("task_id", taskIds),
         ]);
 
         const files = filesResult.data || [];
         const qc = qcResult.data || [];
         const packing = packingResult.data || [];
         const taskSuppliers = taskSuppliersResult.data || [];
+        const timetracking = timetrackingResult.data || [];
         const taskIdSet = new Set(taskIds);
         const history = (historyResult.data || []).filter((action) =>
             taskIdSet.has(action.taskId ?? action.task_id),
@@ -689,17 +696,151 @@ export const fetchKanbanWithTasks = cache(
             suppliersByTask.set(item.taskId, arr);
         });
 
-        const tasksWithRelations = tasks.map((task) => ({
-            ...task,
-            column: columnMap.get(task.kanbanColumnId),
-            client: clientMap.get(task.clientId),
-            kanban,
-            sellProduct: productMap.get(task.sellProductId),
-            files: filesByTask.get(task.id) || [],
-            taskSuppliers: suppliersByTask.get(task.id) || [],
-            QualityControl: qcByTask.get(task.id) || [],
-            PackingControl: packingByTask.get(task.id) || [],
-        }));
+        const activeEntriesByTask = new Map<number, typeof timetracking>();
+        const allEntriesByTask = new Map<number, typeof timetracking>();
+        const trackedUserIds = new Set<string>();
+
+        timetracking.forEach((entry) => {
+            const taskId = Number(entry.task_id);
+            if (!Number.isFinite(taskId)) return;
+
+            const allArr = allEntriesByTask.get(taskId) || [];
+            allArr.push(entry);
+            allEntriesByTask.set(taskId, allArr);
+
+            if (!entry.end_time) {
+                const activeArr = activeEntriesByTask.get(taskId) || [];
+                activeArr.push(entry);
+                activeEntriesByTask.set(taskId, activeArr);
+            }
+
+            const trackedUserId = entry.user_id || entry.employee_id;
+            if (trackedUserId) {
+                trackedUserIds.add(String(trackedUserId));
+            }
+        });
+
+        const userProfilesResult =
+            trackedUserIds.size > 0
+                ? await supabase
+                    .from("User")
+                    .select("id, given_name, family_name, initials, picture, email")
+                    .in("id", Array.from(trackedUserIds))
+                : { data: [], error: null };
+
+        if (userProfilesResult.error) {
+            log.warn("Error fetching kanban collaborators:", userProfilesResult.error);
+        }
+
+        const userProfiles = userProfilesResult.data || [];
+        const userProfileMap = new Map(userProfiles.map((user) => [String(user.id), user]));
+
+        const resolveEntryHours = (entry: { totalTime?: unknown; hours?: unknown; minutes?: unknown }) => {
+            const totalTime = Number(entry.totalTime);
+            if (Number.isFinite(totalTime) && totalTime > 0) {
+                return totalTime;
+            }
+            const hours = Number(entry.hours || 0);
+            const minutes = Number(entry.minutes || 0);
+            return (Number.isFinite(hours) ? hours : 0) + (Number.isFinite(minutes) ? minutes : 0) / 60;
+        };
+
+        const deriveInitials = (fullName: string) => {
+            const parts = fullName
+                .split(" ")
+                .map((part) => part.trim())
+                .filter(Boolean)
+                .slice(0, 2);
+            if (parts.length === 0) return "CL";
+            return parts.map((part) => part.charAt(0).toUpperCase()).join("");
+        };
+
+        const tasksWithRelations = tasks.map((task) => {
+            const activeEntries = activeEntriesByTask.get(task.id) || [];
+            const allEntries = allEntriesByTask.get(task.id) || [];
+
+            const activeCollaborators = Array.from(
+                new Set(
+                    activeEntries
+                        .map((entry) => String(entry.user_id || entry.employee_id || ""))
+                        .filter(Boolean),
+                ),
+            )
+                .map((userId) => {
+                    const profile = userProfileMap.get(userId);
+                    if (!profile) return null;
+                    const fullName = `${profile.family_name || ""} ${profile.given_name || ""}`
+                        .trim()
+                        .replace(/\s+/g, " ");
+                    const resolvedName = fullName || profile.email || "Collaboratore";
+                    return {
+                        id: profile.id,
+                        fullName: resolvedName,
+                        initials: profile.initials || deriveInitials(resolvedName),
+                        picture: profile.picture || null,
+                        email: profile.email || "",
+                    };
+                })
+                .filter(Boolean);
+
+            const collaboratorTotals = new Map<
+                string,
+                {
+                    id: string;
+                    name: string;
+                    initials: string;
+                    picture: string | null;
+                    hours: number;
+                    entries: number;
+                }
+            >();
+
+            allEntries.forEach((entry) => {
+                const userId = String(entry.user_id || entry.employee_id || "");
+                if (!userId) return;
+                const profile = userProfileMap.get(userId);
+                const fullName = `${profile?.family_name || ""} ${profile?.given_name || ""}`
+                    .trim()
+                    .replace(/\s+/g, " ");
+                const resolvedName = fullName || profile?.email || "Collaboratore";
+
+                const current = collaboratorTotals.get(userId) || {
+                    id: userId,
+                    name: resolvedName,
+                    initials: profile?.initials || deriveInitials(resolvedName),
+                    picture: profile?.picture || null,
+                    hours: 0,
+                    entries: 0,
+                };
+
+                current.hours += resolveEntryHours(entry);
+                current.entries += 1;
+                collaboratorTotals.set(userId, current);
+            });
+
+            const collaboratorTimeSummaries = Array.from(collaboratorTotals.values())
+                .map((summary) => ({
+                    ...summary,
+                    hours: Math.round((summary.hours + Number.EPSILON) * 100) / 100,
+                }))
+                .sort((a, b) => b.hours - a.hours);
+
+            return {
+                ...task,
+                column: columnMap.get(task.kanbanColumnId),
+                client: clientMap.get(task.clientId),
+                kanban,
+                sellProduct: productMap.get(task.sellProductId),
+                files: filesByTask.get(task.id) || [],
+                taskSuppliers: suppliersByTask.get(task.id) || [],
+                QualityControl: qcByTask.get(task.id) || [],
+                PackingControl: packingByTask.get(task.id) || [],
+                activeMachinesCount: activeEntries.filter((entry) => entry.use_cnc === true)
+                    .length,
+                activeCollaborators,
+                collaboratorTimeSummaries,
+            };
+        });
 
         return {
             kanbans: [kanban],
