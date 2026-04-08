@@ -508,7 +508,7 @@ export default function Card({
     productImageUrl,
     projectImageUrl,
   ]);
-  const cardImageUrl = cardImage.imageUrl;
+  const cardImageUrl = cardImage.imageUrl || "/placeholders/default.svg";
   const showCoverSourceBadge = process.env.NODE_ENV !== "production";
 
   // Determina il colore del bordo sinistro in base allo stato

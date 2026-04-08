@@ -728,7 +728,8 @@ const EditTaskKanban = ({
     selectedProjectProduct?.name,
     selectedProjectProduct?.type,
   ]);
-  const productImagePreviewUrl = productImagePreview.imageUrl;
+  const productImagePreviewUrl =
+    productImagePreview.imageUrl || "/placeholders/default.svg";
   const hasPendingProductImageChanges =
     productImageDraftUrl !== null && productImageDraftUrl !== currentProductImageUrl;
   const projectImagePreview = useMemo(
@@ -755,7 +756,8 @@ const EditTaskKanban = ({
       selectedProjectProduct?.type,
     ]
   );
-  const projectImagePreviewUrl = projectImagePreview.imageUrl;
+  const projectImagePreviewUrl =
+    projectImagePreview.imageUrl || "/placeholders/default.svg";
   const showCoverSourceBadge = process.env.NODE_ENV !== "production";
 
   useEffect(() => {

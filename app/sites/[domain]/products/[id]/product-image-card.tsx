@@ -39,7 +39,7 @@ export function ProductImageCard({
       }),
     [draftImageUrl, productName, savedImageUrl],
   );
-  const previewImageUrl = previewImage.imageUrl;
+  const previewImageUrl = previewImage.imageUrl || "/placeholders/default.svg";
   const showCoverSourceBadge = process.env.NODE_ENV !== "production";
   const hasPendingChanges = draftImageUrl !== null && draftImageUrl !== savedImageUrl;
 
