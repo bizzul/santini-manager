@@ -5,6 +5,54 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
+const DELETE_BATCH_SIZE = 200;
+const MAX_BATCH_LOOPS = 200;
+
+async function deleteTaskHistoryInBatches(supabase: any, taskId: number) {
+  let loopCount = 0;
+
+  while (loopCount < MAX_BATCH_LOOPS) {
+    const { data: historyBatch, error: historyBatchError } = await supabase
+      .from("TaskHistory")
+      .select("id")
+      .eq("taskId", taskId)
+      .order("id", { ascending: true })
+      .limit(DELETE_BATCH_SIZE);
+
+    if (historyBatchError) {
+      return {
+        error: true,
+        message: `Errore nel recupero storico task: ${historyBatchError.message}`,
+      };
+    }
+
+    if (!historyBatch || historyBatch.length === 0) {
+      return { error: false };
+    }
+
+    const batchIds = historyBatch.map((item: { id: number }) => item.id);
+    const { error: batchDeleteError } = await supabase
+      .from("TaskHistory")
+      .delete()
+      .in("id", batchIds);
+
+    if (batchDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione storico task: ${batchDeleteError.message}`,
+      };
+    }
+
+    loopCount += 1;
+  }
+
+  return {
+    error: true,
+    message:
+      "Errore nella cancellazione storico task: raggiunto limite massimo di batch.",
+  };
+}
+
 export const removeItem = async (id: number, domain?: string) => {
   try {
     const supabase = await createClient();
@@ -53,29 +101,135 @@ export const removeItem = async (id: number, domain?: string) => {
       }
     }
 
-    // Delete TaskHistory records first
-    const { data: taskHistory, error: taskHistoryError } = await supabase
-      .from("TaskHistory")
-      .select("*")
-      .eq("taskId", id);
-    if (taskHistory && taskHistory.length > 0) {
-      await supabase.from("TaskHistory").delete().eq("taskId", id);
-    }
-
-    const { data: qc, error: qcError } = await supabase
-      .from("QualityControl")
-      .select("*")
-      .eq("taskId", id);
-    if (qc && qc.length > 0) {
-      await supabase.from("QualityControl").delete().eq("taskId", id);
-    }
-
-    const { data: boxing, error: boxingError } = await supabase
+    // Delete related entities before deleting Task (order matters for FK constraints)
+    const { data: packingControls, error: packingControlsError } = await supabase
       .from("PackingControl")
-      .select("*")
+      .select("id")
       .eq("taskId", id);
-    if (boxing && boxing.length > 0) {
-      await supabase.from("PackingControl").delete().eq("taskId", id);
+    if (packingControlsError) {
+      return {
+        error: true,
+        message: `Errore nel recupero packing controls: ${packingControlsError.message}`,
+      };
+    }
+    const packingControlIds = (packingControls || []).map((item) => item.id);
+    if (packingControlIds.length > 0) {
+      const { error: packingItemsDeleteError } = await supabase
+        .from("PackingItem")
+        .delete()
+        .in("packingControlId", packingControlIds);
+      if (packingItemsDeleteError) {
+        return {
+          error: true,
+          message: `Errore nella cancellazione packing items: ${packingItemsDeleteError.message}`,
+        };
+      }
+    }
+
+    const { data: qualityControls, error: qualityControlsError } = await supabase
+      .from("QualityControl")
+      .select("id")
+      .eq("taskId", id);
+    if (qualityControlsError) {
+      return {
+        error: true,
+        message: `Errore nel recupero quality controls: ${qualityControlsError.message}`,
+      };
+    }
+    const qualityControlIds = (qualityControls || []).map((item) => item.id);
+    if (qualityControlIds.length > 0) {
+      const { error: qcItemsDeleteError } = await supabase
+        .from("Qc_item")
+        .delete()
+        .in("qualityControlId", qualityControlIds);
+      if (qcItemsDeleteError) {
+        return {
+          error: true,
+          message: `Errore nella cancellazione QC items: ${qcItemsDeleteError.message}`,
+        };
+      }
+    }
+
+    const { error: timetrackingDeleteError } = await supabase
+      .from("Timetracking")
+      .delete()
+      .eq("task_id", id);
+    if (timetrackingDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione timetracking: ${timetrackingDeleteError.message}`,
+      };
+    }
+
+    const taskHistoryDeleteResult = await deleteTaskHistoryInBatches(supabase, id);
+    if (taskHistoryDeleteResult.error) {
+      return taskHistoryDeleteResult;
+    }
+
+    const { error: taskSupplierDeleteError } = await supabase
+      .from("TaskSupplier")
+      .delete()
+      .eq("taskId", id);
+    if (taskSupplierDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione fornitori task: ${taskSupplierDeleteError.message}`,
+      };
+    }
+
+    const { error: filesDeleteError } = await supabase
+      .from("File")
+      .delete()
+      .eq("taskId", id);
+    if (filesDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione file task: ${filesDeleteError.message}`,
+      };
+    }
+
+    const { error: actionDeleteError } = await supabase
+      .from("Action")
+      .delete()
+      .eq("taskId", id);
+    if (actionDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione azioni task: ${actionDeleteError.message}`,
+      };
+    }
+
+    const { error: errorTrackingDeleteError } = await supabase
+      .from("Errortracking")
+      .delete()
+      .eq("task_id", id);
+    if (errorTrackingDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione error tracking: ${errorTrackingDeleteError.message}`,
+      };
+    }
+
+    const { error: qcDeleteError } = await supabase
+      .from("QualityControl")
+      .delete()
+      .eq("taskId", id);
+    if (qcDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione quality controls: ${qcDeleteError.message}`,
+      };
+    }
+
+    const { error: packingDeleteError } = await supabase
+      .from("PackingControl")
+      .delete()
+      .eq("taskId", id);
+    if (packingDeleteError) {
+      return {
+        error: true,
+        message: `Errore nella cancellazione packing controls: ${packingDeleteError.message}`,
+      };
     }
 
     // Delete the main task
@@ -116,6 +270,6 @@ export const removeItem = async (id: number, domain?: string) => {
     }
     return revalidatePath("/projects");
   } catch (e) {
-    return { message: `Failed to delete item: ${e}` };
+    return { error: true, message: `Failed to delete item: ${e}` };
   }
 };

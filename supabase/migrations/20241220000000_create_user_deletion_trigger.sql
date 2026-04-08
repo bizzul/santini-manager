@@ -7,7 +7,7 @@ BEGIN
     DELETE FROM "User" WHERE "authId" = OLD.id;
   EXCEPTION WHEN undefined_table THEN
     BEGIN
-      DELETE FROM User WHERE "authId" = OLD.id;
+      DELETE FROM "user" WHERE "authId" = OLD.id;
     EXCEPTION WHEN undefined_table THEN
       -- Table doesn't exist, skip this deletion
       NULL;

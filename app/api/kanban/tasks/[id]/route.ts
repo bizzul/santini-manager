@@ -73,18 +73,7 @@ export async function GET(
 
     let timetrackingQuery = supabase
       .from("Timetracking")
-      .select(
-        `
-        id,
-        task_id,
-        user_id,
-        employee_id,
-        totalTime,
-        hours,
-        minutes,
-        user:employee_id(id, given_name, family_name, picture, initials, color)
-      `,
-      )
+      .select("id, task_id, user_id, employee_id, totalTime, hours, minutes")
       .eq("task_id", Number(taskId));
 
     if (siteId) {
@@ -106,6 +95,31 @@ export async function GET(
     if (filesError) throw filesError;
     if (timetrackingError) throw timetrackingError;
 
+    const trackedUserIds = Array.from(
+      new Set(
+        (timetracking || [])
+          .map((entry: any) => entry.employee_id || entry.user_id)
+          .filter(Boolean)
+          .map((value: string | number) => String(value)),
+      ),
+    );
+
+    const userProfilesResult =
+      trackedUserIds.length > 0
+        ? await supabase
+            .from("User")
+            .select("id, given_name, family_name, picture, initials, color, email")
+            .in("id", trackedUserIds)
+        : { data: [], error: null };
+
+    if (userProfilesResult.error) {
+      throw userProfilesResult.error;
+    }
+
+    const userProfileMap = new Map(
+      (userProfilesResult.data || []).map((profile: any) => [String(profile.id), profile]),
+    );
+
     const collaboratorMap = (timetracking || []).reduce<
       Map<
         string,
@@ -120,12 +134,13 @@ export async function GET(
         }
       >
     >((map, entry: any) => {
-      const rawUser = Array.isArray(entry.user) ? entry.user[0] : entry.user;
-      const collaboratorId = String(entry.employee_id || entry.user_id || rawUser?.id || "");
+      const collaboratorId = String(entry.employee_id || entry.user_id || "");
       if (!collaboratorId) return map;
+      const rawUser = userProfileMap.get(collaboratorId);
 
       const fullName =
         `${rawUser?.given_name || ""} ${rawUser?.family_name || ""}`.trim() ||
+        rawUser?.email ||
         "Collaboratore";
       const current = map.get(collaboratorId) || {
         id: collaboratorId,

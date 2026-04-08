@@ -455,15 +455,11 @@ const EditTaskKanban = ({
     initializeForm();
     setIsLoading(false);
 
-    const needsTaskRefresh =
-      !Array.isArray(resource.files) ||
-      resource.offer_products === undefined;
-
     void Promise.allSettled([
       getClients(),
       getProducts(),
       getKanbans(),
-      needsTaskRefresh ? loadTaskDetails() : Promise.resolve(),
+      loadTaskDetails(),
     ]);
   }, [resource, form.setValue, siteId, siteIdError, domain, loadTaskDetails]);
 

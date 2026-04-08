@@ -53,7 +53,7 @@ BEGIN
     WHEN undefined_table THEN
       BEGIN
         -- Try unquoted name
-        DELETE FROM User WHERE "authId" = OLD.id;
+        DELETE FROM "user" WHERE "authId" = OLD.id;
         RAISE NOTICE 'Deleted from User table';
       EXCEPTION 
         WHEN undefined_table THEN
