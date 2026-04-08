@@ -345,6 +345,15 @@ export interface Kanban {
     // Opzione per colorare le card in base alla categoria prodotto
     show_category_colors?: boolean;
     showCategoryColors?: boolean; // Alternative property name
+    // Configurazione campi card (versione estesa/ridotta)
+    card_field_config?: {
+        normal?: Record<string, boolean>;
+        small?: Record<string, boolean>;
+    } | null;
+    cardFieldConfig?: {
+        normal?: Record<string, boolean>;
+        small?: Record<string, boolean>;
+    } | null; // Alternative property name
     created_at?: string;
     updated_at?: string;
 }

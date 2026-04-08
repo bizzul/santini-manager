@@ -48,6 +48,7 @@ import { saveState } from "@/app/sites/[domain]/kanban/actions/save-kanban-state
 import TimelineClient from "./TimelineClient";
 import KanbanManagementModal from "./KanbanManagementModal";
 import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
+import { saveKanbanCardConfig } from "@/app/sites/[domain]/kanban/actions/save-kanban-card-config.action";
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { Input } from "../ui/input";
@@ -107,6 +108,33 @@ const getTaskCategoryIds = (task: any): number[] => {
   }
 
   return Array.from(ids);
+};
+
+const normalizeCardFieldConfig = (
+  rawConfig: unknown
+): CardFieldConfig => {
+  const config = (rawConfig ?? {}) as Partial<
+    Record<CardDisplayMode, Partial<Record<CardDisplayField, unknown>>>
+  >;
+
+  return {
+    normal: {
+      ...DEFAULT_CARD_FIELD_CONFIG.normal,
+      ...Object.fromEntries(
+        Object.entries(config.normal || {}).filter(
+          ([, value]) => typeof value === "boolean"
+        )
+      ),
+    },
+    small: {
+      ...DEFAULT_CARD_FIELD_CONFIG.small,
+      ...Object.fromEntries(
+        Object.entries(config.small || {}).filter(
+          ([, value]) => typeof value === "boolean"
+        )
+      ),
+    },
+  };
 };
 
 const Column = ({
@@ -499,8 +527,10 @@ function KanbanBoard({
   });
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
-  const [cardFieldConfig, setCardFieldConfig] = useState<CardFieldConfig>(
-    DEFAULT_CARD_FIELD_CONFIG
+  const [cardFieldConfig, setCardFieldConfig] = useState<CardFieldConfig>(() =>
+    normalizeCardFieldConfig(
+      kanban?.card_field_config || kanban?.cardFieldConfig || DEFAULT_CARD_FIELD_CONFIG
+    )
   );
   const [isCardConfigDialogOpen, setIsCardConfigDialogOpen] = useState(false);
   const [draftCardFieldConfig, setDraftCardFieldConfig] =
@@ -1002,34 +1032,30 @@ function KanbanBoard({
   useEffect(() => {
     const key = kanban?.id ? `kanban-card-fields-${kanban.id}` : null;
     cardFieldStorageKey.current = key;
+
+    const serverConfig = normalizeCardFieldConfig(
+      kanban?.card_field_config || kanban?.cardFieldConfig || DEFAULT_CARD_FIELD_CONFIG
+    );
+
     if (!key) {
-      setCardFieldConfig(DEFAULT_CARD_FIELD_CONFIG);
+      setCardFieldConfig(serverConfig);
       return;
     }
 
     try {
       const savedConfig = localStorage.getItem(key);
       if (!savedConfig) {
-        setCardFieldConfig(DEFAULT_CARD_FIELD_CONFIG);
+        setCardFieldConfig(serverConfig);
         return;
       }
 
       const parsed = JSON.parse(savedConfig);
-      setCardFieldConfig({
-        normal: {
-          ...DEFAULT_CARD_FIELD_CONFIG.normal,
-          ...(parsed?.normal || {}),
-        },
-        small: {
-          ...DEFAULT_CARD_FIELD_CONFIG.small,
-          ...(parsed?.small || {}),
-        },
-      });
+      setCardFieldConfig(normalizeCardFieldConfig(parsed));
     } catch (error) {
       logger.warn("Error loading card field config:", error);
-      setCardFieldConfig(DEFAULT_CARD_FIELD_CONFIG);
+      setCardFieldConfig(serverConfig);
     }
-  }, [kanban?.id]);
+  }, [kanban?.id, kanban?.card_field_config, kanban?.cardFieldConfig]);
 
   const toggleCardField = useCallback(
     (mode: CardDisplayMode, field: CardDisplayField) => {
@@ -1052,21 +1078,35 @@ function KanbanBoard({
     setIsCardConfigDialogOpen(true);
   }, [cardFieldConfig]);
 
-  const saveCardConfig = useCallback(() => {
-    setCardFieldConfig(draftCardFieldConfig);
+  const saveCardConfig = useCallback(async () => {
+    const normalizedConfig = normalizeCardFieldConfig(draftCardFieldConfig);
+    setCardFieldConfig(normalizedConfig);
     const key = cardFieldStorageKey.current;
     if (key) {
       try {
-        localStorage.setItem(key, JSON.stringify(draftCardFieldConfig));
+        localStorage.setItem(key, JSON.stringify(normalizedConfig));
       } catch (error) {
         logger.warn("Error saving card field config:", error);
       }
     }
+
+    if (kanban?.id) {
+      const result = await saveKanbanCardConfig(kanban.id, normalizedConfig, domain);
+      if (!result.success) {
+        toast({
+          variant: "destructive",
+          description:
+            "Configurazione salvata solo in locale. Errore sync online: " +
+            (result.error || "sconosciuto"),
+        });
+      }
+    }
+
     setIsCardConfigDialogOpen(false);
     toast({
       description: "Preferenze card progetto salvate.",
     });
-  }, [draftCardFieldConfig, toast]);
+  }, [draftCardFieldConfig, toast, kanban?.id, domain]);
 
   const handleSaveKanban = async (kanbanData: any) => {
     try {
@@ -1439,10 +1479,11 @@ function KanbanBoard({
                   <button
                     type="button"
                     onClick={openCardConfigDialog}
-                    title="Configura campi card progetto (admin)"
-                    className="sticky right-0 top-0 z-10 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    title="Configura campi card progetto"
+                    className="sticky right-0 top-0 z-10 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-amber-400/70 bg-amber-500/15 px-2.5 text-amber-300 transition-colors hover:bg-amber-500/25"
                   >
                     <Settings2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">Card</span>
                   </button>
                 </div>
               </div>

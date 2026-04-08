@@ -72,6 +72,7 @@ export async function duplicateKanban(kanbanId: number, domain?: string) {
         is_production_kanban: kanban.is_production_kanban || false,
         target_invoice_kanban_id: kanban.target_invoice_kanban_id || null,
         show_category_colors: kanban.show_category_colors || false,
+        card_field_config: kanban.card_field_config || null,
       })
       .select()
       .single();
