@@ -79,7 +79,7 @@ export async function createItem(props: any, domain?: string) {
         mobilePhone: result.data?.phone,
         landlinePhone: result.data?.phone,
         zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
-        clientLanguage: result.data?.clientLanguage,
+        clientLanguage: result.data?.clientLanguage?.trim() || "Italiano",
         contactPeople: normalizeClientContactPeople(result.data?.contactPeople),
         code: generatedCode,
       };

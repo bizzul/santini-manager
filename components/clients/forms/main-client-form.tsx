@@ -85,6 +85,7 @@ export const MainClientForm: FC<MainClientFormProps> = ({
         />
 
         <FormField
+          control={form.control}
           name="clientLanguage"
           render={({ field }) => (
             <FormItem>

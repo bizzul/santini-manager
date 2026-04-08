@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
             mobilePhone: result.data.phone || "",
             landlinePhone: result.data.phone || "",
             zipCode: result.data.zipCode,
-            clientLanguage: result.data.clientLanguage || "",
+            clientLanguage: result.data.clientLanguage?.trim() || "Italiano",
             contactPeople: normalizeClientContactPeople(result.data.contactPeople),
             clientType,
             code: generatedCode,

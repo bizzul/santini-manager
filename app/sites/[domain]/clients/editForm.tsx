@@ -36,7 +36,7 @@ const EditClientForm = ({ handleClose, data }: Props) => {
       individualTitle: data.individualTitle || "",
       individualFirstName: data.individualFirstName || "",
       individualLastName: data.individualLastName || "",
-      clientLanguage: data.clientLanguage || "",
+      clientLanguage: data.clientLanguage || "Italiano",
       email: data.email || "",
       phone: data.mobilePhone || "",
       contactPeople:

@@ -37,7 +37,7 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
       individualTitle: "",
       individualFirstName: "",
       individualLastName: "",
-      clientLanguage: "",
+      clientLanguage: "Italiano",
       email: "",
       phone: "",
       contactPeople: [getEmptyClientContactPerson()],
