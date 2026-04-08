@@ -60,7 +60,7 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
     defaultValues: {
       category: "",
       subcategory: "",
-      product_type: "",
+      tipo: "",
       name: "",
       description: "",
       supplier_id: undefined,
@@ -282,7 +282,7 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
         />
         <FormField
           control={form.control}
-          name="product_type"
+          name="tipo"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo</FormLabel>

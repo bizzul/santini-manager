@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
+import { logger } from "@/lib/logger";
 import {
   buildSellProductImportPlan,
   normalizeSellProductCategory,
@@ -11,6 +12,8 @@ import {
   type SellProductImportPlanEntry,
 } from "@/lib/sell-product-import";
 import { formatSellProductCode } from "@/lib/sell-product-code";
+
+const log = logger.scope("SellProductImportCsv");
 
 interface ImportResult {
   success: boolean;
@@ -183,10 +186,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data: existingProducts, error: existingProductsError } = await supabase
       .from("SellProduct")
-      .select("id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+      .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
       .eq("site_id", siteId);
 
     if (existingProductsError) {
+      log.error("Errore recupero prodotti esistenti per import", {
+        siteId,
+        mode,
+        categoryFilter,
+        error: existingProductsError,
+      });
       return NextResponse.json(
         { error: "Errore nel recupero dei prodotti esistenti" },
         { status: 500 },
@@ -327,6 +336,13 @@ export async function POST(request: NextRequest) {
         const payload = {
           name: entry.csvRow.name,
           type: entry.csvRow.subcategory || "",
+          subcategory: entry.csvRow.subcategory || "",
+          tipo: headers.includes("TIPO")
+            ? entry.csvRow.tipo || null
+            : targetRecord?.tipo || targetRecord?.product_type || null,
+          product_type: headers.includes("TIPO")
+            ? entry.csvRow.tipo || null
+            : targetRecord?.tipo || targetRecord?.product_type || null,
           description: entry.csvRow.description || null,
           price_list: entry.csvRow.price_list,
           image_url: entry.csvRow.image_url || null,
@@ -348,7 +364,7 @@ export async function POST(request: NextRequest) {
             })
             .eq("id", entry.targetId)
             .eq("site_id", siteId)
-            .select("id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+            .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
             .single();
 
           if (error || !updatedProduct) {
@@ -369,7 +385,7 @@ export async function POST(request: NextRequest) {
             ...payload,
             site_id: siteId,
           })
-          .select("id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+          .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
           .single();
 
         if (insertError || !insertedProduct) {
@@ -384,7 +400,7 @@ export async function POST(request: NextRequest) {
           .update({ internal_code: finalCode })
           .eq("id", insertedProduct.id)
           .eq("site_id", siteId)
-          .select("id, internal_code, name, type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
+          .select("id, internal_code, name, type, subcategory, tipo, product_type, description, price_list, image_url, doc_url, active, category:category_id(id, name)")
           .single();
 
         if (codeError || !insertedWithCode) {
@@ -397,6 +413,15 @@ export async function POST(request: NextRequest) {
         result.imported += 1;
         mutableProducts.set(insertedWithCode.id, insertedWithCode as SellProductImportExistingRecord);
       } catch (error) {
+        log.error("Errore applicazione riga import prodotti", {
+          siteId,
+          mode,
+          categoryFilter,
+          rowNumber: entry.rowNumber,
+          targetId: entry.targetId,
+          csvRow: entry.csvRow,
+          error,
+        });
         entry.action = "error";
         entry.reason =
           error instanceof Error ? error.message : "Errore durante l'applicazione";
@@ -417,9 +442,22 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    log.info("Import prodotti completato", {
+      siteId,
+      mode,
+      categoryFilter,
+      totalRows: result.totalRows,
+      imported: result.imported,
+      updated: result.updated,
+      deactivated: result.deactivated,
+      skipped: result.skipped,
+      errors: result.errors.length,
+    });
+
     result.success = result.errors.length === 0;
     return NextResponse.json(result);
   } catch (error) {
+    log.error("Errore fatale import prodotti", error);
     return NextResponse.json(
       {
         error: `Errore durante l'importazione: ${

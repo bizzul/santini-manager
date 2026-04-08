@@ -331,6 +331,10 @@ export const fetchSellProducts = cache(async (siteId: string) => {
 
     const normalizedProducts = products.map((product) => ({
         ...product,
+        subcategory: product.subcategory || product.type || "",
+        type: product.subcategory || product.type || "",
+        tipo: product.tipo || product.product_type || "",
+        product_type: product.tipo || product.product_type || "",
         category: Array.isArray(product.category)
             ? product.category[0]
             : product.category,

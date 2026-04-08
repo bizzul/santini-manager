@@ -41,6 +41,8 @@ export async function editSellProductAction(
   if (result.success) {
     try {
       const supabase = await createClient();
+      const resolvedSubcategory = formData.subcategory || formData.type || null;
+      const resolvedTipo = formData.tipo || formData.product_type || null;
       const { data: existingProduct } = await supabase
         .from("SellProduct")
         .select("id, internal_code")
@@ -64,9 +66,10 @@ export async function editSellProductAction(
 
       const updateData: any = {
         name: formData.name,
-        type: formData.subcategory || formData.type || null,
-        subcategory: formData.subcategory || formData.type || null,
-        product_type: formData.product_type || null,
+        type: resolvedSubcategory,
+        subcategory: resolvedSubcategory,
+        tipo: resolvedTipo,
+        product_type: resolvedTipo,
         description: formData.description || null,
         price_list: formData.price_list ?? false,
         image_url: formData.image_url || null,

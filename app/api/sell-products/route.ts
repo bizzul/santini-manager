@@ -106,11 +106,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        const resolvedSubcategory = result.data.subcategory || result.data.type || null;
+        const resolvedTipo = result.data.tipo || result.data.product_type || null;
+
         const insertData = {
             name: result.data.name,
-            type: result.data.subcategory || result.data.type || null,
-            subcategory: result.data.subcategory || result.data.type || null,
-            product_type: result.data.product_type || null,
+            type: resolvedSubcategory,
+            subcategory: resolvedSubcategory,
+            tipo: resolvedTipo,
+            product_type: resolvedTipo,
             description: result.data.description || null,
             price_list: result.data.price_list ?? false,
             image_url: result.data.image_url || null,

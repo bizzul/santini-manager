@@ -41,12 +41,22 @@ const createProductEditHandler = (domain?: string) => {
     field: string,
     newValue: string | number | boolean | null
   ): Promise<{ success?: boolean; error?: string }> => {
+    const nextSubcategory =
+      field === "subcategory"
+        ? String(newValue ?? "")
+        : rowData.subcategory || rowData.type || "";
+    const nextTipo =
+      field === "tipo"
+        ? String(newValue ?? "")
+        : rowData.tipo || rowData.product_type || "";
+
     // Build form data with all current values plus the changed field
     const formData = {
       name: rowData.name,
-      type: rowData.subcategory || rowData.type,
-      subcategory: rowData.subcategory || rowData.type,
-      product_type: rowData.product_type,
+      type: nextSubcategory,
+      subcategory: nextSubcategory,
+      tipo: nextTipo,
+      product_type: nextTipo,
       description: rowData.description,
       price_list: rowData.price_list,
       image_url: rowData.image_url,
@@ -239,16 +249,16 @@ export const createColumns = (
       size: 140,
     },
     {
-      accessorKey: "product_type",
-      id: "product_type",
+      accessorFn: (row) => row.tipo || row.product_type || "",
+      id: "tipo",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Tipo" />
       ),
       cell: ({ row }) => (
         <EditableCell
-          value={row.original.product_type || ""}
+          value={row.original.tipo || row.original.product_type || ""}
           row={row}
-          field="product_type"
+          field="tipo"
           type="text"
           onSave={handleProductEdit}
         />

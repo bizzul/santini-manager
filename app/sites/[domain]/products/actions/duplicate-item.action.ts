@@ -56,7 +56,8 @@ export async function duplicateSellProductAction(
         name: duplicatedName,
         subcategory:
           originalProduct.subcategory || originalProduct.type || "",
-        product_type: originalProduct.product_type || "",
+        tipo: originalProduct.tipo || originalProduct.product_type || "",
+        product_type: originalProduct.tipo || originalProduct.product_type || "",
         type: originalProduct.subcategory || originalProduct.type || "",
         description: originalProduct.description || "",
         supplier_id: originalProduct.supplier_id ?? undefined,

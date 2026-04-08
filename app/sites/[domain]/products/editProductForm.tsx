@@ -63,7 +63,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     defaultValues: {
       category: "",
       subcategory: "",
-      product_type: "",
+      tipo: "",
       name: "",
       description: "",
       supplier_id: undefined,
@@ -79,9 +79,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     ? data.category[0]
     : data.category;
   const resolvedSubcategory = data.subcategory || data.type || "";
-  const resolvedProductType =
-    data.product_type ||
-    (data.subcategory && data.type && data.subcategory !== data.type ? data.type : "");
+  const resolvedTipo = data.tipo || data.product_type || "";
 
   useEffect(() => {
     const loadData = async () => {
@@ -124,7 +122,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     form.reset({
       category: resolvedCategory?.name || "",
       subcategory: resolvedSubcategory,
-      product_type: resolvedProductType,
+      tipo: resolvedTipo,
       name: data.name || "",
       description: data.description || "",
       supplier_id: data.supplier_id ?? undefined,
@@ -133,7 +131,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       doc_url: data.doc_url || "",
       active: data.active ?? true,
     });
-  }, [data, form, resolvedCategory?.name, resolvedProductType, resolvedSubcategory]);
+  }, [data, form, resolvedCategory?.name, resolvedSubcategory, resolvedTipo]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || !siteId) return;
@@ -320,7 +318,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
 
         <FormField
           control={form.control}
-          name="product_type"
+          name="tipo"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tipo</FormLabel>

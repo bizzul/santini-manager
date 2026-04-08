@@ -13,8 +13,9 @@ const CSV_COLUMNS = [
   { key: "id", header: "ID" },
   { key: "internal_code", header: "COD_INT" },
   { key: "category.name", header: "CATEGORIA" },
+  { key: "subcategory", header: "SOTTOCATEGORIA" },
+  { key: "tipo", header: "TIPO" },
   { key: "name", header: "NOME_PRODOTTO" },
-  { key: "type", header: "SOTTOCATEGORIA" },
   { key: "description", header: "DESCRIZIONE" },
   { key: "price_list", header: "LISTINO_PREZZI" },
   { key: "image_url", header: "URL_IMMAGINE" },
@@ -25,6 +26,18 @@ const CSV_COLUMNS = [
 // Helper to get nested property value (e.g., "category.name")
 function getNestedValue(obj: any, path: string): any {
   return path.split(".").reduce((current, key) => current?.[key], obj);
+}
+
+function getCsvValue(product: any, key: string) {
+  if (key === "subcategory") {
+    return product?.subcategory || product?.type || "";
+  }
+
+  if (key === "tipo") {
+    return product?.tipo || product?.product_type || "";
+  }
+
+  return getNestedValue(product, key);
 }
 
 function escapeCSVValue(value: any): string {
@@ -99,7 +112,7 @@ function ButtonExportCSV() {
       // Create data rows
       const rows = products.map((product: any) => {
         return CSV_COLUMNS.map((col) =>
-          escapeCSVValue(getNestedValue(product, col.key))
+          escapeCSVValue(getCsvValue(product, col.key))
         );
       });
 
@@ -126,6 +139,11 @@ function ButtonExportCSV() {
         description: `Esportati ${products.length} prodotti con successo!`,
       });
     } catch (error: any) {
+      console.error("Errore esportazione prodotti CSV", {
+        siteId,
+        domain,
+        error,
+      });
       toast({
         variant: "destructive",
         description: error.message || "Errore durante l'esportazione",

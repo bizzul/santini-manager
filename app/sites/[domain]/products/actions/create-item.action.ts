@@ -35,6 +35,8 @@ export async function createSellProduct(
 
   if (result.success) {
     const supabase = await createClient();
+      const resolvedSubcategory = props.subcategory || props.type || null;
+      const resolvedTipo = props.tipo || props.product_type || null;
 
     // Trova category_id dal nome della categoria
     let categoryId = null;
@@ -53,9 +55,10 @@ export async function createSellProduct(
 
     const insertData: any = {
       name: props.name,
-      type: props.subcategory || props.type || null,
-      subcategory: props.subcategory || props.type || null,
-      product_type: props.product_type || null,
+      type: resolvedSubcategory,
+      subcategory: resolvedSubcategory,
+      tipo: resolvedTipo,
+      product_type: resolvedTipo,
       description: props.description || null,
       price_list: props.price_list ?? false,
       image_url: props.image_url || null,

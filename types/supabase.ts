@@ -229,6 +229,7 @@ export interface SellProduct {
     name?: string; // Nome del prodotto
     type?: string; // Sottocategoria
     subcategory?: string; // Sottocategoria esplicita
+    tipo?: string | null; // Tipo prodotto nativo
     product_type?: string; // Tipo prodotto
     description?: string; // Descrizione
     price_list?: boolean; // Listino prezzi (checkbox)

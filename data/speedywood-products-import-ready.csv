@@ -1,0 +1,23 @@
+﻿ID,COD_INT,CATEGORIA,SOTTOCATEGORIA,TIPO,NOME_PRODOTTO,DESCRIZIONE,LISTINO_PREZZI,URL_IMMAGINE,URL_DOC,ATTIVO
+,SPW-PROF-ABE-68,Profili per finestre,Profili lamellari,,Profilo finestra Abete 68x80,"Profilo lamellare in abete per serramenti, pronto per lavorazioni su misura e finitura.",SI,,,SI
+,SPW-PROF-LAR-78,Profili per finestre,Profili lamellari,,Profilo finestra Larice 78x92,"Profilo in larice per serramenti ad alte prestazioni, indicato per mercato premium e tempi di fornitura rapidi.",SI,,,SI
+,SPW-LIST-ROV-30,Liste profilate,Liste e cornici,,Lista profilata Rovere 30x40,"Lista profilata in rovere per finitura, cornici ed elementi di completamento.",SI,,,SI
+,SPW-LIST-ABE-24,Liste profilate,Listelli piallati,,Listello Abete 24x48,"Listello piallato in abete per strutture leggere, telai e sottostrutture.",SI,,,SI
+,SPW-LAM-DOU-120,Lamellare,Travi strutturali,,Trave lamellare Douglas 120x240,Lamellare in Douglas per impieghi strutturali e carpenteria in legno.,SI,,,SI
+,SPW-LAM-ABE-80,Lamellare,Travi strutturali,,Trave lamellare Abete 80x200,"Lamellare in abete per edilizia leggera, coperture e forniture B2B.",SI,,,SI
+,SPW-MAS-ROV-27,Massello,Tavole piallate,,Tavola massello Rovere 27mm,"Tavola in rovere piallata per interior, porte ed elementi su disegno.",SI,,,SI
+,SPW-MAS-FAG-40,Massello,Tavole grezze,,Massello Faggio 40mm,"Semilavorato in faggio per falegnameria, gradini e lavorazioni custom.",SI,,,SI
+,SPW-PAN-MDF-19,Pannelli MDF,Pannelli standard,,Pannello MDF grezzo 19mm,"Pannello MDF standard per taglio CNC, pantografatura e verniciatura.",SI,,,SI
+,SPW-PAN-MDF-25,Pannelli MDF,Pannelli tecnici,,Pannello MDF idrofugo 25mm,MDF idrofugo per ambienti con maggiore esigenza di stabilita e resistenza.,SI,,,SI
+,SPW-TRU-BIA-18,Truciolari,Pannelli nobilitati,,Pannello truciolare bianco 18mm,"Pannello truciolare nobilitato per arredo tecnico, retail e contract.",SI,,,SI
+,SPW-TRU-GRE-25,Truciolari,Pannelli grezzi,,Pannello truciolare grezzo 25mm,"Truciolare grezzo per allestimenti, supporti e semilavorati.",SI,,,SI
+,SPW-MUL-BET-18,Multistrato,Pannelli tecnici,,Multistrato Betulla 18mm,Multistrato in betulla adatto a falegnameria tecnica e arredo su misura.,SI,,,SI
+,SPW-MUL-PIO-15,Multistrato,Pannelli leggeri,,Multistrato Pioppo 15mm,"Multistrato in pioppo per arredo leggero, fondi e chiusure.",SI,,,SI
+,SPW-TAV-ABE-27,Tavole piallate,Tavole da carpenteria,,Tavola piallata Abete 27mm,"Tavola piallata in abete per strutture leggere, rivestimenti e cantieri.",SI,,,SI
+,SPW-TAV-LAR-34,Tavole piallate,Tavole da esterno,,Tavola piallata Larice 34mm,"Larice piallato per facciate, rivestimenti e serramenti esterni.",SI,,,SI
+,SPW-LIS-CAS-20,Listelli,Listelli strutturali,,Listello Castagno 20x40,"Listello in castagno per finiture, telai e lavorazioni da esterno.",SI,,,SI
+,SPW-LIS-NOC-18,Listelli,Listelli pregiati,,Listello Noce 18x35,"Listello in noce per interior di pregio, espositori e falegnameria fine.",SI,,,SI
+,SPW-POR-ROV-01,Elementi per porte,Telai porta,,Kit telaio porta Rovere,Set di elementi per porte interne con componenti in rovere pronti al montaggio.,SI,,,SI
+,SPW-POR-ABE-02,Elementi per porte,Semilavorati porta,,Traversa porta Abete,"Semilavorato per porte in abete, ideale per serie e completamenti rapidi.",SI,,,SI
+,SPW-SEM-CIR-32,Semilavorati,Semilavorati speciali,,Pannello semilavorato Cirmolo 32mm,Semilavorato in cirmolo per progetti custom e arredo alpino.,SI,,,SI
+,SPW-SEM-ACE-26,Semilavorati,Semilavorati speciali,,Elemento Acero 26mm,Elemento in acero per lavorazioni su disegno e produzioni su richiesta.,SI,,,SI

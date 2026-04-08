@@ -21,7 +21,7 @@ export const list = async (
     if (filters.q) {
       // Use OR logic for multiple field search
       query = query.or(
-        `name.ilike.%${filters.q}%,type.ilike.%${filters.q}%`,
+        `name.ilike.%${filters.q}%,type.ilike.%${filters.q}%,subcategory.ilike.%${filters.q}%,tipo.ilike.%${filters.q}%,product_type.ilike.%${filters.q}%`,
       );
     }
 

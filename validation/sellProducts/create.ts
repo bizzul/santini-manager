@@ -7,9 +7,8 @@ export const validation = z.object({
   subcategory: z.string().min(1, {
     message: "Sottocategoria richiesta",
   }),
-  product_type: z.string().min(1, {
-    message: "Tipo richiesto",
-  }),
+  tipo: z.string().optional().default(""),
+  product_type: z.string().optional(),
   name: z.string().min(1, {
     message: "Nome prodotto richiesto",
   }),

@@ -147,10 +147,18 @@ export default async function ProductPage({
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Tipo / sottocategoria
+                      Sottocategoria
                     </p>
                     <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                      {product.type || "-"}
+                      {product.subcategory || product.type || "-"}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Tipo
+                    </p>
+                    <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+                      {product.tipo || product.product_type || "-"}
                     </p>
                   </div>
                 </div>

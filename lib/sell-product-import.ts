@@ -2,8 +2,9 @@ export const SELL_PRODUCT_IMPORT_HEADERS = [
   "ID",
   "COD_INT",
   "CATEGORIA",
-  "NOME_PRODOTTO",
   "SOTTOCATEGORIA",
+  "TIPO",
+  "NOME_PRODOTTO",
   "DESCRIZIONE",
   "LISTINO_PREZZI",
   "URL_IMMAGINE",
@@ -25,6 +26,9 @@ export interface SellProductImportExistingRecord {
   internal_code?: string | null;
   name?: string | null;
   type?: string | null;
+  subcategory?: string | null;
+  tipo?: string | null;
+  product_type?: string | null;
   description?: string | null;
   price_list?: boolean | null;
   image_url?: string | null;
@@ -41,8 +45,9 @@ export interface ParsedSellProductCsvRow {
   id: number | null;
   internal_code: string | null;
   category_name: string | null;
-  name: string | null;
   subcategory: string | null;
+  tipo: string | null;
+  name: string | null;
   description: string | null;
   price_list: boolean;
   image_url: string | null;
@@ -202,8 +207,9 @@ export function mapSellProductCsvRow(
     id: parsedId && Number.isInteger(parsedId) ? parsedId : null,
     internal_code: getValue("COD_INT"),
     category_name: getValue("CATEGORIA"),
-    name: getValue("NOME_PRODOTTO"),
     subcategory: getValue("SOTTOCATEGORIA"),
+    tipo: getValue("TIPO"),
+    name: getValue("NOME_PRODOTTO"),
     description: getValue("DESCRIZIONE"),
     price_list: parseBoolean(getValue("LISTINO_PREZZI")),
     image_url: getValue("URL_IMMAGINE"),
@@ -238,8 +244,10 @@ function getCategoryRecordName(
 function getDiffs(
   existing: SellProductImportExistingRecord,
   csvRow: ParsedSellProductCsvRow,
+  headers: string[],
 ) {
   const diffs: SellProductImportFieldChange[] = [];
+  const hasTipoColumn = headers.includes("TIPO");
   const comparisons: Array<{
     field: string;
     current: unknown;
@@ -251,14 +259,26 @@ function getDiffs(
       current: getCategoryRecordName(existing.category),
       next: csvRow.category_name,
     },
+    {
+      field: "SOTTOCATEGORIA",
+      current: existing.subcategory || existing.type,
+      next: csvRow.subcategory,
+    },
     { field: "NOME_PRODOTTO", current: existing.name, next: csvRow.name },
-    { field: "SOTTOCATEGORIA", current: existing.type, next: csvRow.subcategory },
     { field: "DESCRIZIONE", current: existing.description, next: csvRow.description },
     { field: "LISTINO_PREZZI", current: existing.price_list ?? false, next: csvRow.price_list },
     { field: "URL_IMMAGINE", current: existing.image_url, next: csvRow.image_url },
     { field: "URL_DOC", current: existing.doc_url, next: csvRow.doc_url },
     { field: "ATTIVO", current: existing.active ?? true, next: csvRow.active },
   ];
+
+  if (hasTipoColumn) {
+    comparisons.splice(4, 0, {
+      field: "TIPO",
+      current: existing.tipo || existing.product_type,
+      next: csvRow.tipo,
+    });
+  }
 
   comparisons.forEach(({ field, current, next }) => {
     if (stringifyValue(current) !== stringifyValue(next)) {
@@ -294,7 +314,7 @@ export function buildSellProductImportPlan(params: {
     existingById.set(product.id, product);
     const fingerprint = getSellProductFingerprint({
       categoryName: getCategoryRecordName(product.category),
-      subcategory: product.type,
+      subcategory: product.subcategory || product.type,
       name: product.name,
     });
     const current = existingByFingerprint.get(fingerprint) || [];
@@ -433,7 +453,7 @@ export function buildSellProductImportPlan(params: {
     );
 
     if (target) {
-      const changes = getDiffs(target, csvRow);
+      const changes = getDiffs(target, csvRow, params.headers);
       const isMeaningfulUpdate = changes.length > 0 || duplicates.length > 0;
 
       if (!isMeaningfulUpdate) {
