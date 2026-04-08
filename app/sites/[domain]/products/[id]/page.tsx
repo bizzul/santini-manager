@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, Calendar, FileText, Folder, Image as ImageIcon, Layers3, Package } from "lucide-react";
+import { ArrowLeft, Calendar, FileText, Folder, Layers3, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductDocuments } from "@/components/product/product-documents";
@@ -9,6 +9,7 @@ import { requireServerSiteContext } from "@/lib/server-data";
 import { getSellProductDisplayCode } from "@/lib/sell-product-code";
 import type { File as ManagedFile } from "@/types/supabase";
 import { createClient } from "@/utils/server";
+import { ProductImageCard } from "./product-image-card";
 
 async function getProductSheetData(productId: number, siteId: string) {
   const supabase = await createClient();
@@ -195,25 +196,13 @@ export default async function ProductPage({
               </div>
 
               <div className="space-y-4">
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      Immagine prodotto
-                    </span>
-                  </div>
-                  {product.image_url ? (
-                    <img
-                      src={product.image_url}
-                      alt={product.name || "Immagine prodotto"}
-                      className="h-64 w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-64 flex-col items-center justify-center gap-3 px-6 text-center text-slate-500 dark:text-slate-400">
-                      <ImageIcon className="h-10 w-10" />
-                      <p className="text-sm">Nessuna immagine associata al prodotto.</p>
-                    </div>
-                  )}
-                </div>
+                <ProductImageCard
+                  productId={product.id}
+                  siteId={siteId}
+                  domain={domain}
+                  productName={product.name}
+                  currentImageUrl={product.image_url}
+                />
 
                 <div className={subtlePanelClass}>
                   <div className="mb-3 flex items-center gap-2">

@@ -17,6 +17,8 @@ interface DocumentUploadProps {
   disabled?: boolean;
   currentUrl?: string;
   onRemove?: () => void;
+  dropzoneLabel?: string;
+  dropzoneHint?: string;
 }
 
 export function DocumentUpload({
@@ -30,6 +32,8 @@ export function DocumentUpload({
   disabled = false,
   currentUrl,
   onRemove,
+  dropzoneLabel = "Trascina un file PDF o clicca per selezionare",
+  dropzoneHint,
 }: DocumentUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -200,10 +204,10 @@ export function DocumentUpload({
             <Upload className="h-6 w-6 text-muted-foreground" />
             <div>
               <p className="text-sm">
-                Trascina un file PDF o clicca per selezionare
+                {dropzoneLabel}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Max {maxSizeMB}MB
+                {dropzoneHint || `Max ${maxSizeMB}MB`}
               </p>
             </div>
           </>

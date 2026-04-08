@@ -378,6 +378,8 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
                   }}
                   accept="image/png,image/jpeg,image/webp"
                   maxSizeMB={10}
+                  dropzoneLabel="Trascina un'immagine qui o clicca per selezionare"
+                  dropzoneHint="PNG, JPG, WEBP - Max 10MB"
                 />
               </FormControl>
               <FormDescription>

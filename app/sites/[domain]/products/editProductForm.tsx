@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/dialog";
 import { validation } from "@/validation/sellProducts/create";
 import { useToast } from "@/components/ui/use-toast";
-import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { SellProduct, SellProductCategory, Supplier } from "@/types/supabase";
 import { editSellProductAction } from "./actions/edit-item.action";
@@ -74,15 +73,16 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       active: true,
     },
   });
-  const { setValue } = form;
-  const { pending } = useFormStatus();
 
-  // Carica categorie
+  const { isSubmitting } = form.formState;
+
   useEffect(() => {
     const loadData = async () => {
       if (!siteId) return;
+
       setLoadingCategories(true);
       setLoadingSuppliers(true);
+
       try {
         const [catRes, suppliersRes] = await Promise.all([
           fetch(`/api/sell-products/categories?siteId=${siteId}`),
@@ -92,14 +92,12 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             },
           }),
         ]);
+
         if (catRes.ok) {
           const catData = await catRes.json();
           setCategories(catData.categories || []);
-
-          // Imposta la categoria dopo il caricamento
-          const categoryName = data.category?.name || "";
-          setValue("category", categoryName);
         }
+
         if (suppliersRes.ok) {
           const suppliersData = await suppliersRes.json();
           setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
@@ -113,20 +111,22 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     };
 
     loadData();
-  }, [siteId, data, setValue]);
+  }, [siteId, domain]);
 
   useEffect(() => {
-    // Imposta gli altri campi
-    setValue("name", data.name || "");
-    setValue("subcategory", data.subcategory || data.type || "");
-    setValue("product_type", data.product_type || "");
-    setValue("description", data.description || "");
-    setValue("supplier_id", data.supplier_id ?? undefined);
-    setValue("price_list", data.price_list ?? false);
-    setValue("image_url", data.image_url || "");
-    setValue("doc_url", data.doc_url || "");
-    setValue("active", data.active ?? true);
-  }, [data, setValue]);
+    form.reset({
+      category: data.category?.name || "",
+      subcategory: data.subcategory || data.type || "",
+      product_type: data.product_type || "",
+      name: data.name || "",
+      description: data.description || "",
+      supplier_id: data.supplier_id ?? undefined,
+      price_list: data.price_list ?? false,
+      image_url: data.image_url || "",
+      doc_url: data.doc_url || "",
+      active: data.active ?? true,
+    });
+  }, [data, form]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || !siteId) return;
@@ -145,9 +145,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       if (res.ok) {
         const resData = await res.json();
         setCategories((prev) =>
-          [...prev, resData.category].sort((a, b) =>
-            a.name.localeCompare(b.name)
-          )
+          [...prev, resData.category].sort((a, b) => a.name.localeCompare(b.name)),
         );
         form.setValue("category", resData.category.name);
         setNewCategoryName("");
@@ -170,20 +168,21 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
     }
   };
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    const response = await editSellProductAction(d, data?.id, domain, siteId);
+  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (values) => {
+    const response = await editSellProductAction(values, data?.id, domain, siteId);
     if (response?.error) {
       toast({
         description: `Errore! ${response.error}`,
       });
-    } else {
-      handleClose(false);
-      router.refresh();
-      toast({
-        description: `Prodotto "${d.name}" aggiornato correttamente!`,
-      });
-      form.reset();
+      return;
     }
+
+    handleClose(false);
+    router.refresh();
+    toast({
+      description: `Prodotto "${values.name}" aggiornato correttamente!`,
+    });
+    form.reset();
   };
 
   return (
@@ -223,9 +222,8 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
                           </div>
                         </SelectItem>
                       ))}
-                      {/* Se la categoria corrente non è nella lista, aggiungila */}
                       {field.value &&
-                        !categories.find((c) => c.name === field.value) && (
+                        !categories.find((category) => category.name === field.value) && (
                           <SelectItem value={field.value}>
                             <div className="flex items-center gap-2">
                               <span
@@ -239,10 +237,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
                     </SelectContent>
                   </Select>
                 </FormControl>
-                <Dialog
-                  open={showAddCategory}
-                  onOpenChange={setShowAddCategory}
-                >
+                <Dialog open={showAddCategory} onOpenChange={setShowAddCategory}>
                   <DialogTrigger asChild>
                     <Button
                       type="button"
@@ -288,7 +283,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
                           disabled={!newCategoryName.trim() || savingCategory}
                         >
                           {savingCategory && (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
                           Aggiungi
                         </Button>
@@ -301,6 +296,35 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
+
+        <FormField
+          control={form.control}
+          name="subcategory"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Sottocategoria</FormLabel>
+              <FormControl>
+                <Input placeholder="Inserisci sottocategoria" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="product_type"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Tipo</FormLabel>
+              <FormControl>
+                <Input placeholder="Inserisci tipo" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="name"
@@ -314,19 +338,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Sottocategoria</FormLabel>
-              <FormControl>
-                <Input placeholder="(opzionale)" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+
         <FormField
           control={form.control}
           name="description"
@@ -344,60 +356,76 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="price_list"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Listino Prezzi</FormLabel>
-                  <FormDescription>Includi nel listino</FormDescription>
-                </div>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="active"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Attivo</FormLabel>
-                  <FormDescription>Prodotto attivo</FormDescription>
-                </div>
-              </FormItem>
-            )}
-          />
-        </div>
+
+        <FormField
+          control={form.control}
+          name="supplier_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Fornitore</FormLabel>
+              <FormControl>
+                <Select
+                  value={field.value ? String(field.value) : undefined}
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  disabled={loadingSuppliers}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        loadingSuppliers
+                          ? "Caricamento..."
+                          : "Seleziona fornitore"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {suppliers.map((supplier) => (
+                      <SelectItem key={supplier.id} value={String(supplier.id)}>
+                        {supplier.name || `Fornitore ${supplier.id}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="image_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>URL Immagine</FormLabel>
+              <FormLabel>Carica immagine</FormLabel>
               <FormControl>
-                <Input placeholder="https://..." {...field} />
+                <DocumentUpload
+                  siteId={siteId || ""}
+                  folder="sell-products/images"
+                  currentUrl={field.value || undefined}
+                  onUploadComplete={(url) => field.onChange(url)}
+                  onRemove={() => field.onChange("")}
+                  onError={(error) => {
+                    toast({
+                      variant: "destructive",
+                      description: error,
+                    });
+                  }}
+                  disabled={!siteId}
+                  accept="image/png,image/jpeg,image/webp"
+                  maxSizeMB={10}
+                  dropzoneLabel="Trascina un'immagine qui o clicca per selezionare"
+                  dropzoneHint="PNG, JPG, WEBP - Max 10MB"
+                />
               </FormControl>
               <FormDescription>
-                Link all&apos;immagine del prodotto
+                Carica l&apos;immagine del prodotto
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
+
         <FormField
           control={form.control}
           name="doc_url"
@@ -427,8 +455,49 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={pending} className="w-full">
-          {pending && (
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="price_list"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Listino Prezzi</FormLabel>
+                  <FormDescription>Includi nel listino</FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="active"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>Attivo</FormLabel>
+                  <FormDescription>Prodotto attivo</FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <Button type="submit" disabled={isSubmitting} className="w-full">
+          {isSubmitting && (
             <span className="spinner-border spinner-border-sm mr-1"></span>
           )}
           Salva
