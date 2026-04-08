@@ -138,6 +138,7 @@ type CollaboratorBadge = {
   name: string;
   initials: string;
   picture: string | null;
+  color?: string | null;
   hours: number;
   entries: number;
 };
@@ -292,6 +293,9 @@ const EditTaskKanban = ({
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [selectedCollaborator, setSelectedCollaborator] =
     useState<CollaboratorBadge | null>(null);
+  const [taskCollaboratorSummaries, setTaskCollaboratorSummaries] = useState<any[]>(
+    Array.isArray(resource?.collaboratorTimeSummaries) ? resource.collaboratorTimeSummaries : []
+  );
 
   // Helper to build headers with siteId
   const getHeaders = (): HeadersInit => {
@@ -344,6 +348,11 @@ const EditTaskKanban = ({
       if (task) {
         setOfferProducts(normalizeOfferProducts(task));
         setProductionRequired(Boolean(task.termine_produzione));
+        setTaskCollaboratorSummaries(
+          Array.isArray(task.collaboratorTimeSummaries)
+            ? task.collaboratorTimeSummaries
+            : []
+        );
       }
     } catch (error) {
       logger.error("Error fetching task details:", error);
@@ -591,9 +600,12 @@ const EditTaskKanban = ({
   const involvedCollaborators = useMemo<CollaboratorBadge[]>(() => {
     const byKey = new Map<string, CollaboratorBadge>();
 
-    const timetrackingCollaborators = Array.isArray(resource?.collaboratorTimeSummaries)
-      ? resource.collaboratorTimeSummaries
-      : [];
+    const timetrackingCollaborators =
+      taskCollaboratorSummaries.length > 0
+        ? taskCollaboratorSummaries
+        : Array.isArray(resource?.collaboratorTimeSummaries)
+          ? resource.collaboratorTimeSummaries
+          : [];
 
     timetrackingCollaborators.forEach((item: any) => {
       const key = String(item?.id || item?.employeeId || "");
@@ -603,6 +615,7 @@ const EditTaskKanban = ({
         name: String(item?.name || "Collaboratore"),
         initials: String(item?.initials || "CL"),
         picture: typeof item?.picture === "string" ? item.picture : null,
+        color: typeof item?.color === "string" ? item.color : null,
         hours: Number(item?.hours || 0),
         entries: Number(item?.entries || 0),
       });
@@ -633,6 +646,7 @@ const EditTaskKanban = ({
         name: existing?.name || fullName,
         initials: existing?.initials || initials,
         picture: existing?.picture || user.picture || null,
+        color: existing?.color || null,
         hours: existing?.hours || 0,
         entries: existing?.entries || 0,
       });
@@ -645,7 +659,7 @@ const EditTaskKanban = ({
 
     const withHours = ordered.filter((collaborator) => collaborator.hours > 0);
     return withHours.length > 0 ? withHours : ordered;
-  }, [filteredHistory, resource?.collaboratorTimeSummaries]);
+  }, [filteredHistory, resource?.collaboratorTimeSummaries, taskCollaboratorSummaries]);
 
   // Get the selected client for contact info display
   const selectedClient = useMemo(() => {
@@ -1517,7 +1531,7 @@ const EditTaskKanban = ({
                       <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
                       <AvatarFallback
                         className="text-[10px] font-semibold text-white"
-                        style={{ backgroundColor: getAvatarColor(collaborator.key) }}
+                        style={{ backgroundColor: collaborator.color || getAvatarColor(collaborator.key) }}
                       >
                         {collaborator.initials}
                       </AvatarFallback>
@@ -2564,7 +2578,10 @@ const EditTaskKanban = ({
                 />
                 <AvatarFallback
                   className="text-xl font-semibold text-white"
-                  style={{ backgroundColor: getAvatarColor(selectedCollaborator.key) }}
+                  style={{
+                    backgroundColor:
+                      selectedCollaborator.color || getAvatarColor(selectedCollaborator.key),
+                  }}
                 >
                   {selectedCollaborator.initials}
                 </AvatarFallback>

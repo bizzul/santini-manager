@@ -4,6 +4,30 @@ import { getSiteData } from "../../../../../lib/fetchers";
 import { logger } from "@/lib/logger";
 import { toDateString } from "@/lib/utils";
 
+function deriveInitials(fullName: string): string {
+  const parts = fullName
+    .split(" ")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) return "CL";
+  return parts.map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
+function resolveEntryHours(entry: {
+  totalTime?: unknown;
+  hours?: unknown;
+  minutes?: unknown;
+}): number {
+  const totalTime = Number(entry.totalTime);
+  if (Number.isFinite(totalTime) && totalTime > 0) {
+    return totalTime;
+  }
+  const hours = Number(entry.hours || 0);
+  const minutes = Number(entry.minutes || 0);
+  return (Number.isFinite(hours) ? hours : 0) + (Number.isFinite(minutes) ? minutes : 0) / 60;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -47,14 +71,84 @@ export async function GET(
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
-    const [{ data: task, error }, { data: files, error: filesError }] =
+    let timetrackingQuery = supabase
+      .from("Timetracking")
+      .select(
+        `
+        id,
+        task_id,
+        user_id,
+        employee_id,
+        totalTime,
+        hours,
+        minutes,
+        user:employee_id(id, given_name, family_name, picture, initials, color)
+      `,
+      )
+      .eq("task_id", Number(taskId));
+
+    if (siteId) {
+      timetrackingQuery = timetrackingQuery.eq("site_id", siteId);
+    }
+
+    const [
+      { data: task, error },
+      { data: files, error: filesError },
+      { data: timetracking, error: timetrackingError },
+    ] =
       await Promise.all([
         taskQuery.single(),
         supabase.from("File").select("*").eq("taskId", Number(taskId)),
+        timetrackingQuery,
       ]);
 
     if (error) throw error;
     if (filesError) throw filesError;
+    if (timetrackingError) throw timetrackingError;
+
+    const collaboratorMap = (timetracking || []).reduce<
+      Map<
+        string,
+        {
+          id: string;
+          name: string;
+          initials: string;
+          picture: string | null;
+          color: string | null;
+          hours: number;
+          entries: number;
+        }
+      >
+    >((map, entry: any) => {
+      const rawUser = Array.isArray(entry.user) ? entry.user[0] : entry.user;
+      const collaboratorId = String(entry.employee_id || entry.user_id || rawUser?.id || "");
+      if (!collaboratorId) return map;
+
+      const fullName =
+        `${rawUser?.given_name || ""} ${rawUser?.family_name || ""}`.trim() ||
+        "Collaboratore";
+      const current = map.get(collaboratorId) || {
+        id: collaboratorId,
+        name: fullName,
+        initials: rawUser?.initials || deriveInitials(fullName),
+        picture: rawUser?.picture || null,
+        color: rawUser?.color || null,
+        hours: 0,
+        entries: 0,
+      };
+
+      current.hours += resolveEntryHours(entry);
+      current.entries += 1;
+      map.set(collaboratorId, current);
+      return map;
+    }, new Map());
+
+    const collaboratorTimeSummaries = Array.from(collaboratorMap.values())
+      .map((summary) => ({
+        ...summary,
+        hours: Math.round((summary.hours + Number.EPSILON) * 100) / 100,
+      }))
+      .sort((a, b) => b.hours - a.hours);
 
     // console.log("project", task);
     if (task) {
@@ -62,6 +156,7 @@ export async function GET(
         task: {
           ...task,
           files: files || [],
+          collaboratorTimeSummaries,
         },
         status: 200,
       });
