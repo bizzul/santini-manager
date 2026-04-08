@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const body = await req.json();
 
-    const { name, url, storage_path, taskId, errortrackingId } = body;
+    const { name, url, storage_path, taskId, sellProductId, errortrackingId } = body;
 
     if (!name || !url || !storage_path) {
       return NextResponse.json(
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       url: string;
       storage_path: string;
       taskId?: number;
+      sellProductId?: number;
       errortrackingId?: number;
     } = {
       name,
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest) {
 
     if (taskId) {
       insertData.taskId = taskId;
+    }
+
+    if (sellProductId) {
+      insertData.sellProductId = sellProductId;
     }
 
     if (errortrackingId) {

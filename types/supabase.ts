@@ -480,6 +480,7 @@ export interface File {
     size?: number;
     storage_path?: string;
     taskId?: number;
+    sellProductId?: number;
     errortrackingId?: number;
     cloudinaryId?: string;
     created_at?: string;

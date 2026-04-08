@@ -4,7 +4,7 @@ import { SellProduct } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
-import { Image, ExternalLink, FileText, Download } from "lucide-react";
+import { ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -17,6 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editSellProductAction } from "./actions/edit-item.action";
+import Link from "next/link";
 
 // Extended SellProduct type with lastAction
 export type SellProductWithAction = SellProduct & {
@@ -198,15 +199,15 @@ export const createColumns = (
         <DataTableColumnHeader column={column} title="Cod." />
       ),
       cell: ({ row }) => (
-        <EditableCell
-          value={row.original.internal_code || ""}
-          row={row}
-          field="internal_code"
-          type="text"
-          onSave={handleProductEdit}
-        />
+        <Link
+          href={`/sites/${domain}/products/${row.original.id}`}
+          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        >
+          <span>{row.original.internal_code || `PROD-${row.original.id}`}</span>
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
       ),
-      size: 40,
+      size: 120,
     },
     {
       id: "category",
@@ -265,6 +266,23 @@ export const createColumns = (
         />
       ),
       size: 200,
+    },
+    {
+      accessorKey: "description",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Descrizione" />
+      ),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.description || ""}
+          row={row}
+          field="description"
+          type="textarea"
+          onSave={handleProductEdit}
+          placeholder="-"
+        />
+      ),
+      size: 260,
     },
     {
       accessorKey: "color",
