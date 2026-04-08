@@ -4,6 +4,21 @@ import { getSiteData } from "../../../../../lib/fetchers";
 import { logger } from "@/lib/logger";
 import { toDateString } from "@/lib/utils";
 
+const TIMETRACKING_SELECT_WITH_USER =
+  "id, task_id, user_id, employee_id, totalTime, hours, minutes";
+const TIMETRACKING_SELECT_NO_USER =
+  "id, task_id, employee_id, totalTime, hours, minutes";
+
+function shouldRetryTimetrackingWithoutUserId(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const maybeError = error as { code?: string; message?: string };
+  const message = maybeError.message || "";
+  return (
+    maybeError.code === "42703" &&
+    (message.includes("Timetracking.user_id") || message.includes("user_id"))
+  );
+}
+
 function deriveInitials(fullName: string): string {
   const parts = fullName
     .split(" ")
@@ -71,14 +86,32 @@ export async function GET(
       taskQuery = taskQuery.eq("site_id", siteId);
     }
 
-    let timetrackingQuery = supabase
-      .from("Timetracking")
-      .select("id, task_id, user_id, employee_id, totalTime, hours, minutes")
-      .eq("task_id", Number(taskId));
+    const runTimetrackingQuery = async (selectFields: string) => {
+      let query = supabase
+        .from("Timetracking")
+        .select(selectFields)
+        .eq("task_id", Number(taskId));
 
-    if (siteId) {
-      timetrackingQuery = timetrackingQuery.eq("site_id", siteId);
-    }
+      if (siteId) {
+        query = query.eq("site_id", siteId);
+      }
+
+      return query;
+    };
+
+    const timetrackingPromise = (async () => {
+      let result = await runTimetrackingQuery(TIMETRACKING_SELECT_WITH_USER);
+      if (
+        result.error &&
+        shouldRetryTimetrackingWithoutUserId(result.error)
+      ) {
+        logger.warn(
+          "Timetracking.user_id not available, retrying query without user_id"
+        );
+        result = await runTimetrackingQuery(TIMETRACKING_SELECT_NO_USER);
+      }
+      return result;
+    })();
 
     const [
       { data: task, error },
@@ -88,7 +121,7 @@ export async function GET(
       await Promise.all([
         taskQuery.single(),
         supabase.from("File").select("*").eq("taskId", Number(taskId)),
-        timetrackingQuery,
+        timetrackingPromise,
       ]);
 
     if (error) throw error;

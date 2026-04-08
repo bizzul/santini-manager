@@ -14,17 +14,12 @@ export async function GET(req: NextRequest) {
       domain: domainFromQuery || undefined,
     });
 
-    const response = NextResponse.json(kanbans);
-
-    // Add cache control headers to prevent stale data
-    response.headers.set(
-      "Cache-Control",
-      "no-cache, no-store, must-revalidate",
-    );
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-
-    return response;
+    return NextResponse.json(kanbans, {
+      headers: {
+        // Short SWR cache to reduce repeated hot-path queries while keeping UI fresh.
+        "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15",
+      },
+    });
   } catch (error) {
     console.error("Error in kanban list API:", error);
     return NextResponse.json(

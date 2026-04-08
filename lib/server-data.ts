@@ -626,6 +626,31 @@ export const fetchKanbanWithTasks = cache(
 
         const taskIds = tasks.map((task) => task.id);
 
+        const timetrackingPromise = (async () => {
+            let result = await supabase
+                .from("Timetracking")
+                .select("task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
+                .eq("site_id", siteId)
+                .in("task_id", taskIds);
+
+            if (
+                result.error?.code === "42703" &&
+                (result.error.message?.includes("Timetracking.user_id") ||
+                    result.error.message?.includes("user_id"))
+            ) {
+                log.warn(
+                    "Timetracking.user_id not available, retrying query without user_id",
+                );
+                result = await supabase
+                    .from("Timetracking")
+                    .select("task_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
+                    .eq("site_id", siteId)
+                    .in("task_id", taskIds);
+            }
+
+            return result;
+        })();
+
         const [
             filesResult,
             qcResult,
@@ -645,11 +670,7 @@ export const fetchKanbanWithTasks = cache(
                 .from("TaskSupplier")
                 .select("*, supplier:Supplier(*)")
                 .in("taskId", taskIds),
-            supabase
-                .from("Timetracking")
-                .select("task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
-                .eq("site_id", siteId)
-                .in("task_id", taskIds),
+            timetrackingPromise,
         ]);
 
         const files = filesResult.data || [];

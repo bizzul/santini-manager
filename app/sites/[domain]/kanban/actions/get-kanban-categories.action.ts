@@ -20,22 +20,43 @@ export interface KanbanCategory {
   internal_base_code?: number | null;
 }
 
+interface GetKanbanCategoriesOptions {
+  domain?: string;
+  siteId?: string;
+}
+
 export async function getKanbanCategories(
-  domain?: string
+  options?: string | GetKanbanCategoriesOptions
 ): Promise<KanbanCategory[]> {
   try {
     const supabase = await createClient();
-    let siteId = null;
+    let siteId: string | null = null;
 
-    // Get site information
-    if (domain) {
-      try {
-        const siteResult = await getSiteData(domain);
-        if (siteResult?.data) {
-          siteId = siteResult.data.id;
+    // Handle both legacy string parameter (domain) and options object.
+    if (typeof options === "string") {
+      const domain = options;
+      if (domain) {
+        try {
+          const siteResult = await getSiteData(domain);
+          if (siteResult?.data) {
+            siteId = siteResult.data.id;
+          }
+        } catch (error) {
+          console.error("Error fetching site data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching site data:", error);
+      }
+    } else if (options) {
+      if (options.siteId) {
+        siteId = options.siteId;
+      } else if (options.domain) {
+        try {
+          const siteResult = await getSiteData(options.domain);
+          if (siteResult?.data) {
+            siteId = siteResult.data.id;
+          }
+        } catch (error) {
+          console.error("Error fetching site data:", error);
+        }
       }
     }
 
@@ -70,21 +91,20 @@ export async function getKanbanCategories(
     // 1. Direct category permission, OR
     // 2. Permission to at least one kanban in that category
 
-    // Get user's category permissions
-    const { data: categoryPerms } = await supabase
-      .from("user_kanban_category_permissions")
-      .select("kanban_category_id")
-      .eq("user_id", userContext.userId);
+    const [{ data: categoryPerms }, { data: kanbanPerms }] = await Promise.all([
+      supabase
+        .from("user_kanban_category_permissions")
+        .select("kanban_category_id")
+        .eq("user_id", userContext.userId),
+      supabase
+        .from("user_kanban_permissions")
+        .select("kanban_id")
+        .eq("user_id", userContext.userId),
+    ]);
 
     const allowedCategoryIds = new Set(
       categoryPerms?.map((p) => p.kanban_category_id) || []
     );
-
-    // Get user's kanban permissions and find which categories they belong to
-    const { data: kanbanPerms } = await supabase
-      .from("user_kanban_permissions")
-      .select("kanban_id")
-      .eq("user_id", userContext.userId);
 
     if (kanbanPerms && kanbanPerms.length > 0) {
       const kanbanIds = kanbanPerms.map((p) => p.kanban_id);

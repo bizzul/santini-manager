@@ -5,6 +5,8 @@ import { AVAILABLE_MODULES } from "@/lib/module-config";
 import { getUserContext } from "@/lib/auth-utils";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ domain: string }> },
@@ -22,15 +24,15 @@ export async function GET(
         const supabase = await createClient();
         const siteId = response.data.id;
 
-        // Get user context for permission filtering
-        const userContext = await getUserContext();
+        const [userContext, siteModulesResult] = await Promise.all([
+            getUserContext(),
+            supabase
+                .from("site_modules")
+                .select("module_name, is_enabled")
+                .eq("site_id", siteId),
+        ]);
         const isAdmin = userContext && isAdminOrSuperadmin(userContext.role);
-
-        // Get enabled modules for this site
-        const { data: siteModules, error } = await supabase
-            .from("site_modules")
-            .select("module_name, is_enabled")
-            .eq("site_id", siteId);
+        const { data: siteModules, error } = siteModulesResult;
 
         if (error) {
             return NextResponse.json({ error: error.message }, { status: 500 });
@@ -88,7 +90,15 @@ export async function GET(
             };
         });
 
-        return NextResponse.json({ modules: modulesWithStatus });
+        return NextResponse.json(
+            { modules: modulesWithStatus },
+            {
+                headers: {
+                    // User-aware endpoint: keep cache private and short-lived.
+                    "Cache-Control": "private, max-age=10, stale-while-revalidate=20",
+                },
+            },
+        );
     } catch (error) {
         return NextResponse.json({ error: "Internal server error" }, {
             status: 500,
