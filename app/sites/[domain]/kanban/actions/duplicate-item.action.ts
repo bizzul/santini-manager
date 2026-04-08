@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getUserContext } from "@/lib/auth-utils";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
-import { generateTaskCode, generateInternalTaskCode } from "@/lib/code-generator";
 
 export async function duplicateItem(taskId: number, domain?: string) {
   const userContext = await getUserContext();
@@ -69,61 +68,49 @@ export async function duplicateItem(taskId: number, domain?: string) {
       siteId = originalTask.site_id;
     }
 
-    // Determine task type and generate new unique code
-    let uniqueCode: string;
-    const kanban = originalTask.kanban;
-    
-    // Normalize category (Supabase may return array for joins)
-    const rawCategory = kanban?.category as any;
-    const category = Array.isArray(rawCategory) ? rawCategory[0] : rawCategory;
-    
-    if (category && category.is_internal && category.internal_base_code) {
-      // Internal category - use internal code generator
-      uniqueCode = await generateInternalTaskCode(
-        siteId,
-        category.id,
-        category.internal_base_code
-      );
-    } else {
-      // Standard code generation
-      const taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
-      uniqueCode = await generateTaskCode(siteId, taskType);
+    // Duplicate code must be original code + "C" (and keep appending "C" if already used)
+    const baseUniqueCode = `${originalTask.unique_code || taskId}C`;
+    let uniqueCode = baseUniqueCode;
+    let safetyCounter = 0;
+
+    while (safetyCounter < 20) {
+      const duplicateCodeCheck = await supabase
+        .from("Task")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("unique_code", uniqueCode)
+        .limit(1)
+        .maybeSingle();
+
+      if (duplicateCodeCheck.error) {
+        return {
+          error: true,
+          message: `Errore nella verifica del codice duplicato: ${duplicateCodeCheck.error.message}`,
+        };
+      }
+
+      if (!duplicateCodeCheck.data) {
+        break;
+      }
+
+      uniqueCode = `${uniqueCode}C`;
+      safetyCounter += 1;
     }
 
-    // Prepare the duplicated task data
-    // Copy all relevant fields except id, unique_code, created_at, updated_at
+    if (safetyCounter >= 20) {
+      return {
+        error: true,
+        message: "Impossibile generare un codice duplicato univoco.",
+      };
+    }
+
+    // Clone full task row and override only immutable/generated fields
+    const { id, created_at, updated_at, unique_code, kanban, ...taskToClone } =
+      originalTask as any;
     const duplicateData: any = {
-      title: originalTask.title || "",
-      name: originalTask.name,
-      luogo: originalTask.luogo,
-      description: originalTask.description,
-      clientId: originalTask.clientId,
-      sellProductId: originalTask.sellProductId,
-      sellPrice: originalTask.sellPrice,
-      deliveryDate: originalTask.deliveryDate,
-      termine_produzione: originalTask.termine_produzione,
-      other: originalTask.other,
-      positions: originalTask.positions,
-      numero_pezzi: originalTask.numero_pezzi,
-      kanbanId: originalTask.kanbanId,
-      kanbanColumnId: originalTask.kanbanColumnId,
-      task_type: originalTask.task_type,
-      material: originalTask.material,
-      metalli: originalTask.metalli,
-      ferramenta: originalTask.ferramenta,
-      legno: originalTask.legno,
-      vernice: originalTask.vernice,
-      altro: originalTask.altro,
-      stoccato: originalTask.stoccato,
-      is_draft: originalTask.is_draft,
-      draft_category_ids: originalTask.draft_category_ids,
+      ...taskToClone,
       unique_code: uniqueCode,
       site_id: siteId,
-      // Reset status fields for the new task
-      percentStatus: 0,
-      percent_status: 0,
-      archived: false,
-      locked: false,
     };
 
     // Create the duplicated task
@@ -148,13 +135,56 @@ export async function duplicateItem(taskId: number, domain?: string) {
       .eq("taskId", taskId);
 
     if (originalSuppliers && originalSuppliers.length > 0) {
-      await supabase.from("TaskSupplier").insert(
+      const { error: supplierInsertError } = await supabase.from("TaskSupplier").insert(
         originalSuppliers.map((supplier) => ({
           taskId: newTask.id,
           supplierId: supplier.supplierId,
-          deliveryDate: null, // Reset delivery dates for duplicated task
+          deliveryDate: supplier.deliveryDate,
         }))
       );
+
+      if (supplierInsertError) {
+        return {
+          error: true,
+          message: `Errore nella duplicazione dei fornitori: ${supplierInsertError.message}`,
+        };
+      }
+    }
+
+    // Copy task files (including project images used by the card cover)
+    const { data: originalFiles, error: originalFilesError } = await supabase
+      .from("File")
+      .select("*")
+      .eq("taskId", taskId);
+
+    if (originalFilesError) {
+      return {
+        error: true,
+        message: `Errore nel recupero dei file progetto: ${originalFilesError.message}`,
+      };
+    }
+
+    if (originalFiles && originalFiles.length > 0) {
+      const filesToInsert = originalFiles.map((file) => ({
+        name: file.name,
+        url: file.url,
+        type: file.type,
+        size: file.size,
+        storage_path: file.storage_path,
+        cloudinaryId: file.cloudinaryId,
+        taskId: newTask.id,
+      }));
+
+      const { error: insertFilesError } = await supabase
+        .from("File")
+        .insert(filesToInsert);
+
+      if (insertFilesError) {
+        return {
+          error: true,
+          message: `Errore nella duplicazione dei file progetto: ${insertFilesError.message}`,
+        };
+      }
     }
 
     // Create action record for tracking
