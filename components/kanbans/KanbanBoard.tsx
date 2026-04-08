@@ -1360,6 +1360,17 @@ function KanbanBoard({
                   isTimelineOpen ? "opacity-0" : "opacity-100"
                 } transition-all duration-300`}
               >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-amber-400/80 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30"
+                  onClick={openCardConfigDialog}
+                  title="Configura campi card progetto"
+                >
+                  <Settings2 className="h-4 w-4 mr-1" />
+                  Config Card
+                </Button>
                 <button
                   className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md"
                   onClick={closeAllTabs}
