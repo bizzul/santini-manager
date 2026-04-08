@@ -372,7 +372,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Table Container - Contained in rounded border */}
-      <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
+      <div className="rounded-lg border bg-card shadow-sm overflow-y-visible">
         <div className="overflow-x-auto">
           <Table style={{ width: table.getCenterTotalSize() }}>
             <TableHeader>
@@ -384,7 +384,6 @@ export function DataTable<TData, TValue>({
                         key={header.id}
                         style={{
                           width: header.getSize(),
-                          position: "relative",
                         }}
                         className="px-2 group"
                       >

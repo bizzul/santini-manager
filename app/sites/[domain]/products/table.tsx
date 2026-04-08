@@ -188,11 +188,10 @@ export function DataTable<TData extends { id: number }, TValue>({
 
   return (
     <>
-      {/* Filter and Search Bar - Contained in rounded border */}
-      <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
+      <div className="mb-4 rounded-lg border bg-card p-4 shadow-sm">
         {/* Category Filter Row */}
         {categories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="mb-4 flex flex-wrap items-center gap-4">
             <span className="text-sm font-medium">Categoria:</span>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center space-x-2">
@@ -205,7 +204,7 @@ export function DataTable<TData extends { id: number }, TValue>({
                 />
                 <Label
                   htmlFor="all-categories"
-                  className="text-sm font-normal cursor-pointer"
+                  className="cursor-pointer text-sm font-normal"
                 >
                   Tutte le categorie
                 </Label>
@@ -224,11 +223,11 @@ export function DataTable<TData extends { id: number }, TValue>({
                     />
                     <Label
                       htmlFor={`category-${category.id}`}
-                      className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                      className="flex cursor-pointer items-center gap-2 text-sm font-normal"
                     >
                       {category.color && (
                         <span
-                          className="w-3 h-3 rounded-full shrink-0"
+                          className="h-3 w-3 shrink-0 rounded-full"
                           style={{ backgroundColor: category.color }}
                         />
                       )}
@@ -243,9 +242,9 @@ export function DataTable<TData extends { id: number }, TValue>({
 
         {/* Search Row with Clear Button */}
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-1 items-center gap-2">
+            <div className="relative max-w-sm flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
               <DebouncedInput
                 value={globalFilter ?? ""}
                 onChange={(value) => setGlobalFilter(String(value))}
@@ -294,7 +293,9 @@ export function DataTable<TData extends { id: number }, TValue>({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              Annulla
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchDelete}
               disabled={isDeleting}
@@ -312,7 +313,7 @@ export function DataTable<TData extends { id: number }, TValue>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="rounded-lg border bg-card overflow-hidden shadow-sm overflow-x-auto">
+      <div className="rounded-lg border bg-card shadow-sm overflow-visible">
         <Table style={{ width: table.getCenterTotalSize() }}>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -323,7 +324,6 @@ export function DataTable<TData extends { id: number }, TValue>({
                       key={header.id}
                       style={{
                         width: header.getSize(),
-                        position: "relative",
                       }}
                       className="px-2 group"
                     >
