@@ -15,7 +15,7 @@ import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import OfferQuickAdd from "./OfferQuickAdd";
 import DraftCompletionWizard from "./DraftCompletionWizard";
-import { Plus, FileEdit, X, RotateCcw } from "lucide-react";
+import { Plus, FileEdit, X, RotateCcw, Settings2, ShieldCheck } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
@@ -502,6 +502,26 @@ function KanbanBoard({
   const [cardFieldConfig, setCardFieldConfig] = useState<CardFieldConfig>(
     DEFAULT_CARD_FIELD_CONFIG
   );
+  const [isCardConfigDialogOpen, setIsCardConfigDialogOpen] = useState(false);
+  const [isCardConfigUnlocked, setIsCardConfigUnlocked] = useState(false);
+  const [adminCodeInput, setAdminCodeInput] = useState("");
+  const [isValidatingAdminCode, setIsValidatingAdminCode] = useState(false);
+  const [draftCardFieldConfig, setDraftCardFieldConfig] =
+    useState<CardFieldConfig>(DEFAULT_CARD_FIELD_CONFIG);
+
+  const sortedColumns = useMemo(
+    () =>
+      [...(kanban?.columns || [])].sort(
+        (a: any, b: any) => (a.position || 0) - (b.position || 0)
+      ),
+    [kanban?.columns]
+  );
+
+  const boardColumnsWidthRem = useMemo(() => {
+    const count = sortedColumns.length;
+    if (count <= 0) return 72;
+    return count * 18 + (count - 1) * 1;
+  }, [sortedColumns.length]);
 
   // Sync tasks state when kanban changes (e.g., user clicks on a different kanban)
   // This is needed because useState only uses the initial value on first render
@@ -1014,19 +1034,9 @@ function KanbanBoard({
     }
   }, [kanban?.id]);
 
-  useEffect(() => {
-    const key = cardFieldStorageKey.current;
-    if (!key) return;
-    try {
-      localStorage.setItem(key, JSON.stringify(cardFieldConfig));
-    } catch (error) {
-      logger.warn("Error saving card field config:", error);
-    }
-  }, [cardFieldConfig]);
-
   const toggleCardField = useCallback(
     (mode: CardDisplayMode, field: CardDisplayField) => {
-      setCardFieldConfig((current) => ({
+      setDraftCardFieldConfig((current) => ({
         ...current,
         [mode]: {
           ...current[mode],
@@ -1036,6 +1046,83 @@ function KanbanBoard({
     },
     []
   );
+
+  const openCardConfigDialog = useCallback(() => {
+    setDraftCardFieldConfig({
+      normal: { ...cardFieldConfig.normal },
+      small: { ...cardFieldConfig.small },
+    });
+    setIsCardConfigUnlocked(false);
+    setAdminCodeInput("");
+    setIsCardConfigDialogOpen(true);
+  }, [cardFieldConfig]);
+
+  const unlockCardConfig = useCallback(async () => {
+    if (!adminCodeInput.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Codice mancante",
+        description: "Inserisci un codice admin valido.",
+      });
+      return;
+    }
+
+    try {
+      setIsValidatingAdminCode(true);
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (siteId) {
+        headers["x-site-id"] = siteId;
+      }
+
+      const response = await fetch("/api/kanban/card-config/admin-auth", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ code: adminCodeInput.trim() }),
+      });
+
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Codice non valido",
+          description:
+            "Inserisci un codice admin corretto per modificare la vista card.",
+        });
+        return;
+      }
+
+      setIsCardConfigUnlocked(true);
+      toast({
+        description: "Configurazione card sbloccata.",
+      });
+    } catch (error) {
+      logger.error("Error validating card admin code:", error);
+      toast({
+        variant: "destructive",
+        title: "Errore verifica codice",
+        description: "Impossibile verificare il codice admin.",
+      });
+    } finally {
+      setIsValidatingAdminCode(false);
+    }
+  }, [adminCodeInput, siteId, toast]);
+
+  const saveCardConfig = useCallback(() => {
+    setCardFieldConfig(draftCardFieldConfig);
+    const key = cardFieldStorageKey.current;
+    if (key) {
+      try {
+        localStorage.setItem(key, JSON.stringify(draftCardFieldConfig));
+      } catch (error) {
+        logger.warn("Error saving card field config:", error);
+      }
+    }
+    setIsCardConfigDialogOpen(false);
+    toast({
+      description: "Preferenze card progetto salvate.",
+    });
+  }, [draftCardFieldConfig, toast]);
 
   const handleSaveKanban = async (kanbanData: any) => {
     try {
@@ -1261,28 +1348,29 @@ function KanbanBoard({
     >
       <div className="flex flex-col h-full overflow-hidden">
         {kanban && (
-          <div className="shrink-0 w-full pt-4 pb-2 px-8">
-            <div
-              className="text-2xl font-bold mb-4 p-4 rounded-lg flex items-center gap-3 shadow-md"
-              style={{
-                backgroundColor: kanban.color || "#1e293b",
-                color: getContrastColor(kanban.color || "#1e293b"),
-              }}
-            >
-              {(() => {
-                const IconComponent = getKanbanIcon(kanban.icon);
-                return (
-                  <IconComponent
-                    className="h-6 w-6 shrink-0"
-                    style={{
-                      color: getContrastColor(kanban.color || "#1e293b"),
-                    }}
-                  />
-                );
-              })()}
-              <span>{kanban.title.toUpperCase()}</span>
-            </div>
-            <div className="flex justify-between items-center gap-4 max-w-[1000px]">
+          <div className="shrink-0 w-full pt-4 pb-2 px-8 overflow-x-auto">
+            <div style={{ width: `${boardColumnsWidthRem}rem` }} className="min-w-max">
+              <div
+                className="text-2xl font-bold mb-4 p-4 rounded-lg flex items-center gap-3 shadow-md"
+                style={{
+                  backgroundColor: kanban.color || "#1e293b",
+                  color: getContrastColor(kanban.color || "#1e293b"),
+                }}
+              >
+                {(() => {
+                  const IconComponent = getKanbanIcon(kanban.icon);
+                  return (
+                    <IconComponent
+                      className="h-6 w-6 shrink-0"
+                      style={{
+                        color: getContrastColor(kanban.color || "#1e293b"),
+                      }}
+                    />
+                  );
+                })()}
+                <span>{kanban.title.toUpperCase()}</span>
+              </div>
+              <div className="flex justify-between items-center gap-4 w-full">
               <div
                 className={`flex justify-start gap-2 ${
                   isTimelineOpen ? "opacity-0" : "opacity-100"
@@ -1342,98 +1430,164 @@ function KanbanBoard({
                   Time machine
                 </h4>
               </div>
-            </div>
-            {safeCategories.length > 0 && (
+              </div>
               <div className="mt-4 rounded-lg border bg-background/80 px-4 py-3 shadow-sm">
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                  <span className="text-sm font-medium">Categoria:</span>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="all-project-types"
-                        checked={
-                          isSomeCategoriesSelected
-                            ? "indeterminate"
-                            : allCategoriesSelected
-                        }
-                        onCheckedChange={(checked) =>
-                          handleSelectAllCategories(checked === true)
-                        }
-                      />
-                      <Label
-                        htmlFor="all-project-types"
-                        className="cursor-pointer text-sm font-normal"
-                      >
-                        Tutte le categorie
-                      </Label>
-                    </div>
-                    {safeCategories.map((category) => {
-                      const isSelected = selectedCategories.includes(category.id);
-
-                      return (
-                        <div
-                          key={category.id}
-                          className="flex items-center space-x-2"
-                        >
+                <div className="flex items-start justify-between gap-4">
+                  {safeCategories.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <span className="text-sm font-medium">Categoria:</span>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="flex items-center space-x-2">
                           <Checkbox
-                            id={`project-type-${category.id}`}
-                            checked={isSelected}
-                            onCheckedChange={() =>
-                              handleCategoryToggle(category.id)
+                            id="all-project-types"
+                            checked={
+                              isSomeCategoriesSelected
+                                ? "indeterminate"
+                                : allCategoriesSelected
+                            }
+                            onCheckedChange={(checked) =>
+                              handleSelectAllCategories(checked === true)
                             }
                           />
                           <Label
-                            htmlFor={`project-type-${category.id}`}
-                            className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+                            htmlFor="all-project-types"
+                            className="cursor-pointer text-sm font-normal"
                           >
-                            {category.color && (
-                              <span
-                                className="h-3 w-3 shrink-0 rounded-full"
-                                style={{ backgroundColor: category.color }}
-                              />
-                            )}
-                            {category.name}
+                            Tutte le categorie
                           </Label>
                         </div>
-                      );
-                    })}
-                  </div>
+                        {safeCategories.map((category) => {
+                          const isSelected = selectedCategories.includes(category.id);
+
+                          return (
+                            <div
+                              key={category.id}
+                              className="flex items-center space-x-2"
+                            >
+                              <Checkbox
+                                id={`project-type-${category.id}`}
+                                checked={isSelected}
+                                onCheckedChange={() =>
+                                  handleCategoryToggle(category.id)
+                                }
+                              />
+                              <Label
+                                htmlFor={`project-type-${category.id}`}
+                                className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+                              >
+                                {category.color && (
+                                  <span
+                                    className="h-3 w-3 shrink-0 rounded-full"
+                                    style={{ backgroundColor: category.color }}
+                                  />
+                                )}
+                                {category.name}
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Categorie non configurate</div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={openCardConfigDialog}
+                    title="Configura campi card progetto (admin)"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-            )}
-            <div className="mt-3 rounded-lg border bg-background/80 px-4 py-3 shadow-sm">
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                <span className="text-sm font-medium">Card progetto:</span>
-                {(["normal", "small"] as CardDisplayMode[]).map((mode) => (
-                  <div key={mode} className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold uppercase text-muted-foreground">
-                      {mode === "normal" ? "Versione estesa" : "Versione ridotta"}
-                    </span>
-                    {(
-                      Object.keys(CARD_FIELD_LABELS) as CardDisplayField[]
-                    ).map((field) => {
-                      const checked = cardFieldConfig[mode][field];
-                      return (
-                        <button
-                          key={`${mode}-${field}`}
-                          type="button"
-                          onClick={() => toggleCardField(mode, field)}
-                          className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
-                            checked
-                              ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                              : "border-slate-300 bg-background text-slate-500 dark:border-slate-700 dark:text-slate-400"
-                          }`}
-                        >
-                          {CARD_FIELD_LABELS[field]}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
             </div>
+
+            <Dialog open={isCardConfigDialogOpen} onOpenChange={setIsCardConfigDialogOpen}>
+              <DialogContent className="sm:max-w-[700px]">
+                <DialogHeader>
+                  <DialogTitle>Configurazione Card Progetto</DialogTitle>
+                  <DialogDescription>
+                    Modifica i campi visibili nella versione estesa/ridotta delle card.
+                  </DialogDescription>
+                </DialogHeader>
+
+                {!isCardConfigUnlocked ? (
+                  <div className="space-y-3">
+                    <Label htmlFor="card-admin-code">Codice admin</Label>
+                    <Input
+                      id="card-admin-code"
+                      type="password"
+                      value={adminCodeInput}
+                      onChange={(e) => setAdminCodeInput(e.target.value)}
+                      placeholder="Inserisci codice admin"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void unlockCardConfig();
+                        }
+                      }}
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        onClick={() => void unlockCardConfig()}
+                        disabled={isValidatingAdminCode}
+                      >
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        {isValidatingAdminCode
+                          ? "Verifica in corso..."
+                          : "Sblocca modifica"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {(["normal", "small"] as CardDisplayMode[]).map((mode) => (
+                      <div key={mode} className="space-y-2 rounded-md border p-3">
+                        <div className="text-xs font-semibold uppercase text-muted-foreground">
+                          {mode === "normal" ? "Versione estesa" : "Versione ridotta"}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(Object.keys(CARD_FIELD_LABELS) as CardDisplayField[]).map((field) => {
+                            const checked = draftCardFieldConfig[mode][field];
+                            return (
+                              <button
+                                key={`${mode}-${field}`}
+                                type="button"
+                                onClick={() => toggleCardField(mode, field)}
+                                className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                                  checked
+                                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                    : "border-slate-300 bg-background text-slate-500 dark:border-slate-700 dark:text-slate-400"
+                                }`}
+                              >
+                                {CARD_FIELD_LABELS[field]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCardConfigDialogOpen(false)}
+                      >
+                        Annulla
+                      </Button>
+                      <Button type="button" onClick={saveCardConfig}>
+                        Salva configurazione
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
             {isTimelineOpen && (
-              <div className="max-w-[1000px] mx-auto mt-2">
+              <div className="w-full mt-2">
                 {isLoadingSnapshots ? (
                   <div className="text-sm text-muted-foreground px-2 py-3">
                     Caricamento timeline...
@@ -1458,10 +1612,11 @@ function KanbanBoard({
               loading ? "opacity-50" : ""
             } flex-1 overflow-x-auto overflow-y-hidden px-8 py-4 transition-all duration-500`}
           >
-            <div className="flex h-full min-h-0 min-w-max items-stretch gap-4">
-              {(kanban.columns || [])
-                .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
-                .map((column: KanbanColumn) => {
+            <div
+              className="flex h-full min-h-0 min-w-max items-stretch gap-4"
+              style={{ width: `${boardColumnsWidthRem}rem` }}
+            >
+              {sortedColumns.map((column: KanbanColumn) => {
                   // Ensure tasks is an array before filtering
                   const columnCards = Array.isArray(filteredTasks)
                     ? filteredTasks.filter(
