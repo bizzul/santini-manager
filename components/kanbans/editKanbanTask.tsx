@@ -131,6 +131,13 @@ type TaskSupplier = {
   notes: string | null;
 };
 
+type CollaboratorBadge = {
+  key: string;
+  name: string;
+  initials: string;
+  picture: string | null;
+};
+
 function parseSupplyDaysValue(
   value: string | number | null | undefined
 ): number | null {
@@ -279,12 +286,8 @@ const EditTaskKanban = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [selectedCollaborator, setSelectedCollaborator] = useState<{
-    key: string;
-    name: string;
-    initials: string;
-    picture: string | null;
-  } | null>(null);
+  const [selectedCollaborator, setSelectedCollaborator] =
+    useState<CollaboratorBadge | null>(null);
 
   // Helper to build headers with siteId
   const getHeaders = (): HeadersInit => {
@@ -581,19 +584,11 @@ const EditTaskKanban = ({
     (action: any) => action.taskId === resource.id
   );
 
-  const involvedCollaborators = useMemo(() => {
+  const involvedCollaborators = useMemo<CollaboratorBadge[]>(() => {
     const seen = new Set<string>();
 
-    return filteredHistory.reduce(
-      (
-        acc: Array<{
-          key: string;
-          name: string;
-          initials: string;
-          picture: string | null;
-        }>,
-        item: any
-      ) => {
+    return (filteredHistory as any[]).reduce<CollaboratorBadge[]>(
+      (acc, item) => {
         const user = item?.User;
         if (!user) {
           return acc;
