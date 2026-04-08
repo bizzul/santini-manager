@@ -47,6 +47,7 @@ import {
   Info,
   Download,
   Loader2,
+  Package,
 } from "lucide-react";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
@@ -555,6 +556,40 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
     [products]
   );
 
+  const selectedProjectProduct = useMemo(() => {
+    const watchedProductId = form.watch("productId");
+    const fallbackProductId =
+      offerProducts.find((line) => line.productId)?.productId ??
+      watchedProductId ??
+      resource?.sellProductId ??
+      null;
+
+    if (!fallbackProductId) {
+      return null;
+    }
+
+    return (
+      products.find(
+        (product: SellProduct) => product.id === Number(fallbackProductId)
+      ) || null
+    );
+  }, [offerProducts, products, form.watch("productId"), resource?.sellProductId]);
+
+  const selectedProjectProductImage = useMemo(() => {
+    if (!selectedProjectProduct || typeof selectedProjectProduct !== "object") {
+      return null;
+    }
+
+    const imageUrl = (selectedProjectProduct as { image_url?: string | null })
+      .image_url;
+
+    if (typeof imageUrl !== "string" || imageUrl.trim().length === 0) {
+      return null;
+    }
+
+    return imageUrl;
+  }, [selectedProjectProduct]);
+
   const handleOfferProductChange = (
     index: number,
     patch: Partial<OfferProductLine>
@@ -792,6 +827,34 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
   return (
     <div className="flex flex-row-reverse flex-nowrap gap-8 w-full justify-between">
       <div className="flex flex-col gap-6">
+        <div className="w-48 p-3 bg-muted/40 rounded-lg border space-y-2">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <Package className="h-3.5 w-3.5" />
+            Prodotto
+          </h4>
+          <div className="space-y-2">
+            <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
+              {selectedProjectProductImage ? (
+                <Image
+                  src={selectedProjectProductImage}
+                  alt={selectedProjectProduct?.name || "Immagine prodotto"}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">
+                  Nessuna immagine
+                </div>
+              )}
+            </div>
+            <p className="text-xs leading-snug text-muted-foreground">
+              {selectedProjectProduct?.name ||
+                selectedProjectProduct?.type ||
+                "Prodotto non selezionato"}
+            </p>
+          </div>
+        </div>
+
         {/* Project Contact Info Panel - Replaces QR Code */}
         <div className="w-48 p-4 bg-muted/50 rounded-lg border space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -947,7 +1010,7 @@ const EditTaskKanban = ({ handleClose, resource, history, domain }: Props) => {
           )}
         </div>
 
-        <div className="w-72 min-h-[320px] rounded-lg border bg-muted/20 p-4 space-y-4">
+        <div className="w-72 min-h-[320px] mt-10 rounded-lg border bg-muted/20 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Documenti progetto</h3>
             {isOfferTask ? (

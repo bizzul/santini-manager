@@ -25,6 +25,7 @@ import {
   Wrench, 
   Package,
   Tag,
+  Image as ImageIcon,
   LucideIcon,
   Copy,
   Trash2,
@@ -407,6 +408,20 @@ export default function Card({
     return sellProduct.name || sellProduct.type || null;
   };
 
+  const productImageUrl = useMemo(() => {
+    const sellProduct = data.sellProduct || data.sell_product;
+    if (!sellProduct) {
+      return null;
+    }
+
+    const imageUrl = sellProduct.image_url || sellProduct.imageUrl || null;
+    if (typeof imageUrl !== "string" || imageUrl.trim().length === 0) {
+      return null;
+    }
+
+    return imageUrl;
+  }, [data.sellProduct, data.sell_product]);
+
   // Determina il colore del bordo sinistro in base allo stato
   const getBorderColor = () => {
     // Bozza ha priorità - bordo arancione
@@ -554,6 +569,21 @@ export default function Card({
                     )}
                   </div>
                 )}
+
+                <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                  {productImageUrl ? (
+                    <img
+                      src={productImageUrl}
+                      alt={getProductDisplay() || "Immagine prodotto"}
+                      className="h-24 w-full rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-24 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      <span>Nessuna immagine</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Nome Cliente */}
                 <div className="font-semibold text-base mb-1 truncate">
@@ -707,6 +737,21 @@ export default function Card({
                     {productCategory?.name || getProductDisplay()}
                   </div>
                 )}
+
+                <div className="mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+                  {productImageUrl ? (
+                    <img
+                      src={productImageUrl}
+                      alt={getProductDisplay() || "Immagine prodotto"}
+                      className="h-14 w-full rounded object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-14 w-full items-center justify-center gap-1 rounded border border-dashed border-slate-300 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
+                      <ImageIcon className="h-3 w-3" />
+                      <span>Nessuna immagine</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* Riga 3: Cliente · Oggetto */}
                 <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
