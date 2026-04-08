@@ -334,7 +334,7 @@ export default async function Page({
     Boolean(contactPhone || clientAddress) || Boolean(data.other) || taskSuppliers.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="container max-w-6xl mx-auto py-6 px-4">
         {/* Back link */}
         <div className="mb-6">

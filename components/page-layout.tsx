@@ -48,7 +48,7 @@ export function PageHeader({ children, className }: PageHeaderProps) {
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "sticky top-0 z-10 bg-[hsl(var(--page)/0.96)] backdrop-blur supports-[backdrop-filter]:bg-[hsl(var(--page)/0.82)]",
         "flex items-center justify-between gap-4 px-4 py-4 md:px-6 lg:px-8",
         "border-b shrink-0",
         className

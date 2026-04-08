@@ -85,7 +85,7 @@ export default async function ProductPage({
     "rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-700 dark:bg-slate-800/50";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-transparent">
       <div className="container mx-auto max-w-6xl px-4 py-6">
         <div className="mb-6">
           <Link

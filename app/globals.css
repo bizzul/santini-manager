@@ -5,6 +5,8 @@
 /* CSS Variables for component backgrounds */
 :root {
   --background: 0 0% 100%;
+  --page: 210 25% 97%;
+  --page-soft: 210 30% 94%;
   --foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
   --card-foreground: 222.2 84% 4.9%;
@@ -29,6 +31,8 @@
 
 .dark {
   --background: 222.2 84% 4.9%;
+  --page: 222 30% 12.5%;
+  --page-soft: 224 34% 9%;
   --foreground: 210 40% 98%;
   --card: 222.2 84% 4.9%;
   --card-foreground: 210 40% 98%;
@@ -218,7 +222,13 @@ body:has(.home-gradient-bg) {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--page));
+    background-image:
+      radial-gradient(circle at top left, hsl(var(--foreground) / 0.05), transparent 26%),
+      radial-gradient(circle at top right, hsl(var(--primary) / 0.06), transparent 30%),
+      linear-gradient(180deg, hsl(var(--page)) 0%, hsl(var(--page-soft)) 100%);
+    background-attachment: fixed;
+    @apply text-foreground;
   }
   table thead tr {
     background-color: hsl(var(--background) / 0.95);
