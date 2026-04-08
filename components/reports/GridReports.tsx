@@ -204,6 +204,7 @@ function GridReports({
     useState<ExportFormat>("pdf");
   const [consuntivoFormat, setConsuntivoFormat] =
     useState<ExportFormat>("excel");
+  const [productsFormat, setProductsFormat] = useState<ExportFormat>("excel");
 
   const [supplier, setSupplier] = useState<string>();
   const [selectedTask, setSelectedTask] = useState<any>();
@@ -669,33 +670,29 @@ function GridReports({
     }
   };
 
-  const productsExcel = async () => {
+  const productsExport = async () => {
     try {
       setLoadingProducts(true);
       const res = await fetch("/api/reports/products", {
-        method:
-          selectedProductCategoryIds.length > 0 ||
-          selectedProductSubcategories.length > 0
-            ? "POST"
-            : "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-site-domain": domain,
         },
-        body:
-          selectedProductCategoryIds.length > 0 ||
-          selectedProductSubcategories.length > 0
-            ? JSON.stringify({
-                categoryIds: selectedProductCategoryIds,
-                subcategories: selectedProductSubcategories,
-              })
-            : undefined,
+        body: JSON.stringify({
+          categoryIds: selectedProductCategoryIds,
+          subcategories: selectedProductSubcategories,
+          format: productsFormat,
+        }),
       });
 
       if (res.ok) {
         await downloadResponseFile(
           res,
-          `Report_prodotti_al_${formatDateForFilename(new Date())}.xlsx`,
+          getFileNameWithExtension(
+            `Report_prodotti_al_${formatDateForFilename(new Date())}`,
+            productsFormat,
+          ),
         );
       } else {
         logger.error("Failed to download products export");
@@ -1051,10 +1048,10 @@ function GridReports({
         <ReportCard
           title="Prodotti"
           description="Tabella completa di tutti i prodotti con categoria, titolo, descrizione e riferimenti disponibili."
-          formats={["Excel"]}
+          formats={["Excel", "PDF"]}
           footer={
             <Button
-              onClick={productsExcel}
+              onClick={productsExport}
               variant="default"
               disabled={loadingProducts}
             >
@@ -1094,6 +1091,23 @@ function GridReports({
                 onValueChange={setSelectedProductSubcategories}
                 placeholder="Tutte le sottocategorie"
                 emptyMessage="Nessuna sottocategoria disponibile."
+              />
+            </ReportField>
+            <ReportField label="Formato">
+              <ReportMultiSelect
+                options={exportFormatOptions}
+                value={[productsFormat]}
+                onValueChange={(values) => {
+                  if (values[0]) {
+                    setProductsFormat(values[0] as ExportFormat);
+                  }
+                }}
+                placeholder="Formato export"
+                emptyMessage="Nessun formato disponibile."
+                selectionMode="single"
+                showSelectAll={false}
+                searchPlaceholder="Cerca formato..."
+                allowClear={false}
               />
             </ReportField>
           </div>
