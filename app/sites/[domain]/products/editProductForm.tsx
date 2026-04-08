@@ -75,6 +75,13 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
   });
 
   const { isSubmitting } = form.formState;
+  const resolvedCategory = Array.isArray(data.category)
+    ? data.category[0]
+    : data.category;
+  const resolvedSubcategory = data.subcategory || data.type || "";
+  const resolvedProductType =
+    data.product_type ||
+    (data.subcategory && data.type && data.subcategory !== data.type ? data.type : "");
 
   useEffect(() => {
     const loadData = async () => {
@@ -115,9 +122,9 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
 
   useEffect(() => {
     form.reset({
-      category: data.category?.name || "",
-      subcategory: data.subcategory || data.type || "",
-      product_type: data.product_type || "",
+      category: resolvedCategory?.name || "",
+      subcategory: resolvedSubcategory,
+      product_type: resolvedProductType,
       name: data.name || "",
       description: data.description || "",
       supplier_id: data.supplier_id ?? undefined,
@@ -126,7 +133,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       doc_url: data.doc_url || "",
       active: data.active ?? true,
     });
-  }, [data, form]);
+  }, [data, form, resolvedCategory?.name, resolvedProductType, resolvedSubcategory]);
 
   const handleAddCategory = async () => {
     if (!newCategoryName.trim() || !siteId) return;

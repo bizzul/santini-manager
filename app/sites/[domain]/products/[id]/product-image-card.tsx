@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Image as ImageIcon, Loader2, Trash2 } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Image as ImageIcon, Loader2, Save, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DocumentUpload } from "@/components/ui/document-upload";
@@ -25,10 +25,26 @@ export function ProductImageCard({
 }: ProductImageCardProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [imageUrl, setImageUrl] = useState(currentImageUrl || null);
+  const [savedImageUrl, setSavedImageUrl] = useState(currentImageUrl || null);
+  const [draftImageUrl, setDraftImageUrl] = useState<string | null>(null);
+  const [uploadKey, setUploadKey] = useState(0);
   const [isSaving, startSaving] = useTransition();
 
-  const persistImage = (nextImageUrl: string | null, successMessage: string) => {
+  const previewImageUrl = useMemo(
+    () => draftImageUrl ?? savedImageUrl,
+    [draftImageUrl, savedImageUrl],
+  );
+  const hasPendingChanges = draftImageUrl !== null && draftImageUrl !== savedImageUrl;
+
+  const resetUploader = () => {
+    setUploadKey((current) => current + 1);
+  };
+
+  const persistImage = (
+    nextImageUrl: string | null,
+    successMessage: string,
+    onSuccess?: () => void,
+  ) => {
     startSaving(async () => {
       const response = await updateSellProductImageAction({
         productId,
@@ -42,10 +58,16 @@ export function ProductImageCard({
           variant: "destructive",
           description: response.error,
         });
-        setImageUrl(currentImageUrl || null);
+        setSavedImageUrl(currentImageUrl || null);
+        setDraftImageUrl(null);
+        resetUploader();
         return;
       }
 
+      setSavedImageUrl(nextImageUrl);
+      setDraftImageUrl(null);
+      resetUploader();
+      onSuccess?.();
       toast({
         description: successMessage,
       });
@@ -54,12 +76,34 @@ export function ProductImageCard({
   };
 
   const handleUploadComplete = (nextUrl: string) => {
-    setImageUrl(nextUrl);
-    persistImage(nextUrl, "Immagine prodotto aggiornata.");
+    setDraftImageUrl(nextUrl);
+    toast({
+      description: "Immagine caricata. Premi Salva immagine per confermare.",
+    });
+  };
+
+  const handleSaveImage = () => {
+    if (!hasPendingChanges) {
+      return;
+    }
+
+    persistImage(draftImageUrl, "Immagine prodotto aggiornata.");
   };
 
   const handleRemoveImage = () => {
-    setImageUrl(null);
+    if (hasPendingChanges) {
+      setDraftImageUrl(null);
+      resetUploader();
+      toast({
+        description: "Immagine non salvata rimossa.",
+      });
+      return;
+    }
+
+    if (!savedImageUrl) {
+      return;
+    }
+
     persistImage(null, "Immagine prodotto rimossa.");
   };
 
@@ -72,9 +116,9 @@ export function ProductImageCard({
         {isSaving && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
       </div>
 
-      {imageUrl ? (
+      {previewImageUrl ? (
         <img
-          src={imageUrl}
+          src={previewImageUrl}
           alt={productName || "Immagine prodotto"}
           className="h-64 w-full object-cover"
         />
@@ -87,6 +131,7 @@ export function ProductImageCard({
 
       <div className="space-y-3 border-t border-slate-200 p-4 dark:border-slate-700">
         <DocumentUpload
+          key={uploadKey}
           siteId={siteId}
           folder="sell-products/images"
           onUploadComplete={handleUploadComplete}
@@ -103,7 +148,19 @@ export function ProductImageCard({
           dropzoneHint="PNG, JPG, WEBP - Max 10MB"
         />
 
-        {imageUrl && (
+        {hasPendingChanges && (
+          <Button
+            type="button"
+            className="w-full"
+            onClick={handleSaveImage}
+            disabled={isSaving}
+          >
+            <Save className="mr-2 h-4 w-4" />
+            Salva immagine
+          </Button>
+        )}
+
+        {(savedImageUrl || draftImageUrl) && (
           <Button
             type="button"
             variant="outline"
@@ -112,7 +169,7 @@ export function ProductImageCard({
             disabled={isSaving}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Rimuovi immagine
+            Elimina immagine
           </Button>
         )}
       </div>

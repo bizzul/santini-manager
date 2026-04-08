@@ -329,8 +329,15 @@ export const fetchSellProducts = cache(async (siteId: string) => {
         return [];
     }
 
+    const normalizedProducts = products.map((product) => ({
+        ...product,
+        category: Array.isArray(product.category)
+            ? product.category[0]
+            : product.category,
+    }));
+
     // Sort by category name (alphabetically), then by product name
-    const sortedProducts = [...products].sort((a, b) => {
+    const sortedProducts = [...normalizedProducts].sort((a, b) => {
         const catA = a.category?.name?.toLowerCase() || "";
         const catB = b.category?.name?.toLowerCase() || "";
         if (catA !== catB) {
