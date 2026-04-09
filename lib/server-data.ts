@@ -645,7 +645,7 @@ export const fetchKanbanWithTasks = cache(
                     .from("Timetracking")
                     .select("task_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
                     .eq("site_id", siteId)
-                    .in("task_id", taskIds);
+                    .in("task_id", taskIds) as typeof result;
             }
 
             return result;

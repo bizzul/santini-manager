@@ -133,7 +133,7 @@ export async function GET(req: NextRequest) {
               .from("Timetracking")
               .select(TIMETRACKING_SELECT_NO_USER)
               .in("task_id", taskIds)
-              .eq("site_id", siteId);
+              .eq("site_id", siteId) as typeof result;
           }
 
           return result;
