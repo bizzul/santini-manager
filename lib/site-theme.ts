@@ -124,7 +124,10 @@ export function normalizeHexColor(value: unknown, fallback: string) {
   return expandShortHex(trimmed).toUpperCase();
 }
 
-export function resolveSiteThemeColors(value: unknown): SiteThemeColors {
+export function resolveSiteThemeColors(
+  value: unknown,
+  fallback: SiteThemeColors = DEFAULT_SITE_THEME_COLORS_LIGHT
+): SiteThemeColors {
   const source =
     value && typeof value === "object"
       ? (value as Partial<Record<keyof SiteThemeColors, unknown>>)
@@ -133,19 +136,19 @@ export function resolveSiteThemeColors(value: unknown): SiteThemeColors {
   return {
     pageCard: normalizeHexColor(
       source.pageCard,
-      DEFAULT_SITE_THEME_COLORS_LIGHT.pageCard
+      fallback.pageCard
     ),
     pageBackground: normalizeHexColor(
       source.pageBackground,
-      DEFAULT_SITE_THEME_COLORS_LIGHT.pageBackground
+      fallback.pageBackground
     ),
     sidebarCard: normalizeHexColor(
       source.sidebarCard,
-      DEFAULT_SITE_THEME_COLORS_LIGHT.sidebarCard
+      fallback.sidebarCard
     ),
     sidebarBackground: normalizeHexColor(
       source.sidebarBackground,
-      DEFAULT_SITE_THEME_COLORS_LIGHT.sidebarBackground
+      fallback.sidebarBackground
     ),
   };
 }
@@ -163,7 +166,7 @@ export function resolveSiteThemeSettings(value: unknown): SiteThemeSettings {
   if (isLegacyShape) {
     return {
       ...DEFAULT_SITE_THEME_SETTINGS,
-      light: resolveSiteThemeColors(source),
+      light: resolveSiteThemeColors(source, DEFAULT_SITE_THEME_COLORS_LIGHT),
     };
   }
 
@@ -171,21 +174,37 @@ export function resolveSiteThemeSettings(value: unknown): SiteThemeSettings {
     ? (source.mode as SiteThemeMode)
     : DEFAULT_SITE_THEME_SETTINGS.mode;
 
+  const resolvedDark = resolveSiteThemeColors({
+    ...DEFAULT_SITE_THEME_COLORS_DARK,
+    ...(source.dark && typeof source.dark === "object"
+      ? (source.dark as Record<string, unknown>)
+      : {}),
+  }, DEFAULT_SITE_THEME_COLORS_DARK);
+
+  // Legacy compatibility:
+  // some old saved dark payloads ended up with light page colors.
+  // If both dark page colors are still exactly the light defaults,
+  // restore dark defaults for page surfaces while keeping user sidebar colors.
+  const normalizedDark =
+    resolvedDark.pageCard === DEFAULT_SITE_THEME_COLORS_LIGHT.pageCard &&
+    resolvedDark.pageBackground === DEFAULT_SITE_THEME_COLORS_LIGHT.pageBackground
+      ? {
+          ...resolvedDark,
+          pageCard: DEFAULT_SITE_THEME_COLORS_DARK.pageCard,
+          pageBackground: DEFAULT_SITE_THEME_COLORS_DARK.pageBackground,
+        }
+      : resolvedDark;
+
   return {
     mode,
-    light: resolveSiteThemeColors(source.light),
-    dark: resolveSiteThemeColors({
-      ...DEFAULT_SITE_THEME_COLORS_DARK,
-      ...(source.dark && typeof source.dark === "object"
-        ? (source.dark as Record<string, unknown>)
-        : {}),
-    }),
+    light: resolveSiteThemeColors(source.light, DEFAULT_SITE_THEME_COLORS_LIGHT),
+    dark: normalizedDark,
     adaptive: resolveSiteThemeColors({
       ...DEFAULT_SITE_THEME_COLORS_ADAPTIVE,
       ...(source.adaptive && typeof source.adaptive === "object"
         ? (source.adaptive as Record<string, unknown>)
         : {}),
-    }),
+    }, DEFAULT_SITE_THEME_COLORS_ADAPTIVE),
   };
 }
 

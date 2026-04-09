@@ -198,15 +198,15 @@ export default async function SiteLayout({
               userId={userContext.userId || userContext.user.id}
             >
               <AppSidebar />
-              <SidebarInset className="flex flex-col h-screen overflow-hidden">
-                <header className="flex h-12 shrink-0 items-center justify-between border-b px-4">
+              <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
+                <header className="flex h-12 shrink-0 items-center justify-between border-b bg-[hsl(var(--page)/0.96)] px-4 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)]">
                   <SidebarTrigger className="-ml-1" />
                   <ManagerGuideButton
                     label="Apri guida manager"
                     className="h-8 shrink-0"
                   />
                 </header>
-                <div className="flex-1 overflow-auto">{children}</div>
+                <div className="flex-1 overflow-auto bg-[hsl(var(--page))]">{children}</div>
               </SidebarInset>
 
               {/* Global Kanban Modal */}
