@@ -627,7 +627,7 @@ export const fetchKanbanWithTasks = cache(
         const taskIds = tasks.map((task) => task.id);
 
         const timetrackingPromise = (async () => {
-            let result = await supabase
+            let result: any = await supabase
                 .from("Timetracking")
                 .select("task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
                 .eq("site_id", siteId)
@@ -677,7 +677,7 @@ export const fetchKanbanWithTasks = cache(
         const qc = qcResult.data || [];
         const packing = packingResult.data || [];
         const taskSuppliers = taskSuppliersResult.data || [];
-        const timetracking = timetrackingResult.data || [];
+        const timetracking: any[] = timetrackingResult.data || [];
         const taskIdSet = new Set(taskIds);
         const history = (historyResult.data || []).filter((action) =>
             taskIdSet.has(action.taskId ?? action.task_id),
@@ -3162,6 +3162,26 @@ export interface ProduzioneProductWorkload {
     elementi: number;
 }
 
+export type ProduzioneCalendarType = "production" | "installation" | "service";
+
+export interface ProduzioneCalendarCategorySummary {
+    category: string;
+    color: string;
+    commesse: number;
+    elementi: number;
+    elementiByCalendar: Record<ProduzioneCalendarType, number>;
+}
+
+export interface ProduzioneCalendarWeekSummary {
+    id: "last" | "current" | "next";
+    label: string;
+    startDate: string;
+    endDate: string;
+    commesse: number;
+    elementi: number;
+    categories: ProduzioneCalendarCategorySummary[];
+}
+
 export interface ProduzioneKanbanStatus {
     kanbanId: number;
     kanbanName: string;
@@ -3176,6 +3196,7 @@ export interface ProduzioneKanbanStatus {
 export interface ProduzioneDashboardStats {
     kanbanStatus: ProduzioneKanbanStatus[];
     productWorkload: ProduzioneProductWorkload[];
+    calendarWeeklySummary: ProduzioneCalendarWeekSummary[];
     hasProduzionCategory: boolean;
     repartoData: ProduzioneRepartoData[];
     weeklyTrend: ProduzioneWeeklyData[];
@@ -3205,6 +3226,8 @@ export const fetchProduzioneDashboardData = cache(
 
         const allKanbans = kanbansResult.data || [];
         const allCategories = categoriesResult.data || [];
+        const kanbanMap = new Map(allKanbans.map((kanban) => [kanban.id, kanban]));
+        const kanbanCategoryMap = new Map(allCategories.map((category) => [category.id, category]));
 
         // Find "Produzione" category
         const produzioneCategory = allCategories.find((c) => {
@@ -3213,6 +3236,174 @@ export const fetchProduzioneDashboardData = cache(
         });
 
         const hasProduzionCategory = !!produzioneCategory;
+        const getCalendarTypeFromKanban = (
+            kanban: (typeof allKanbans)[number] | undefined,
+        ): ProduzioneCalendarType | null => {
+            if (!kanban) return null;
+
+            const title = (kanban.title || "").toLowerCase();
+            const identifier = (kanban.identifier || "").toLowerCase();
+            const name = `${title} ${identifier}`.trim();
+            const category = kanbanCategoryMap.get(kanban.category_id);
+            const categoryIdentifier = (category?.identifier || "").toLowerCase();
+            const categoryName = (category?.name || "").toLowerCase();
+
+            if (
+                kanban.is_production_kanban ||
+                categoryIdentifier === "produzione" ||
+                categoryIdentifier === "production" ||
+                categoryName.includes("produzione") ||
+                categoryName.includes("production") ||
+                name.includes("produzione") ||
+                name.includes("prod") ||
+                name.includes("officina") ||
+                name.includes("lavorazione") ||
+                identifier === "production" ||
+                identifier === "produzione"
+            ) {
+                return "production";
+            }
+
+            if (
+                categoryIdentifier === "installazione" ||
+                categoryIdentifier === "installation" ||
+                categoryIdentifier === "posa" ||
+                categoryName.includes("installazione") ||
+                categoryName.includes("installation") ||
+                categoryName.includes("posa") ||
+                name.includes("install") ||
+                name.includes("montaggio") ||
+                name.includes("cantiere") ||
+                name.includes("posa") ||
+                identifier === "installation" ||
+                identifier === "installazione" ||
+                identifier === "posa"
+            ) {
+                return "installation";
+            }
+
+            if (
+                categoryIdentifier === "service" ||
+                categoryIdentifier === "assistenza" ||
+                categoryName.includes("service") ||
+                categoryName.includes("assistenza") ||
+                name.includes("service") ||
+                name.includes("assistenza") ||
+                name.includes("manutenzione") ||
+                identifier === "service" ||
+                identifier === "assistenza"
+            ) {
+                return "service";
+            }
+
+            return null;
+        };
+        const getWeekStartMonday = (date: Date): Date => {
+            const weekStart = new Date(date);
+            const day = weekStart.getDay();
+            const offset = (day + 6) % 7; // Monday = 0, Sunday = 6
+            weekStart.setDate(weekStart.getDate() - offset);
+            weekStart.setHours(0, 0, 0, 0);
+            return weekStart;
+        };
+        const currentWeekStart = getWeekStartMonday(now);
+        const calendarWeeklySummaryConfig: Array<{
+            id: "last" | "current" | "next";
+            label: string;
+            weekOffset: number;
+        }> = [
+            { id: "last", label: "Settimana scorsa", weekOffset: -1 },
+            { id: "current", label: "Questa settimana", weekOffset: 0 },
+            { id: "next", label: "Prossima settimana", weekOffset: 1 },
+        ];
+        const calendarWeeklySummaryMaps = calendarWeeklySummaryConfig.map((config) => {
+            const start = new Date(currentWeekStart);
+            start.setDate(currentWeekStart.getDate() + config.weekOffset * 7);
+            const end = new Date(start);
+            end.setDate(start.getDate() + 7);
+            return {
+                ...config,
+                start,
+                end,
+                commesse: 0,
+                elementi: 0,
+                categories: new Map<string, ProduzioneCalendarCategorySummary>(),
+            };
+        });
+        const { data: calendarTasks } = await supabase
+            .from("Task")
+            .select(
+                `
+                    id,
+                    kanbanId,
+                    kanban_id,
+                    deliveryDate,
+                    termine_produzione,
+                    positions,
+                    numero_pezzi,
+                    archived,
+                    SellProduct:sellProductId(
+                        category:category_id(id, name, color)
+                    )
+                `,
+            )
+            .eq("site_id", siteId)
+            .eq("archived", false)
+            .or("deliveryDate.not.is.null,termine_produzione.not.is.null");
+
+        (calendarTasks || []).forEach((task: any) => {
+            const dateValue = task.deliveryDate || task.termine_produzione;
+            if (!dateValue) return;
+            const taskDate = new Date(dateValue);
+            if (Number.isNaN(taskDate.getTime())) return;
+
+            const kanbanId = task.kanbanId || task.kanban_id;
+            if (!kanbanId) return;
+            const calendarType = getCalendarTypeFromKanban(kanbanMap.get(kanbanId));
+            if (!calendarType) return;
+
+            const summary = calendarWeeklySummaryMaps.find((week) =>
+                taskDate >= week.start && taskDate < week.end
+            );
+            if (!summary) return;
+
+            const categoryName = task.SellProduct?.category?.name || "Senza categoria";
+            const categoryColor = task.SellProduct?.category?.color || "#64748b";
+            const elementiCount = task.positions?.length || task.numero_pezzi || 1;
+
+            summary.commesse += 1;
+            summary.elementi += elementiCount;
+
+            const currentCategory = summary.categories.get(categoryName) || {
+                category: categoryName,
+                color: categoryColor,
+                commesse: 0,
+                elementi: 0,
+                elementiByCalendar: {
+                    production: 0,
+                    installation: 0,
+                    service: 0,
+                },
+            };
+            currentCategory.commesse += 1;
+            currentCategory.elementi += elementiCount;
+            currentCategory.elementiByCalendar[calendarType] += elementiCount;
+            if ((!currentCategory.color || currentCategory.color === "#64748b") && categoryColor) {
+                currentCategory.color = categoryColor;
+            }
+            summary.categories.set(categoryName, currentCategory);
+        });
+        const calendarWeeklySummary: ProduzioneCalendarWeekSummary[] = calendarWeeklySummaryMaps.map((week) => ({
+            id: week.id,
+            label: week.label,
+            startDate: week.start.toISOString(),
+            endDate: week.end.toISOString(),
+            commesse: week.commesse,
+            elementi: week.elementi,
+            categories: Array.from(week.categories.values()).sort(
+                (left, right) => right.elementi - left.elementi || right.commesse - left.commesse,
+            ),
+        }));
 
         // Get kanbans under Produzione category (for status cards and carico reparto)
         let kanbanStatus: ProduzioneKanbanStatus[] = [];
@@ -3338,6 +3529,7 @@ export const fetchProduzioneDashboardData = cache(
             return {
                 kanbanStatus,
                 productWorkload,
+                calendarWeeklySummary,
                 hasProduzionCategory,
                 repartoData: [],
                 weeklyTrend: [],
@@ -3438,6 +3630,7 @@ export const fetchProduzioneDashboardData = cache(
         return {
             kanbanStatus,
             productWorkload,
+            calendarWeeklySummary,
             hasProduzionCategory,
             repartoData,
             weeklyTrend,

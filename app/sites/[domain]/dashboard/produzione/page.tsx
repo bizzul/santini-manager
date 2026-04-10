@@ -8,6 +8,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import {
+  ProduzioneCalendarWeeklySummary,
   ProduzioneProductWorkloadChart,
   ProduzioneStatusCards,
 } from "@/components/dashboard/produzione";
@@ -85,6 +86,12 @@ export default async function ProduzioneDashboardPage({
               domain={domain}
             />
           )}
+
+          {/* Riepilogo calendari (settimana scorsa/corrente/prossima) */}
+          <ProduzioneCalendarWeeklySummary
+            data={dashboardData.calendarWeeklySummary}
+            productCategories={dashboardData.productWorkload}
+          />
 
           {/* Carico per tipologia prodotto */}
           {dashboardData.hasProduzionCategory && (

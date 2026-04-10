@@ -10,6 +10,16 @@ const TIMETRACKING_SELECT_WITH_USER =
   "task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes";
 const TIMETRACKING_SELECT_NO_USER =
   "task_id, employee_id, use_cnc, end_time, totalTime, hours, minutes";
+type TimetrackingEntry = {
+  task_id: number;
+  user_id?: string | null;
+  employee_id?: string | null;
+  use_cnc?: boolean | null;
+  end_time?: string | null;
+  totalTime?: number | null;
+  hours?: number | null;
+  minutes?: number | null;
+};
 
 function shouldRetryTimetrackingWithoutUserId(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -119,7 +129,8 @@ export async function GET(req: NextRequest) {
     const timetrackingPromise =
       taskIds.length > 0
         ? (async () => {
-          let result = await supabase
+          // Keep a flexible response type because some environments do not expose user_id.
+          let result: any = await supabase
             .from("Timetracking")
             .select(TIMETRACKING_SELECT_WITH_USER)
             .in("task_id", taskIds)
@@ -234,7 +245,8 @@ export async function GET(req: NextRequest) {
     const qualityControl = qualityControlResult.data || [];
     const packingControl = packingControlResult.data || [];
     const taskSuppliers = taskSuppliersResult.data || [];
-    const timetracking = timetrackingResult.data || [];
+    const timetracking: TimetrackingEntry[] =
+      (timetrackingResult.data || []) as TimetrackingEntry[];
 
     const trackedUserIds = Array.from(
       new Set(
@@ -288,6 +300,7 @@ export async function GET(req: NextRequest) {
       packingByTaskId.set(pc.taskId, existing);
     });
 
+    const todayIso = new Date().toISOString().slice(0, 10);
     const suppliersByTaskId = new Map<number, typeof taskSuppliers>();
     const activeSuppliersCountByTaskId = new Map<number, number>();
     taskSuppliers.forEach((item) => {
@@ -337,8 +350,6 @@ export async function GET(req: NextRequest) {
     });
 
     const userProfileMap = new Map(userProfiles.map((user) => [user.id, user]));
-
-    const todayIso = new Date().toISOString().slice(0, 10);
 
     // Build the response with relationships using O(1) lookups
     const tasksWithRelations = tasks.map((task) => {
