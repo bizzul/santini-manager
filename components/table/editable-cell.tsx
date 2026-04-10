@@ -236,16 +236,19 @@ export function EditableCell<T = any>({
     async (checked: boolean) => {
       if (!editable || isLoading) return;
 
+      setOptimisticValue(checked);
       setIsLoading(true);
       try {
         const result = await onSave(row.original, field, checked);
         if (result?.error) {
+          setOptimisticValue(undefined);
           toast({
             variant: "destructive",
             description: result.error,
           });
         }
       } catch (error) {
+        setOptimisticValue(undefined);
         toast({
           variant: "destructive",
           description: "Errore durante il salvataggio",
@@ -265,7 +268,7 @@ export function EditableCell<T = any>({
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : (
           <Checkbox
-            checked={Boolean(value)}
+            checked={Boolean(effectiveValue)}
             onCheckedChange={handleCheckboxChange}
             disabled={!editable}
           />

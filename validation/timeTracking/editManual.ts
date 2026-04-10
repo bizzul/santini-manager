@@ -23,4 +23,6 @@ export const validation = z.object({
     if (typeof val === "string" || typeof val === "number") return new Date(val);
     return undefined;
   }, z.date().optional()),
+  lunchOffsite: z.boolean().optional(),
+  lunchLocation: z.string().optional(),
 });

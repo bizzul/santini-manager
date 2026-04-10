@@ -53,9 +53,10 @@ const DataWrapper = ({
   const [activeView, setActiveView] = useState<"week" | "month" | "table">("table");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const router = useRouter();
+  const isEditableTable = mode === "admin";
   const columns = useMemo(
-    () => createColumns(domain, internalActivities, tasks, false),
-    [domain, internalActivities, mode, tasks]
+    () => createColumns(domain, internalActivities, tasks, isEditableTable),
+    [domain, internalActivities, isEditableTable, tasks]
   );
   const activityLabels = useMemo(
     () => new Map(internalActivities.map((activity) => [activity.code, activity.label])),
@@ -162,7 +163,7 @@ const DataWrapper = ({
             domain={domain}
             internalActivities={internalActivities}
             mode={mode}
-            readOnly
+            readOnly={!isEditableTable}
           />
         </TabsContent>
       </Tabs>

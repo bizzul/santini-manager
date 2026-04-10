@@ -59,6 +59,8 @@ type TimetrackingRow = Timetracking & {
     };
   };
   internal_activity?: string;
+  lunch_offsite?: boolean;
+  lunch_location?: string | null;
 };
 
 type TimetrackingTaskOption = Task & {
@@ -88,6 +90,8 @@ const buildTimetrackingPayload = (
   task: rowData.task_id?.toString() ?? "",
   userId: rowData.employee_id?.toString() ?? "",
   roles: rowData.roles?.[0]?.role?.id ?? rowData.roles?.[0],
+  lunchOffsite: rowData.lunch_offsite ?? false,
+  lunchLocation: rowData.lunch_location ?? "",
   ...updates,
 });
 
@@ -608,6 +612,41 @@ export const createColumns = (
           tasks={tasks}
           editable={editable}
           onSave={handleTimetrackingUpdate}
+        />
+      ),
+    },
+    {
+      accessorKey: "lunch_location",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Luogo" />
+      ),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.lunch_location}
+          row={row}
+          field="lunchLocation"
+          type="text"
+          onSave={handleTimetrackingEdit}
+          editable={editable}
+          activateOnSingleClick={editable}
+          placeholder="-"
+        />
+      ),
+    },
+    {
+      accessorKey: "lunch_offsite",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Pranzo fuori" />
+      ),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.lunch_offsite}
+          row={row}
+          field="lunchOffsite"
+          type="checkbox"
+          onSave={handleTimetrackingEdit}
+          editable={editable}
+          activateOnSingleClick={editable}
         />
       ),
     },

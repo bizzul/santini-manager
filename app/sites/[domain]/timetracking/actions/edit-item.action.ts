@@ -106,6 +106,12 @@ export async function editItem(props: any, id: number, domain?: string) {
       if (result.data.userId != null) {
         updateData.employee_id = Number(result.data.userId);
       }
+      if (result.data.lunchOffsite != null) {
+        updateData.lunch_offsite = result.data.lunchOffsite;
+      }
+      if (result.data.lunchLocation != null) {
+        updateData.lunch_location = result.data.lunchLocation || null;
+      }
 
       const { data: timetracking, error: timetrackingError } = await supabase
         .from("Timetracking")

@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Row } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -51,7 +46,7 @@ export function DataTableRowActions<TData>({
   }
 
   return (
-    <>
+    <div className="flex items-center gap-1">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -73,21 +68,6 @@ export function DataTableRowActions<TData>({
           <DropdownMenuItem onClick={() => handleEditClick(data)}>
             Modifica
           </DropdownMenuItem>
-          <DropdownMenuItem>Duplica</DropdownMenuItem>
-          {/* <DropdownMenuItem>Favorite</DropdownMenuItem> */}
-          <DropdownMenuSeparator />
-          {/* <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Labels</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup value={task.label}>
-              {labels.map((label) => (
-                <DropdownMenuRadioItem key={label.value} value={label.value}>
-                  {label.label}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => handleDeleteClick(data)}>
             Elimina
@@ -95,6 +75,15 @@ export function DataTableRowActions<TData>({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8 text-destructive hover:text-destructive"
+        onClick={() => handleDeleteClick(data)}
+      >
+        <Trash2 className="h-4 w-4" />
+        <span className="sr-only">Elimina riga</span>
+      </Button>
       {/* MODALS */}
       {selectedData && (
         <>
@@ -115,6 +104,6 @@ export function DataTableRowActions<TData>({
           />
         </>
       )}
-    </>
+    </div>
   );
 }
