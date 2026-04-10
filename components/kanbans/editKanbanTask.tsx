@@ -46,6 +46,11 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Plus,
   CalendarIcon,
   Trash2,
@@ -55,9 +60,11 @@ import {
   Info,
   Download,
   Loader2,
-  Package,
   Save,
   Upload,
+  ChevronDown,
+  Clock3,
+  Users,
 } from "lucide-react";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
@@ -86,7 +93,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useRouter } from "next/navigation";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   normalizeOfferProducts,
   sanitizeOfferProducts,
@@ -141,6 +148,14 @@ type CollaboratorBadge = {
   color?: string | null;
   hours: number;
   entries: number;
+};
+
+type CollaboratorOption = {
+  id: string;
+  name: string;
+  initials: string;
+  picture: string | null;
+  color: string | null;
 };
 
 function parseSupplyDaysValue(
@@ -246,6 +261,16 @@ const EditTaskKanban = ({
       clientId: undefined,
       deliveryDate: undefined,
       termine_produzione: undefined,
+      produzione_data_inizio: undefined,
+      produzione_data_fine: undefined,
+      posa_data_inizio: undefined,
+      posa_data_fine: undefined,
+      produzione_ora_inizio: null,
+      produzione_ora_fine: null,
+      posa_ora_inizio: null,
+      posa_ora_fine: null,
+      produzione_collaborator_ids: [],
+      posa_collaborator_ids: [],
       ora_inizio: null,
       ora_fine: null,
       squadra: null,
@@ -291,10 +316,24 @@ const EditTaskKanban = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [selectedCollaborator, setSelectedCollaborator] =
     useState<CollaboratorBadge | null>(null);
   const [taskCollaboratorSummaries, setTaskCollaboratorSummaries] = useState<any[]>(
     Array.isArray(resource?.collaboratorTimeSummaries) ? resource.collaboratorTimeSummaries : []
+  );
+  const [availableCollaborators, setAvailableCollaborators] = useState<CollaboratorOption[]>([]);
+  const [selectedProductionCollaborators, setSelectedProductionCollaborators] = useState<string[]>(
+    Array.isArray(resource?.produzione_collaborator_ids)
+      ? resource.produzione_collaborator_ids.map((id: unknown) => String(id))
+      : Array.isArray(resource?.assigned_collaborator_ids)
+        ? resource.assigned_collaborator_ids.map((id: unknown) => String(id))
+        : []
+  );
+  const [selectedPosaCollaborators, setSelectedPosaCollaborators] = useState<string[]>(
+    Array.isArray(resource?.posa_collaborator_ids)
+      ? resource.posa_collaborator_ids.map((id: unknown) => String(id))
+      : []
   );
 
   // Helper to build headers with siteId
@@ -347,10 +386,24 @@ const EditTaskKanban = ({
       setProjectFiles(Array.isArray(task?.files) ? task.files : []);
       if (task) {
         setOfferProducts(normalizeOfferProducts(task));
-        setProductionRequired(Boolean(task.termine_produzione));
+        setProductionRequired(
+          Boolean(task.produzione_data_fine || task.termine_produzione)
+        );
         setTaskCollaboratorSummaries(
           Array.isArray(task.collaboratorTimeSummaries)
             ? task.collaboratorTimeSummaries
+            : []
+        );
+        setSelectedProductionCollaborators(
+          Array.isArray(task.produzione_collaborator_ids)
+            ? task.produzione_collaborator_ids.map((id: unknown) => String(id))
+            : Array.isArray(task.assigned_collaborator_ids)
+              ? task.assigned_collaborator_ids.map((id: unknown) => String(id))
+              : []
+        );
+        setSelectedPosaCollaborators(
+          Array.isArray(task.posa_collaborator_ids)
+            ? task.posa_collaborator_ids.map((id: unknown) => String(id))
             : []
         );
       }
@@ -423,6 +476,20 @@ const EditTaskKanban = ({
       }
     };
 
+    const getCollaborators = async () => {
+      try {
+        const response = await fetch("/api/collaborators", {
+          headers: getHeaders(),
+        });
+        if (!response.ok) throw new Error("Failed to fetch collaborators");
+        const data = await response.json();
+        setAvailableCollaborators(Array.isArray(data) ? data : []);
+      } catch (error) {
+        logger.error("Error fetching collaborators:", error);
+        setAvailableCollaborators([]);
+      }
+    };
+
     const initializeForm = () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue(
@@ -434,6 +501,64 @@ const EditTaskKanban = ({
         resource.termine_produzione
           ? parseLocalDate(resource.termine_produzione)
           : undefined
+      );
+      form.setValue(
+        "produzione_data_inizio",
+        resource.produzione_data_inizio
+          ? parseLocalDate(resource.produzione_data_inizio)
+          : undefined
+      );
+      form.setValue(
+        "produzione_data_fine",
+        resource.produzione_data_fine
+          ? parseLocalDate(resource.produzione_data_fine)
+          : resource.termine_produzione
+            ? parseLocalDate(resource.termine_produzione)
+            : undefined
+      );
+      form.setValue(
+        "posa_data_inizio",
+        resource.posa_data_inizio
+          ? parseLocalDate(resource.posa_data_inizio)
+          : undefined
+      );
+      form.setValue(
+        "posa_data_fine",
+        resource.posa_data_fine
+          ? parseLocalDate(resource.posa_data_fine)
+          : resource.deliveryDate
+            ? parseLocalDate(resource.deliveryDate)
+            : undefined
+      );
+      form.setValue(
+        "produzione_ora_inizio",
+        (resource as any).produzione_ora_inizio ?? null
+      );
+      form.setValue(
+        "produzione_ora_fine",
+        (resource as any).produzione_ora_fine ?? null
+      );
+      form.setValue(
+        "posa_ora_inizio",
+        (resource as any).posa_ora_inizio ?? (resource as any).ora_inizio ?? null
+      );
+      form.setValue(
+        "posa_ora_fine",
+        (resource as any).posa_ora_fine ?? (resource as any).ora_fine ?? null
+      );
+      form.setValue(
+        "produzione_collaborator_ids",
+        Array.isArray((resource as any).produzione_collaborator_ids)
+          ? (resource as any).produzione_collaborator_ids.map((id: unknown) => String(id))
+          : Array.isArray((resource as any).assigned_collaborator_ids)
+            ? (resource as any).assigned_collaborator_ids.map((id: unknown) => String(id))
+            : []
+      );
+      form.setValue(
+        "posa_collaborator_ids",
+        Array.isArray((resource as any).posa_collaborator_ids)
+          ? (resource as any).posa_collaborator_ids.map((id: unknown) => String(id))
+          : []
       );
       form.setValue("ora_inizio", (resource as any).ora_inizio ?? null);
       form.setValue("ora_fine", (resource as any).ora_fine ?? null);
@@ -448,8 +573,22 @@ const EditTaskKanban = ({
       form.setValue("kanbanId", resource.kanbanId);
       form.setValue("kanbanColumnId", resource.kanbanColumnId);
       setOfferProducts(normalizeOfferProducts(resource));
-      setProductionRequired(Boolean(resource.termine_produzione));
+      setProductionRequired(
+        Boolean(resource.produzione_data_fine || resource.termine_produzione)
+      );
       setProjectFiles(Array.isArray(resource.files) ? resource.files : []);
+      setSelectedProductionCollaborators(
+        Array.isArray(resource.produzione_collaborator_ids)
+          ? resource.produzione_collaborator_ids.map((id: unknown) => String(id))
+          : Array.isArray(resource.assigned_collaborator_ids)
+            ? resource.assigned_collaborator_ids.map((id: unknown) => String(id))
+            : []
+      );
+      setSelectedPosaCollaborators(
+        Array.isArray(resource.posa_collaborator_ids)
+          ? resource.posa_collaborator_ids.map((id: unknown) => String(id))
+          : []
+      );
     };
 
     initializeForm();
@@ -459,6 +598,7 @@ const EditTaskKanban = ({
       getClients(),
       getProducts(),
       getKanbans(),
+      getCollaborators(),
       loadTaskDetails(),
     ]);
   }, [resource, form.setValue, siteId, siteIdError, domain, loadTaskDetails]);
@@ -527,10 +667,10 @@ const EditTaskKanban = ({
   logger.debug("Form errors:", errors);
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
-    if (productionRequired && !d.termine_produzione) {
+    if (productionRequired && !d.produzione_data_fine) {
       toast({
         variant: "destructive",
-        description: "Inserisci la data di produzione oppure disattiva Produzione.",
+        description: "Inserisci la data fine produzione oppure disattiva Produzione.",
       });
       return;
     }
@@ -559,8 +699,27 @@ const EditTaskKanban = ({
         sellProductId: firstProductId,
         sellPrice: d.sellPrice ? Number(d.sellPrice) : 0,
         numero_pezzi: totalPieces,
-        deliveryDate: d.deliveryDate || null,
-        termine_produzione: productionRequired ? d.termine_produzione || null : null,
+        // Legacy fields kept in sync for existing views
+        deliveryDate: d.posa_data_fine || null,
+        termine_produzione: productionRequired ? d.produzione_data_fine || null : null,
+        ora_inizio: d.posa_ora_inizio ?? null,
+        ora_fine: d.posa_ora_fine ?? null,
+        // New planning fields
+        produzione_data_inizio: productionRequired ? d.produzione_data_inizio || null : null,
+        produzione_data_fine: productionRequired ? d.produzione_data_fine || null : null,
+        posa_data_inizio: d.posa_data_inizio || null,
+        posa_data_fine: d.posa_data_fine || null,
+        produzione_ora_inizio: productionRequired ? d.produzione_ora_inizio ?? null : null,
+        produzione_ora_fine: productionRequired ? d.produzione_ora_fine ?? null : null,
+        posa_ora_inizio: d.posa_ora_inizio ?? null,
+        posa_ora_fine: d.posa_ora_fine ?? null,
+        produzione_collaborator_ids: selectedProductionCollaborators,
+        posa_collaborator_ids: selectedPosaCollaborators,
+        assigned_collaborator_ids: Array.from(
+          new Set([...selectedProductionCollaborators, ...selectedPosaCollaborators])
+        ),
+        // Deprecated field - intentionally nulled because assignment now uses collaborators list
+        squadra: null,
         other: d.other || null,
         kanbanId: selectedKanbanId || resource?.kanbanId || null,
         kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
@@ -592,6 +751,11 @@ const EditTaskKanban = ({
   const filteredHistory = history.filter(
     (action: any) => action.taskId === resource.id
   );
+  const shouldCollapseHistory = filteredHistory.length > 3;
+
+  useEffect(() => {
+    setIsHistoryExpanded(!shouldCollapseHistory);
+  }, [resource?.id, shouldCollapseHistory]);
 
   const involvedCollaborators = useMemo<CollaboratorBadge[]>(() => {
     const byKey = new Map<string, CollaboratorBadge>();
@@ -1289,101 +1453,82 @@ const EditTaskKanban = ({
   }
 
   return (
-    <div className="flex flex-row-reverse flex-nowrap gap-8 w-full justify-between">
-      <div className="flex flex-col gap-6">
-        <div className="w-60 p-3 bg-muted/40 rounded-lg border space-y-3">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-            <Package className="h-3.5 w-3.5" />
-            Prodotto
-          </h4>
-          <div className="rounded-md border bg-background/50 px-2 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">
-                Usa immagine progetto sulla card
-              </span>
-              <Switch
-                checked={preferProjectCoverImage}
-                onCheckedChange={(checked) =>
-                  onPreferProjectCoverImageChange?.(Boolean(checked))
-                }
-                disabled={!onPreferProjectCoverImageChange}
+    <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
+      <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3 items-stretch">
+          <div className="h-full p-3 bg-muted/40 rounded-lg border space-y-3">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+              Immagine
+            </h4>
+            <div className="space-y-2 rounded-md border bg-background/50 p-2">
+              <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
+                {showCoverSourceBadge && (
+                  <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                    {projectImagePreview.source}
+                  </span>
+                )}
+                {projectImagePreviewUrl ? (
+                  <Image
+                    src={projectImagePreviewUrl}
+                    alt="Immagine progetto"
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">
+                    Nessuna immagine
+                  </div>
+                )}
+              </div>
+              <input
+                ref={projectImageInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={handleProjectImageInputChange}
               />
-            </div>
-          </div>
-          <div className="space-y-2 rounded-md border bg-background/50 p-2">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Immagine progetto
-            </p>
-            <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
-              {showCoverSourceBadge && (
-                <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
-                  {projectImagePreview.source}
-                </span>
-              )}
-              {projectImagePreviewUrl ? (
-                <Image
-                  src={projectImagePreviewUrl}
-                  alt="Immagine progetto"
-                  fill
-                  className="object-cover"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">
-                  Nessuna immagine
-                </div>
-              )}
-            </div>
-            <input
-              ref={projectImageInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              className="hidden"
-              onChange={handleProjectImageInputChange}
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => projectImageInputRef.current?.click()}
-              disabled={!siteId || isUploadingProjectImage}
-            >
-              {isUploadingProjectImage ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Caricamento...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Carica immagine progetto
-                </>
-              )}
-            </Button>
-            {projectImageUrl && (
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 className="w-full"
-                onClick={handleDeleteProjectImage}
-                disabled={isUploadingProjectImage}
+                onClick={() => projectImageInputRef.current?.click()}
+                disabled={!siteId || isUploadingProjectImage}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Elimina immagine progetto
+                {isUploadingProjectImage ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Caricamento...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Carica
+                  </>
+                )}
               </Button>
-            )}
+              {projectImageUrl && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleDeleteProjectImage}
+                  disabled={isUploadingProjectImage}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina immagine progetto
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Project Contact Info Panel - Replaces QR Code */}
-        <div className="flex items-start gap-2.5">
-          <div className="w-48 p-4 bg-muted/50 rounded-lg border space-y-3">
+          <div className="h-full p-4 bg-muted/50 rounded-lg border space-y-3">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
               <Info className="h-4 w-4" />
               Info Cantiere
             </h4>
-            
+
             {/* Contact Phone */}
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -1391,7 +1536,7 @@ const EditTaskKanban = ({
                 <span>Telefono</span>
               </div>
               {contactPhone ? (
-                <a 
+                <a
                   href={`tel:${contactPhone}`}
                   className="text-sm text-primary hover:underline ml-6 block"
                 >
@@ -1431,34 +1576,154 @@ const EditTaskKanban = ({
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   <User className="h-3 w-3" />
                   <span>
-                    {selectedClient.businessName || 
-                     `${selectedClient.individualLastName || ''} ${selectedClient.individualFirstName || ''}`.trim() ||
-                     'Cliente'}
+                    {selectedClient.businessName ||
+                      `${selectedClient.individualLastName || ""} ${selectedClient.individualFirstName || ""}`.trim() ||
+                      "Cliente"}
                   </span>
                 </div>
               </div>
             )}
           </div>
+        </div>
 
-          {involvedCollaborators.length > 0 && (
-            <div className="flex min-w-[220px] flex-col gap-2 pt-1">
+        <div className="rounded-lg border bg-muted/20 p-3">
+          <Collapsible open={isHistoryExpanded} onOpenChange={setIsHistoryExpanded}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                  Storico progetto
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  {filteredHistory.length} eventi
+                </p>
+              </div>
+              {shouldCollapseHistory && (
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="h-8 px-2">
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        isHistoryExpanded && "rotate-180"
+                      )}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+              )}
+            </div>
+            <CollapsibleContent forceMount className={!isHistoryExpanded ? "hidden" : ""}>
+              <div className="mt-3 max-h-[260px] overflow-y-auto pr-1">
+                {filteredHistory.length > 0 ? (
+                  <ol className="relative border-l border-gray-200 dark:border-gray-700">
+                    {filteredHistory.map((item: any) => (
+                      <li className="mb-4 ml-4" key={item.id}>
+                        <span className="absolute -left-3 mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 ring-4 ring-white dark:ring-gray-900 dark:bg-blue-900">
+                          {item.User?.picture ? (
+                            <Image
+                              className="rounded-full shadow-lg"
+                              src={item.User.picture}
+                              width={24}
+                              height={24}
+                              alt={item.User?.given_name || "User"}
+                            />
+                          ) : (
+                            <User className="w-3 h-3 text-blue-600 dark:text-blue-300" />
+                          )}
+                        </span>
+                        <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs dark:bg-gray-700 dark:border-gray-600">
+                          <time className="mb-1 block text-xs font-normal text-gray-400">
+                            {item.createdAt !== null &&
+                              DateManager.formatEUDateTime(item.createdAt)}
+                          </time>
+                          <div className="text-xs font-normal text-gray-500 dark:text-gray-300">
+                            {item.User?.given_name}{" "}
+                            {item.type === "move_task" && (
+                              <>
+                                <span>ha mosso </span>
+                                <span className="text-blue-500">{item.data?.fromColumn}</span>{" "}
+                                -{">"}{" "}
+                                <span className="text-gray-800 px-1.5 py-0.5 dark:bg-gray-600 dark:text-gray-300">
+                                  {item.data?.toColumn}
+                                </span>
+                              </>
+                            )}
+                            {item.type === "task_create" && <span>ha creato la task</span>}
+                            {item.type === "updated_task" && (
+                              <>
+                                {item.data?.metalli !== undefined && (
+                                  <span>
+                                    ha {item.data.metalli ? "aggiunto" : "rimosso"} Metalli
+                                  </span>
+                                )}
+                                {item.data?.ferramenta !== undefined && (
+                                  <span>
+                                    {" "}
+                                    ha {item.data.ferramenta ? "aggiunto" : "rimosso"} Ferramenta
+                                  </span>
+                                )}
+                                {item.data?.stoccato !== undefined && (
+                                  <span>
+                                    {" "}
+                                    ha{" "}
+                                    {item.data.stoccato
+                                      ? "stoccato l'ordine"
+                                      : "tolto stoccato"}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                    Nessun dato storico trovato
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Collaboratori
+            </h4>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock3 className="h-3.5 w-3.5" />
+              {formatHours(
+                involvedCollaborators.reduce(
+                  (total, collaborator) => total + collaborator.hours,
+                  0
+                )
+              )}
+            </span>
+          </div>
+          {involvedCollaborators.length > 0 ? (
+            <div className="max-h-[220px] overflow-y-auto pr-1 space-y-2">
               {involvedCollaborators.map((collaborator) => (
                 <button
                   key={collaborator.key}
                   type="button"
                   title={`Apri ${collaborator.name}`}
                   onClick={() => setSelectedCollaborator(collaborator)}
-                  className="flex items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="w-full flex items-center justify-between gap-2 rounded-md border bg-background/70 px-2 py-1.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <Avatar
-                      className="h-9 w-9 border-2 border-background shadow-sm cursor-pointer"
+                      className="h-8 w-8 border border-background shadow-sm cursor-pointer"
                       title={collaborator.name}
                     >
                       <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
                       <AvatarFallback
                         className="text-[10px] font-semibold text-white"
-                        style={{ backgroundColor: collaborator.color || getAvatarColor(collaborator.key) }}
+                        style={{
+                          backgroundColor:
+                            collaborator.color || getAvatarColor(collaborator.key),
+                        }}
                       >
                         {collaborator.initials}
                       </AvatarFallback>
@@ -1471,102 +1736,14 @@ const EditTaskKanban = ({
                 </button>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* History Section */}
-        <div className="">
-          {filteredHistory.length > 0 ? (
-            <ol className="relative border-l border-gray-200 dark:border-gray-700">
-              {filteredHistory.map((item: any) => (
-                <li className="mb-10 ml-6" key={item.id}>
-                  <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-8 ring-white dark:ring-gray-900 dark:bg-blue-900">
-                    {item.User?.picture ? (
-                      <Image
-                        className="rounded-full shadow-lg"
-                        src={item.User.picture}
-                        width={30}
-                        height={30}
-                        alt={item.User?.given_name || "User"}
-                      />
-                    ) : (
-                      <User className="w-4 h-4 text-blue-600 dark:text-blue-300" />
-                    )}
-                  </span>
-                  <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
-                    <time className="mb-1 text-xs font-normal text-gray-400 sm:order-last sm:mb-0">
-                      {item.createdAt !== null &&
-                        DateManager.formatEUDateTime(item.createdAt)}
-                    </time>
-                    <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
-                      {item.User?.given_name}{" "}
-                      {item.type === "move_task" && (
-                        <>
-                          <span className="text-xs">
-                            {" "}
-                            {item.type === "move_task" && "ha mosso "}{" "}
-                          </span>
-                          <br />
-                          <a
-                            href="#"
-                            className=" text-gray-600 text-xs dark:text-blue-500 "
-                          >
-                            {item.data?.fromColumn}
-                          </a>{" "}
-                          -{">"}{" "}
-                          <span className=" text-gray-800 text-xs font-normal mr-2 px-2.5 py-0.5  dark:bg-gray-600 dark:text-gray-300">
-                            {item.data?.toColumn}
-                          </span>
-                        </>
-                      )}
-                      {item.type === "task_create" && (
-                        <>
-                          <span className="text-xs">ha creato la task</span>
-                        </>
-                      )}
-                      {item.type === "updated_task" && (
-                        <>
-                          {item.data?.metalli !== undefined && (
-                            <span className="text-xs">
-                              ha {item.data.metalli ? "aggiunto" : "rimosso"}{" "}
-                              Metalli
-                            </span>
-                          )}
-                          {item.data?.ferramenta !== undefined && (
-                            <span className="text-xs">
-                              ha {item.data.ferramenta ? "aggiunto" : "rimosso"}{" "}
-                              Ferramenta
-                            </span>
-                          )}
-                          {item.data?.stoccato !== undefined && (
-                            <span className="text-xs">
-                              ha{" "}
-                              {item.data.stoccato
-                                ? "stoccato l'ordine"
-                                : "tolto stoccato"}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
           ) : (
-            <ol className="relative border-l border-gray-200 dark:border-gray-700">
-              <li className="mb-10 ml-6">
-                <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
-                  <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
-                    Nessun dato storico trovato
-                  </div>
-                </div>
-              </li>
-            </ol>
+            <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Nessuna ora registrata sul progetto.
+            </div>
           )}
         </div>
 
-        <div className="w-72 min-h-[320px] mt-10 rounded-lg border bg-muted/20 p-4 space-y-4">
+        <div className="min-h-[320px] rounded-lg border bg-muted/20 p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Documenti progetto</h3>
             {isOfferTask ? (
@@ -1616,7 +1793,7 @@ const EditTaskKanban = ({
         </div>
       </div>
       <Form {...form}>
-        <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        <form className="space-y-4 w-1/2 min-w-0" onSubmit={form.handleSubmit(onSubmit)}>
           {/* Row 1: Codice Identificativo + Nome cliente */}
           <div className="grid grid-cols-2 gap-4">
             <FormField
@@ -1701,9 +1878,6 @@ const EditTaskKanban = ({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Prodotti</h3>
-                <p className="text-xs text-muted-foreground">
-                  Puoi inserire fino a 5 prodotti con relativo numero pezzi.
-                </p>
               </div>
               <Button
                 type="button"
@@ -1726,9 +1900,9 @@ const EditTaskKanban = ({
                 {offerProducts.map((line, index) => (
                   <div
                     key={`${line.productId || "new"}-${index}`}
-                    className="grid grid-cols-[minmax(0,1fr)_130px_auto] gap-3 items-end"
+                    className="grid grid-cols-12 gap-3 items-end"
                   >
-                    <div className="space-y-2">
+                    <div className="col-span-8 space-y-2">
                       <label className="text-sm font-medium">
                         Prodotto {index + 1}
                       </label>
@@ -1744,7 +1918,7 @@ const EditTaskKanban = ({
                         placeholder="Seleziona prodotto"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="col-span-3 space-y-2">
                       <label className="text-sm font-medium">Numero pezzi</label>
                       <Input
                         type="number"
@@ -1762,6 +1936,7 @@ const EditTaskKanban = ({
                       type="button"
                       variant="ghost"
                       size="icon"
+                      className="col-span-1 justify-self-end"
                       onClick={() => handleRemoveOfferProduct(index)}
                       disabled={isSubmitting}
                     >
@@ -1773,200 +1948,411 @@ const EditTaskKanban = ({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Data invio offerta</label>
-              <div className="h-10 rounded-md border px-3 flex items-center text-sm">
-                {resource.offer_send_date || resource.offerSendDate
-                  ? DateManager.formatEUDate(
-                      resource.offer_send_date || resource.offerSendDate
-                    )
-                  : "Non impostata"}
+          {/* Pianificazione Produzione e Posa */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium">Produzione</h3>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={productionRequired}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setProductionRequired(checked);
+                        if (!checked) {
+                          form.setValue("produzione_data_inizio", undefined);
+                          form.setValue("produzione_data_fine", undefined);
+                          form.setValue("produzione_ora_inizio", null);
+                          form.setValue("produzione_ora_fine", null);
+                        }
+                      }}
+                    />
+                    Richiede pianificazione
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    name="produzione_data_inizio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data inizio</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSubmitting || !productionRequired}
+                              >
+                                {productionRequired && field.value
+                                  ? field.value.toLocaleDateString("it-IT")
+                                  : productionRequired
+                                    ? "Seleziona data"
+                                    : "Non richiesto"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={(date) => productionRequired && field.onChange(date)}
+                              disabled={isWeekend}
+                              captionLayout="dropdown"
+                              startMonth={new Date(new Date().getFullYear(), 0)}
+                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="produzione_ora_inizio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ora inizio</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isSubmitting || !productionRequired}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="produzione_data_fine"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data fine</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSubmitting || !productionRequired}
+                              >
+                                {productionRequired && field.value
+                                  ? field.value.toLocaleDateString("it-IT")
+                                  : productionRequired
+                                    ? "Seleziona data"
+                                    : "Non richiesto"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={(date) => productionRequired && field.onChange(date)}
+                              disabled={isWeekend}
+                              captionLayout="dropdown"
+                              startMonth={new Date(new Date().getFullYear(), 0)}
+                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="produzione_ora_fine"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ora fine</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isSubmitting || !productionRequired}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-between"
+                    >
+                      <span>Assegna collaboratori</span>
+                      <span className="text-xs text-muted-foreground">
+                        {selectedProductionCollaborators.length}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[360px] max-w-[90vw] p-2" align="start">
+                    {availableCollaborators.length > 0 ? (
+                      <div className="max-h-[260px] overflow-y-auto space-y-1">
+                        {availableCollaborators.map((collaborator) => {
+                          const isChecked = selectedProductionCollaborators.includes(
+                            collaborator.id
+                          );
+                          return (
+                            <label
+                              key={`prod-${collaborator.id}`}
+                              className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-2 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  setSelectedProductionCollaborators((current) => {
+                                    if (checked) {
+                                      return current.includes(collaborator.id)
+                                        ? current
+                                        : [...current, collaborator.id];
+                                    }
+                                    return current.filter((id) => id !== collaborator.id);
+                                  });
+                                }}
+                              />
+                              <Avatar className="h-7 w-7 border border-background">
+                                <AvatarImage
+                                  src={collaborator.picture || undefined}
+                                  alt={collaborator.name}
+                                />
+                                <AvatarFallback
+                                  className="text-[10px] font-semibold text-white"
+                                  style={{
+                                    backgroundColor:
+                                      collaborator.color || getAvatarColor(collaborator.id),
+                                  }}
+                                >
+                                  {collaborator.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate text-sm">{collaborator.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                        Nessun collaboratore disponibile.
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
-            </div>
-          </div>
 
-          {/* Date Fields Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              name="termine_produzione"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <div className="flex items-center justify-between">
-                    <FormLabel>Produzione</FormLabel>
-                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={productionRequired}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setProductionRequired(checked);
-                          if (!checked) {
-                            form.setValue("termine_produzione", undefined);
-                          }
-                        }}
-                      />
-                      Richiede data
-                    </label>
-                  </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                          disabled={isSubmitting || !productionRequired}
-                        >
-                          {productionRequired && field.value
-                            ? field.value.toLocaleDateString("it-IT")
-                            : productionRequired
-                              ? "Seleziona data"
-                              : "Produzione non richiesta"}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto min-w-[280px] p-0"
-                      align="start"
+              <div className="rounded-lg border p-3 space-y-3">
+                <h3 className="text-sm font-medium">Posa</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    name="posa_data_inizio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data inizio</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSubmitting}
+                              >
+                                {field.value
+                                  ? field.value.toLocaleDateString("it-IT")
+                                  : "Seleziona data"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={field.onChange}
+                              disabled={isWeekend}
+                              captionLayout="dropdown"
+                              startMonth={new Date(new Date().getFullYear(), 0)}
+                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="posa_ora_inizio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ora inizio</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isSubmitting}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="posa_data_fine"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data fine</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSubmitting}
+                              >
+                                {field.value
+                                  ? field.value.toLocaleDateString("it-IT")
+                                  : "Seleziona data"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={field.onChange}
+                              disabled={isWeekend}
+                              captionLayout="dropdown"
+                              startMonth={new Date(new Date().getFullYear(), 0)}
+                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="posa_ora_fine"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ora fine</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isSubmitting}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-between"
                     >
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={(date) => {
-                          if (productionRequired) {
-                            field.onChange(date);
-                          }
-                        }}
-                        disabled={isWeekend}
-                        captionLayout="dropdown"
-                        startMonth={new Date(new Date().getFullYear(), 0)}
-                        endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              name="deliveryDate"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Data di posa</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                          disabled={isSubmitting}
-                        >
-                          {field.value
-                            ? field.value.toLocaleDateString("it-IT")
-                            : "Seleziona data"}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      className="w-auto min-w-[280px] p-0"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={field.value || undefined}
-                        onSelect={field.onChange}
-                        disabled={isWeekend}
-                        captionLayout="dropdown"
-                        startMonth={new Date(new Date().getFullYear(), 0)}
-                        endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Posa/Service: Ora e Squadra */}
-            <div className="grid grid-cols-3 gap-4">
-              <FormField
-                name="ora_inizio"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ora inizio</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="time"
-                        min="06:00"
-                        max="20:00"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value || null)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                name="ora_fine"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ora fine</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="time"
-                        min="06:00"
-                        max="20:00"
-                        {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value || null)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                name="squadra"
-                control={form.control}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Squadra</FormLabel>
-                    <Select
-                      value={field.value?.toString() ?? "__none__"}
-                      onValueChange={(v) =>
-                        field.onChange(
-                          v && v !== "__none__" ? parseInt(v) : null
-                        )
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">—</SelectItem>
-                        <SelectItem value="1">Squadra 1</SelectItem>
-                        <SelectItem value="2">Squadra 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <span>Assegna collaboratori</span>
+                      <span className="text-xs text-muted-foreground">
+                        {selectedPosaCollaborators.length}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[360px] max-w-[90vw] p-2" align="start">
+                    {availableCollaborators.length > 0 ? (
+                      <div className="max-h-[260px] overflow-y-auto space-y-1">
+                        {availableCollaborators.map((collaborator) => {
+                          const isChecked = selectedPosaCollaborators.includes(
+                            collaborator.id
+                          );
+                          return (
+                            <label
+                              key={`posa-${collaborator.id}`}
+                              className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-2 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  setSelectedPosaCollaborators((current) => {
+                                    if (checked) {
+                                      return current.includes(collaborator.id)
+                                        ? current
+                                        : [...current, collaborator.id];
+                                    }
+                                    return current.filter((id) => id !== collaborator.id);
+                                  });
+                                }}
+                              />
+                              <Avatar className="h-7 w-7 border border-background">
+                                <AvatarImage
+                                  src={collaborator.picture || undefined}
+                                  alt={collaborator.name}
+                                />
+                                <AvatarFallback
+                                  className="text-[10px] font-semibold text-white"
+                                  style={{
+                                    backgroundColor:
+                                      collaborator.color || getAvatarColor(collaborator.id),
+                                  }}
+                                >
+                                  {collaborator.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate text-sm">{collaborator.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                        Nessun collaboratore disponibile.
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
 

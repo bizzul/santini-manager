@@ -64,6 +64,17 @@ export interface Task {
     percentStatus?: number; // Alternative property name
     sellPrice?: number;
     deliveryDate?: string;
+    produzione_data_inizio?: string | null;
+    produzione_data_fine?: string | null;
+    posa_data_inizio?: string | null;
+    posa_data_fine?: string | null;
+    produzione_ora_inizio?: string | null;
+    produzione_ora_fine?: string | null;
+    posa_ora_inizio?: string | null;
+    posa_ora_fine?: string | null;
+    produzione_collaborator_ids?: string[] | null;
+    posa_collaborator_ids?: string[] | null;
+    assigned_collaborator_ids?: string[] | null;
     ora_inizio?: string | null;
     ora_fine?: string | null;
     squadra?: 1 | 2 | null;

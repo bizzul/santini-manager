@@ -274,6 +274,12 @@ export async function PATCH(
       'unique_code', 'title', 'name', 'luogo', 'description',
       'clientId', 'sellProductId', 'sellPrice',
       'deliveryDate', 'termine_produzione', 'offer_send_date',
+      'produzione_data_inizio', 'produzione_data_fine',
+      'posa_data_inizio', 'posa_data_fine',
+      'produzione_ora_inizio', 'produzione_ora_fine',
+      'posa_ora_inizio', 'posa_ora_fine',
+      'produzione_collaborator_ids', 'posa_collaborator_ids',
+      'assigned_collaborator_ids',
       'ora_inizio', 'ora_fine', 'squadra',
       'other', 'positions', 'numero_pezzi',
       'kanbanColumnId', 'kanbanId',
@@ -290,6 +296,10 @@ export async function PATCH(
         if (
           field === 'deliveryDate' ||
           field === 'termine_produzione' ||
+          field === 'produzione_data_inizio' ||
+          field === 'produzione_data_fine' ||
+          field === 'posa_data_inizio' ||
+          field === 'posa_data_fine' ||
           field === 'offer_send_date'
         ) {
           updateData[field] = toDateString(body[field]);
@@ -338,13 +348,35 @@ export async function PATCH(
         updateError.message?.includes("offer_products") ||
         updateError.message?.includes("offer_followups") ||
         updateError.message?.includes("offer_loss_reason") ||
-        updateError.message?.includes("offer_loss_competitor_name"))
+        updateError.message?.includes("offer_loss_competitor_name") ||
+        updateError.message?.includes("produzione_data_inizio") ||
+        updateError.message?.includes("produzione_data_fine") ||
+        updateError.message?.includes("posa_data_inizio") ||
+        updateError.message?.includes("posa_data_fine") ||
+        updateError.message?.includes("produzione_ora_inizio") ||
+        updateError.message?.includes("produzione_ora_fine") ||
+        updateError.message?.includes("posa_ora_inizio") ||
+        updateError.message?.includes("posa_ora_fine") ||
+        updateError.message?.includes("produzione_collaborator_ids") ||
+        updateError.message?.includes("posa_collaborator_ids") ||
+        updateError.message?.includes("assigned_collaborator_ids"))
     ) {
       delete updateData.offer_send_date;
       delete updateData.offer_products;
       delete updateData.offer_followups;
       delete updateData.offer_loss_reason;
       delete updateData.offer_loss_competitor_name;
+      delete updateData.produzione_data_inizio;
+      delete updateData.produzione_data_fine;
+      delete updateData.posa_data_inizio;
+      delete updateData.posa_data_fine;
+      delete updateData.produzione_ora_inizio;
+      delete updateData.produzione_ora_fine;
+      delete updateData.posa_ora_inizio;
+      delete updateData.posa_ora_fine;
+      delete updateData.produzione_collaborator_ids;
+      delete updateData.posa_collaborator_ids;
+      delete updateData.assigned_collaborator_ids;
       ({ data: taskData, error: updateError } = await runUpdate(updateData));
     }
 

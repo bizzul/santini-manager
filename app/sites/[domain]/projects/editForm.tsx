@@ -29,7 +29,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus, CalendarIcon, Trash2, User, Phone, MapPin, Info, Loader2, Folder } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Plus,
+  CalendarIcon,
+  Trash2,
+  User,
+  Phone,
+  MapPin,
+  Info,
+  Loader2,
+  Folder,
+  ChevronDown,
+  Clock3,
+  Users,
+} from "lucide-react";
 import { ProjectDocuments, ProjectFile } from "@/components/project/project-documents";
 import { removeItem } from "@/app/sites/[domain]/projects/actions/delete-item.action";
 import {
@@ -70,6 +84,15 @@ type TaskSupplier = {
   supplier: Supplier;
   deliveryDate: string | null;
   notes: string | null;
+};
+
+type CollaboratorTimeSummary = {
+  employeeId: string;
+  name: string;
+  initials: string;
+  color: string | null;
+  hours: number;
+  entries: number;
 };
 
 const EditForm = ({ handleClose, resource, domain }: Props) => {
@@ -115,7 +138,15 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [history, setHistory] = useState<Action[]>([]);
+  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [collaboratorSummary, setCollaboratorSummary] = useState<{
+    totalHours: number;
+    collaborators: CollaboratorTimeSummary[];
+  }>({
+    totalHours: 0,
+    collaborators: [],
+  });
 
   const getHeaders = (): HeadersInit => {
     const headers: HeadersInit = {};
@@ -199,6 +230,25 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       }
     };
 
+    const getCollaboratorTimeSummary = async () => {
+      try {
+        const response = await fetch(`/api/tasks/${resource.id}/time-summary`, {
+          headers: getHeaders(),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setCollaboratorSummary({
+            totalHours: Number(data?.totalHours || 0),
+            collaborators: Array.isArray(data?.collaborators) ? data.collaborators : [],
+          });
+          return;
+        }
+      } catch (error) {
+        logger.error("Error fetching collaborator time summary:", error);
+      }
+      setCollaboratorSummary({ totalHours: 0, collaborators: [] });
+    };
+
     const initializeForm = () => {
       form.setValue("productId", resource.sellProductId!);
       form.setValue(
@@ -235,6 +285,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       getKanbans(),
       getHistory(),
       getProjectFiles(),
+      getCollaboratorTimeSummary(),
     ]);
   }, [resource, form.setValue, siteId, siteIdError, domain]);
 
@@ -324,6 +375,11 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
   const filteredHistory = history.filter(
     (action: any) => action.taskId === resource.id
   );
+  const shouldCollapseHistory = filteredHistory.length > 3;
+
+  useEffect(() => {
+    setIsHistoryExpanded(!shouldCollapseHistory);
+  }, [resource?.id, shouldCollapseHistory]);
 
   const selectedClient = useMemo(() => {
     const clientId = form.watch("clientId") || resource?.clientId;
@@ -433,9 +489,9 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
 
   return (
     <div className="flex flex-row-reverse flex-nowrap gap-8 w-full justify-between">
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 w-[340px] shrink-0">
         {/* Project Contact Info Panel */}
-        <div className="w-48 p-4 bg-muted/50 rounded-lg border space-y-3">
+        <div className="w-full p-4 bg-muted/50 rounded-lg border space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Info className="h-4 w-4" />
             Info Cantiere
@@ -495,90 +551,147 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
           )}
         </div>
 
-        {/* History Section */}
-        <div className="">
-          {filteredHistory.length > 0 ? (
-            <ol className="relative border-l border-gray-200 dark:border-gray-700">
-              {filteredHistory.map((item: any) => (
-                <li className="mb-10 ml-6" key={item.id}>
-                  <span className="absolute flex items-center justify-center w-6 h-6 bg-blue-100 rounded-full -left-3 ring-8 ring-white dark:ring-gray-900 dark:bg-blue-900">
-                    {item.User?.picture ? (
-                      <Image
-                        className="rounded-full shadow-lg"
-                        src={item.User.picture}
-                        width={30}
-                        height={30}
-                        alt={item.User?.given_name || "User"}
-                      />
-                    ) : (
-                      <User className="w-4 h-4 text-blue-600 dark:text-blue-300" />
-                    )}
-                  </span>
-                  <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
-                    <time className="mb-1 text-xs font-normal text-gray-400 sm:order-last sm:mb-0">
-                      {item.createdAt !== null &&
-                        DateManager.formatEUDateTime(item.createdAt)}
-                    </time>
-                    <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
-                      {item.User?.given_name}{" "}
-                      {item.type === "move_task" && (
-                        <>
-                          <span className="text-xs"> ha mosso </span>
-                          <br />
-                          <a
-                            href="#"
-                            className="text-gray-600 text-xs dark:text-blue-500"
-                          >
-                            {item.data?.fromColumn}
-                          </a>{" "}
-                          -{">"}{" "}
-                          <span className="text-gray-800 text-xs font-normal mr-2 px-2.5 py-0.5 dark:bg-gray-600 dark:text-gray-300">
-                            {item.data?.toColumn}
-                          </span>
-                        </>
+        {/* Compact History Panel */}
+        <div className="w-full rounded-lg border bg-muted/30 p-3">
+          <Collapsible open={isHistoryExpanded} onOpenChange={setIsHistoryExpanded}>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Storico progetto
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  {filteredHistory.length} eventi registrati
+                </p>
+              </div>
+              {shouldCollapseHistory && (
+                <CollapsibleTrigger asChild>
+                  <Button type="button" size="sm" variant="ghost" className="h-8 px-2">
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        isHistoryExpanded && "rotate-180",
                       )}
-                      {item.type === "task_create" && (
-                        <span className="text-xs">ha creato la task</span>
-                      )}
-                      {item.type === "updated_task" && (
-                        <>
-                          {item.data?.metalli !== undefined && (
-                            <span className="text-xs">
-                              ha {item.data.metalli ? "aggiunto" : "rimosso"}{" "}
-                              Metalli
-                            </span>
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+              )}
+            </div>
+
+            <CollapsibleContent forceMount className={!isHistoryExpanded ? "hidden" : ""}>
+              <div className="mt-3 max-h-[280px] overflow-y-auto pr-1">
+                {filteredHistory.length > 0 ? (
+                  <ol className="relative border-l border-gray-200 dark:border-gray-700">
+                    {filteredHistory.map((item: any) => (
+                      <li className="mb-4 ml-4" key={item.id}>
+                        <span className="absolute -left-3 mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 ring-4 ring-white dark:bg-blue-900 dark:ring-gray-900">
+                          {item.User?.picture ? (
+                            <Image
+                              className="rounded-full shadow-lg"
+                              src={item.User.picture}
+                              width={24}
+                              height={24}
+                              alt={item.User?.given_name || "User"}
+                            />
+                          ) : (
+                            <User className="h-3 w-3 text-blue-600 dark:text-blue-300" />
                           )}
-                          {item.data?.ferramenta !== undefined && (
-                            <span className="text-xs">
-                              ha {item.data.ferramenta ? "aggiunto" : "rimosso"}{" "}
-                              Ferramenta
-                            </span>
-                          )}
-                          {item.data?.stoccato !== undefined && (
-                            <span className="text-xs">
-                              ha{" "}
-                              {item.data.stoccato
-                                ? "stoccato l'ordine"
-                                : "tolto stoccato"}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <ol className="relative border-l border-gray-200 dark:border-gray-700">
-              <li className="mb-10 ml-6">
-                <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs sm:flex dark:bg-gray-700 dark:border-gray-600">
-                  <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
+                        </span>
+                        <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-600 dark:bg-gray-700">
+                          <div className="text-xs text-gray-400">
+                            {item.createdAt !== null &&
+                              DateManager.formatEUDateTime(item.createdAt)}
+                          </div>
+                          <div className="mt-1 text-xs font-normal text-gray-500 dark:text-gray-300">
+                            {item.User?.given_name}{" "}
+                            {item.type === "move_task" && (
+                              <>
+                                <span>ha mosso</span>{" "}
+                                <span className="text-blue-500">{item.data?.fromColumn}</span>{" "}
+                                -{">"}{" "}
+                                <span className="rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-600">
+                                  {item.data?.toColumn}
+                                </span>
+                              </>
+                            )}
+                            {item.type === "task_create" && <span>ha creato la task</span>}
+                            {item.type === "updated_task" && (
+                              <>
+                                {item.data?.metalli !== undefined && (
+                                  <span>
+                                    ha {item.data.metalli ? "aggiunto" : "rimosso"} Metalli
+                                  </span>
+                                )}
+                                {item.data?.ferramenta !== undefined && (
+                                  <span>
+                                    {" "}
+                                    ha {item.data.ferramenta ? "aggiunto" : "rimosso"} Ferramenta
+                                  </span>
+                                )}
+                                {item.data?.stoccato !== undefined && (
+                                  <span>
+                                    {" "}
+                                    ha{" "}
+                                    {item.data.stoccato
+                                      ? "stoccato l'ordine"
+                                      : "tolto stoccato"}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                     Nessun dato storico trovato
+                  </p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
+
+        {/* Collaborators & Hours Panel */}
+        <div className="w-full rounded-lg border bg-muted/30 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Collaboratori
+            </h4>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock3 className="h-3.5 w-3.5" />
+              {collaboratorSummary.totalHours.toFixed(1)}h
+            </span>
+          </div>
+
+          {collaboratorSummary.collaborators.length > 0 ? (
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {collaboratorSummary.collaborators.map((collaborator) => (
+                <div
+                  key={collaborator.employeeId}
+                  className="flex items-center justify-between rounded-md border bg-background/70 px-2.5 py-2"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                      style={{ backgroundColor: collaborator.color || "#2563eb" }}
+                    >
+                      {collaborator.initials}
+                    </span>
+                    <span className="text-sm truncate">{collaborator.name}</span>
                   </div>
+                  <span className="text-xs text-muted-foreground">
+                    {collaborator.hours.toFixed(1)}h
+                  </span>
                 </div>
-              </li>
-            </ol>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+              Nessuna ora registrata su questo progetto.
+            </p>
           )}
         </div>
       </div>
