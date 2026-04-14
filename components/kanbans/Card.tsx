@@ -36,8 +36,9 @@ import {
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
-import { useSiteId } from "@/hooks/use-site-id";
 import { ManagerGuideButton } from "@/components/manager-guide";
+import { useUserContext } from "@/hooks/use-user-context";
+import { useRouter } from "next/navigation";
 
 // Mappatura icone categoria (fallback per categorie senza icona custom)
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -162,7 +163,10 @@ export default function Card({
   onTaskDeleted?: () => void;
   cardFieldConfig?: CardFieldConfig;
 }) {
-  const { siteId } = useSiteId(domain);
+  const router = useRouter();
+  const { userContext } = useUserContext();
+  const shouldPersistVisualPreferences =
+    process.env.NEXT_PUBLIC_ENABLE_CARD_PREFS === "true";
   const [showModal, setShowModal] = useState(false);
   const [isLocked, setIsLocked] = useState(data.locked);
   const [timeState, setTimeState] = useState("normal");
@@ -174,6 +178,9 @@ export default function Card({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const cardCoverPreferenceStorageKey = `card-cover-preference-${id}`;
+  const canAccessConsuntivo =
+    userContext?.role === "admin" || userContext?.role === "superadmin";
+  const resolvedDomain = domain || data?.domain || "";
 
   // Determina se la card deve essere small in base a display_mode
   const displayMode = data.display_mode || data.displayMode || "normal";
@@ -186,6 +193,9 @@ export default function Card({
 
   // Funzione per determinare lo stato di default (da localStorage o suggerimenti)
   const getDefaultSmallState = () => {
+    if (!shouldPersistVisualPreferences) {
+      return suggestsSmallFromDisplayMode || isInSpeditoColumn;
+    }
     // Prova a caricare da localStorage
     try {
       const saved = localStorage.getItem(`isSmall-${id}`);
@@ -211,6 +221,9 @@ export default function Card({
   });
 
   const [preferProjectCoverImage, setPreferProjectCoverImage] = useState(() => {
+    if (!shouldPersistVisualPreferences) {
+      return false;
+    }
     try {
       const saved = localStorage.getItem(cardCoverPreferenceStorageKey);
       return saved === "project";
@@ -235,6 +248,9 @@ export default function Card({
   // Salva lo stato locale solo quando l'utente fa doppio click (toggle manuale)
   // NON salvare quando cambia a causa del toggle globale
   const saveToLocalStorage = (value: boolean) => {
+    if (!shouldPersistVisualPreferences) {
+      return;
+    }
     try {
       localStorage.setItem(`isSmall-${id}`, JSON.stringify(value));
     } catch (error) {
@@ -244,17 +260,19 @@ export default function Card({
 
   const persistCoverPreference = useCallback(
     (preferProject: boolean) => {
-      try {
-        localStorage.setItem(
-          cardCoverPreferenceStorageKey,
-          preferProject ? "project" : "product"
-        );
-      } catch (error) {
-        logger.warn("Error saving card cover preference:", error);
+      if (shouldPersistVisualPreferences) {
+        try {
+          localStorage.setItem(
+            cardCoverPreferenceStorageKey,
+            preferProject ? "project" : "product"
+          );
+        } catch (error) {
+          logger.warn("Error saving card cover preference:", error);
+        }
       }
       setPreferProjectCoverImage(preferProject);
     },
-    [cardCoverPreferenceStorageKey]
+    [cardCoverPreferenceStorageKey, shouldPersistVisualPreferences]
   );
 
   useEffect(() => {
@@ -351,7 +369,9 @@ export default function Card({
         // Single click - open modal after delay
         setClickTimeout(
           setTimeout(() => {
-            if (!showModal) {
+            if (!isSmall && canAccessConsuntivo && resolvedDomain) {
+              router.push(`/sites/${resolvedDomain}/progetti/${id}`);
+            } else if (!showModal) {
               setShowModal(true);
             }
             setClickTimeout(null);
@@ -359,7 +379,26 @@ export default function Card({
         );
       }
     },
-    [showModal, isSmall, clickTimeout]
+    [showModal, isSmall, clickTimeout, canAccessConsuntivo, resolvedDomain, router, id]
+  );
+
+  const handleOpenProjectSheet = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!resolvedDomain) return;
+      router.push(`/sites/${resolvedDomain}/projects?edit=${id}`);
+    },
+    [resolvedDomain, router, id]
+  );
+
+  const handleOpenClientSheet = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const clientId = data?.client?.id || data?.clientId;
+      if (!resolvedDomain || !clientId) return;
+      router.push(`/sites/${resolvedDomain}/clients?edit=${clientId}`);
+    },
+    [resolvedDomain, router, data?.client?.id, data?.clientId]
   );
 
   async function handleArchive(data: Task) {
@@ -519,7 +558,8 @@ export default function Card({
     projectImageUrl,
   ]);
   const cardImageUrl = cardImage.imageUrl || "/placeholders/default.svg";
-  const showCoverSourceBadge = process.env.NODE_ENV !== "production";
+  const showCoverSourceBadge =
+    process.env.NEXT_PUBLIC_SHOW_COVER_SOURCE_BADGE === "true";
 
   // Determina il colore del bordo sinistro in base allo stato
   const getBorderColor = () => {
@@ -683,9 +723,17 @@ export default function Card({
               <div className="px-2.5 pt-2.5 pb-1.5">
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
-                  <span className="font-bold text-sm">
-                    {isFieldVisible("projectCode") ? data.unique_code : ""}
-                  </span>
+                  {isFieldVisible("projectCode") ? (
+                    <button
+                      type="button"
+                      onClick={handleOpenProjectSheet}
+                      className="font-bold text-sm hover:underline underline-offset-4"
+                    >
+                      {data.unique_code}
+                    </button>
+                  ) : (
+                    <span />
+                  )}
                   <div className="flex items-center gap-1">
                     <ManagerGuideButton
                       label="Apri guida card progetto"
@@ -763,9 +811,13 @@ export default function Card({
                 )}
 
                 {isFieldVisible("client") && (
-                  <div className="font-semibold text-base mb-1 truncate">
+                  <button
+                    type="button"
+                    onClick={handleOpenClientSheet}
+                    className="font-semibold text-base mb-1 truncate text-left hover:underline underline-offset-4"
+                  >
                     {getClientName()}
-                  </div>
+                  </button>
                 )}
 
                 {(isFieldVisible("location") || isFieldVisible("objectName")) && (
@@ -1183,7 +1235,7 @@ export default function Card({
           )}
 
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
+            <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
               <DialogHeader className="pr-10">
                 <div className="flex items-center justify-between gap-3">
                   <DialogTitle>Modifica {data.unique_code}</DialogTitle>

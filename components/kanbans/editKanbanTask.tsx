@@ -956,7 +956,8 @@ const EditTaskKanban = ({
   );
   const projectImagePreviewUrl =
     projectImagePreview.imageUrl || "/placeholders/default.svg";
-  const showCoverSourceBadge = process.env.NODE_ENV !== "production";
+  const showCoverSourceBadge =
+    process.env.NEXT_PUBLIC_SHOW_COVER_SOURCE_BADGE === "true";
 
   useEffect(() => {
     setProductImageDraftUrl(null);

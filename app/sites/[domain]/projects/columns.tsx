@@ -23,7 +23,6 @@ import {
   FileText,
   MapPin,
   Settings,
-  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isWeekend } from "@/lib/utils";
@@ -178,6 +177,32 @@ function getClientLabel(c: {
 export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] => {
   const { domain, clients = [], products = [], kanbans = [] } = config;
   const handleProjectEdit = createProjectEditHandler(domain);
+  const resolveDomain = () => {
+    if (domain && domain.trim().length > 0) {
+      return domain;
+    }
+
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    const pathnameDomain = window.location.pathname.split("/")[2];
+    if (pathnameDomain) {
+      return pathnameDomain;
+    }
+
+    const hostname = window.location.hostname;
+    if (hostname.endsWith(".localhost")) {
+      return hostname.split(".")[0] || "";
+    }
+
+    const hostParts = hostname.split(".");
+    if (hostParts.length > 2) {
+      return hostParts[0] || "";
+    }
+
+    return "";
+  };
 
   const clientOptions: SelectOption[] = clients.map((c) => ({
     value: c.id,
@@ -282,15 +307,25 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
       minSize: 60,
       maxSize: 200,
       enableResizing: true,
-      cell: ({ row }) => (
-        <Link
-          href={`/sites/${domain}/progetti/${row.original.id}`}
-          className="font-medium text-primary hover:underline truncate block"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {row.original.unique_code || "-"}
-        </Link>
-      ),
+      cell: ({ row }) => {
+        const currentDomain = resolveDomain();
+        if (!currentDomain) {
+          return (
+            <span className="font-medium truncate block">
+              {row.original.unique_code || "-"}
+            </span>
+          );
+        }
+        return (
+          <Link
+            href={`/sites/${currentDomain}/projects?edit=${row.original.id}`}
+            className="font-medium text-primary hover:underline truncate block"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {row.original.unique_code || "-"}
+          </Link>
+        );
+      },
     },
 
     // --- Cliente (dropdown) ---
@@ -488,7 +523,10 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
       enableResizing: false,
       cell: ({ row }) => {
         const projectId = row.original.id;
-        const currentDomain = domain || window.location.pathname.split("/")[2];
+        const currentDomain = resolveDomain();
+        if (!currentDomain) {
+          return null;
+        }
         return (
           <div className="flex items-center justify-center w-full h-full">
             <TooltipProvider>
@@ -565,7 +603,10 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
       enableResizing: false,
       cell: ({ row }) => {
         const projectId = row.original.id;
-        const currentDomain = domain || window.location.pathname.split("/")[2];
+        const currentDomain = resolveDomain();
+        if (!currentDomain) {
+          return null;
+        }
         return (
           <div className="flex items-center justify-center w-full h-full">
             <TooltipProvider>
@@ -607,7 +648,10 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
       cell: ({ row }) => {
         const projectId = row.original.id;
         const fileCount = row.original.fileCount || 0;
-        const currentDomain = domain || window.location.pathname.split("/")[2];
+        const currentDomain = resolveDomain();
+        if (!currentDomain) {
+          return null;
+        }
         const hasFiles = fileCount > 0;
 
         return (

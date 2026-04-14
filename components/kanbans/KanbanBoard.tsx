@@ -406,7 +406,7 @@ const Column = ({
                       <Plus className="h-4 w-4" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[50%] max-h-[90%] overflow-scroll">
+                  <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
                     <DialogHeader>
                       <DialogTitle>Crea progetto</DialogTitle>
                       <DialogDescription>Crea un progetto nuovo</DialogDescription>
@@ -520,6 +520,8 @@ function KanbanBoard({
   const router = useRouter();
   const { siteId } = useSiteId(domain);
   const safeCategories = Array.isArray(categories) ? categories : [];
+  const shouldPersistCardConfigLocally =
+    process.env.NEXT_PUBLIC_ENABLE_CARD_PREFS === "true";
 
   const [tasks, setTasks] = useState(() => {
     // Ensure initialTasks is always an array
@@ -1042,20 +1044,30 @@ function KanbanBoard({
       return;
     }
 
-    try {
-      const savedConfig = localStorage.getItem(key);
-      if (!savedConfig) {
-        setCardFieldConfig(serverConfig);
-        return;
-      }
+    if (shouldPersistCardConfigLocally) {
+      try {
+        const savedConfig = localStorage.getItem(key);
+        if (!savedConfig) {
+          setCardFieldConfig(serverConfig);
+          return;
+        }
 
-      const parsed = JSON.parse(savedConfig);
-      setCardFieldConfig(normalizeCardFieldConfig(parsed));
-    } catch (error) {
-      logger.warn("Error loading card field config:", error);
-      setCardFieldConfig(serverConfig);
+        const parsed = JSON.parse(savedConfig);
+        setCardFieldConfig(normalizeCardFieldConfig(parsed));
+      } catch (error) {
+        logger.warn("Error loading card field config:", error);
+        setCardFieldConfig(serverConfig);
+      }
+      return;
     }
-  }, [kanban?.id, kanban?.card_field_config, kanban?.cardFieldConfig]);
+
+    setCardFieldConfig(serverConfig);
+  }, [
+    kanban?.id,
+    kanban?.card_field_config,
+    kanban?.cardFieldConfig,
+    shouldPersistCardConfigLocally,
+  ]);
 
   const toggleCardField = useCallback(
     (mode: CardDisplayMode, field: CardDisplayField) => {
@@ -1082,7 +1094,7 @@ function KanbanBoard({
     const normalizedConfig = normalizeCardFieldConfig(draftCardFieldConfig);
     setCardFieldConfig(normalizedConfig);
     const key = cardFieldStorageKey.current;
-    if (key) {
+    if (key && shouldPersistCardConfigLocally) {
       try {
         localStorage.setItem(key, JSON.stringify(normalizedConfig));
       } catch (error) {
@@ -1106,7 +1118,7 @@ function KanbanBoard({
     toast({
       description: "Preferenze card progetto salvate.",
     });
-  }, [draftCardFieldConfig, toast, kanban?.id, domain]);
+  }, [draftCardFieldConfig, toast, kanban?.id, domain, shouldPersistCardConfigLocally]);
 
   const handleSaveKanban = async (kanbanData: any) => {
     try {
@@ -1574,7 +1586,7 @@ function KanbanBoard({
                   const columnCards = Array.isArray(filteredTasks)
                     ? filteredTasks.filter(
                         (task: Task) =>
-                          //@ts-ignore
+                          // @ts-expect-error Task is enriched with joined column data at runtime.
                           task?.column?.identifier === column.identifier &&
                           task.archived !== true
                       )

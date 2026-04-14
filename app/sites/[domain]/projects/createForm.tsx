@@ -25,7 +25,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Loader2, RefreshCw, Link, Columns } from "lucide-react";
+import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
 import { cn, isWeekend } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
@@ -59,6 +59,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
   const [isLoadingColumns, setIsLoadingColumns] = useState(false);
   const params = useParams();
   const domain = params?.domain as string;
+  const isKanbanEmbeddedCreation = Boolean(kanbanId);
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -295,19 +296,13 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
         )}
 
         {/* Column selector - show when kanban is selected and columns are available */}
-        {kanbanColumns.length > 0 && (
+        {!isKanbanEmbeddedCreation && kanbanColumns.length > 0 && (
           <FormField
             name="kanbanColumnId"
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <div className="flex items-center gap-2">
-                  <FormLabel>Colonna</FormLabel>
-                  <Badge variant="outline" className="text-xs">
-                    <Columns className="h-3 w-3 mr-1" />
-                    Opzionale
-                  </Badge>
-                </div>
+                <FormLabel>Colonna</FormLabel>
                 <FormControl>
                   <SearchSelect
                     value={field.value}
@@ -330,19 +325,13 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
         )}
 
         {/* Offer selector - only show when NOT in an offer kanban */}
-        {!isOfferKanban && (
+        {!isOfferKanban && !isKanbanEmbeddedCreation && (
           <FormField
             name="parentTaskId"
             control={form.control}
             render={({ field }) => (
               <FormItem>
-                <div className="flex items-center gap-2">
-                  <FormLabel>Collega Offerta</FormLabel>
-                  <Badge variant="outline" className="text-xs">
-                    <Link className="h-3 w-3 mr-1" />
-                    Opzionale
-                  </Badge>
-                </div>
+                <FormLabel>Collega Offerta</FormLabel>
                 <FormControl>
                   <OfferSelect
                     value={field.value}
@@ -511,34 +500,42 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
         </div>
 
         <div className="flex">
-          <div className="w-1/2 pr-4">
-            <div className="grid grid-rows-2 grid-cols-4 gap-2">
-              {Array.from({ length: 8 }, (_, i) => (
-                <FormField
-                  key={i}
-                  name={`position${i + 1}` as keyof z.infer<typeof validation>}
-                  control={form.control}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          value={String(field.value || "")}
-                          disabled={isSubmitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ))}
+          {!isKanbanEmbeddedCreation && (
+            <div className="w-1/2 pr-4">
+              <div className="grid grid-rows-2 grid-cols-4 gap-2">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <FormField
+                    key={i}
+                    name={`position${i + 1}` as keyof z.infer<typeof validation>}
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{`Pos. ${i + 1}`}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={String(field.value || "")}
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="border-l border-border" />
+          {!isKanbanEmbeddedCreation && <div className="border-l border-border" />}
 
-          <div className="w-1/2 pl-4 flex items-center justify-center">
+          <div
+            className={
+              isKanbanEmbeddedCreation
+                ? "w-full flex items-center justify-start"
+                : "w-1/2 pl-4 flex items-center justify-center"
+            }
+          >
             <FormField
               name="numero_pezzi"
               control={form.control}

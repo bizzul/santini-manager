@@ -246,6 +246,10 @@ export default async function Page({
     return redirect("/login");
   }
 
+  if (session.role !== "admin" && session.role !== "superadmin") {
+    return redirect(`/sites/${domain}/projects?edit=${id}`);
+  }
+
   const siteContext = await requireServerSiteContext(domain);
   const { siteId } = siteContext;
 

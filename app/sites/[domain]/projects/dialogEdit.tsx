@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import EditProductForm from "./editForm";
+import EditTaskKanban from "@/components/kanbans/editKanbanTask";
 import { useParams } from "next/navigation";
 
 type Props = {
@@ -19,21 +19,26 @@ function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
   const params = useParams();
   const domain = params?.domain as string;
 
-  const handleClose = (wasDeleted?: boolean) => {
+  const handleClose = (_wasDeleted?: boolean) => {
     setOpen(false);
     setData(null);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleClose()}>
-      <DialogContent className="max-w-228 max-h-[90%] overflow-scroll">
+      <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
         <DialogHeader>
           <DialogTitle>Modifica {data?.unique_code || "progetto"}</DialogTitle>
         </DialogHeader>
         {data && (
-          <EditProductForm
+          <EditTaskKanban
             handleClose={handleClose}
             resource={data}
+            history={[]}
+            open={isOpen}
+            setIsLocked={() => {}}
+            setOpenModal={setOpen}
+            setOpen={setOpen}
             domain={domain}
           />
         )}

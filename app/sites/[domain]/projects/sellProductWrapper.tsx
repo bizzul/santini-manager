@@ -7,15 +7,42 @@ import { Data } from "./page";
 import DialogEdit from "./dialogEdit";
 
 const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) => {
+  const resolvedDomain = useMemo(() => {
+    if (domain && domain.trim().length > 0) {
+      return domain;
+    }
+
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    const pathnameDomain = window.location.pathname.split("/")[2];
+    if (pathnameDomain) {
+      return pathnameDomain;
+    }
+
+    const hostname = window.location.hostname;
+    if (hostname.endsWith(".localhost")) {
+      return hostname.split(".")[0] || "";
+    }
+
+    const hostParts = hostname.split(".");
+    if (hostParts.length > 2) {
+      return hostParts[0] || "";
+    }
+
+    return "";
+  }, [domain]);
+
   const columns = useMemo(
     () =>
       createColumns({
-        domain,
+        domain: resolvedDomain || domain,
         clients: data.clients,
         products: data.activeProducts,
         kanbans: data.kanbans,
       }),
-    [domain, data.clients, data.activeProducts, data.kanbans]
+    [resolvedDomain, domain, data.clients, data.activeProducts, data.kanbans]
   );
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -42,8 +69,8 @@ const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) =
     setSelectedTask(null);
     // Remove edit param from URL
     const editParam = searchParams.get("edit");
-    if (editParam) {
-      router.replace(`/sites/${domain}/projects`, { scroll: false });
+    if (editParam && resolvedDomain) {
+      router.replace(`/sites/${resolvedDomain}/projects`, { scroll: false });
     }
   };
   
@@ -57,7 +84,7 @@ const SellProductWrapper = ({ data, domain }: { data: Data; domain?: string }) =
         columns={columns} 
         data={data.tasks} 
         categories={data.categories}
-        domain={domain}
+        domain={resolvedDomain || domain}
       />
       
       <DialogEdit
