@@ -20,6 +20,15 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         category: "core",
     },
     {
+        name: "dashboard-forecast",
+        label: "Dashboard Forecast",
+        description: "Vista forecast della dashboard con analisi previsionale",
+        icon: "faSquarePollVertical",
+        href: "/dashboard/forecast",
+        enabledByDefault: true,
+        category: "core",
+    },
+    {
         name: "kanban",
         label: "Kanban",
         description: "Gestione attività e progetti con bacheche kanban",

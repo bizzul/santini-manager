@@ -1453,15 +1453,18 @@ const EditTaskKanban = ({
   }
 
   return (
-    <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
-      <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
+    <>
+    <Form {...form}>
+      <form className="w-full space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
+          <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
         <div className="grid grid-cols-2 gap-3 items-stretch">
-          <div className="h-full p-3 bg-muted/40 rounded-lg border space-y-3">
+          <div className="h-full p-3 bg-muted dark:bg-background rounded-lg border border-slate-500 space-y-3">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
               Immagine
             </h4>
-            <div className="space-y-2 rounded-md border bg-background/50 p-2">
-              <div className="relative w-full h-24 rounded-md border overflow-hidden bg-background/60">
+            <div className="space-y-2 rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 p-2">
+              <div className="relative w-full h-24 rounded-md border border-slate-500 overflow-hidden bg-background/60 dark:bg-muted/10">
                 {showCoverSourceBadge && (
                   <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
                     {projectImagePreview.source}
@@ -1523,7 +1526,7 @@ const EditTaskKanban = ({
             </div>
           </div>
 
-          <div className="h-full p-4 bg-muted/50 rounded-lg border space-y-3">
+          <div className="h-full p-4 bg-muted dark:bg-background rounded-lg border border-slate-500 space-y-3">
             <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
               <Info className="h-4 w-4" />
               Info Cantiere
@@ -1572,7 +1575,7 @@ const EditTaskKanban = ({
 
             {/* Client Name for reference */}
             {selectedClient && (
-              <div className="pt-2 border-t">
+              <div className="pt-2 border-t border-slate-500">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                   <User className="h-3 w-3" />
                   <span>
@@ -1586,7 +1589,7 @@ const EditTaskKanban = ({
           </div>
         </div>
 
-        <div className="rounded-lg border bg-muted/20 p-3">
+        <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
           <Collapsible open={isHistoryExpanded} onOpenChange={setIsHistoryExpanded}>
             <div className="flex items-center justify-between">
               <div>
@@ -1613,7 +1616,7 @@ const EditTaskKanban = ({
             <CollapsibleContent forceMount className={!isHistoryExpanded ? "hidden" : ""}>
               <div className="mt-3 max-h-[260px] overflow-y-auto pr-1">
                 {filteredHistory.length > 0 ? (
-                  <ol className="relative border-l border-gray-200 dark:border-gray-700">
+                  <ol className="relative border-l border-slate-500">
                     {filteredHistory.map((item: any) => (
                       <li className="mb-4 ml-4" key={item.id}>
                         <span className="absolute -left-3 mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 ring-4 ring-white dark:ring-gray-900 dark:bg-blue-900">
@@ -1629,7 +1632,7 @@ const EditTaskKanban = ({
                             <User className="w-3 h-3 text-blue-600 dark:text-blue-300" />
                           )}
                         </span>
-                        <div className="items-center justify-between p-2 bg-white border border-gray-200 rounded-lg shadow-xs dark:bg-gray-700 dark:border-gray-600">
+                        <div className="items-center justify-between p-2 bg-white border border-slate-500 rounded-lg shadow-xs dark:bg-gray-700">
                           <time className="mb-1 block text-xs font-normal text-gray-400">
                             {item.createdAt !== null &&
                               DateManager.formatEUDateTime(item.createdAt)}
@@ -1677,7 +1680,7 @@ const EditTaskKanban = ({
                     ))}
                   </ol>
                 ) : (
-                  <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                  <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
                     Nessun dato storico trovato
                   </div>
                 )}
@@ -1686,7 +1689,7 @@ const EditTaskKanban = ({
           </Collapsible>
         </div>
 
-        <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+        <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -1710,11 +1713,11 @@ const EditTaskKanban = ({
                   type="button"
                   title={`Apri ${collaborator.name}`}
                   onClick={() => setSelectedCollaborator(collaborator)}
-                  className="w-full flex items-center justify-between gap-2 rounded-md border bg-background/70 px-2 py-1.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="w-full flex items-center justify-between gap-2 rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 px-2 py-1.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <Avatar
-                      className="h-8 w-8 border border-background shadow-sm cursor-pointer"
+                      className="h-8 w-8 border border-slate-500 shadow-sm cursor-pointer"
                       title={collaborator.name}
                     >
                       <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
@@ -1730,20 +1733,20 @@ const EditTaskKanban = ({
                     </Avatar>
                     <span className="truncate text-xs font-medium">{collaborator.name}</span>
                   </div>
-                  <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                  <span className="shrink-0 rounded bg-muted dark:bg-muted/30 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
                     {formatHours(collaborator.hours)}
                   </span>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+            <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
               Nessuna ora registrata sul progetto.
             </div>
           )}
         </div>
 
-        <div className="min-h-[320px] rounded-lg border bg-muted/20 p-4 space-y-4">
+        <div className="min-h-[320px] rounded-lg border border-slate-500 bg-muted dark:bg-background p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Documenti progetto</h3>
             {isOfferTask ? (
@@ -1786,95 +1789,94 @@ const EditTaskKanban = ({
               initialFiles={projectFiles}
             />
           ) : (
-            <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            <div className="rounded-lg border border-dashed border-slate-500 p-4 text-sm text-muted-foreground">
               Caricamento documenti disponibile appena il contesto sito e pronto.
             </div>
           )}
         </div>
-      </div>
-      <Form {...form}>
-        <form className="space-y-4 w-1/2 min-w-0" onSubmit={form.handleSubmit(onSubmit)}>
-          {/* Row 1: Codice Identificativo + Nome cliente */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="unique_code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Codice Identificativo</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              name="clientId"
-              control={form.control}
-              render={({ field }) => {
-                const clientOptions = Array.isArray(clients)
-                  ? clients.map((client: Client) => ({
-                      value: client.id,
-                      label: client.businessName
-                        ? client.businessName
-                        : (client.individualLastName ?? "N/A") +
-                          " " +
-                          (client.individualFirstName ?? "N/A"),
-                    }))
-                  : [];
-                return (
+          </div>
+          <div className="space-y-4 w-1/2 min-w-0">
+            {/* Row 1+2: Codice + Cliente + Nome + Luogo */}
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="unique_code"
+                render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nome cliente</FormLabel>
+                    <FormLabel>Codice Identificativo</FormLabel>
                     <FormControl>
-                      <SearchSelect
-                        value={field.value || undefined}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                        }}
-                        disabled={isSubmitting}
-                        options={clientOptions}
-                      />
+                      <Input {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
-                );
-              }}
-            />
-          </div>
-
-          {/* Row 2: Nome oggetto + Luogo */}
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome oggetto</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="luogo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Luogo</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                )}
+              />
+              <FormField
+                name="clientId"
+                control={form.control}
+                render={({ field }) => {
+                  const clientOptions = Array.isArray(clients)
+                    ? clients.map((client: Client) => ({
+                        value: client.id,
+                        label: client.businessName
+                          ? client.businessName
+                          : (client.individualLastName ?? "N/A") +
+                            " " +
+                            (client.individualFirstName ?? "N/A"),
+                      }))
+                    : [];
+                  return (
+                    <FormItem>
+                      <FormLabel>Nome cliente</FormLabel>
+                      <FormControl>
+                        <SearchSelect
+                          value={field.value || undefined}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                          }}
+                          disabled={isSubmitting}
+                          options={clientOptions}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome oggetto</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="luogo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Luogo</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
           {/* Row 3: Prodotti multipli */}
-          <div className="space-y-3 rounded-lg border p-4">
+          <div className="space-y-3 rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Prodotti</h3>
@@ -1892,7 +1894,7 @@ const EditTaskKanban = ({
             </div>
 
             {offerProducts.length === 0 ? (
-              <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+              <div className="rounded-md border border-dashed border-slate-500 p-4 text-sm text-muted-foreground">
                 Nessun prodotto selezionato.
               </div>
             ) : (
@@ -1951,7 +1953,7 @@ const EditTaskKanban = ({
           {/* Pianificazione Produzione e Posa */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border p-3 space-y-3">
+              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Produzione</h3>
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -2120,7 +2122,7 @@ const EditTaskKanban = ({
                           return (
                             <label
                               key={`prod-${collaborator.id}`}
-                              className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-2 cursor-pointer"
+                              className="flex items-center gap-2 rounded-md border border-slate-500 bg-muted/20 px-2 py-2 cursor-pointer"
                             >
                               <Checkbox
                                 checked={isChecked}
@@ -2135,7 +2137,7 @@ const EditTaskKanban = ({
                                   });
                                 }}
                               />
-                              <Avatar className="h-7 w-7 border border-background">
+                              <Avatar className="h-7 w-7 border border-slate-500">
                                 <AvatarImage
                                   src={collaborator.picture || undefined}
                                   alt={collaborator.name}
@@ -2156,7 +2158,7 @@ const EditTaskKanban = ({
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                      <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
                         Nessun collaboratore disponibile.
                       </div>
                     )}
@@ -2164,7 +2166,7 @@ const EditTaskKanban = ({
                 </Popover>
               </div>
 
-              <div className="rounded-lg border p-3 space-y-3">
+              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
                 <h3 className="text-sm font-medium">Posa</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <FormField
@@ -2310,7 +2312,7 @@ const EditTaskKanban = ({
                           return (
                             <label
                               key={`posa-${collaborator.id}`}
-                              className="flex items-center gap-2 rounded-md border bg-muted/20 px-2 py-2 cursor-pointer"
+                              className="flex items-center gap-2 rounded-md border border-slate-500 bg-muted/20 px-2 py-2 cursor-pointer"
                             >
                               <Checkbox
                                 checked={isChecked}
@@ -2325,7 +2327,7 @@ const EditTaskKanban = ({
                                   });
                                 }}
                               />
-                              <Avatar className="h-7 w-7 border border-background">
+                              <Avatar className="h-7 w-7 border border-slate-500">
                                 <AvatarImage
                                   src={collaborator.picture || undefined}
                                   alt={collaborator.name}
@@ -2346,7 +2348,7 @@ const EditTaskKanban = ({
                         })}
                       </div>
                     ) : (
-                      <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                      <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
                         Nessun collaboratore disponibile.
                       </div>
                     )}
@@ -2357,100 +2359,108 @@ const EditTaskKanban = ({
           </div>
 
           {/* Row 5: Kanban + Colonna */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Kanban</label>
-              <Select
-                value={selectedKanbanId?.toString() || "__none__"}
-                onValueChange={(value) =>
-                  setSelectedKanbanId(
-                    value && value !== "__none__" ? parseInt(value) : null
-                  )
-                }
-                disabled={isSubmitting}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleziona una kanban" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Nessuna kanban</SelectItem>
-                  {kanbans.map((kanban) => (
-                    <SelectItem key={kanban.id} value={kanban.id.toString()}>
-                      {kanban.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Kanban</label>
+                <Select
+                  value={selectedKanbanId?.toString() || "__none__"}
+                  onValueChange={(value) =>
+                    setSelectedKanbanId(
+                      value && value !== "__none__" ? parseInt(value) : null
+                    )
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona una kanban" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nessuna kanban</SelectItem>
+                    {kanbans.map((kanban) => (
+                      <SelectItem key={kanban.id} value={kanban.id.toString()}>
+                        {kanban.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Colonna</label>
-              <Select
-                value={selectedColumnId?.toString() || "__none__"}
-                onValueChange={(value) =>
-                  setSelectedColumnId(
-                    value && value !== "__none__" ? parseInt(value) : null
-                  )
-                }
-                disabled={
-                  isSubmitting ||
-                  !selectedKanbanId ||
-                  kanbanColumns.length === 0
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      selectedKanbanId
-                        ? "Seleziona una colonna"
-                        : "Seleziona prima una kanban"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Nessuna colonna</SelectItem>
-                  {kanbanColumns.map((column) => (
-                    <SelectItem key={column.id} value={column.id.toString()}>
-                      {column.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Colonna</label>
+                <Select
+                  value={selectedColumnId?.toString() || "__none__"}
+                  onValueChange={(value) =>
+                    setSelectedColumnId(
+                      value && value !== "__none__" ? parseInt(value) : null
+                    )
+                  }
+                  disabled={
+                    isSubmitting ||
+                    !selectedKanbanId ||
+                    kanbanColumns.length === 0
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        selectedKanbanId
+                          ? "Seleziona una colonna"
+                          : "Seleziona prima una kanban"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nessuna colonna</SelectItem>
+                    {kanbanColumns.map((column) => (
+                      <SelectItem key={column.id} value={column.id.toString()}>
+                        {column.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
-          <FormField
-            name="other"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Commenti</FormLabel>
-                <FormControl>
-                  <Textarea {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
+            <FormField
+              name="other"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Commenti</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            name="sellPrice"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valore</FormLabel>
-                <FormControl>
-                  <Input {...field} type="number" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
+            <FormField
+              name="sellPrice"
+              control={form.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Valore</FormLabel>
+                  <FormControl>
+                    <Input {...field} type="number" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          </div>
+        </div>
 
+        <div className="space-y-4">
           <div className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Ordini fornitori</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Ordini fornitori</h3>
               </div>
 
               <div className="space-y-3">
@@ -2458,7 +2468,7 @@ const EditTaskKanban = ({
                   taskSuppliers.map((ts) => (
                     <div
                       key={ts.id}
-                      className="rounded-lg border bg-muted/30 p-3"
+                      className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3"
                     >
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-3">
@@ -2480,7 +2490,7 @@ const EditTaskKanban = ({
                           </Button>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[160px_96px_minmax(0,160px)] lg:items-end">
+                        <div className="grid gap-3 grid-cols-3 items-end">
                           <div className="space-y-2">
                             <label className="text-xs text-muted-foreground">
                               Data ordinazione
@@ -2590,7 +2600,7 @@ const EditTaskKanban = ({
                             />
                           </div>
 
-                          <div className="space-y-2 sm:col-span-2 lg:col-span-1">
+                          <div className="space-y-2">
                             <label className="text-xs text-muted-foreground">
                               Data consegna
                             </label>
@@ -2639,9 +2649,9 @@ const EditTaskKanban = ({
                   ))}
               </div>
 
-              <div className="rounded-lg border border-dashed bg-muted/10 p-3 space-y-3">
+              <div className="rounded-lg border border-dashed border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
                 <div className="flex flex-wrap gap-3">
-                  <div className="min-w-[220px] flex-[1.6_1_220px] rounded-md border bg-background/70 p-3 space-y-2">
+                  <div className="min-w-[220px] flex-[1.6_1_220px] rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 p-3 space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">
                       Fornitore
                     </label>
@@ -2670,7 +2680,7 @@ const EditTaskKanban = ({
                     </Select>
                   </div>
 
-                  <div className="min-w-[180px] flex-[1_1_180px] rounded-md border bg-background/70 p-3 space-y-2">
+                  <div className="min-w-[180px] flex-[1_1_180px] rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 p-3 space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">
                       Ordinazione
                     </label>
@@ -2714,7 +2724,7 @@ const EditTaskKanban = ({
                     </div>
                   </div>
 
-                  <div className="w-[88px] shrink-0 rounded-md border bg-background/70 p-3 space-y-2">
+                  <div className="w-[88px] shrink-0 rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 p-3 space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">
                       Giorni
                     </label>
@@ -2756,7 +2766,7 @@ const EditTaskKanban = ({
                     />
                   </div>
 
-                  <div className="min-w-[180px] flex-[1_1_180px] rounded-md border bg-background/70 p-3 space-y-2">
+                  <div className="min-w-[180px] flex-[1_1_180px] rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 p-3 space-y-2">
                     <label className="text-xs font-medium text-muted-foreground">
                       Fornitura
                     </label>
@@ -2817,7 +2827,7 @@ const EditTaskKanban = ({
 
           </div>
 
-          <div className="flex gap-2 justify-between pt-4 border-t">
+          <div className="flex gap-2 justify-between pt-4 border-t border-slate-500">
             <Button
               type="button"
               variant="destructive"
@@ -2876,7 +2886,7 @@ const EditTaskKanban = ({
           </DialogHeader>
           {selectedCollaborator && (
             <div className="flex flex-col items-center gap-3 py-2">
-              <Avatar className="h-24 w-24 border shadow-sm">
+              <Avatar className="h-24 w-24 border border-slate-500 shadow-sm">
                 <AvatarImage
                   src={selectedCollaborator.picture || undefined}
                   alt={selectedCollaborator.name}
@@ -2902,7 +2912,7 @@ const EditTaskKanban = ({
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

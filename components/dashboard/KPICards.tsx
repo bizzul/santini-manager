@@ -20,7 +20,7 @@ export default function KPICards({ data }: KPICardsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Offerte Attive */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5 relative overflow-hidden">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
             <FileText className="w-5 h-5 text-blue-500" />
@@ -48,7 +48,7 @@ export default function KPICards({ data }: KPICardsProps) {
       </div>
 
       {/* Ordini in Produzione */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5 relative overflow-hidden">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
             <Factory className="w-5 h-5 text-white" />
@@ -78,7 +78,7 @@ export default function KPICards({ data }: KPICardsProps) {
       </div>
 
       {/* Fatture Aperte */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5 relative overflow-hidden">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
             <Receipt className="w-5 h-5 text-green-500" />
@@ -108,7 +108,7 @@ export default function KPICards({ data }: KPICardsProps) {
       </div>
 
       {/* Carico AVOR */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5 relative overflow-hidden">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">
           <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-orange-500" />

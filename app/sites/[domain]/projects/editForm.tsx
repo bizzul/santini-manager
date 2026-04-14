@@ -491,7 +491,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
     <div className="flex flex-row-reverse flex-nowrap gap-8 w-full justify-between">
       <div className="flex flex-col gap-4 w-[340px] shrink-0">
         {/* Project Contact Info Panel */}
-        <div className="w-full p-4 bg-muted/50 rounded-lg border space-y-3">
+        <div className="w-full p-4 bg-muted/50 rounded-lg border border-slate-500 space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <Info className="h-4 w-4" />
             Info Cantiere
@@ -552,7 +552,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
         </div>
 
         {/* Compact History Panel */}
-        <div className="w-full rounded-lg border bg-muted/30 p-3">
+        <div className="w-full rounded-lg border border-slate-500 bg-muted/30 p-3">
           <Collapsible open={isHistoryExpanded} onOpenChange={setIsHistoryExpanded}>
             <div className="flex items-center justify-between gap-2">
               <div>
@@ -580,7 +580,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
             <CollapsibleContent forceMount className={!isHistoryExpanded ? "hidden" : ""}>
               <div className="mt-3 max-h-[280px] overflow-y-auto pr-1">
                 {filteredHistory.length > 0 ? (
-                  <ol className="relative border-l border-gray-200 dark:border-gray-700">
+                  <ol className="relative border-l border-slate-500">
                     {filteredHistory.map((item: any) => (
                       <li className="mb-4 ml-4" key={item.id}>
                         <span className="absolute -left-3 mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 ring-4 ring-white dark:bg-blue-900 dark:ring-gray-900">
@@ -596,7 +596,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
                             <User className="h-3 w-3 text-blue-600 dark:text-blue-300" />
                           )}
                         </span>
-                        <div className="rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-600 dark:bg-gray-700">
+                        <div className="rounded-lg border border-slate-500 bg-white p-2 dark:bg-gray-700">
                           <div className="text-xs text-gray-400">
                             {item.createdAt !== null &&
                               DateManager.formatEUDateTime(item.createdAt)}
@@ -644,7 +644,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
                     ))}
                   </ol>
                 ) : (
-                  <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+                  <p className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
                     Nessun dato storico trovato
                   </p>
                 )}
@@ -654,7 +654,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
         </div>
 
         {/* Collaborators & Hours Panel */}
-        <div className="w-full rounded-lg border bg-muted/30 p-4 space-y-3">
+        <div className="w-full rounded-lg border border-slate-500 bg-muted/30 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -671,7 +671,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
               {collaboratorSummary.collaborators.map((collaborator) => (
                 <div
                   key={collaborator.employeeId}
-                  className="flex items-center justify-between rounded-md border bg-background/70 px-2.5 py-2"
+                  className="flex items-center justify-between rounded-md border border-slate-500 bg-background/70 px-2.5 py-2"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span
@@ -689,7 +689,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
               ))}
             </div>
           ) : (
-            <p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
+            <p className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
               Nessuna ora registrata su questo progetto.
             </p>
           )}

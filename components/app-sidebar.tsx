@@ -204,8 +204,23 @@ const getMenuItems = (
       label: "Dashboard",
       icon: "faWaveSquare",
       alert: true,
-      href: `${basePath}/dashboard`,
       moduleName: "dashboard",
+      items: [
+        {
+          label: "Overview",
+          icon: "faWaveSquare",
+          href: `${basePath}/dashboard`,
+          alert: false,
+          moduleName: "dashboard",
+        },
+        {
+          label: "Forecast",
+          icon: "faSquarePollVertical",
+          href: `${basePath}/dashboard/forecast`,
+          alert: false,
+          moduleName: "dashboard-forecast",
+        },
+      ],
     },
     {
       label: labels?.kanban || "Kanban",

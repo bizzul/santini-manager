@@ -34,7 +34,7 @@ export default function AggregatedKanbanStatus({
   const departments = ["Vendita", "AVOR", "Produzione", "Fatturazione"];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
       <div className="mb-6">
         <h3 className="text-xl font-bold mb-1">Stato Kanban Aggregato</h3>
         <p className="text-sm text-muted-foreground">
@@ -51,7 +51,7 @@ export default function AggregatedKanbanStatus({
           return (
             <div
               key={dept}
-              className="backdrop-blur-sm bg-white/5 rounded-xl p-4 border border-white/10"
+              className="backdrop-blur-sm bg-white/5 rounded-xl p-4 border border-slate-500"
             >
               <div className="flex items-center justify-between">
                 <div>

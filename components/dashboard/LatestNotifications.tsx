@@ -84,7 +84,7 @@ export default function LatestNotifications({
 
   if (loading) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
         <div className="mb-6">
           <h3 className="text-xl font-bold mb-1">Ultime notifiche</h3>
         </div>
@@ -102,7 +102,7 @@ export default function LatestNotifications({
 
   if (notifications.length === 0) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
         <div className="mb-6">
           <h3 className="text-xl font-bold mb-1">Ultime notifiche</h3>
         </div>
@@ -112,7 +112,7 @@ export default function LatestNotifications({
   }
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
       <div className="mb-6">
         <h3 className="text-xl font-bold mb-1">Ultime notifiche</h3>
       </div>
@@ -120,7 +120,7 @@ export default function LatestNotifications({
         {notifications.map((notification) => (
           <div
             key={notification.id}
-            className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-white/10"
+            className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-slate-500"
           >
             <div className="w-5 h-5 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
               <AlertTriangle className="w-3 h-3 text-yellow-500" />

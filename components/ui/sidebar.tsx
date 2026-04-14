@@ -27,7 +27,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state";
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
+const SIDEBAR_WIDTH = "18rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
@@ -650,7 +650,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-slot="sidebar-menu-sub"
       data-sidebar="menu-sub"
       className={cn(
-        "mx-4 flex min-w-0 translate-x-px flex-col gap-1 border-l border-[hsl(var(--sidebar-border)/0.65)] px-3 py-1 dark:border-white/20",
+        "ml-4 mr-0 flex min-w-0 translate-x-px flex-col gap-1 border-l border-[hsl(var(--sidebar-border)/0.65)] pl-3 pr-0 py-1 dark:border-white/20",
         "group-data-[collapsible=icon]:hidden",
         className
       )}

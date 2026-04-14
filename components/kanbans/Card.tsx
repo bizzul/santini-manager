@@ -1183,7 +1183,7 @@ export default function Card({
           )}
 
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="max-w-228 max-h-[90%] overflow-scroll">
+            <DialogContent className="max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
               <DialogHeader className="pr-10">
                 <div className="flex items-center justify-between gap-3">
                   <DialogTitle>Modifica {data.unique_code}</DialogTitle>
