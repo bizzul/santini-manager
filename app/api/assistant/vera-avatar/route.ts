@@ -3,10 +3,8 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 
 const AVATAR_FILES = {
-  launcher:
-    "Vera_Lux_27yo_Photorealistic-2b1551da-043b-401e-83ba-d90cba82e242.png",
-  chat:
-    "photorealistic_nordic_blonde_woman_27yo_named_vera_lux_platinum_long_wavy_hair_to_mid-back_intense__hnn9s19ctqmamxdjvr5e_2-f5656e80-ecd1-4f9b-8e40-89efb341e7c3.png",
+  launcher: "image-f83a4c71-9b87-4166-80d4-871db21c58bd.png",
+  chat: "image-f83a4c71-9b87-4166-80d4-871db21c58bd.png",
 } as const;
 
 function resolveAssetsDir() {
