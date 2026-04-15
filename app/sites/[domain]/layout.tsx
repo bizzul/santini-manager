@@ -18,7 +18,6 @@ import { QuickActionsProvider } from "@/components/quick-actions";
 import { logger } from "@/lib/logger";
 import { QueryHydration } from "@/components/QueryHydration";
 import { ManagerGuideProvider } from "@/components/manager-guide";
-import { IntegratedAssistantButton } from "@/components/assistance/IntegratedAssistantButton";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 import {
   resolveSiteThemeSettings,
@@ -202,7 +201,6 @@ export default async function SiteLayout({
               <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
                 <header className="flex h-12 shrink-0 items-center justify-between border-b bg-[hsl(var(--page)/0.96)] px-4 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)]">
                   <SidebarTrigger className="-ml-1" />
-                  <IntegratedAssistantButton />
                 </header>
                 <div className="flex-1 overflow-auto bg-[hsl(var(--page))]">{children}</div>
               </SidebarInset>

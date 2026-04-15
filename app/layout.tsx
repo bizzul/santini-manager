@@ -1,4 +1,5 @@
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import "@/lib/suppress-warnings"; // Suppress Bun async_hooks warnings
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";

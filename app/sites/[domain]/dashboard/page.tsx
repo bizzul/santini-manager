@@ -8,6 +8,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import KPICards from "@/components/dashboard/KPICards";
+import ActiveProjectsMapCard from "@/components/dashboard/ActiveProjectsMapCard";
 import PipelineChart from "@/components/dashboard/PipelineChart";
 import DepartmentWorkloadChart from "@/components/dashboard/DepartmentWorkloadChart";
 import AggregatedKanbanStatus from "@/components/dashboard/AggregatedKanbanStatus";
@@ -85,6 +86,10 @@ export default async function SiteDashboardPage({
       <PageContent>
         <div className="space-y-6">
           <KPICards data={dashboardData} />
+          <ActiveProjectsMapCard
+            domain={domain}
+            projects={dashboardData.activeProjectLocations}
+          />
           <div className="grid gap-4 md:grid-cols-2">
             <PipelineChart data={dashboardData} />
             <DepartmentWorkloadChart data={dashboardData} />

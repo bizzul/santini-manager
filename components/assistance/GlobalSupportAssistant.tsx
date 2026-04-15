@@ -8,7 +8,6 @@ import {
   Mail,
   Mic,
   MicOff,
-  Sparkles,
   Ticket,
   X,
 } from "lucide-react";
@@ -37,6 +36,7 @@ import {
 
 type AssistanceLevel = "basic_tutorial" | "smart_support" | "advanced_support";
 type SupportChannel = "email" | "ticket";
+type AssistantId = "vera" | "mira" | "aura";
 
 function getAssistanceLevelLabel(level: AssistanceLevel) {
   if (level === "advanced_support") return "Livello C";
@@ -83,9 +83,42 @@ function classifySupport(details: string) {
   return { severity: "standard", destination: "coda supporto" };
 }
 
+function resolveAssistantFromPathname(pathname?: string | null): AssistantId {
+  if (!pathname) return "vera";
+
+  if (
+    pathname.includes("/factory") ||
+    pathname.includes("/inventory") ||
+    pathname.includes("/calendar") ||
+    pathname.includes("/timetracking") ||
+    pathname.includes("/qualityControl") ||
+    pathname.includes("/boxing") ||
+    pathname.includes("/dashboard/produzione") ||
+    pathname.includes("/dashboard/avor")
+  ) {
+    return "mira";
+  }
+
+  if (
+    pathname.includes("/clients") ||
+    pathname.includes("/offerte") ||
+    pathname.includes("/dashboard/vendita") ||
+    pathname.includes("/dashboard/forecast") ||
+    pathname.includes("/suppliers") ||
+    pathname.includes("/manufacturers")
+  ) {
+    return "aura";
+  }
+
+  return "vera";
+}
+
 export function GlobalSupportAssistant() {
   const pathname = usePathname();
   const { userContext, loading } = useUserContext();
+  const [activeAssistant, setActiveAssistant] = useState<AssistantId>(
+    resolveAssistantFromPathname(pathname)
+  );
   const [open, setOpen] = useState(false);
   const [requestType, setRequestType] = useState("error");
   const [subject, setSubject] = useState("");
@@ -126,6 +159,13 @@ export function GlobalSupportAssistant() {
   const isAuthRoute =
     pathname?.startsWith("/login") || pathname?.startsWith("/auth");
   const isSiteRoute = Boolean(pathname?.startsWith("/sites/"));
+  const assistantLabel =
+    activeAssistant === "mira"
+      ? "Mira"
+      : activeAssistant === "aura"
+      ? "Aura"
+      : "Vera";
+  const assistantAvatarSrc = `/api/assistant/avatar?assistant=${activeAssistant}&variant=chat`;
 
   const assistanceLevel: AssistanceLevel = useMemo(() => {
     const fromContext = userContext?.assistanceLevel;
@@ -188,12 +228,25 @@ export function GlobalSupportAssistant() {
   }, [requestType, requestTypeOptions]);
 
   useEffect(() => {
-    const handler = () => setOpen(true);
-    window.addEventListener("open-support-assistant", handler);
-    return () => {
-      window.removeEventListener("open-support-assistant", handler);
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<{ assistant?: AssistantId }>;
+      if (customEvent?.detail?.assistant) {
+        setActiveAssistant(customEvent.detail.assistant);
+      } else {
+        setActiveAssistant(resolveAssistantFromPathname(pathname));
+      }
+      setOpen(true);
     };
-  }, []);
+    window.addEventListener("open-support-assistant", handler as EventListener);
+    return () => {
+      window.removeEventListener("open-support-assistant", handler as EventListener);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isSiteRoute) return;
+    setActiveAssistant(resolveAssistantFromPathname(pathname));
+  }, [isSiteRoute, pathname]);
 
   useEffect(() => {
     if (!open && isSiteRoute) {
@@ -420,7 +473,7 @@ export function GlobalSupportAssistant() {
       .trim();
 
     if (!combinedMessage) {
-      toast.info("Scrivi o detta un messaggio per iniziare la chat con Vera.");
+      toast.info(`Scrivi o detta un messaggio per iniziare la chat con ${assistantLabel}.`);
       return;
     }
 
@@ -438,17 +491,17 @@ export function GlobalSupportAssistant() {
 
   const assistantContent = (
     <>
-      <div className="rounded-lg border border-violet-300/30 bg-violet-500/10 p-3">
+      <div className="rounded-lg border border-slate-300/40 bg-slate-100/70 p-3">
         <div className="flex items-center gap-3">
           <span className="inline-flex h-10 w-10 overflow-hidden rounded-full border border-white/40 ring-2 ring-violet-300/25">
             <img
-              src="/api/assistant/vera-avatar?variant=chat"
-              alt="Vera avatar"
+              src={assistantAvatarSrc}
+              alt={`${assistantLabel} avatar`}
               className="h-full w-full scale-150 object-cover object-[center_22%]"
             />
           </span>
           <p className="text-sm font-medium">
-            Ciao sono Vera, e sono qui per te! ;-)
+            {`Ciao sono ${assistantLabel}, e sono qui per te! ;-)`}
           </p>
         </div>
       </div>
@@ -457,8 +510,10 @@ export function GlobalSupportAssistant() {
         <div className="rounded-lg border p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium">Assistente in uso (preview superadmin)</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm font-medium text-slate-900">
+                Assistente in uso (preview superadmin)
+              </p>
+              <p className="text-xs text-slate-600">
                 Seleziona sempre il profilo A/B/C per testare e migliorare i flussi.
               </p>
             </div>
@@ -468,7 +523,7 @@ export function GlobalSupportAssistant() {
                 setSuperadminPreviewLevel(value as AssistanceLevel)
               }
             >
-              <SelectTrigger className="w-[240px]">
+              <SelectTrigger className="w-[240px] border-slate-300/70 bg-white text-slate-900">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -509,12 +564,14 @@ export function GlobalSupportAssistant() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 text-slate-900">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="support-type">Tipologia richiesta</Label>
+              <Label htmlFor="support-type" className="text-slate-900">
+                Tipologia richiesta
+              </Label>
               <Select value={requestType} onValueChange={setRequestType}>
-                <SelectTrigger id="support-type">
+                <SelectTrigger id="support-type" className="border-slate-300/70 bg-white text-slate-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -527,35 +584,42 @@ export function GlobalSupportAssistant() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="support-subject">Oggetto</Label>
+              <Label htmlFor="support-subject" className="text-slate-900">
+                Oggetto
+              </Label>
               <Input
                 id="support-subject"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
                 placeholder="Es. Non vedo i test nelle attività calendario"
+                className="border-slate-300/70 bg-white text-slate-900 placeholder:text-slate-500"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="support-details">Dettaglio richiesta</Label>
+            <Label htmlFor="support-details" className="text-slate-900">
+              Dettaglio richiesta
+            </Label>
             <Textarea
               id="support-details"
               rows={5}
               value={details}
               onChange={(event) => setDetails(event.target.value)}
               placeholder="Descrivi modulo coinvolto, passaggi, errore e risultato atteso..."
+              className="border-slate-300/70 bg-white text-slate-900 placeholder:text-slate-500"
             />
           </div>
 
-          <div className="space-y-2 rounded-lg border p-3">
-            <p className="text-sm font-medium">Dettatura vocale</p>
+          <div className="space-y-2 rounded-lg border border-slate-300/60 bg-slate-50/90 p-3">
+            <p className="text-sm font-medium text-slate-900">Dettatura vocale</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 disabled={!isSupported || isRecording || isProcessing}
                 onClick={start}
+                className="border-slate-300/70 bg-white text-slate-900 hover:bg-slate-50"
               >
                 <Mic className="mr-2 h-4 w-4" />
                 Avvia
@@ -565,6 +629,7 @@ export function GlobalSupportAssistant() {
                 variant="outline"
                 disabled={!isRecording}
                 onClick={stop}
+                className="border-slate-300/70 bg-white text-slate-900 hover:bg-slate-50"
               >
                 <MicOff className="mr-2 h-4 w-4" />
                 Ferma
@@ -574,6 +639,7 @@ export function GlobalSupportAssistant() {
                 variant="outline"
                 disabled={!fullTranscript.trim()}
                 onClick={useTranscriptInDetails}
+                className="border-slate-300/70 bg-white text-slate-900 hover:bg-slate-50"
               >
                 Usa trascrizione
               </Button>
@@ -584,26 +650,39 @@ export function GlobalSupportAssistant() {
               </p>
             )}
             {fullTranscript && (
-              <p className="text-xs text-muted-foreground">Trascrizione: {fullTranscript}</p>
+              <p className="text-xs text-slate-600">Trascrizione: {fullTranscript}</p>
             )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="support-tech-details">Dettagli tecnici aggiuntivi</Label>
+            <Label htmlFor="support-tech-details" className="text-slate-900">
+              Dettagli tecnici aggiuntivi
+            </Label>
             <Textarea
               id="support-tech-details"
               rows={3}
               value={technicalDetails}
               onChange={(event) => setTechnicalDetails(event.target.value)}
               placeholder="Screenshot, frequenza, browser, ora evento, utenti coinvolti..."
+              className="border-slate-300/70 bg-white text-slate-900 placeholder:text-slate-500"
             />
           </div>
 
           <div className="flex flex-wrap justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="border-slate-300/70 bg-white text-slate-900 hover:bg-slate-50"
+            >
               Chiudi
             </Button>
-            <Button type="button" variant="outline" onClick={() => handleSubmit("email")}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSubmit("email")}
+              className="border-slate-300/70 bg-white text-slate-900 hover:bg-slate-50"
+            >
               <Mail className="mr-2 h-4 w-4" />
               Invia via email
             </Button>
@@ -627,23 +706,6 @@ export function GlobalSupportAssistant() {
 
   return (
     <>
-      {!isSiteRoute && (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className={`fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/25 bg-slate-950/85 text-white shadow-xl backdrop-blur ${
-            effectiveAssistanceLevel === "basic_tutorial" ? "" : "animate-pulse"
-          }`}
-          title={`AssistBot ${getAssistanceLevelLabel(effectiveAssistanceLevel)}`}
-        >
-          {effectiveAssistanceLevel === "basic_tutorial" ? (
-            <Sparkles className="h-5 w-5" />
-          ) : (
-            <Bot className="h-5 w-5" />
-          )}
-        </button>
-      )}
-
       {isSiteRoute ? (
         open && (
           <div
@@ -659,12 +721,14 @@ export function GlobalSupportAssistant() {
                   <div className="flex items-center gap-2">
                     <span className="inline-flex h-7 w-7 overflow-hidden rounded-full border border-white/30">
                       <img
-                        src="/api/assistant/vera-avatar?variant=chat"
-                        alt="Vera assistant"
+                        src={assistantAvatarSrc}
+                        alt={`${assistantLabel} assistant`}
                         className="h-full w-full scale-150 object-cover object-[center_22%]"
                       />
                     </span>
-                    <p className="text-sm font-semibold text-slate-900">Vera Assistente</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {assistantLabel} Assistente
+                    </p>
                     <Badge variant="outline">
                       {getAssistanceLevelLabel(effectiveAssistanceLevel)}
                     </Badge>
@@ -695,8 +759,8 @@ export function GlobalSupportAssistant() {
                       <div className="flex items-end gap-2">
                         <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-amber-300/60">
                           <img
-                            src="/api/assistant/vera-avatar?variant=chat"
-                            alt="Vera avatar"
+                            src={assistantAvatarSrc}
+                            alt={`${assistantLabel} avatar`}
                             className="h-full w-full scale-150 object-cover object-[center_22%]"
                           />
                         </span>
@@ -715,16 +779,16 @@ export function GlobalSupportAssistant() {
                         <div className="flex items-start gap-2">
                           <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-amber-300/60">
                             <img
-                              src="/api/assistant/vera-avatar?variant=chat"
-                              alt="Vera avatar"
+                              src={assistantAvatarSrc}
+                              alt={`${assistantLabel} avatar`}
                               className="h-full w-full scale-150 object-cover object-[center_22%]"
                             />
                           </span>
                           <div className="max-w-[83%] rounded-2xl rounded-bl-md bg-white/90 px-3 py-2 shadow-sm">
                             <span className="block h-36 w-full overflow-hidden rounded-lg border border-amber-200/60 bg-slate-200">
                               <img
-                                src="/api/assistant/vera-avatar?variant=chat"
-                                alt="Foto di Vera"
+                                src={assistantAvatarSrc}
+                                alt={`Foto di ${assistantLabel}`}
                                 className="h-full w-full scale-150 object-cover object-[center_22%]"
                               />
                             </span>
@@ -733,13 +797,13 @@ export function GlobalSupportAssistant() {
                         <div className="flex items-start gap-2">
                           <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-amber-300/60">
                             <img
-                              src="/api/assistant/vera-avatar?variant=chat"
-                              alt="Vera avatar"
+                              src={assistantAvatarSrc}
+                              alt={`${assistantLabel} avatar`}
                               className="h-full w-full scale-150 object-cover object-[center_22%]"
                             />
                           </span>
                           <p className="max-w-[83%] rounded-2xl rounded-bl-md bg-white/90 px-3 py-2 text-sm shadow-sm">
-                            Ciao io sono Vera! Come stai "{displayName}"?
+                            {`Ciao io sono ${assistantLabel}! Come stai "${displayName}"?`}
                           </p>
                         </div>
                       </div>
@@ -790,7 +854,7 @@ export function GlobalSupportAssistant() {
                       onClick={handleBeginConversation}
                       className="bg-slate-900 text-white hover:bg-slate-800"
                     >
-                      Invia a Vera
+                      {`Invia a ${assistantLabel}`}
                     </Button>
                   </div>
                   {speechError && (
@@ -807,13 +871,13 @@ export function GlobalSupportAssistant() {
                   <span className="mx-auto inline-flex h-20 w-20 overflow-hidden rounded-full border border-white/30 shadow-lg animate-pulse">
                     <span className="block h-full w-full scale-150">
                       <img
-                        src="/api/assistant/vera-avatar?variant=chat"
-                        alt="Vera thinking"
+                        src={assistantAvatarSrc}
+                        alt={`${assistantLabel} thinking`}
                         className="h-full w-full object-cover object-[center_22%] animate-[spin_3s_linear_infinite]"
                       />
                     </span>
                   </span>
-                  <p className="text-sm font-semibold">Vera sta pensando...</p>
+                  <p className="text-sm font-semibold">{assistantLabel} sta pensando...</p>
                   <p className="text-xs text-muted-foreground">
                     Elaborazione in corso, attendi un attimo.
                   </p>

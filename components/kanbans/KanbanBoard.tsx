@@ -15,7 +15,7 @@ import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import OfferQuickAdd from "./OfferQuickAdd";
 import DraftCompletionWizard from "./DraftCompletionWizard";
-import { Plus, FileEdit, X, RotateCcw, Settings2 } from "lucide-react";
+import { Plus, FileEdit, X, RotateCcw } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
@@ -1488,15 +1488,7 @@ function KanbanBoard({
                     <div className="text-sm text-muted-foreground">Categorie non configurate</div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={openCardConfigDialog}
-                    title="Configura campi card progetto"
-                    className="sticky right-0 top-0 z-10 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-amber-400/70 bg-amber-500/15 px-2.5 text-amber-300 transition-colors hover:bg-amber-500/25"
-                  >
-                    <Settings2 className="h-4 w-4" />
-                    <span className="text-xs font-medium">Card</span>
-                  </button>
+                  {/* Pulsante configurazione card rimosso dalla top bar su richiesta */}
                 </div>
               </div>
             </div>

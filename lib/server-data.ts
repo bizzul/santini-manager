@@ -1576,6 +1576,7 @@ export const fetchProjectFiles = cache(async (taskId: number, siteId: string) =>
 // ============================================
 
 export interface DashboardStats {
+    activeProjectLocations: DashboardProjectLocation[];
     // Offers statistics
     offers: {
         todo: number;
@@ -1655,6 +1656,21 @@ export interface DashboardStats {
     }>;
 }
 
+export interface DashboardProjectLocation {
+    id: number;
+    name: string;
+    status: string;
+    taskType: string | null;
+    addressLine?: string | null;
+    city?: string | null;
+    zipCode?: number | null;
+    countryCode?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    primaryTechnician?: string | null;
+    technicianCount: number;
+}
+
 /**
  * Fetch dashboard statistics for a site
  */
@@ -1698,17 +1714,35 @@ export const fetchDashboardData = cache(
                 .from("Task")
                 .select(`
                 id,
+                name,
+                title,
+                status,
+                luogo,
                 task_type,
                 display_mode,
                 sellPrice,
                 positions,
                 kanbanId,
                 kanbanColumnId,
+                assigned_collaborator_ids,
+                produzione_collaborator_ids,
+                posa_collaborator_ids,
                 sellProductId,
                 created_at,
                 sent_date,
                 deliveryDate,
-                SellProduct:sellProductId(id, name, category:category_id(id, name, color))
+                SellProduct:sellProductId(id, name, category:category_id(id, name, color)),
+                Client:clientId (
+                    businessName,
+                    individualFirstName,
+                    individualLastName,
+                    zipCode,
+                    address,
+                    city,
+                    countryCode,
+                    latitude,
+                    longitude
+                )
             `)
                 .eq("site_id", siteId)
                 .eq("archived", false),
@@ -1920,16 +1954,100 @@ export const fetchDashboardData = cache(
         // Count unique active users
         const uniqueUserIds = new Set(userSites.map((us) => us.user_id));
 
+        const usersByAuthId = new Map<
+            string,
+            { given_name?: string | null; family_name?: string | null; enabled?: boolean | null }
+        >();
+
         // Also fetch actual User records to get enabled count
         let activeEmployees = uniqueUserIds.size;
         if (uniqueUserIds.size > 0) {
             const { data: users } = await supabase
                 .from("User")
-                .select("id, enabled")
-                .eq("enabled", true)
+                .select("id, authId, given_name, family_name, enabled")
                 .in("authId", Array.from(uniqueUserIds));
-            activeEmployees = users?.length || uniqueUserIds.size;
+            (users || []).forEach((user) => {
+                if (!user.authId) return;
+                usersByAuthId.set(user.authId, {
+                    given_name: user.given_name,
+                    family_name: user.family_name,
+                    enabled: user.enabled,
+                });
+            });
+
+            const enabledUsers = (users || []).filter((user) => Boolean(user.enabled));
+            activeEmployees = enabledUsers.length || uniqueUserIds.size;
         }
+
+        const formatTechnicianName = (
+            user: {
+                given_name?: string | null;
+                family_name?: string | null;
+                enabled?: boolean | null;
+            } | undefined,
+            fallbackId: string,
+        ) => {
+            if (!user) return fallbackId;
+            const fullName = [user.given_name, user.family_name]
+                .filter(Boolean)
+                .join(" ")
+                .trim();
+            return fullName || fallbackId;
+        };
+
+        const activeProjectLocations: DashboardProjectLocation[] = tasks
+            .filter((task: any) => {
+                const column = columnMap.get(task.kanbanColumnId);
+                const isOffer = task.task_type === "OFFERTA" ||
+                    offerKanbanIds.has(task.kanbanId);
+                const isInvoice = task.task_type === "FATTURA";
+                const isClosedStatus = ["done", "won", "lost", "archived", "completed"]
+                    .includes(String(column?.column_type || "").toLowerCase());
+                return !isOffer && !isInvoice && !isClosedStatus;
+            })
+            .map((task: any) => {
+                const client = task.Client;
+                const column = columnMap.get(task.kanbanColumnId);
+                const candidateAddress = [
+                    typeof task.luogo === "string" ? task.luogo.trim() : "",
+                    typeof client?.address === "string" ? client.address.trim() : "",
+                ].filter(Boolean);
+
+                const technicianIds = Array.from(
+                    new Set(
+                        [
+                            ...(Array.isArray(task.produzione_collaborator_ids)
+                                ? task.produzione_collaborator_ids
+                                : []),
+                            ...(Array.isArray(task.posa_collaborator_ids)
+                                ? task.posa_collaborator_ids
+                                : []),
+                            ...(Array.isArray(task.assigned_collaborator_ids)
+                                ? task.assigned_collaborator_ids
+                                : []),
+                        ].map((value) => String(value)),
+                    ),
+                );
+
+                const technicianNames = technicianIds.map((id) =>
+                    formatTechnicianName(usersByAuthId.get(id), id)
+                );
+
+                return {
+                    id: task.id,
+                    name: task.name || task.title || `Progetto #${task.id}`,
+                    status: column?.title || task.status || "In corso",
+                    taskType: task.task_type ?? null,
+                    addressLine: candidateAddress[0] ?? null,
+                    city: client?.city ?? null,
+                    zipCode: client?.zipCode ?? null,
+                    countryCode: client?.countryCode ?? null,
+                    latitude: client?.latitude ?? null,
+                    longitude: client?.longitude ?? null,
+                    primaryTechnician: technicianNames[0] ?? null,
+                    technicianCount: technicianNames.length,
+                };
+            });
 
         // Convert category map to arrays
         const categoriesArray = Array.from(categoryStatsMap.values());
@@ -2220,6 +2338,7 @@ export const fetchDashboardData = cache(
             );
 
         return {
+            activeProjectLocations,
             offers: {
                 todo: offersTodo,
                 inProgress: offersInProgress,
