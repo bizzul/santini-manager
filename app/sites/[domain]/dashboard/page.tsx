@@ -84,16 +84,11 @@ export default async function SiteDashboardPage({
       </PageHeader>
       <PageContent>
         <div className="space-y-6">
-          {/* KPI Cards */}
           <KPICards data={dashboardData} />
-
-          {/* Charts Row */}
           <div className="grid gap-4 md:grid-cols-2">
             <PipelineChart data={dashboardData} />
             <DepartmentWorkloadChart data={dashboardData} />
           </div>
-
-          {/* Status and Notifications Row */}
           <div className="grid gap-4 md:grid-cols-2">
             <AggregatedKanbanStatus data={dashboardData} />
             <LatestNotifications siteId={siteContext.siteId} />

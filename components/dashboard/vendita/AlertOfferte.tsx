@@ -22,7 +22,7 @@ function getPriorityColor(priority: string): string {
 
 export default function AlertOfferte({ data }: AlertOfferteProps) {
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-slate-500/20 flex items-center justify-center">
           <AlertCircle className="w-5 h-5 text-slate-400" />
@@ -31,7 +31,7 @@ export default function AlertOfferte({ data }: AlertOfferteProps) {
       </div>
 
       {data.length === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8">
+        <div className="dashboard-panel-subtitle text-center py-8">
           Nessun alert attivo
         </div>
       ) : (

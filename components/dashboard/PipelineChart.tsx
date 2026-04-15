@@ -102,15 +102,15 @@ export default function PipelineChart({ data }: PipelineChartProps) {
   ];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <TrendingUp className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Pipeline Globale</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="dashboard-panel-title">Pipeline Globale</h3>
+            <p className="dashboard-panel-subtitle">
               Andamento valori offerti negli ultimi 6 mesi
             </p>
           </div>

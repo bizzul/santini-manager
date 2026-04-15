@@ -35,7 +35,7 @@ export default function TopItemsTable({ data }: TopItemsTableProps) {
   const domain = params.domain as string;
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
           <Package className="w-5 h-5 text-purple-500" />
@@ -49,7 +49,7 @@ export default function TopItemsTable({ data }: TopItemsTableProps) {
       </div>
 
       {data.length === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8">
+        <div className="dashboard-panel-subtitle text-center py-8">
           Nessun articolo disponibile
         </div>
       ) : (
@@ -90,7 +90,7 @@ export default function TopItemsTable({ data }: TopItemsTableProps) {
                     <span className="text-sm font-medium">{item.name}</span>
                   </td>
                   <td className="py-3 px-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="dashboard-panel-subtitle">
                       {item.category}
                     </span>
                   </td>
@@ -100,7 +100,7 @@ export default function TopItemsTable({ data }: TopItemsTableProps) {
                     </span>
                   </td>
                   <td className="py-3 px-2 text-right">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="dashboard-panel-subtitle">
                       {formatCurrency(item.unitCost)}
                     </span>
                   </td>

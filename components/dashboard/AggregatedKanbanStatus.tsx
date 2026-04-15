@@ -34,15 +34,15 @@ export default function AggregatedKanbanStatus({
   const departments = ["Vendita", "AVOR", "Produzione", "Fatturazione"];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-bold mb-1">Stato Kanban Aggregato</h3>
-        <p className="text-sm text-muted-foreground">
+        <h3 className="dashboard-panel-title mb-1">Stato Kanban Aggregato</h3>
+        <p className="dashboard-panel-subtitle">
           Panoramica rapida reparti
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {departments.map((dept) => {
           const deptStatus = getDepartmentStatus(dept);
           const config = DEPARTMENT_CONFIG[dept] || { color: "gray", defaultStatus: "Sconosciuto" };
@@ -51,7 +51,7 @@ export default function AggregatedKanbanStatus({
           return (
             <div
               key={dept}
-              className="backdrop-blur-sm bg-white/5 rounded-xl p-4 border border-slate-500"
+              className="dashboard-panel-inner p-3.5"
             >
               <div className="flex items-center justify-between">
                 <div>

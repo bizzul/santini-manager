@@ -8,6 +8,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { Suspense, useState, useEffect } from "react";
 import { GlobalVoiceAssistant } from "@/components/voice-assistant/GlobalVoiceAssistant";
+import { GlobalSupportAssistant } from "@/components/assistance/GlobalSupportAssistant";
 
 // Query keys that should be persisted to localStorage
 // ONLY persist stable data that doesn't affect navigation or permissions
@@ -82,6 +83,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ThemeProviders>
             <SessionMonitor />
             <Suspense>
+              <GlobalSupportAssistant />
               <GlobalVoiceAssistant />
             </Suspense>
             {children}
@@ -114,6 +116,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ThemeProviders>
           <SessionMonitor />
           <Suspense>
+            <GlobalSupportAssistant />
             <GlobalVoiceAssistant />
           </Suspense>
           {children}

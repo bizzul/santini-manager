@@ -10,6 +10,7 @@ import ImpersonateButton from "@/components/users/impersonateButton";
 import PasswordResetButton from "@/components/users/password-reset-button";
 import ToggleUserStatusButton from "@/components/users/toggle-user-status-button";
 import { DeleteUserButton } from "@/components/users/delete-user-button";
+import AssistanceLevelSelector from "@/components/users/assistance-level-selector";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 
@@ -153,6 +154,9 @@ export default async function UsersPage() {
                     Role
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
+                    Assistance
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
                     Organizations
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-white/70 uppercase tracking-wider">
@@ -183,6 +187,25 @@ export default async function UsersPage() {
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white border border-white/30">
                           {u.role}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-white/80 text-sm">
+                        {isSuperadmin ? (
+                          <AssistanceLevelSelector
+                            userId={u.id}
+                            initialLevel={
+                              (u.assistance_level || "basic_tutorial") as
+                                | "basic_tutorial"
+                                | "smart_support"
+                                | "advanced_support"
+                            }
+                          />
+                        ) : u.assistance_level === "advanced_support" ? (
+                          "Livello C"
+                        ) : u.assistance_level === "smart_support" ? (
+                          "Livello B"
+                        ) : (
+                          "Livello A"
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-1">
@@ -267,7 +290,7 @@ export default async function UsersPage() {
                 ) : (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-6 py-12 text-center text-white/60"
                     >
                       No users found.

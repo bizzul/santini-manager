@@ -8,6 +8,9 @@ export const validation = z.object({
   given_name: z.string().optional(),
   family_name: z.string().optional(),
   role: z.string().optional(),
+  assistance_level: z
+    .enum(["basic_tutorial", "smart_support", "advanced_support"])
+    .optional(),
   organization: z.array(z.string()).optional(),
   sites: z.array(z.string()).optional(),
 });

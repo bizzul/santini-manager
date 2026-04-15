@@ -56,14 +56,14 @@ export default function OffersChartCard({ data }: OffersChartCardProps) {
   // If no data, show placeholder
   if (departments.length === 0) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden h-full flex flex-col">
+      <div className="dashboard-panel p-6 relative overflow-hidden h-full flex flex-col">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Offerte totali</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="dashboard-panel-title">Offerte totali</h3>
+            <p className="dashboard-panel-subtitle">
               Nessuna offerta attiva
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function OffersChartCard({ data }: OffersChartCardProps) {
   ];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden h-full flex flex-col">
+    <div className="dashboard-panel p-6 relative overflow-hidden h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -189,7 +189,7 @@ export default function OffersChartCard({ data }: OffersChartCardProps) {
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Offerte totali</h3>
+            <h3 className="dashboard-panel-title">Offerte totali</h3>
             <div className="backdrop-blur-sm bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1.5 mt-2 inline-block">
               <p className="text-sm font-semibold">
                 <span className="text-blue-400">{totalOffers} offerte</span>

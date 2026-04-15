@@ -21,10 +21,7 @@ interface LatestNotificationsProps {
 function formatTimeAgo(date: string | undefined): string {
   if (!date) return "Sconosciuto";
   try {
-    return formatDistanceToNow(new Date(date), {
-      addSuffix: true,
-      locale: it,
-    });
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: it });
   } catch {
     return "Sconosciuto";
   }
@@ -33,17 +30,16 @@ function formatTimeAgo(date: string | undefined): string {
 function generateNotificationMessage(task: Notification): string {
   const code = task.unique_code || task.id;
   const title = task.title || task.name || "Commessa";
-  
+
   // Check if task is delayed
   if (task.deliveryDate) {
     const deliveryDate = new Date(task.deliveryDate);
     const now = new Date();
     if (deliveryDate < now) {
-      const daysLate = Math.floor((now.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
       return `Commessa #${code} ferma in prod. (Materiale mancante)`;
     }
   }
-  
+
   // Default notification
   return `Commessa #${code} - ${title}`;
 }
@@ -57,7 +53,9 @@ export default function LatestNotifications({
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await fetch(`/api/tasks/notifications?siteId=${siteId}`);
+        const response = await fetch(
+          `/api/tasks/notifications?siteId=${siteId}`
+        );
         if (response.ok) {
           const data = await response.json();
           // Sort by created_at descending and take first 4
@@ -84,9 +82,9 @@ export default function LatestNotifications({
 
   if (loading) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
+      <div className="dashboard-panel p-6">
         <div className="mb-6">
-          <h3 className="text-xl font-bold mb-1">Ultime notifiche</h3>
+          <h3 className="dashboard-panel-title mb-1">Ultime notifiche</h3>
         </div>
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
@@ -102,25 +100,25 @@ export default function LatestNotifications({
 
   if (notifications.length === 0) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
+      <div className="dashboard-panel p-6">
         <div className="mb-6">
-          <h3 className="text-xl font-bold mb-1">Ultime notifiche</h3>
+          <h3 className="dashboard-panel-title mb-1">Ultime notifiche</h3>
         </div>
-        <p className="text-sm text-muted-foreground">Nessuna notifica disponibile</p>
+        <p className="dashboard-panel-subtitle">Nessuna notifica disponibile</p>
       </div>
     );
   }
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="mb-6">
-        <h3 className="text-xl font-bold mb-1">Ultime notifiche</h3>
+        <h3 className="dashboard-panel-title mb-1">Ultime notifiche</h3>
       </div>
       <div className="space-y-3">
         {notifications.map((notification) => (
           <div
             key={notification.id}
-            className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-slate-500"
+            className="flex items-start gap-3 p-3 rounded-lg bg-white/5 border border-slate-700/70"
           >
             <div className="w-5 h-5 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
               <AlertTriangle className="w-3 h-3 text-yellow-500" />

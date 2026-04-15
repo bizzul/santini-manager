@@ -18,11 +18,19 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { AVAILABLE_MODULES } from "@/lib/module-config";
 import type { UserPermissions } from "@/types/supabase";
+import { useUserContext } from "@/hooks/use-user-context";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface KanbanCategory {
   id: number;
@@ -49,6 +57,8 @@ interface UserPermissionsDialogProps {
   siteId: string;
 }
 
+type AssistanceLevel = "basic_tutorial" | "smart_support" | "advanced_support";
+
 export function UserPermissionsDialog({
   isOpen,
   onClose,
@@ -58,6 +68,7 @@ export function UserPermissionsDialog({
   siteId,
 }: UserPermissionsDialogProps) {
   const { toast } = useToast();
+  const { userContext } = useUserContext();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -70,6 +81,7 @@ export function UserPermissionsDialog({
   const [kanbans, setKanbans] = useState<Kanban[]>([]);
   const [kanbanCategories, setKanbanCategories] = useState<KanbanCategory[]>([]);
   const [enabledSiteModules, setEnabledSiteModules] = useState<Set<string>>(new Set());
+  const [assistanceLevel, setAssistanceLevel] = useState<AssistanceLevel>("basic_tutorial");
   
   // Collapsible state for categories
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
@@ -110,6 +122,9 @@ export function UserPermissionsDialog({
       setSelectedModules(new Set(permData.permissions.modules));
       setSelectedKanbans(new Set(permData.permissions.kanbans));
       setSelectedCategories(new Set(permData.permissions.kanban_categories));
+      setAssistanceLevel(
+        (permData.assistance_level || "basic_tutorial") as AssistanceLevel
+      );
 
       // Fetch all site modules (to know which are enabled at site level)
       const modulesResponse = await fetch(`/api/sites/${domain}/modules`);
@@ -166,7 +181,14 @@ export function UserPermissionsDialog({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(permissions),
+          body: JSON.stringify(
+            userContext?.role === "superadmin"
+              ? {
+                  ...permissions,
+                  assistance_level: assistanceLevel,
+                }
+              : permissions
+          ),
         }
       );
 
@@ -289,7 +311,44 @@ export function UserPermissionsDialog({
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <Tabs defaultValue="modules" className="w-full">
+          <div className="space-y-4">
+            <div className="rounded-lg border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">Livello assistenza</p>
+                  <p className="text-xs text-muted-foreground">
+                    Configura il livello assistenza utente per questo operatore.
+                  </p>
+                </div>
+                <Select
+                  value={assistanceLevel}
+                  onValueChange={(value) => setAssistanceLevel(value as AssistanceLevel)}
+                  disabled={userContext?.role !== "superadmin"}
+                >
+                  <SelectTrigger className="w-[230px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="basic_tutorial">
+                      Livello A - Tutorial statico
+                    </SelectItem>
+                    <SelectItem value="smart_support">
+                      Livello B - Supporto rapido
+                    </SelectItem>
+                    <SelectItem value="advanced_support">
+                      Livello C - Avanzato/custom
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {userContext?.role !== "superadmin" && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Solo superadmin può modificare questo valore.
+                </p>
+              )}
+            </div>
+
+            <Tabs defaultValue="modules" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="modules">Moduli</TabsTrigger>
               <TabsTrigger value="kanbans">Kanban</TabsTrigger>
@@ -548,7 +607,8 @@ export function UserPermissionsDialog({
                 </div>
               </ScrollArea>
             </TabsContent>
-          </Tabs>
+            </Tabs>
+          </div>
         )}
 
         <DialogFooter>

@@ -40,6 +40,9 @@ export function EditUserForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState(user.role || "user");
+  const [assistanceLevel, setAssistanceLevel] = useState(
+    user.assistance_level || "basic_tutorial"
+  );
   const [selectedOrgs, setSelectedOrgs] = useState<string[]>(userOrgIds);
   const [selectedSites, setSelectedSites] = useState<string[]>(userSiteIds);
 
@@ -58,6 +61,7 @@ export function EditUserForm({
       const data = {
         ...formDataObj,
         role: selectedRole,
+        assistance_level: assistanceLevel,
         organization: selectedOrgs,
         sites: selectedSites,
       };
@@ -172,6 +176,30 @@ export function EditUserForm({
           </SelectContent>
         </Select>
       </div>
+
+      {currentUserRole === "superadmin" && (
+        <div className="space-y-2">
+          <Label htmlFor="assistance_level" className="text-white/80">
+            Livello assistenza BOT
+          </Label>
+          <Select value={assistanceLevel} onValueChange={setAssistanceLevel}>
+            <SelectTrigger className="bg-white/10 border-white/30 text-white">
+              <SelectValue placeholder="Seleziona livello assistenza..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="basic_tutorial">
+                Livello A - Tutorial statico
+              </SelectItem>
+              <SelectItem value="smart_support">
+                Livello B - Segnalazione rapida (avatar mini)
+              </SelectItem>
+              <SelectItem value="advanced_support">
+                Livello C - Assistenza avanzata / custom
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label className="text-white/80">Organizzazioni</Label>

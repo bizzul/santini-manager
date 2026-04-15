@@ -33,7 +33,7 @@ function KPICard({
   href,
 }: KPICardProps) {
   const content = (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-5 relative overflow-hidden hover:bg-white/15 transition-colors">
+    <div className="dashboard-panel p-5 relative overflow-hidden hover:bg-white/15 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <div
           className={`w-10 h-10 rounded-lg ${iconBgClass} flex items-center justify-center`}
@@ -44,7 +44,7 @@ function KPICard({
       <p className="text-xs text-muted-foreground font-medium mb-2">{title}</p>
       <div className="flex items-baseline gap-1">
         <h3 className="text-2xl font-bold">{value}</h3>
-        {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+        {unit && <span className="dashboard-panel-subtitle">{unit}</span>}
       </div>
       {subtitle && (
         <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>

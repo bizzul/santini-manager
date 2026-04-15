@@ -218,6 +218,16 @@ export default async function UserViewPage({
                 <p className="text-white font-medium capitalize">{userToView.role}</p>
               </div>
               <div>
+                <span className="text-white/60 text-sm">Livello assistenza BOT</span>
+                <p className="text-white font-medium">
+                  {userToView.assistance_level === "advanced_support"
+                    ? "Livello C - avanzato"
+                    : userToView.assistance_level === "smart_support"
+                      ? "Livello B - segnalazione rapida"
+                      : "Livello A - tutorial statico"}
+                </p>
+              </div>
+              <div>
                 <span className="text-white/60 text-sm">Nome</span>
                 <p className="text-white font-medium">
                   {profile?.given_name || "-"}

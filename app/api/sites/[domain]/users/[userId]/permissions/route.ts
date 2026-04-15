@@ -5,6 +5,8 @@ import { getUserContext } from "@/lib/auth-utils";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
 import type { UserPermissions } from "@/types/supabase";
 
+type AssistanceLevel = "basic_tutorial" | "smart_support" | "advanced_support";
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ domain: string; userId: string }> }
@@ -34,8 +36,8 @@ export async function GET(
         const siteId = response.data.id;
         const supabase = await createClient();
 
-        // Fetch all permissions for this user
-        const [modulesResult, kanbansResult, categoriesResult] = await Promise.all([
+        // Fetch all permissions and assistance level for this user.
+        const [modulesResult, kanbansResult, categoriesResult, userResult] = await Promise.all([
             supabase
                 .from("user_module_permissions")
                 .select("module_name")
@@ -49,6 +51,11 @@ export async function GET(
                 .from("user_kanban_category_permissions")
                 .select("kanban_category_id")
                 .eq("user_id", userId),
+            supabase
+                .from("User")
+                .select("assistance_level")
+                .eq("authId", userId)
+                .maybeSingle(),
         ]);
 
         if (modulesResult.error) {
@@ -65,7 +72,10 @@ export async function GET(
             kanban_categories: categoriesResult.data?.map((p) => p.kanban_category_id) || [],
         };
 
-        return NextResponse.json({ permissions });
+        return NextResponse.json({
+            permissions,
+            assistance_level: (userResult.data?.assistance_level || "basic_tutorial") as AssistanceLevel,
+        });
     } catch (error) {
         console.error("Error in GET permissions:", error);
         return NextResponse.json(
@@ -106,12 +116,29 @@ export async function POST(
 
         // Parse request body
         const body = await request.json();
-        const { modules, kanbans, kanban_categories } = body as UserPermissions;
+        const {
+            modules,
+            kanbans,
+            kanban_categories,
+            assistance_level,
+        } = body as UserPermissions & { assistance_level?: AssistanceLevel };
 
         // Validate input
         if (!Array.isArray(modules) || !Array.isArray(kanbans) || !Array.isArray(kanban_categories)) {
             return NextResponse.json(
                 { error: "Invalid permissions data. Expected arrays for modules, kanbans, and kanban_categories" },
+                { status: 400 }
+            );
+        }
+
+        if (
+            assistance_level !== undefined &&
+            !["basic_tutorial", "smart_support", "advanced_support"].includes(
+                assistance_level
+            )
+        ) {
+            return NextResponse.json(
+                { error: "Invalid assistance_level value" },
                 { status: 400 }
             );
         }
@@ -219,6 +246,29 @@ export async function POST(
                 console.error("Error inserting category permissions:", insertCategoriesError);
                 return NextResponse.json(
                     { error: insertCategoriesError.message },
+                    { status: 500 }
+                );
+            }
+        }
+
+        // 7. Update assistance level when provided (superadmin only)
+        if (assistance_level !== undefined) {
+            if (context.role !== "superadmin") {
+                return NextResponse.json(
+                    { error: "Only superadmin can modify assistance level" },
+                    { status: 403 }
+                );
+            }
+
+            const { error: updateUserError } = await supabase
+                .from("User")
+                .update({ assistance_level })
+                .eq("authId", userId);
+
+            if (updateUserError) {
+                console.error("Error updating assistance level:", updateUserError);
+                return NextResponse.json(
+                    { error: updateUserError.message },
                     { status: 500 }
                 );
             }

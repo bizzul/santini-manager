@@ -150,14 +150,14 @@ export default function OffersCard({ data }: OffersCardProps) {
     data.todo + data.inProgress + data.sent + data.won + data.lost;
   if (totalOffers === 0) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 col-span-2 lg:col-span-3">
+      <div className="dashboard-panel p-6 col-span-2 lg:col-span-3">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Offerte</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="dashboard-panel-title">Offerte</h3>
+            <p className="dashboard-panel-subtitle">
               Nessuna offerta attiva
             </p>
           </div>
@@ -170,15 +170,15 @@ export default function OffersCard({ data }: OffersCardProps) {
   }
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 col-span-2 lg:col-span-3">
+    <div className="dashboard-panel p-6 col-span-2 lg:col-span-3">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <FileText className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Offerte</h3>
-            <p className="text-sm text-muted-foreground">Gestione offerte</p>
+            <h3 className="dashboard-panel-title">Offerte</h3>
+            <p className="dashboard-panel-subtitle">Gestione offerte</p>
           </div>
         </div>
       </div>

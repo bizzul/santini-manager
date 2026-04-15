@@ -73,14 +73,14 @@ export default function ProductionOrdersCard({
   // If no data, show placeholder
   if (departments.length === 0) {
     return (
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden h-full flex flex-col">
+      <div className="dashboard-panel p-6 relative overflow-hidden h-full flex flex-col">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <Factory className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Ordini</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="dashboard-panel-title">Ordini</h3>
+            <p className="dashboard-panel-subtitle">
               Nessun ordine attivo
             </p>
           </div>
@@ -219,7 +219,7 @@ export default function ProductionOrdersCard({
   ];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6 relative overflow-hidden h-full flex flex-col">
+    <div className="dashboard-panel p-6 relative overflow-hidden h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -227,7 +227,7 @@ export default function ProductionOrdersCard({
             <Factory className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Ordini</h3>
+            <h3 className="dashboard-panel-title">Ordini</h3>
             <div className="backdrop-blur-sm bg-blue-500/10 border border-blue-500/30 rounded-lg px-3 py-1.5 mt-2 inline-block">
               <p className="text-sm font-semibold">
                 <span className="text-blue-400">

@@ -332,14 +332,14 @@ export default function ForecastInteractiveCharts({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+        <div className="dashboard-panel p-6">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/20">
               <TrendingUp className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Forecast Pipeline</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="dashboard-panel-title">Forecast Pipeline</h3>
+              <p className="dashboard-panel-subtitle">
                 Accuratezza funzioni previsionali nel tempo
               </p>
             </div>
@@ -352,14 +352,14 @@ export default function ForecastInteractiveCharts({
           />
         </div>
 
-        <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+        <div className="dashboard-panel p-6">
           <div className="mb-5 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/20">
               <BarChart3 className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <h3 className="text-xl font-bold">Forecast Capacita Reparti</h3>
-              <p className="text-sm text-muted-foreground">
+              <h3 className="dashboard-panel-title">Forecast Capacita Reparti</h3>
+              <p className="dashboard-panel-subtitle">
                 Accuratezza forecast per funzioni operative
               </p>
             </div>
@@ -428,7 +428,7 @@ export default function ForecastInteractiveCharts({
                 <Users className="h-4 w-4 text-slate-300" />
                 <p className="text-sm font-semibold">Modalita standard</p>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="dashboard-panel-subtitle">
                 Il grafico 3D rete neurale / DNA viene mostrato quando una
                 funzione combina agenti virtuali e risorse umane di progetto.
               </p>

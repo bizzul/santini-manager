@@ -13,7 +13,6 @@ interface DepartmentWorkloadChartProps {
   data: DashboardStats;
 }
 
-// Default colors for departments
 const DEPARTMENT_COLORS: { [key: string]: string } = {
   Vendita: "#3b82f6",
   AVOR: "#f97316",
@@ -28,7 +27,6 @@ const DEPARTMENT_COLORS: { [key: string]: string } = {
 export default function DepartmentWorkloadChart({
   data,
 }: DepartmentWorkloadChartProps) {
-  // Sort departments by count descending
   const sortedData = [...data.departmentWorkload].sort(
     (a, b) => b.count - a.count
   );
@@ -129,15 +127,15 @@ export default function DepartmentWorkloadChart({
   ];
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
             <BarChart3 className="w-6 h-6 text-blue-500" />
           </div>
           <div>
-            <h3 className="text-xl font-bold">Lavori per Reparto</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="dashboard-panel-title">Lavori per Reparto</h3>
+            <p className="dashboard-panel-subtitle">
               Carico attuale numero commesse
             </p>
           </div>

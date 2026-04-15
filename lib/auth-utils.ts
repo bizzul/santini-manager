@@ -9,6 +9,7 @@ export type UserRole = "superadmin" | "admin" | "user";
 export interface UserContext {
     user: any;
     role: UserRole;
+    assistanceLevel: "basic_tutorial" | "smart_support" | "advanced_support";
     organizationId?: string; // Keep for backward compatibility
     organizationIds?: string[]; // New: array of organization IDs for many-to-many
     userId?: string; // New: user ID for easier access
@@ -147,7 +148,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
         const [userResult, orgResult] = await Promise.all([
             supabase
                 .from("User")
-                .select("role, enabled")
+                .select("role, enabled, assistance_level")
                 .eq("authId", userToUse.id)
                 .maybeSingle(),
             supabase
@@ -156,10 +157,23 @@ async function fetchUserContext(): Promise<UserContext | null> {
                 .eq("user_id", userToUse.id),
         ]);
 
-        const { data: userData, error: userError } = userResult;
+        let { data: userData, error: userError } = userResult;
         const { data: userOrgData, error: userOrgError } = orgResult;
 
-        if (userError) {
+        // If assistance_level column doesn't exist yet, retry without it
+        if (userError && userError.code === "42703" && userError.message?.includes("assistance_level")) {
+            const retryResult = await supabase
+                .from("User")
+                .select("role, enabled")
+                .eq("authId", userToUse.id)
+                .maybeSingle();
+            userData = retryResult.data
+                ? { ...retryResult.data, assistance_level: null }
+                : null;
+            // Don't overwrite userError yet - we'll handle it below
+        }
+
+        if (userError && !(userError.code === "42703" && userError.message?.includes("assistance_level"))) {
             console.error("Error fetching user data:", userError);
         }
 
@@ -182,6 +196,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
                 organizationIds: userOrgData?.map((uo) => uo.organization_id) || [],
                 userId: userToUse.id,
                 tenantId: userToUse.id,
+                assistanceLevel: "basic_tutorial",
                 canAccessAllOrganizations: false,
                 canAccessAllTenants: false,
                 isImpersonating,
@@ -191,6 +206,8 @@ async function fetchUserContext(): Promise<UserContext | null> {
         }
 
         const role = (userData.role as UserRole) || "user";
+        const assistanceLevel = (userData.assistance_level ||
+            "basic_tutorial") as UserContext["assistanceLevel"];
         const organizationIds = userOrgData?.map((uo) => uo.organization_id) || [];
         const organizationId = organizationIds[0];
 
@@ -204,6 +221,7 @@ async function fetchUserContext(): Promise<UserContext | null> {
             organizationIds,
             userId: userToUse.id,
             tenantId: userToUse.id,
+            assistanceLevel,
             canAccessAllOrganizations: isSuperAdmin,
             canAccessAllTenants: isSuperAdmin || isAdmin,
             isImpersonating,

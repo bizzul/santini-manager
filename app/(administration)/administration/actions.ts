@@ -1128,7 +1128,7 @@ export async function getUsers() {
         if (error) throw new Error(error.message);
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
-            "authId, given_name, family_name, role, enabled, picture",
+            "authId, given_name, family_name, role, enabled, picture, assistance_level",
         );
         return data.users.map((user: any) => {
             const profile = profiles?.find((p: any) => p.authId === user.id);
@@ -1140,6 +1140,7 @@ export async function getUsers() {
                 family_name: profile?.family_name || "",
                 enabled: profile?.enabled ?? false,
                 picture: profile?.picture || null,
+                assistance_level: profile?.assistance_level || "basic_tutorial",
             };
         });
     } else {
@@ -1174,7 +1175,7 @@ export async function getUsers() {
 
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
-            "authId, given_name, family_name, role, enabled, picture",
+            "authId, given_name, family_name, role, enabled, picture, assistance_level",
         );
 
         return orgUsers.map((user: any) => {
@@ -1187,6 +1188,7 @@ export async function getUsers() {
                 family_name: profile?.family_name || "",
                 enabled: profile?.enabled ?? false,
                 picture: profile?.picture || null,
+                assistance_level: profile?.assistance_level || "basic_tutorial",
             };
         });
     }
@@ -1206,7 +1208,7 @@ export async function getAllUsers() {
 
     // Fetch user profiles from User table
     const { data: profiles } = await supabase.from("User").select(
-        "authId, given_name, family_name, role, enabled",
+        "authId, given_name, family_name, role, enabled, assistance_level",
     );
 
     return data.users.map((user: any) => {
@@ -1218,6 +1220,7 @@ export async function getAllUsers() {
             given_name: profile?.given_name || "",
             family_name: profile?.family_name || "",
             enabled: profile?.enabled ?? false,
+            assistance_level: profile?.assistance_level || "basic_tutorial",
         };
     });
 }
@@ -1277,6 +1280,11 @@ export async function updateUser(userId: string, updates: any) {
 
     // Extract organization IDs and sites from updates if present
     const { organization, sites, ...userUpdates } = updates;
+
+    // Assistance level can be changed only by superadmin.
+    if (!userContext?.canAccessAllOrganizations) {
+        delete userUpdates.assistance_level;
+    }
 
     // Update user info in User table
     if (Object.keys(userUpdates).length > 0) {
@@ -1808,6 +1816,12 @@ export async function createUser(
         }
 
         let userId: string;
+        const assistanceLevel =
+            role === "superadmin"
+                ? "advanced_support"
+                : role === "admin"
+                  ? "smart_support"
+                  : "basic_tutorial";
 
         if (createWithPassword) {
             // Create user directly with password using admin API
@@ -1844,6 +1858,7 @@ export async function createUser(
                     given_name: name,
                     family_name: last_name,
                     role: role,
+                    assistance_level: assistanceLevel,
                     enabled: true, // User is immediately active when created with password
                 });
 
@@ -1898,6 +1913,7 @@ export async function createUser(
                     given_name: name,
                     family_name: last_name,
                     role: role,
+                    assistance_level: assistanceLevel,
                     enabled: false, // User starts as inactive until they confirm their email
                 });
 

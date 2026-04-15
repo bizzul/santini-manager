@@ -17,11 +17,14 @@ function formatCurrency(value: number): string {
 }
 
 export default function KPICards({ data }: KPICardsProps) {
+  const panelClassName =
+    "dashboard-panel p-5 relative overflow-hidden";
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Offerte Attive */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
+      <div className={panelClassName}>
+        <div className="flex items-center justify-between mb-2.5">
           <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
             <FileText className="w-5 h-5 text-blue-500" />
           </div>
@@ -29,7 +32,7 @@ export default function KPICards({ data }: KPICardsProps) {
         <p className="text-xs text-muted-foreground font-medium mb-2">
           Offerte Attive
         </p>
-        <h3 className="text-2xl font-bold mb-1">{data.activeOffers.count}</h3>
+        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">{data.activeOffers.count}</h3>
         <p className="text-xs text-muted-foreground mb-2">
           {formatCurrency(data.activeOffers.totalValue)} totali
         </p>
@@ -48,8 +51,8 @@ export default function KPICards({ data }: KPICardsProps) {
       </div>
 
       {/* Ordini in Produzione */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
+      <div className={panelClassName}>
+        <div className="flex items-center justify-between mb-2.5">
           <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
             <Factory className="w-5 h-5 text-white" />
           </div>
@@ -57,7 +60,7 @@ export default function KPICards({ data }: KPICardsProps) {
         <p className="text-xs text-muted-foreground font-medium mb-2">
           Ordini in Produzione
         </p>
-        <h3 className="text-2xl font-bold mb-1">
+        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">
           {data.productionOrders.total}
         </h3>
         <p className="text-xs text-muted-foreground mb-2">
@@ -78,8 +81,8 @@ export default function KPICards({ data }: KPICardsProps) {
       </div>
 
       {/* Fatture Aperte */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
+      <div className={panelClassName}>
+        <div className="flex items-center justify-between mb-2.5">
           <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
             <Receipt className="w-5 h-5 text-green-500" />
           </div>
@@ -87,7 +90,7 @@ export default function KPICards({ data }: KPICardsProps) {
         <p className="text-xs text-muted-foreground font-medium mb-2">
           Fatture Aperte
         </p>
-        <h3 className="text-2xl font-bold mb-1">
+        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">
           {formatCurrency(data.openInvoices.totalValue)}
         </h3>
         <p className="text-xs text-muted-foreground mb-2">
@@ -108,8 +111,8 @@ export default function KPICards({ data }: KPICardsProps) {
       </div>
 
       {/* Carico AVOR */}
-      <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-slate-500 rounded-2xl shadow-xl p-5 relative overflow-hidden">
-        <div className="flex items-center justify-between mb-3">
+      <div className={panelClassName}>
+        <div className="flex items-center justify-between mb-2.5">
           <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
             <TrendingUp className="w-5 h-5 text-orange-500" />
           </div>
@@ -117,7 +120,7 @@ export default function KPICards({ data }: KPICardsProps) {
         <p className="text-xs text-muted-foreground font-medium mb-2">
           Carico AVOR
         </p>
-        <h3 className="text-2xl font-bold mb-1">
+        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">
           {data.avorWorkload.percentage.toFixed(0)}%
         </h3>
         <p className="text-xs text-muted-foreground mb-2">

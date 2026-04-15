@@ -46,7 +46,7 @@ export default function ResaleProductsTable({
   const displayProducts = filteredProducts.slice(0, 50);
 
   return (
-    <div className="backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 rounded-2xl shadow-xl p-6">
+    <div className="dashboard-panel p-6">
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -88,7 +88,7 @@ export default function ResaleProductsTable({
       </div>
 
       {displayProducts.length === 0 ? (
-        <div className="text-sm text-muted-foreground text-center py-8">
+        <div className="dashboard-panel-subtitle text-center py-8">
           Nessun prodotto trovato
         </div>
       ) : (
@@ -123,12 +123,12 @@ export default function ResaleProductsTable({
                     <span className="text-sm font-medium">{product.name}</span>
                   </td>
                   <td className="py-3 px-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="dashboard-panel-subtitle">
                       {product.category}
                     </span>
                   </td>
                   <td className="py-3 px-2">
-                    <span className="text-sm text-muted-foreground font-mono">
+                    <span className="dashboard-panel-subtitle font-mono">
                       {product.sku || "-"}
                     </span>
                   </td>

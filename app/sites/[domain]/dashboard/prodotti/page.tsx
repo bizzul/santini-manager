@@ -87,7 +87,7 @@ export default async function ProdottiDashboardPage({
         </div>
       </PageHeader>
       <PageContent>
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* ============================================ */}
           {/* SEZIONE 1: CATALOGO RIVENDITA */}
           {/* ============================================ */}
