@@ -3,16 +3,12 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 
 const AVATAR_FILES = {
-  launcher: "image-f83a4c71-9b87-4166-80d4-871db21c58bd.png",
-  chat: "image-f83a4c71-9b87-4166-80d4-871db21c58bd.png",
+  launcher: "vera-avatar.png",
+  chat: "vera-avatar.png",
 } as const;
 
 function resolveAssetsDir() {
-  const home = process.env.HOME || "";
-  return path.join(
-    home,
-    ".cursor/projects/Users-matteopaolocci-santini-manager/assets"
-  );
+  return path.join(process.cwd(), "public", "assistant");
 }
 
 export async function GET(request: NextRequest) {
