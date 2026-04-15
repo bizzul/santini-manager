@@ -12,10 +12,12 @@ export class AssistantOrchestrator {
   ) {}
 
   async handleChat(request: AssistantsChatRequest): Promise<AssistantsChatResponse> {
+    const userId = request.userId ?? "";
+
     const context = await this.contextBuilder.buildContext({
       siteId: request.siteId,
       domain: request.domain,
-      userId: request.userId,
+      userId,
       pathname: request.pathname,
       message: request.message,
       moduleName: request.moduleName,

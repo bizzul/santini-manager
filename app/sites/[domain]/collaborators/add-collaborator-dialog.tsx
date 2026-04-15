@@ -95,7 +95,7 @@ export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogP
                 domain
             );
             if (result.success) {
-                if (result.userId && pictureFile) {
+                if ("userId" in result && result.userId && pictureFile) {
                     await uploadProfilePicture(result.userId);
                 }
                 toast({
@@ -107,7 +107,10 @@ export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogP
             } else {
                 toast({
                     title: "Errore",
-                    description: result.error,
+                    description:
+                        "error" in result
+                            ? result.error
+                            : "Si è verificato un errore durante l'invito.",
                     variant: "destructive",
                 });
             }
