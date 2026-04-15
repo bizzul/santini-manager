@@ -8,7 +8,6 @@ import { getUserContext } from "@/lib/auth-utils";
 import { ArrowLeft, ExternalLink, Globe } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/utils/supabase/server";
-import SiteThemeColorsConfigurator from "@/components/site-settings/SiteThemeColorsConfigurator";
 import {
   resolveSiteThemeSettings,
   SITE_THEME_SETTING_KEY,
@@ -45,8 +44,15 @@ export default async function EditSitePage({
     .eq("site_id", id)
     .eq("setting_key", SITE_THEME_SETTING_KEY)
     .maybeSingle();
+  const { data: supportBotSetting } = await supabase
+    .from("site_settings")
+    .select("setting_value")
+    .eq("site_id", id)
+    .eq("setting_key", "support_bot_enabled")
+    .maybeSingle();
 
   const initialThemeSettings = resolveSiteThemeSettings(themeSetting?.setting_value);
+  const initialSupportBotEnabled = Boolean(supportBotSetting?.setting_value ?? false);
 
   if (!site)
     return (
@@ -60,7 +66,7 @@ export default async function EditSitePage({
   return (
     <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
       {/* Header */}
-      <div className="w-full max-w-4xl mb-8">
+      <div className="w-full max-w-7xl mb-8">
         <div className="flex flex-col items-center justify-center mb-8 space-y-6">
           <Image
             src="/logo-bianco.svg"
@@ -96,9 +102,9 @@ export default async function EditSitePage({
       </div>
 
       {/* Content */}
-      <div className="w-full max-w-4xl">
+      <div className="w-full max-w-7xl">
         <div className="backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
-          <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="mb-6 flex items-center gap-3">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-xl bg-white/10">
                 <Globe className="h-5 w-5 text-white" />
@@ -106,14 +112,10 @@ export default async function EditSitePage({
               <div>
                 <h2 className="text-xl font-bold text-white">Dettagli del sito</h2>
                 <p className="mt-1 text-sm text-white/60">
-                  Personalizza i 4 colori base di menu laterale e schermate.
+                  Configura informazioni base e utenti del sito in ordine strutturato.
                 </p>
               </div>
             </div>
-            <SiteThemeColorsConfigurator
-              siteId={site.id}
-              initialSettings={initialThemeSettings}
-            />
           </div>
           <EditSiteForm
             site={site}
@@ -121,6 +123,8 @@ export default async function EditSitePage({
             organizations={organizations}
             users={users}
             userRole={userContext?.role}
+            initialThemeSettings={initialThemeSettings}
+            initialSupportBotEnabled={initialSupportBotEnabled}
           />
         </div>
       </div>

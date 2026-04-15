@@ -32,10 +32,10 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        if (!type || !["project", "timetracking", "product"].includes(type)) {
+        if (!type || !["project", "timetracking", "product", "supplier"].includes(type)) {
             return NextResponse.json({
                 error:
-                    "Valid type is required (project | timetracking | product)",
+                    "Valid type is required (project | timetracking | product | supplier)",
             }, { status: 400 });
         }
 
@@ -164,6 +164,22 @@ export async function GET(req: NextRequest) {
             // For product form, we just need the siteId
             return NextResponse.json({
                 siteId,
+            });
+        }
+
+        if (type === "supplier") {
+            const { data: categories, error } = await supabase
+                .from("Supplier_category")
+                .select("*")
+                .eq("site_id", siteId)
+                .order("name", { ascending: true });
+
+            if (error) {
+                log.error("Error fetching supplier categories:", error);
+            }
+
+            return NextResponse.json({
+                categories: categories || [],
             });
         }
 

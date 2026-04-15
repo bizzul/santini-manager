@@ -369,7 +369,7 @@ export default function Card({
         // Single click - open modal after delay
         setClickTimeout(
           setTimeout(() => {
-            if (!isSmall && canAccessConsuntivo && resolvedDomain) {
+            if (canAccessConsuntivo && resolvedDomain) {
               router.push(`/sites/${resolvedDomain}/progetti/${id}`);
             } else if (!showModal) {
               setShowModal(true);

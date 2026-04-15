@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import { QuickActionType } from "./QuickActionsButton";
 import CreateClientForm from "@/app/sites/[domain]/clients/createForm";
 import CreateProductFormComponent from "@/app/sites/[domain]/products/createProductForm";
 import CreateProjectForm from "@/app/sites/[domain]/projects/createForm";
-import CreateTimetrackingForm from "@/app/sites/[domain]/timetracking/createForm";
+import CreateSupplierForm from "@/app/sites/[domain]/suppliers/createForm";
 import { logger } from "@/lib/logger";
 
 interface QuickActionsContextType {
@@ -40,15 +40,12 @@ interface ProjectFormData {
   kanbans: any[];
 }
 
-interface TimetrackingFormData {
-  tasks: any[];
-  users: any[];
-  roles: any[];
-  internalActivities: any[];
-}
-
 interface ProductFormData {
   siteId: string;
+}
+
+interface SupplierFormData {
+  categories: any[];
 }
 
 const dialogConfig: Record<
@@ -63,13 +60,21 @@ const dialogConfig: Record<
     title: "Nuovo Progetto",
     description: "Crea un nuovo progetto",
   },
-  product: {
-    title: "Nuovo Articolo",
-    description: "Aggiungi un nuovo articolo al catalogo",
+  offer: {
+    title: "Nuova Offerta",
+    description: "Crea una nuova offerta",
   },
-  timetracking: {
-    title: "Nuovo Report Ore",
-    description: "Registra le ore lavorate",
+  product: {
+    title: "Nuovo Prodotto",
+    description: "Aggiungi un nuovo prodotto al catalogo",
+  },
+  supplier: {
+    title: "Nuovo Fornitore",
+    description: "Aggiungi un nuovo fornitore",
+  },
+  collaborator: {
+    title: "Nuovo Collaboratore",
+    description: "Gestisci i collaboratori del sito",
   },
 };
 
@@ -79,6 +84,7 @@ export function QuickActionsProvider({
   children: React.ReactNode;
 }) {
   const params = useParams();
+  const router = useRouter();
   const domain = params?.domain as string;
 
   const [activeDialog, setActiveDialog] = useState<QuickActionType | null>(
@@ -88,9 +94,8 @@ export function QuickActionsProvider({
 
   // Data states for forms that require external data
   const [projectData, setProjectData] = useState<ProjectFormData | null>(null);
-  const [timetrackingData, setTimetrackingData] =
-    useState<TimetrackingFormData | null>(null);
   const [productData, setProductData] = useState<ProductFormData | null>(null);
+  const [supplierData, setSupplierData] = useState<SupplierFormData | null>(null);
 
   const fetchProjectData = useCallback(async () => {
     if (!domain) return;
@@ -115,40 +120,6 @@ export function QuickActionsProvider({
     } catch (error) {
       logger.error("Error fetching project data:", error);
       setProjectData({ clients: [], activeProducts: [], kanbans: [] });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [domain]);
-
-  const fetchTimetrackingData = useCallback(async () => {
-    if (!domain) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/quick-actions/data?domain=${encodeURIComponent(
-          domain
-        )}&type=timetracking`
-      );
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      setTimetrackingData({
-        tasks: data.tasks || [],
-        users: data.users || [],
-        roles: data.roles || [],
-        internalActivities: data.internalActivities || [],
-      });
-    } catch (error) {
-      console.error("Error fetching timetracking data:", error);
-      setTimetrackingData({
-        tasks: [],
-        users: [],
-        roles: [],
-        internalActivities: [],
-      });
     } finally {
       setIsLoading(false);
     }
@@ -180,26 +151,66 @@ export function QuickActionsProvider({
     }
   }, [domain]);
 
+  const fetchSupplierData = useCallback(async () => {
+    if (!domain) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/quick-actions/data?domain=${encodeURIComponent(
+          domain
+        )}&type=supplier`
+      );
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setSupplierData({
+        categories: data.categories || [],
+      });
+    } catch (error) {
+      logger.error("Error fetching supplier data:", error);
+      setSupplierData({ categories: [] });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [domain]);
+
   const openDialog = useCallback(
     async (type: QuickActionType) => {
+      if (!domain) return;
+
+      if (type === "offer") {
+        router.push(`/sites/${domain}/offerte/create`);
+        return;
+      }
+
+      if (type === "collaborator") {
+        router.push(`/sites/${domain}/collaborators`);
+        return;
+      }
+
       setActiveDialog(type);
 
       // Fetch data if needed
       if (type === "project" && !projectData) {
         fetchProjectData();
-      } else if (type === "timetracking" && !timetrackingData) {
-        fetchTimetrackingData();
       } else if (type === "product" && !productData) {
         fetchProductData();
+      } else if (type === "supplier" && !supplierData) {
+        fetchSupplierData();
       }
     },
     [
+      domain,
+      router,
       projectData,
-      timetrackingData,
       productData,
+      supplierData,
       fetchProjectData,
-      fetchTimetrackingData,
       fetchProductData,
+      fetchSupplierData,
     ]
   );
 
@@ -250,17 +261,15 @@ export function QuickActionsProvider({
           <CreateProjectForm handleClose={closeDialog} data={projectData} />
         );
 
-      case "timetracking":
-        if (isLoading || !timetrackingData) {
+      case "supplier":
+        if (isLoading || !supplierData) {
           return <LoadingSkeleton />;
         }
         return (
-          <CreateTimetrackingForm
+          <CreateSupplierForm
             handleClose={closeDialog}
-            data={timetrackingData.tasks}
-            users={timetrackingData.users}
-            roles={timetrackingData.roles}
-            internalActivities={timetrackingData.internalActivities}
+            data={supplierData.categories}
+            domain={domain}
           />
         );
 
@@ -275,7 +284,7 @@ export function QuickActionsProvider({
         return "sm:max-w-2xl";
       case "project":
         return "sm:max-w-[50%]";
-      case "timetracking":
+      case "supplier":
         return "sm:max-w-[40%]";
       case "product":
         return "sm:max-w-[425px]";

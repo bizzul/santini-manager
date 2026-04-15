@@ -1,11 +1,32 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Users, FolderKanban, Package, Clock } from "lucide-react";
+import {
+  Plus,
+  X,
+  Users,
+  FolderKanban,
+  Package,
+  FileText,
+  Truck,
+  UserRoundCog,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-export type QuickActionType = "client" | "project" | "product" | "timetracking";
+export type QuickActionType =
+  | "client"
+  | "offer"
+  | "project"
+  | "product"
+  | "supplier"
+  | "collaborator";
 
 interface QuickActionItem {
   id: QuickActionType;
@@ -24,6 +45,13 @@ const quickActions: QuickActionItem[] = [
     bgColor: "bg-blue-500/10 hover:bg-blue-500/20",
   },
   {
+    id: "offer",
+    label: "Offerta",
+    icon: <FileText className="w-5 h-5" />,
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-500/10 hover:bg-cyan-500/20",
+  },
+  {
     id: "project",
     label: "Progetto",
     icon: <FolderKanban className="w-5 h-5" />,
@@ -32,15 +60,22 @@ const quickActions: QuickActionItem[] = [
   },
   {
     id: "product",
-    label: "Articolo",
+    label: "Prodotto",
     icon: <Package className="w-5 h-5" />,
     color: "text-purple-500",
     bgColor: "bg-purple-500/10 hover:bg-purple-500/20",
   },
   {
-    id: "timetracking",
-    label: "Ore",
-    icon: <Clock className="w-5 h-5" />,
+    id: "supplier",
+    label: "Fornitore",
+    icon: <Truck className="w-5 h-5" />,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10 hover:bg-amber-500/20",
+  },
+  {
+    id: "collaborator",
+    label: "Collaboratore",
+    icon: <UserRoundCog className="w-5 h-5" />,
     color: "text-orange-500",
     bgColor: "bg-orange-500/10 hover:bg-orange-500/20",
   },
@@ -65,6 +100,19 @@ export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
     [onActionClick]
   );
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen]);
+
   return (
     <div className="relative">
       {/* Backdrop */}
@@ -85,64 +133,58 @@ export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: -10 }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
             transition={{
               type: "spring",
-              stiffness: 400,
-              damping: 25,
+              stiffness: 320,
+              damping: 28,
             }}
-            className="absolute top-full right-0 mt-2 z-50"
+            className="absolute right-0 top-[calc(100%+8px)] z-50 w-[180px]"
           >
-            <div className="min-w-[200px] rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.96)] p-2 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95">
-              {/* Header */}
-              <div className="px-3 py-2 border-b border-border/50 mb-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Creazione rapida
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="space-y-1">
+            <div className="rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.98)] p-2 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/95">
+              <TooltipProvider delayDuration={120}>
+                <div className="grid grid-cols-3 gap-2">
                 {quickActions.map((action, index) => (
-                  <motion.button
-                    key={action.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{
-                      delay: index * 0.05,
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 25,
-                    }}
-                    onClick={() => handleActionClick(action.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
-                      "hover:scale-[1.02] active:scale-[0.98]",
-                      action.bgColor
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex h-9 w-9 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-card-strong))] shadow-sm dark:bg-slate-800",
-                        action.color
-                      )}
-                    >
-                      {action.icon}
-                    </div>
-                    <div className="flex flex-col items-start">
-                      <span className="text-sm font-medium">
-                        {action.label}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Aggiungi nuovo
-                      </span>
-                    </div>
-                    <Plus className={cn("w-4 h-4 ml-auto", action.color)} />
-                  </motion.button>
+                  <Tooltip key={action.id}>
+                    <TooltipTrigger asChild>
+                      <motion.button
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          delay: index * 0.05,
+                          type: "spring",
+                          stiffness: 400,
+                          damping: 25,
+                        }}
+                        onClick={() => handleActionClick(action.id)}
+                        title={action.label}
+                        aria-label={action.label}
+                        className={cn(
+                          "w-full aspect-square rounded-xl border border-border/40 transition-all duration-200",
+                          "flex items-center justify-center",
+                          "hover:scale-[1.02] active:scale-[0.98]",
+                          action.bgColor
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--sidebar-card-strong))] shadow-sm dark:bg-slate-800",
+                            action.color
+                          )}
+                        >
+                          {action.icon}
+                        </div>
+                      </motion.button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {action.label}
+                    </TooltipContent>
+                  </Tooltip>
                 ))}
-              </div>
+                </div>
+              </TooltipProvider>
             </div>
           </motion.div>
         )}

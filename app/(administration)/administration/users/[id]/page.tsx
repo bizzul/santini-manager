@@ -12,7 +12,17 @@ import { Badge } from "@/components/ui/badge";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { ArrowLeft, User, MapPin, Briefcase, Building2, Edit } from "lucide-react";
+import {
+  ArrowLeft,
+  User,
+  MapPin,
+  Briefcase,
+  Building2,
+  Edit,
+  Clock3,
+  Activity,
+  FolderKanban,
+} from "lucide-react";
 import Image from "next/image";
 
 export default async function UserViewPage({
@@ -139,6 +149,15 @@ export default async function UserViewPage({
       sitesMap.set(site.id, site.name || site.subdomain);
     });
   }
+
+  const userAnalyticsPreview = {
+    completedProjects: 0,
+    inProgressProjects: 0,
+    plannedProjects: 0,
+    actionsToday: 0,
+    dataVolumeToday: "0 elementi",
+    accessDevices: 0,
+  };
 
   return (
     <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
@@ -324,6 +343,59 @@ export default async function UserViewPage({
                   Gestisci Ruoli
                 </Button>
               </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 backdrop-blur-xl bg-white/10 border-2 border-white/30 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-white/10">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Dashboard utente (beta)</h2>
+              <p className="text-sm text-white/65">
+                Versione semplificata per abilitare la navigazione amministrativa senza
+                caricare storico completo da DB.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <FolderKanban className="h-4 w-4" />
+                <span>Progetti</span>
+              </div>
+              <div className="mt-2 space-y-1 text-sm text-white">
+                <p>Conclusi: {userAnalyticsPreview.completedProjects}</p>
+                <p>In corso: {userAnalyticsPreview.inProgressProjects}</p>
+                <p>Pianificati: {userAnalyticsPreview.plannedProjects}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <Clock3 className="h-4 w-4" />
+                <span>Storico accessi e azioni</span>
+              </div>
+              <div className="mt-2 space-y-1 text-sm text-white">
+                <p>Dispositivi rilevati: {userAnalyticsPreview.accessDevices}</p>
+                <p>Storico accessi: pronto per integrazione</p>
+                <p>Storico azioni: pronto per integrazione</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <Activity className="h-4 w-4" />
+                <span>Attività giornaliera</span>
+              </div>
+              <div className="mt-2 space-y-1 text-sm text-white">
+                <p>Azioni oggi: {userAnalyticsPreview.actionsToday}</p>
+                <p>Volume dati oggi: {userAnalyticsPreview.dataVolumeToday}</p>
+                <p className="text-white/60">Testo, foto, video, nuovi dati</p>
+              </div>
             </div>
           </div>
         </div>

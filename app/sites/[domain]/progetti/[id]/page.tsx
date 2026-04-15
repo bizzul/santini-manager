@@ -7,9 +7,11 @@ import { requireServerSiteContext, fetchProjectFiles } from "@/lib/server-data";
 import { ProjectDocuments } from "@/components/project/project-documents";
 import { ProjectConsuntivoSummary } from "@/components/project/ProjectConsuntivoSummary";
 import { ProjectStatusPanel } from "@/components/project/ProjectStatusPanel";
+import { ProjectReportDownloadButton } from "@/components/project/ProjectReportDownloadButton";
 import { buildCollaboratorTimeSummaries } from "@/lib/project-consuntivo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -22,6 +24,9 @@ import {
   Phone,
   StickyNote,
   Truck,
+  Link2,
+  SquarePen,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -366,6 +371,13 @@ export default async function Page({
 
   const packingStatus = packingControls[0]?.passed || null;
   const packingStatusMeta = getControlStatusMeta(packingStatus);
+  const hasCollaboratorData = collaboratorTotals.length > 0;
+  const hasSupplierData = taskSuppliers.length > 0;
+  const hasMaterialData =
+    materialCostTotal > 0 || Number(data.consuntivo_material_cost || 0) > 0;
+  const hasDocumentsData = files.length > 0;
+  const canBuildExtendedReport =
+    hasCollaboratorData && hasSupplierData && hasMaterialData && hasDocumentsData;
   const metricPanelClass =
     "rounded-xl border border-border/80 bg-card/95 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80";
   const subtlePanelClass =
@@ -631,11 +643,99 @@ export default async function Page({
                   </div>
                 </div>
               </div>
+
+              <div className="rounded-2xl border border-border bg-background/90 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-slate-400" />
+                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      Report progetto
+                    </span>
+                  </div>
+                  <ProjectReportDownloadButton domain={domain} taskId={id} />
+                </div>
+
+                {!canBuildExtendedReport ? (
+                  <div className="space-y-2 rounded-lg border border-dashed border-slate-300 p-3 text-sm dark:border-slate-700">
+                    <p className="text-slate-600 dark:text-slate-300">
+                      Alcuni dati necessari non sono ancora presenti per un report progetto completo
+                      (offerta, immagini, costi e performance reparti/collaboratori).
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                          <Link2 className="mr-2 h-4 w-4" />
+                          Collega dato
+                        </Link>
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                          <SquarePen className="mr-2 h-4 w-4" />
+                          Inserisci manualmente
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Dati completi disponibili: puoi scaricare il report progetto con sintesi
+                    economica e consuntivo.
+                  </p>
+                )}
+              </div>
             </div>
 
             {showInfoSections && (
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
                 <div className="space-y-4">
+                  {!hasCollaboratorData && (
+                    <div className={subtlePanelClass}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Ore collaboratori mancanti
+                        </span>
+                        <div className="flex gap-2">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                              <Link2 className="mr-2 h-4 w-4" />
+                              Collega dato
+                            </Link>
+                          </Button>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/sites/${domain}/timetracking/create?taskId=${id}`}>
+                              <SquarePen className="mr-2 h-4 w-4" />
+                              Inserisci manualmente
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!hasMaterialData && (
+                    <div className={subtlePanelClass}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          Costi materiale mancanti
+                        </span>
+                        <div className="flex gap-2">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                              <Link2 className="mr-2 h-4 w-4" />
+                              Collega dato
+                            </Link>
+                          </Button>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                              <SquarePen className="mr-2 h-4 w-4" />
+                              Inserisci manualmente
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {(contactPhone || clientAddress) && (
                     <div className={subtlePanelClass}>
                       <div className="flex items-center gap-2 mb-3">
@@ -688,7 +788,7 @@ export default async function Page({
                   )}
                 </div>
 
-                {taskSuppliers.length > 0 && (
+                {taskSuppliers.length > 0 ? (
                   <div className={subtlePanelClass}>
                     <div className="flex items-center gap-2 mb-3">
                       <Truck className="h-4 w-4 text-slate-400" />
@@ -741,6 +841,28 @@ export default async function Page({
                       })}
                     </div>
                   </div>
+                ) : (
+                  <div className={subtlePanelClass}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        Fornitori non collegati
+                      </span>
+                      <div className="flex gap-2">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                            <Link2 className="mr-2 h-4 w-4" />
+                            Collega dato
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                            <SquarePen className="mr-2 h-4 w-4" />
+                            Inserisci manualmente
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -756,6 +878,27 @@ export default async function Page({
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {!hasDocumentsData && (
+              <div className="mb-4 rounded-lg border border-dashed border-slate-300 p-3 text-sm dark:border-slate-700">
+                <p className="mb-2 text-slate-600 dark:text-slate-300">
+                  Nessun documento collegato al progetto.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                      <Link2 className="mr-2 h-4 w-4" />
+                      Collega dato
+                    </Link>
+                  </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href={`/sites/${domain}/projects?edit=${id}`}>
+                      <SquarePen className="mr-2 h-4 w-4" />
+                      Inserisci manualmente
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
             <ProjectDocuments
               projectId={id}
               siteId={siteId}

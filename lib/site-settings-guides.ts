@@ -55,6 +55,20 @@ export const SITE_SETTINGS_GUIDES = {
       "Aggiungi istruzioni semplici così il team sa quali dati pronunciare per ottenere un comando corretto.",
     ],
   },
+  theme: {
+    summary: "Gestisci colori card/sfondo e modalita tema del sito.",
+    details: [
+      "Usa questa sezione per impostare i 4 colori base di menu e schermate mantenendo un buon contrasto visivo.",
+      "Puoi scegliere tra modalita light, dark e adaptive e applicare preset consigliati senza toccare altri moduli.",
+    ],
+  },
+  support: {
+    summary: "Controlla abbonamento e apri supporto immediato.",
+    details: [
+      "In questa sezione trovi lo stato del piano, il rinnovo e le postazioni incluse per il sito corrente.",
+      "Puoi inviare una richiesta assistenza specifica con priorita direttamente dal pannello.",
+    ],
+  },
 } as const;
 
 export type SiteSettingsGuideKey = keyof typeof SITE_SETTINGS_GUIDES;

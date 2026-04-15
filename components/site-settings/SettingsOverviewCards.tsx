@@ -1,6 +1,16 @@
 "use client";
 
-import { Bot, Box, Factory, Layers, Package, Settings, Users } from "lucide-react";
+import {
+  Bot,
+  Box,
+  Factory,
+  Headset,
+  Layers,
+  Package,
+  Palette,
+  Settings,
+  Users,
+} from "lucide-react";
 import SettingsHelpButton from "@/components/site-settings/SettingsHelpButton";
 import { SITE_SETTINGS_GUIDES, type SiteSettingsGuideKey } from "@/lib/site-settings-guides";
 
@@ -23,6 +33,7 @@ interface SettingsOverviewCard {
   icon: React.ComponentType<{ className?: string }>;
   badge: string;
   action: React.ReactNode;
+  className?: string;
 }
 
 interface SettingsOverviewCardsProps {
@@ -35,6 +46,8 @@ interface SettingsOverviewCardsProps {
   inventoryAction: React.ReactNode;
   hrAction: React.ReactNode;
   aiAction: React.ReactNode;
+  themeAction: React.ReactNode;
+  supportAction: React.ReactNode;
 }
 
 export default function SettingsOverviewCards({
@@ -47,6 +60,8 @@ export default function SettingsOverviewCards({
   inventoryAction,
   hrAction,
   aiAction,
+  themeAction,
+  supportAction,
 }: SettingsOverviewCardsProps) {
   const cards: SettingsOverviewCard[] = [
     {
@@ -113,6 +128,26 @@ export default function SettingsOverviewCards({
       action: hrAction,
     },
     {
+      key: "theme",
+      title: "Colori & modalita",
+      description: "Definisci palette e modalita light/dark/adaptive per il sito.",
+      guideKey: "theme",
+      icon: Palette,
+      badge: "Tema e contrasti",
+      action: themeAction,
+    },
+    {
+      key: "support",
+      title: "Assistenza e abbonamenti",
+      description:
+        "Visualizza stato abbonamento e apri assistenza specifica istantanea.",
+      guideKey: "support",
+      icon: Headset,
+      badge: "Supporto immediato",
+      action: supportAction,
+      className: "border-emerald-300/25 bg-emerald-500/10",
+    },
+    {
       key: "ai",
       title: "AI, API & voice",
       description: "Gestisci provider AI, chiavi API e istruzioni per i comandi vocali.",
@@ -134,7 +169,9 @@ export default function SettingsOverviewCards({
         return (
           <div
             key={card.key}
-            className="rounded-2xl border border-white/15 bg-white/5 p-5"
+            className={`rounded-2xl border border-white/15 bg-white/5 p-5 ${
+              card.className || ""
+            }`}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
