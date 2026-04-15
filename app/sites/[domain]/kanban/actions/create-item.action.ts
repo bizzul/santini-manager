@@ -37,7 +37,8 @@ export async function createItem(props: any, domain?: string) {
       // if a position is not provided, it defaults to an empty string
       const positions = Array.from(
         { length: 8 },
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         (_, i) => result.data[`position${i + 1}`] || "",
       );
 
@@ -76,7 +77,8 @@ export async function createItem(props: any, domain?: string) {
 
       // Prepare insert data with site_id
       const insertData: any = {
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         title: "",
         clientId: result.data.clientId!,
         deliveryDate: toDateString(result.data.deliveryDate),

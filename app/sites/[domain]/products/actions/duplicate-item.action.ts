@@ -14,7 +14,7 @@ export async function duplicateSellProductAction(
   const supabase = await createClient();
   const userContext = await getUserContext();
   let siteId = siteIdParam || null;
-  let userId = userContext?.user?.id || null;
+  const userId = userContext?.user?.id || null;
 
   if (!siteId && domain) {
     try {

@@ -8,7 +8,6 @@ import {
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
-import KPICards from "@/components/dashboard/KPICards";
 import AggregatedKanbanStatus from "@/components/dashboard/AggregatedKanbanStatus";
 import LatestNotifications from "@/components/dashboard/LatestNotifications";
 import ForecastInteractiveCharts from "@/components/dashboard/ForecastInteractiveCharts";
@@ -84,15 +83,13 @@ export default async function SiteDashboardForecastPage({
             Forecast - {verticalProfile.pageCopy.dashboardOverviewTitle}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Copia della dashboard con drilldown integrazioni e accuratezza
-            previsionale.
+            Dashboard previsionale con KPI conversione, capacita produttiva,
+            fabbisogno ore e cash flow stimato.
           </p>
         </div>
       </PageHeader>
       <PageContent>
         <div className="space-y-6">
-          <KPICards data={dashboardData} />
-
           <ForecastInteractiveCharts data={dashboardData} />
 
           <div className="grid gap-4 md:grid-cols-2">

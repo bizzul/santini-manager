@@ -230,8 +230,8 @@ export function CreateDemoForm({
                                 </label>
                                 <Input value="full_suite_speedywood" readOnly disabled />
                                 <p className="text-xs leading-5 text-white/60">
-                                    E' la base tecnica e narrativa della demo. Questa configurazione
-                                    usa `full_suite_speedywood`, cioe' la verticale dedicata alla
+                                    E&apos; la base tecnica e narrativa della demo. Questa configurazione
+                                    usa `full_suite_speedywood`, cioe&apos; la verticale dedicata alla
                                     rivendita di prodotti in legno e semilavorati.
                                 </p>
                             </div>
@@ -247,7 +247,7 @@ export function CreateDemoForm({
                                 />
                                 <p className="text-xs leading-5 text-white/60">
                                     Serve a contestualizzare la demo per il tipo di azienda che la
-                                    ricevera'. Usalo per descrivere il mercato del prospect, ad
+                                    ricevera&apos;. Usalo per descrivere il mercato del prospect, ad
                                     esempio `rivendita_legno` o `falegnameria`.
                                 </p>
                             </div>
@@ -264,7 +264,7 @@ export function CreateDemoForm({
                                 <p className="text-xs leading-5 text-white/60">
                                     Definisce il taglio della demo. `full_suite` mostra un flusso
                                     completo, mentre scenari come `commerciale` o `operations`
-                                    servono per demo piu' focalizzate.
+                                    servono per demo piu&apos; focalizzate.
                                 </p>
                             </div>
                             <div className="space-y-2">
@@ -285,7 +285,7 @@ export function CreateDemoForm({
                             </div>
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-white/80">
-                                    Intensita' dati (`dataIntensity`)
+                                    Intensita&apos; dati (`dataIntensity`)
                                 </label>
                                 <select
                                     name="dataIntensity"
@@ -298,8 +298,8 @@ export function CreateDemoForm({
                                 </select>
                                 <p className="text-xs leading-5 text-white/60">
                                     Dice quanto deve essere ricco il seed della demo. `low` per una
-                                    prova veloce, `medium` per l'uso standard, `high` quando vuoi
-                                    piu' dati da esplorare in dashboard e liste.
+                                    prova veloce, `medium` per l&apos;uso standard, `high` quando vuoi
+                                    piu&apos; dati da esplorare in dashboard e liste.
                                 </p>
                             </div>
                             <div className="space-y-2">
@@ -315,8 +315,8 @@ export function CreateDemoForm({
                                     <option value="single_use">Single use</option>
                                 </select>
                                 <p className="text-xs leading-5 text-white/60">
-                                    `multi_use` permette al cliente di rientrare piu' volte con lo
-                                    stesso QR. `single_use` e' utile solo per accessi usa-e-getta o
+                                    `multi_use` permette al cliente di rientrare piu&apos; volte con lo
+                                    stesso QR. `single_use` e&apos; utile solo per accessi usa-e-getta o
                                     controllati.
                                 </p>
                             </div>

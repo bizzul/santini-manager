@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (findError) throw findError;
 
     if (task) {
-      let updateData: any = { vernice: verniceStatus };
+      const updateData: any = { vernice: verniceStatus };
 
       if (verniceStatus === true && task.vernice === false) {
         updateData.percentStatus = (task.percentStatus || 0) + 15;

@@ -616,7 +616,8 @@ function GridReports({
       setLoadingImbPdf(true);
       let imballaggioData: any = null;
       if (task) {
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         imballaggioData = imb.filter((q) => q.task?.id == Number(task));
       }
 

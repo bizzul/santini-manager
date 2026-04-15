@@ -50,7 +50,7 @@ export default async function SelectSitePage({
               <div className="backdrop-blur-xl bg-red-500/20 border-2 border-red-500/50 rounded-2xl p-4 max-w-md">
                 <p className="text-white text-center text-sm">
                   ⚠️ Non hai accesso a questo spazio. Per favore contatta
-                  l'amministratore per richiedere l'accesso.
+                  l&apos;amministratore per richiedere l&apos;accesso.
                 </p>
               </div>
             )}

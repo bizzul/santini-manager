@@ -105,7 +105,8 @@ export async function editItem(formData: any, id: number, domain?: string) {
       // if a position is not provided, it defaults to an empty string
       const positions = Array.from(
         { length: 8 },
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         (_, i) => result.data[`position${i + 1}`] || "",
       );
       logger.debug("positions", positions);

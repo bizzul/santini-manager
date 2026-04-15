@@ -23,7 +23,7 @@ function MobilePage({ data }: { data: Product }) {
   };
 
   const handleChangeInput = (e: any) => {
-    let value = parseInt(e.target.value);
+    const value = parseInt(e.target.value);
     setTempQuantity(value);
   };
 

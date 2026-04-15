@@ -130,7 +130,7 @@ interface TimeRow {
   hours: string;
   minutes: string;
   description: string;
-  roles: Roles | {};
+  roles: Roles | Record<string, never>;
   userId: string;
   activityType: "project" | "internal";
   internalActivity?: string;

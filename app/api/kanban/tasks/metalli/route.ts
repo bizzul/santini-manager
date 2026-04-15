@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     if (findError) throw findError;
 
     if (task) {
-      let updateData: any = { metalli: metalliStatus };
+      const updateData: any = { metalli: metalliStatus };
 
       if (metalliStatus === true && task.metalli === false) {
         logger.debug("adding metalli");

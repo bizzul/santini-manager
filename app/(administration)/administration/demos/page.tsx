@@ -189,9 +189,9 @@ export default async function DemosPage({
                             defaultValue={filters.sort}
                             className="h-10 rounded-md border border-white/20 bg-slate-950/60 px-3 text-sm text-white"
                         >
-                            <option value="recent">Piu' recenti</option>
+                            <option value="recent">Piu&apos; recenti</option>
                             <option value="last-login">Ultimo login</option>
-                            <option value="most-logins">Piu' login</option>
+                            <option value="most-logins">Piu&apos; login</option>
                             <option value="expiring">Scadenza vicina</option>
                         </select>
                         <div className="flex gap-2">

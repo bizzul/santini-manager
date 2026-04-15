@@ -88,7 +88,8 @@ export const columns: ColumnDef<any>[] = [
       <DataTableColumnHeader column={column} title="Utente" />
     ),
     cell: ({ row }) => {
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       const { user } = row.original;
       return (
         <div suppressHydrationWarning>

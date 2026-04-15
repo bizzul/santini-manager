@@ -157,7 +157,7 @@ export const NavUser = memo(function NavUser({
                 checked={showOnLogin}
                 onCheckedChange={(checked) => setShowOnLogin(checked === true)}
               >
-                Mostra guida all'accesso
+                Mostra guida all&apos;accesso
               </DropdownMenuCheckboxItem>
               {(user.role === "admin" || user.role === "superadmin") && (
                 <DropdownMenuItem asChild>

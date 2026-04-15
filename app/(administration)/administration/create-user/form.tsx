@@ -203,7 +203,7 @@ export function CreateUserForm({
             className="w-full bg-white/10 border border-white/30 text-white rounded-lg px-4 py-3 backdrop-blur-sm"
           >
             <option value="" className="bg-gray-900 text-white">
-              Seleziona un'organizzazione
+              Seleziona un&apos;organizzazione
             </option>
             {organizations?.map((org: any) => (
               <option
@@ -216,7 +216,7 @@ export function CreateUserForm({
             ))}
           </select>
           <p className="mt-2 text-sm text-white/60">
-            L'admin avrà accesso a tutti i siti di questa organizzazione
+            L&apos;admin avrà accesso a tutti i siti di questa organizzazione
           </p>
         </div>
       )}
@@ -240,7 +240,7 @@ export function CreateUserForm({
           </span>
         </div>
         <p className="text-xs text-white/50 -mt-2 mb-3">
-          Compila per creare l'utente con password diretta, altrimenti lascia vuoto per inviare invito via email
+          Compila per creare l&apos;utente con password diretta, altrimenti lascia vuoto per inviare invito via email
         </p>
         
         <div>

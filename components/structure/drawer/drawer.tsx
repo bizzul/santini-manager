@@ -185,7 +185,8 @@ export function SideBarItem({
   alert: boolean;
   active: boolean;
 }) {
-  //@ts-ignore
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore: legacy typing constraint
   const { slim } = useContext(sideBarContext);
   // const active = router. === href;
   return (
@@ -225,7 +226,8 @@ export function SideBarItem({
   );
 }
 
-//@ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: legacy typing constraint
 const sideBarContext = createContext();
 
 export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {

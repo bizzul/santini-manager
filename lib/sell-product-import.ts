@@ -327,8 +327,8 @@ export function buildSellProductImportPlan(params: {
   const normalizedFilter = normalizeSellProductCategory(params.categoryFilter);
   let filteredOut = 0;
   let plannedInserts = 0;
-  let plannedUpdates = 0;
-  let plannedDeactivations = 0;
+  const plannedUpdates = 0;
+  const plannedDeactivations = 0;
   let skipped = 0;
 
   parsedRows.forEach((csvRow) => {

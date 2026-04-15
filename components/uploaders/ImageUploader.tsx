@@ -11,7 +11,8 @@ function ImageUploader({ onChange, setPreview, preview, file }: any) {
       const reader = new FileReader();
 
       reader.onload = function () {
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         setPreview(reader.result);
         onChange(file);
       };

@@ -50,7 +50,8 @@ export const GET = async () => {
     const buildQcWorksheet = (data: any) => {
       // Sort the data by date in descending order
       data.sort(
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
       );
 
@@ -109,7 +110,8 @@ export const GET = async () => {
     const buildImbWorksheet = (data: any) => {
       // Sort the data by date in descending order
       data.sort(
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         (a: any, b: any) => new Date(b.created_at) - new Date(a.created_at),
       );
 

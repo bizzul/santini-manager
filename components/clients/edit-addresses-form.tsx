@@ -1,7 +1,8 @@
 import { FC, Fragment, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { ClientAddressType } from "./client-type-definitions";
-//@ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: legacy typing constraint
 import GoogleAutocompleteEdit from "./google-autocomplete-edit.js";
 import { countries } from "./countries";
 import { jobsType } from "./jobs";
@@ -11,7 +12,7 @@ import { faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 type Props = {
   type: ClientAddressType;
-  showSameAsMainOption?: Boolean;
+  showSameAsMainOption?: boolean;
   preloadedValues: any;
 };
 /**

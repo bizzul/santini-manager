@@ -48,8 +48,8 @@ export default async function AdministrationLayout({
   const impersonatedUser = userContext?.impersonatedUser;
   const originalSuperadminId = userContext?.originalSuperadminId;
 
-  let user = userContext?.user;
-  let role = userContext?.role;
+  const user = userContext?.user;
+  const role = userContext?.role;
 
   return (
     <div className="relative min-h-screen overflow-hidden">

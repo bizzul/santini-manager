@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (findError) throw findError;
 
     if (task) {
-      let updateData: any = { legno: legnoStatus };
+      const updateData: any = { legno: legnoStatus };
 
       if (legnoStatus === true && task.legno === false) {
         updateData.percentStatus = (task.percentStatus || 0) + 15;

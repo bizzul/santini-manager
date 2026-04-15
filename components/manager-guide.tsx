@@ -370,7 +370,7 @@ export function ManagerGuideProvider({
                 <div className="flex items-center gap-2 text-sm font-medium text-primary">
                   <ManagerGuideMascot size="sm" />
                   <BookOpen className="h-4 w-4" />
-                  Guida all'utilizzo del manager
+                  Guida all&apos;utilizzo del manager
                 </div>
                 <DialogTitle className="text-2xl">
                   {currentStep.title}
@@ -486,7 +486,7 @@ export function ManagerGuideProvider({
                   htmlFor="manager-guide-show-on-login"
                   className="text-sm font-medium"
                 >
-                  Mostra automaticamente la guida all'accesso
+                  Mostra automaticamente la guida all&apos;accesso
                 </Label>
                 <p className="text-xs leading-5 text-muted-foreground">
                   {remainingRequiredLogins > 0

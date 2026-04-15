@@ -231,7 +231,7 @@ export default function InventoryCategoryManagerModal({
                       <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Nessuna categoria presente</p>
                       <p className="text-sm mt-2">
-                        Crea la tua prima categoria per organizzare l'inventario
+                        Crea la tua prima categoria per organizzare l&apos;inventario
                       </p>
                     </div>
                   </CardContent>
@@ -398,9 +398,9 @@ export default function InventoryCategoryManagerModal({
               Elimina Categoria
             </AlertDialogTitle>
             <AlertDialogDescription className="text-white/70">
-              Sei sicuro di voler eliminare la categoria "
-              {categoryToDelete?.name}"? Questa azione non può essere annullata.
-              Gli articoli dell'inventario associati non verranno eliminati ma
+              Sei sicuro di voler eliminare la categoria &quot;
+              {categoryToDelete?.name}&quot;? Questa azione non può essere annullata.
+              Gli articoli dell&apos;inventario associati non verranno eliminati ma
               non avranno più una categoria.
             </AlertDialogDescription>
           </AlertDialogHeader>

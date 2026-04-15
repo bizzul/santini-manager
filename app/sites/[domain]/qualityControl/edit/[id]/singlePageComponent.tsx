@@ -16,14 +16,15 @@ function SinglePageComponent({ data, user }: { data: any; user: any }) {
   useEffect(() => {
     const newState = new Map();
 
-    // @ts-ignore
-
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
     data.items.forEach((item) => {
       newState.set(item.id, item.checked); // Assuming 'item.checked' is a boolean
     });
     setCheckedState(newState);
 
-    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
   }, [data.items]);
 
   // Handle checkbox change
@@ -67,13 +68,13 @@ function SinglePageComponent({ data, user }: { data: any; user: any }) {
     <div className="flex justify-center w-auto h-auto flex-col items-center  ">
       <div className="py-4 md:w-1/2 w-full md:px-0 px-10">
         <p className="mt-4">
-          {/* @ts-ignore */}
+          
           <span className="text-2xl"> {data?.task.unique_code} </span> -{" "}
           <span className="text-md font-light">
-            {/* @ts-ignore */}
+            
             {data?.task.sellProduct?.name}{" "}
           </span>
-          -{/* @ts-ignore */}
+          -
           {data?.task.client?.businessName}
           <span> - Pos.{data.position_nr}</span>
         </p>
@@ -82,8 +83,8 @@ function SinglePageComponent({ data, user }: { data: any; user: any }) {
 
       <div>
         <ul className="space-y-4 py-2">
-          {/* @ts-ignore */}
-          {data.items.map((item: Qc_item) => (
+          
+          {data.items.map((item: any) => (
             <li
               key={item.id}
               className={`py-2 flex items-center justify-start gap-10`}

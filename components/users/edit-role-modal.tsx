@@ -114,9 +114,11 @@ export const EditRoleModal: FC<Props> = ({
     if (focusedUser?.user_id) {
       fetchRoles(focusedUser.user_id).then((roles) => {
         logger.debug(roles);
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         if (roles.length && focusedUser !== null) {
-          //@ts-ignore
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore: legacy typing constraint
           setValue("roleId", userRoles?.roles[0]);
         }
       });

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Bot, Loader2, Paperclip, Send, X } from "lucide-react";
+import { Loader2, Paperclip, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useSiteId } from "@/hooks/use-site-id";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { AssistantsChatResponse } from "@/types/assistants";
 
 type AssistantId = "vera" | "mira" | "aura";
+const AVAILABLE_ASSISTANTS: AssistantId[] = ["vera", "mira", "aura"];
 
 type ChatRole = "assistant" | "user" | "system";
 
@@ -97,7 +98,7 @@ export function GlobalSupportAssistant() {
   const pathname = usePathname();
   const { userContext, loading } = useUserContext();
   const isSiteRoute = Boolean(pathname?.startsWith("/sites/"));
-  const [open, setOpen] = useState(isSiteRoute);
+  const [open, setOpen] = useState(false);
   const [activeAssistant, setActiveAssistant] = useState<AssistantId>(
     resolveAssistantFromPathname(pathname)
   );
@@ -111,21 +112,37 @@ export function GlobalSupportAssistant() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const autoMinimizeTimeoutRef = useRef<number | null>(null);
   const domain = extractDomain(pathname);
   const { siteId } = useSiteId(domain || undefined);
 
   const assistantMeta = getAssistantMeta(activeAssistant);
 
-  useEffect(() => {
-    if (!isSiteRoute) return;
-    setOpen(true);
-  }, [isSiteRoute]);
+  const clearAutoMinimizeTimeout = useCallback(() => {
+    if (autoMinimizeTimeoutRef.current) {
+      window.clearTimeout(autoMinimizeTimeoutRef.current);
+      autoMinimizeTimeoutRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
-    if (!isSiteRoute) return;
+    if (!isSiteRoute) {
+      clearAutoMinimizeTimeout();
+      setOpen(false);
+      return;
+    }
     const next = resolveAssistantFromPathname(pathname);
     setActiveAssistant(next);
-  }, [isSiteRoute, pathname]);
+    setOpen(true);
+    clearAutoMinimizeTimeout();
+    autoMinimizeTimeoutRef.current = window.setTimeout(() => {
+      setOpen(false);
+    }, 5000);
+
+    return () => {
+      clearAutoMinimizeTimeout();
+    };
+  }, [isSiteRoute, pathname, clearAutoMinimizeTimeout]);
 
   useEffect(() => {
     if (!isSiteRoute) return;
@@ -143,15 +160,17 @@ export function GlobalSupportAssistant() {
       if (forced) {
         setActiveAssistant(forced);
       }
+      clearAutoMinimizeTimeout();
       setOpen(true);
       requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     window.addEventListener("open-support-assistant", handler as EventListener);
     return () => {
+      clearAutoMinimizeTimeout();
       window.removeEventListener("open-support-assistant", handler as EventListener);
     };
-  }, []);
+  }, [clearAutoMinimizeTimeout]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -182,6 +201,38 @@ export function GlobalSupportAssistant() {
     return null;
   }
   const requesterUserId = userContext.userId || userContext.user?.id;
+  const assistantDock = (
+    <div className="fixed right-4 top-14 z-[70] flex items-center gap-2 rounded-full border border-slate-700/90 bg-slate-950/92 px-2 py-1.5 shadow-[0_16px_42px_rgba(2,6,23,0.55)] backdrop-blur">
+      {AVAILABLE_ASSISTANTS.map((assistantId) => {
+        const meta = getAssistantMeta(assistantId);
+        const isSelected = assistantId === activeAssistant;
+        return (
+          <button
+            key={assistantId}
+            type="button"
+            title={`Apri ${meta.label}`}
+            onClick={() => {
+              clearAutoMinimizeTimeout();
+              setActiveAssistant(assistantId);
+              setOpen(true);
+              requestAnimationFrame(() => inputRef.current?.focus());
+            }}
+            className={`inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border transition hover:scale-105 ${
+              isSelected
+                ? "border-cyan-400/90 ring-2 ring-cyan-400/50"
+                : "border-slate-600/90 hover:border-slate-400"
+            }`}
+          >
+            <img
+              src={meta.avatar}
+              alt={`${meta.label} avatar`}
+              className="h-full w-full object-cover"
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
 
   async function transcribeAudio(file: File): Promise<string> {
     if (!siteId) {
@@ -275,6 +326,7 @@ export function GlobalSupportAssistant() {
 
       const userMessage = createMessage("user", activeAssistant, userBubbleText);
       setMessages((prev) => [...prev, userMessage]);
+      setOpen(false);
 
       setInput("");
       removeAudio();
@@ -343,10 +395,12 @@ export function GlobalSupportAssistant() {
     void sendMessage();
   }
 
-  if (!open) return null;
+  if (!open) return assistantDock;
 
   return (
-    <div className="fixed right-4 top-14 z-50 w-[400px] max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-700/80 bg-slate-950/95 text-slate-100 shadow-[0_24px_70px_rgba(2,6,23,0.72)] backdrop-blur">
+    <>
+      {assistantDock}
+      <div className="fixed right-4 top-[104px] z-50 w-[352px] max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-700/80 bg-slate-950/95 text-slate-100 shadow-[0_24px_70px_rgba(2,6,23,0.72)] backdrop-blur">
       <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-slate-600">
@@ -370,14 +424,17 @@ export function GlobalSupportAssistant() {
             variant="ghost"
             size="icon"
             className="h-7 w-7 text-slate-300 hover:bg-slate-800 hover:text-white"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              clearAutoMinimizeTimeout();
+              setOpen(false);
+            }}
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <div className="max-h-[56vh] min-h-[360px] overflow-y-auto px-3 py-3">
+      <div className="max-h-[52vh] min-h-[320px] overflow-y-auto px-3 py-3">
         <div className="space-y-2.5">
           {messages.map((message) => (
             <div
@@ -469,6 +526,7 @@ export function GlobalSupportAssistant() {
           Invio: Enter. Nuova riga: Shift+Enter.
         </p>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

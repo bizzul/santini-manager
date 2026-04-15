@@ -693,8 +693,8 @@ export default function KanbanCategoryManagerModal({
               Elimina Categoria
             </AlertDialogTitle>
             <AlertDialogDescription className="text-white/70">
-              Sei sicuro di voler eliminare la categoria "
-              {categoryToDelete?.name}"? Questa azione non può essere annullata.
+              Sei sicuro di voler eliminare la categoria &quot;
+              {categoryToDelete?.name}&quot;? Questa azione non può essere annullata.
               Le kanban associate non verranno eliminate ma non avranno più una
               categoria.
             </AlertDialogDescription>

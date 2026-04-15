@@ -1654,6 +1654,52 @@ export interface DashboardStats {
         status: string;
         count: number;
     }>;
+    // Forecast KPIs computed from real DB data
+    forecast: {
+        conversion: Array<{
+            year: number;
+            period: "month" | "q1" | "q2" | "q3" | "q4";
+            sentValue: number;
+            acquiredValue: number;
+            sentCount: number;
+            acquiredCount: number;
+            rate: number;
+        }>;
+        occupancy: {
+            averageLoad: number;
+            categories: Array<{
+                name: string;
+                departmentLoad: number;
+                machineLoad: number;
+                workHours: number;
+                items: number;
+                projects: number;
+            }>;
+        };
+        plannedHours: {
+            totalHours: number;
+            fte: number;
+            byDepartment: Array<{
+                department: string;
+                hours: number;
+                tasks: number;
+            }>;
+        };
+        cashFlow: {
+            baseLiquidity: number;
+            horizons: Array<{
+                months: 1 | 3 | 6 | 12;
+                value: number;
+                inflowInProgress: number;
+                inflowFuture: number;
+                outflowLabor: number;
+            }>;
+            monthlySeries: Array<{
+                label: string;
+                value: number;
+            }>;
+        };
+    };
 }
 
 export interface DashboardProjectLocation {
@@ -1687,6 +1733,17 @@ export const fetchDashboardData = cache(
             1,
         );
         const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        const startOfCurrentYear = new Date(now.getFullYear(), 0, 1);
+        const startOfForecastWindow = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfForecastWindow = new Date(
+            now.getFullYear(),
+            now.getMonth() + 12,
+            0,
+            23,
+            59,
+            59,
+            999,
+        );
 
         // Calculate date ranges for historical data (6 months)
         const sixMonthsAgo = new Date(now);
@@ -1729,8 +1786,12 @@ export const fetchDashboardData = cache(
                 posa_collaborator_ids,
                 sellProductId,
                 created_at,
+                updated_at,
                 sent_date,
+                offer_send_date,
                 deliveryDate,
+                hours,
+                numero_pezzi,
                 SellProduct:sellProductId(id, name, category:category_id(id, name, color)),
                 Client:clientId (
                     businessName,
@@ -1784,6 +1845,13 @@ export const fetchDashboardData = cache(
         const columns = columnsResult.data || [];
         const historicalTasks = historicalTasksResult.data || [];
 
+        const { data: timetrackingEntriesRaw } = await supabase
+            .from("Timetracking")
+            .select("task_id, totalTime, hours, minutes, use_cnc, created_at")
+            .eq("site_id", siteId)
+            .gte("created_at", startOfCurrentYear.toISOString());
+        const timetrackingEntries = timetrackingEntriesRaw || [];
+
         // Create lookup maps
         const offerKanbanIds = new Set(
             kanbans.filter((k) => k.is_offer_kanban).map((k) => k.id),
@@ -1834,6 +1902,92 @@ export const fetchDashboardData = cache(
             return originalName
                 ? originalName.charAt(0).toUpperCase() + originalName.slice(1)
                 : "Altro";
+        };
+
+        const isOfferTask = (task: any): boolean =>
+            task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
+
+        const isInvoiceTask = (task: any): boolean =>
+            task.task_type === "FATTURA";
+
+        const isWonTask = (task: any): boolean => {
+            const column = columnMap.get(task.kanbanColumnId);
+            return task.display_mode === "small_green" || column?.column_type === "won";
+        };
+
+        const isPaidInvoiceTask = (task: any): boolean => {
+            const column = columnMap.get(task.kanbanColumnId);
+            return task.display_mode === "small_green" || column?.column_type === "won";
+        };
+
+        const getTaskItems = (task: any): number => {
+            const positions = Array.isArray(task.positions)
+                ? task.positions.filter((value: unknown) => String(value || "").trim() !== "").length
+                : 0;
+            if (positions > 0) return positions;
+            const pieces = Number(task.numero_pezzi || 0);
+            return Number.isFinite(pieces) && pieces > 0 ? pieces : 1;
+        };
+
+        const toDate = (value: unknown): Date | null => {
+            if (!value) return null;
+            const date = new Date(String(value));
+            return Number.isNaN(date.getTime()) ? null : date;
+        };
+
+        const resolveTimetrackingHours = (entry: any): number => {
+            const totalTime = Number(entry.totalTime);
+            if (Number.isFinite(totalTime) && totalTime > 0) {
+                return totalTime;
+            }
+            const hours = Number(entry.hours || 0);
+            const minutes = Number(entry.minutes || 0);
+            return (Number.isFinite(hours) ? hours : 0) +
+                (Number.isFinite(minutes) ? minutes : 0) / 60;
+        };
+
+        const trackedHoursByTaskId = new Map<number, number>();
+        const cncHoursByTaskId = new Map<number, number>();
+        timetrackingEntries.forEach((entry: any) => {
+            const taskId = Number(entry.task_id);
+            if (!Number.isFinite(taskId) || taskId <= 0) return;
+            const trackedHours = resolveTimetrackingHours(entry);
+            if (!Number.isFinite(trackedHours) || trackedHours <= 0) return;
+            trackedHoursByTaskId.set(
+                taskId,
+                (trackedHoursByTaskId.get(taskId) || 0) + trackedHours,
+            );
+            if (entry.use_cnc) {
+                cncHoursByTaskId.set(
+                    taskId,
+                    (cncHoursByTaskId.get(taskId) || 0) + trackedHours,
+                );
+            }
+        });
+
+        let trackedReferenceHours = 0;
+        let trackedReferenceItems = 0;
+        tasks.forEach((task: any) => {
+            if (isOfferTask(task) || isInvoiceTask(task)) return;
+            const trackedHours = trackedHoursByTaskId.get(task.id) || Number(task.hours || 0);
+            if (!Number.isFinite(trackedHours) || trackedHours <= 0) return;
+            trackedReferenceHours += trackedHours;
+            trackedReferenceItems += getTaskItems(task);
+        });
+        const avgHoursPerItem = trackedReferenceItems > 0
+            ? trackedReferenceHours / trackedReferenceItems
+            : 1.6;
+
+        const resolvePlannedTaskHours = (task: any): number => {
+            const explicitHours = Number(task.hours || 0);
+            if (Number.isFinite(explicitHours) && explicitHours > 0) {
+                return explicitHours;
+            }
+            const trackedHours = trackedHoursByTaskId.get(task.id);
+            if (trackedHours && trackedHours > 0) {
+                return trackedHours;
+            }
+            return getTaskItems(task) * avgHoursPerItem;
         };
 
         // Initialize category stats map
@@ -1889,13 +2043,12 @@ export const fetchDashboardData = cache(
         // Process tasks
         tasks.forEach((task: any) => {
             const column = columnMap.get(task.kanbanColumnId);
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
+            const isOffer = isOfferTask(task);
             const categoryName = task.SellProduct?.category?.name || "Altro";
             const categoryColor = task.SellProduct?.category?.color ||
                 "#6b7280";
             const sellPrice = task.sellPrice || 0;
-            const positionsCount = task.positions?.length || 1;
+            const positionsCount = getTaskItems(task);
 
             // Ensure category exists in map
             if (!categoryStatsMap.has(categoryName)) {
@@ -1918,10 +2071,7 @@ export const fetchDashboardData = cache(
                 catStats.offerCount++;
                 catStats.offerValue += sellPrice;
 
-                if (
-                    task.display_mode === "small_green" ||
-                    column?.column_type === "won"
-                ) {
+                if (isWonTask(task)) {
                     offersWon++;
                 } else if (
                     task.display_mode === "small_red" ||
@@ -1998,9 +2148,8 @@ export const fetchDashboardData = cache(
         const activeProjectLocations: DashboardProjectLocation[] = tasks
             .filter((task: any) => {
                 const column = columnMap.get(task.kanbanColumnId);
-                const isOffer = task.task_type === "OFFERTA" ||
-                    offerKanbanIds.has(task.kanbanId);
-                const isInvoice = task.task_type === "FATTURA";
+                const isOffer = isOfferTask(task);
+                const isInvoice = isInvoiceTask(task);
                 const isClosedStatus = ["done", "won", "lost", "archived", "completed"]
                     .includes(String(column?.column_type || "").toLowerCase());
                 return !isOffer && !isInvoice && !isClosedStatus;
@@ -2076,12 +2225,10 @@ export const fetchDashboardData = cache(
 
         // Calculate Active Offers KPI (todo + inProgress, excluding won/lost)
         const activeOffersTasks = tasks.filter((task: any) => {
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
+            const isOffer = isOfferTask(task);
             if (!isOffer) return false;
             const column = columnMap.get(task.kanbanColumnId);
-            const isWon = task.display_mode === "small_green" ||
-                column?.column_type === "won";
+            const isWon = isWonTask(task);
             const isLost = task.display_mode === "small_red" ||
                 column?.column_type === "lost";
             return !isWon && !isLost;
@@ -2096,8 +2243,7 @@ export const fetchDashboardData = cache(
         // Calculate offer change percent (value comparison: current month vs last month)
         const currentMonthOffersValue = tasks
             .filter((task: any) => {
-                const isOffer = task.task_type === "OFFERTA" ||
-                    offerKanbanIds.has(task.kanbanId);
+                const isOffer = isOfferTask(task);
                 if (!isOffer) return false;
                 const taskDate = new Date(task.created_at);
                 return taskDate >= startOfMonth;
@@ -2106,8 +2252,7 @@ export const fetchDashboardData = cache(
 
         const lastMonthOffersValue = tasks
             .filter((task: any) => {
-                const isOffer = task.task_type === "OFFERTA" ||
-                    offerKanbanIds.has(task.kanbanId);
+                const isOffer = isOfferTask(task);
                 if (!isOffer) return false;
                 const taskDate = new Date(task.created_at);
                 return taskDate >= startOfLastMonth &&
@@ -2122,8 +2267,7 @@ export const fetchDashboardData = cache(
 
         // Calculate Production Orders KPI (delayed orders)
         const delayedOrders = tasks.filter((task: any) => {
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
+            const isOffer = isOfferTask(task);
             if (isOffer) return false;
             if (!task.deliveryDate) return false;
             const deliveryDate = new Date(task.deliveryDate);
@@ -2132,8 +2276,7 @@ export const fetchDashboardData = cache(
 
         // Calculate delayed change (simplified - compare with last month)
         const lastMonthDelayed = tasks.filter((task: any) => {
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
+            const isOffer = isOfferTask(task);
             if (isOffer) return false;
             if (!task.deliveryDate) return false;
             const deliveryDate = new Date(task.deliveryDate);
@@ -2147,9 +2290,7 @@ export const fetchDashboardData = cache(
             : 0;
 
         // Calculate Open Invoices KPI
-        const invoiceTasks = tasks.filter((task: any) =>
-            task.task_type === "FATTURA"
-        );
+        const invoiceTasks = tasks.filter((task: any) => isInvoiceTask(task));
         const openInvoicesValue = invoiceTasks.reduce(
             (sum: number, task: any) => sum + (task.sellPrice || 0),
             0,
@@ -2337,6 +2478,263 @@ export const fetchDashboardData = cache(
                 )
             );
 
+        // -----------------------------
+        // Forecast KPIs (period-aware)
+        // -----------------------------
+        type ConversionPeriod = "month" | "q1" | "q2" | "q3" | "q4";
+        const conversionPeriods: ConversionPeriod[] = ["month", "q1", "q2", "q3", "q4"];
+        const conversionYears = [
+            now.getFullYear() - 2,
+            now.getFullYear() - 1,
+            now.getFullYear(),
+        ];
+        const currentMonth = now.getMonth();
+
+        const isDateInConversionPeriod = (
+            date: Date | null,
+            period: ConversionPeriod,
+            year: number,
+        ): boolean => {
+            if (!date) return false;
+            if (date.getFullYear() !== year) return false;
+            if (period === "month") {
+                return date.getMonth() === currentMonth;
+            }
+            const quarter = Math.floor(date.getMonth() / 3) + 1;
+            return (
+                (period === "q1" && quarter === 1) ||
+                (period === "q2" && quarter === 2) ||
+                (period === "q3" && quarter === 3) ||
+                (period === "q4" && quarter === 4)
+            );
+        };
+
+        const offerTasks = tasks.filter((task: any) => isOfferTask(task));
+        const conversion = conversionYears.flatMap((year) =>
+            conversionPeriods.map((period) => {
+                const sentCandidates = offerTasks.filter((task: any) =>
+                    isDateInConversionPeriod(
+                        toDate(task.sent_date || task.offer_send_date || task.created_at),
+                        period,
+                        year,
+                    )
+                );
+                const acquiredCandidates = offerTasks.filter((task: any) =>
+                    isWonTask(task) &&
+                    isDateInConversionPeriod(
+                        toDate(task.updated_at || task.created_at),
+                        period,
+                        year,
+                    )
+                );
+
+                const sentValue = sentCandidates.reduce(
+                    (sum: number, task: any) => sum + Number(task.sellPrice || 0),
+                    0,
+                );
+                const acquiredValue = acquiredCandidates.reduce(
+                    (sum: number, task: any) => sum + Number(task.sellPrice || 0),
+                    0,
+                );
+                const rate = sentValue > 0
+                    ? Math.min(100, (acquiredValue / sentValue) * 100)
+                    : 0;
+
+                return {
+                    year,
+                    period,
+                    sentValue,
+                    acquiredValue,
+                    sentCount: sentCandidates.length,
+                    acquiredCount: acquiredCandidates.length,
+                    rate,
+                };
+            })
+        );
+
+        const forecastTasks = tasks.filter((task: any) => {
+            if (isOfferTask(task) || isInvoiceTask(task)) return false;
+            const dueDate = toDate(task.deliveryDate);
+            if (!dueDate) return true;
+            return dueDate >= startOfForecastWindow && dueDate <= endOfForecastWindow;
+        });
+
+        const occupancyCategoryMap = new Map<string, {
+            name: string;
+            workHours: number;
+            machineHours: number;
+            items: number;
+            projects: number;
+        }>();
+        const plannedHoursByDepartmentMap = new Map<string, { hours: number; tasks: number }>();
+
+        forecastTasks.forEach((task: any) => {
+            const categoryName = task.SellProduct?.category?.name || "Altro";
+            const hours = resolvePlannedTaskHours(task);
+            const machineHours = cncHoursByTaskId.get(task.id) || hours * 0.45;
+            const items = getTaskItems(task);
+
+            const category = occupancyCategoryMap.get(categoryName) || {
+                name: categoryName,
+                workHours: 0,
+                machineHours: 0,
+                items: 0,
+                projects: 0,
+            };
+            category.workHours += hours;
+            category.machineHours += machineHours;
+            category.items += items;
+            category.projects += 1;
+            occupancyCategoryMap.set(categoryName, category);
+
+            const department = getDepartmentName(task.kanbanId);
+            const departmentEntry = plannedHoursByDepartmentMap.get(department) || {
+                hours: 0,
+                tasks: 0,
+            };
+            departmentEntry.hours += hours;
+            departmentEntry.tasks += 1;
+            plannedHoursByDepartmentMap.set(department, departmentEntry);
+        });
+
+        const occupancyRaw = Array.from(occupancyCategoryMap.values())
+            .sort((a, b) => b.workHours - a.workHours)
+            .slice(0, 10);
+        const maxWorkHours = Math.max(...occupancyRaw.map((entry) => entry.workHours), 1);
+        const maxMachineHours = Math.max(
+            ...occupancyRaw.map((entry) => entry.machineHours),
+            1,
+        );
+
+        const occupancyCategories = occupancyRaw.map((entry) => ({
+            name: entry.name,
+            departmentLoad: (entry.workHours / maxWorkHours) * 100,
+            machineLoad: (entry.machineHours / maxMachineHours) * 100,
+            workHours: entry.workHours,
+            items: entry.items,
+            projects: entry.projects,
+        }));
+
+        const averageLoad = occupancyCategories.length > 0
+            ? occupancyCategories.reduce((sum, item) => sum + item.departmentLoad, 0) /
+                occupancyCategories.length
+            : 0;
+
+        const plannedHoursByDepartment = Array.from(plannedHoursByDepartmentMap.entries())
+            .map(([department, values]) => ({
+                department,
+                hours: values.hours,
+                tasks: values.tasks,
+            }))
+            .sort((a, b) => b.hours - a.hours);
+        const totalPlannedHours = plannedHoursByDepartment.reduce(
+            (sum, item) => sum + item.hours,
+            0,
+        );
+        const fte = totalPlannedHours / 160;
+
+        const invoiceTasksForForecast = tasks.filter((task: any) => isInvoiceTask(task));
+        const paidInvoicesRecent = invoiceTasksForForecast.filter((task: any) => {
+            if (!isPaidInvoiceTask(task)) return false;
+            const paidAt = toDate(task.updated_at || task.created_at);
+            if (!paidAt) return false;
+            const ninetyDaysAgo = new Date(now);
+            ninetyDaysAgo.setDate(now.getDate() - 90);
+            return paidAt >= ninetyDaysAgo;
+        });
+        const baseLiquidity = paidInvoicesRecent.reduce(
+            (sum: number, task: any) => sum + Number(task.sellPrice || 0),
+            0,
+        );
+
+        const HOURLY_COST = 68;
+        const getMonthRangeFromNow = (offset: number) => {
+            const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+            const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 1);
+            return { start, end };
+        };
+        const isInRange = (date: Date | null, start: Date, end: Date) =>
+            Boolean(date && date >= start && date < end);
+
+        const monthlySeries: Array<{ label: string; value: number }> = [];
+        const monthlyBreakdown: Array<{
+            month: number;
+            inflowInProgress: number;
+            inflowFuture: number;
+            outflowLabor: number;
+            value: number;
+        }> = [];
+        let cumulativeCashFlow = baseLiquidity;
+
+        for (let offset = 1; offset <= 12; offset++) {
+            const { start, end } = getMonthRangeFromNow(offset);
+            const monthLabel = `${String(start.getMonth() + 1).padStart(2, "0")}/${String(start.getFullYear()).slice(-2)}`;
+
+            const inflowInProgress = invoiceTasksForForecast
+                .filter((task: any) =>
+                    !isPaidInvoiceTask(task) &&
+                    isInRange(toDate(task.deliveryDate), start, end)
+                )
+                .reduce((sum: number, task: any) => sum + Number(task.sellPrice || 0), 0);
+
+            const futureCommesse = forecastTasks.filter((task: any) =>
+                isInRange(toDate(task.deliveryDate), start, end)
+            );
+            const inflowFuture = futureCommesse.reduce(
+                (sum: number, task: any) => sum + Number(task.sellPrice || 0) * 0.62,
+                0,
+            );
+            const outflowLabor = futureCommesse.reduce(
+                (sum: number, task: any) => sum + resolvePlannedTaskHours(task) * HOURLY_COST,
+                0,
+            );
+
+            cumulativeCashFlow += inflowInProgress + inflowFuture - outflowLabor;
+            monthlySeries.push({ label: monthLabel, value: cumulativeCashFlow });
+            monthlyBreakdown.push({
+                month: offset,
+                inflowInProgress,
+                inflowFuture,
+                outflowLabor,
+                value: cumulativeCashFlow,
+            });
+        }
+
+        const horizons: Array<{
+            months: 1 | 3 | 6 | 12;
+            value: number;
+            inflowInProgress: number;
+            inflowFuture: number;
+            outflowLabor: number;
+        }> = ([1, 3, 6, 12] as const).map((months) => {
+            const scope = monthlyBreakdown.filter((entry) => entry.month <= months);
+            return {
+                months,
+                value: scope[scope.length - 1]?.value ?? baseLiquidity,
+                inflowInProgress: scope.reduce((sum, entry) => sum + entry.inflowInProgress, 0),
+                inflowFuture: scope.reduce((sum, entry) => sum + entry.inflowFuture, 0),
+                outflowLabor: scope.reduce((sum, entry) => sum + entry.outflowLabor, 0),
+            };
+        });
+
+        const forecast = {
+            conversion,
+            occupancy: {
+                averageLoad,
+                categories: occupancyCategories,
+            },
+            plannedHours: {
+                totalHours: totalPlannedHours,
+                fte,
+                byDepartment: plannedHoursByDepartment,
+            },
+            cashFlow: {
+                baseLiquidity,
+                horizons,
+                monthlySeries,
+            },
+        };
+
         return {
             activeProjectLocations,
             offers: {
@@ -2384,6 +2782,7 @@ export const fetchDashboardData = cache(
             pipelineData,
             departmentWorkload,
             kanbanStatus,
+            forecast,
         };
     },
 );
@@ -4595,7 +4994,7 @@ export const fetchCollaborators = cache(async (siteId: string) => {
         const roleIdsAlt = Array.from(
             new Set(userRoleLinksAlt?.map((link: any) => link.A) || []),
         );
-        let rolesMapAlt = new Map<
+        const rolesMapAlt = new Map<
             number,
             { id: number; name: string; site_id: string | null }
         >();
@@ -4684,7 +5083,7 @@ export const fetchCollaborators = cache(async (siteId: string) => {
     const roleIds = Array.from(
         new Set(userRoleLinks?.map((link: any) => link.A) || []),
     );
-    let rolesMap = new Map<
+    const rolesMap = new Map<
         number,
         { id: number; name: string; site_id: string | null }
     >();
@@ -4850,7 +5249,7 @@ export const fetchInventoryDashboardData = cache(
         const alerts: InventoryDashboardAlert[] = [];
         let totalInventoryValue = 0;
         let activeItemsCount = 0;
-        let lowStockCount = 0;
+        const lowStockCount = 0;
         const valueByCategoryMap = new Map<
             string,
             { value: number; categoryId?: string }

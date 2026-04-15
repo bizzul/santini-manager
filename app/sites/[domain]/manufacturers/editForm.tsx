@@ -116,7 +116,8 @@ const EditProductForm = ({
       log.debug("Form data being submitted:", d);
       log.debug("Manufacturer ID:", data.id);
 
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       const manufacturer = await editItem(d, data.id);
 
       // Check if there's an error in the response
@@ -152,7 +153,8 @@ const EditProductForm = ({
       }
 
       if (manufacturer && file) {
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         const photoUpload = await uploadPictureHandler(manufacturer.id);
         if (photoUpload == "ok") {
           toast({
@@ -195,7 +197,8 @@ const EditProductForm = ({
   const uploadPictureHandler = async (data: number) => {
     const pictureData = new FormData();
     pictureData.append("image", file);
-    //@ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
     pictureData.append("id", data);
     try {
       const response = await fetch("/api/local-upload/manufacturer", {

@@ -511,7 +511,7 @@ export default function SiteSupportAndSubscriptionModal({
                     />
                   </div>
                   <div>
-                    <Label className="text-white/80">Parola d'ordine personale</Label>
+                    <Label className="text-white/80">Parola d&apos;ordine personale</Label>
                     <Input
                       value={verifyPassphrase}
                       onChange={(event) => setVerifyPassphrase(event.target.value)}

@@ -41,7 +41,7 @@ const ItemCard = ({
       className={`hover:bg-tremor-background-emphasis pointer-events-auto select-none transition-all duration-500 w-64 h-32 ${cardClass}`}
     >
       <CardHeader>
-        {/* @ts-ignore */}
+        
         <CardTitle>{item.name}</CardTitle>
         <CardDescription>{!isComplete && "INSERIRE I DATI"}</CardDescription>
       </CardHeader>
@@ -54,7 +54,7 @@ function SinglePageComponent({
   data,
   user,
 }: {
-  data: PackingControl;
+  data: any;
   user: any;
 }) {
   const [itemValues, setItemValues] = useState<Map<number, any>>(new Map());
@@ -66,7 +66,8 @@ function SinglePageComponent({
   const { toast } = useToast();
   useEffect(() => {
     const initialValues = new Map();
-    //@ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
     data.items.forEach((item: PackingItem) => {
       // Assuming item has properties 'numero' and 'pacchi' for existing data
       initialValues.set(item.id, {
@@ -76,7 +77,8 @@ function SinglePageComponent({
       });
     });
     setItemValues(initialValues);
-    //@ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
   }, [data.items]);
 
   function handleClick(item: PackingItem) {
@@ -151,20 +153,20 @@ function SinglePageComponent({
     <div className="flex justify-center w-auto h-auto flex-col items-center  ">
       <div className="py-4 md:w-1/2 w-full md:px-0 px-10">
         <p className="mt-4">
-          {/* @ts-ignore */}
-          <span className="text-2xl"> {data?.task.unique_code} </span> -{" "}
+          
+          <span className="text-2xl"> {(data as any)?.task?.unique_code} </span> -{" "}
           <span className="text-md font-light">
-            {/* @ts-ignore */}
-            {data?.task.sellProduct?.name}{" "}
+            
+            {(data as any)?.task?.sellProduct?.name}{" "}
           </span>
-          -{/* @ts-ignore */}
-          {data?.task.client?.businessName}
+          -
+          {(data as any)?.task?.client?.businessName}
         </p>
         <p>Aggiungi i valori dei pacchi</p>
       </div>
 
       <div className="flex flex-wrap gap-4 justify-center">
-        {/* @ts-ignore */}
+        
         {data!.items.map((item: PackingItem) => (
           <ItemCard
             key={item.id}

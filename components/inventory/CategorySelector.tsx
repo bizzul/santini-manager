@@ -181,7 +181,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
           <DialogHeader>
             <DialogTitle>Nuova categoria inventario</DialogTitle>
             <DialogDescription>
-              Crea una nuova categoria per i prodotti dell'inventario
+              Crea una nuova categoria per i prodotti dell&apos;inventario
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>

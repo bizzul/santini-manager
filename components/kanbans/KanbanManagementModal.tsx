@@ -620,7 +620,7 @@ export default function KanbanManagementModal({
               </div>
               {isWorkKanban && (
                 <p className="text-xs text-muted-foreground pl-6">
-                  La colonna "Produzione" indirizzerà le task verso le kanban di
+                  La colonna &quot;Produzione&quot; indirizzerà le task verso le kanban di
                   produzione in base alla categoria prodotto.
                 </p>
               )}
@@ -942,7 +942,7 @@ export default function KanbanManagementModal({
             <AlertDialogTitle>⚠️ Conferma Eliminazione Kanban</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                Stai per eliminare la kanban <strong>"{kanban?.title}"</strong>.
+                Stai per eliminare la kanban <strong>&quot;{kanban?.title}&quot;</strong>.
               </p>
 
               {hasTasks && (

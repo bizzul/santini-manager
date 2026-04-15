@@ -5,16 +5,13 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CreateProductForm from "./createProductForm";
 
-type Props = {};
-
-function DialogCreate({}: Props) {
+function DialogCreate() {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>

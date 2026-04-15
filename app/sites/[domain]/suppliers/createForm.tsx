@@ -99,7 +99,8 @@ const CreateProductForm = ({
       }
 
       if (supplier && file) {
-        //@ts-ignore
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: legacy typing constraint
         const photoUpload = await uploadPictureHandler(supplier.id);
         if (photoUpload == "ok") {
           toast({
@@ -142,7 +143,8 @@ const CreateProductForm = ({
   const uploadPictureHandler = async (data: number) => {
     const pictureData = new FormData();
     pictureData.append("image", file);
-    //@ts-ignore
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
     pictureData.append("id", data);
     try {
       const response = await fetch("/api/local-upload/supplier", {

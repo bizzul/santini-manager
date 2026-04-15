@@ -106,7 +106,8 @@ export const List: FC<Props> = ({
               };
               const dateString = createDate.toLocaleDateString(
                 "de-CH",
-                //@ts-ignore
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore: legacy typing constraint
                 options
               );
 
@@ -125,16 +126,16 @@ export const List: FC<Props> = ({
               const end = new Date(i.endTime);
 
               // Extract the hours and minutes
-              let startHour = start.getUTCHours();
-              let startMinute = start.getUTCMinutes();
-              let endHour = end.getUTCHours();
-              let endMinute = end.getUTCMinutes();
+              const startHour = start.getUTCHours();
+              const startMinute = start.getUTCMinutes();
+              const endHour = end.getUTCHours();
+              const endMinute = end.getUTCMinutes();
 
               // Format the hours and minutes as strings
-              let startString = `${startHour
+              const startString = `${startHour
                 .toString()
                 .padStart(2, "0")}:${startMinute.toString().padStart(2, "0")}`;
-              let endString = `${endHour
+              const endString = `${endHour
                 .toString()
                 .padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
 

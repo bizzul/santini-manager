@@ -139,7 +139,7 @@ export default async function UserViewPage({
   const siteIds = assignedRoles
     .map((r) => r.site_id)
     .filter(Boolean) as string[];
-  let sitesMap = new Map<string, string>();
+  const sitesMap = new Map<string, string>();
   if (siteIds.length > 0) {
     const { data: sitesData } = await supabase
       .from("sites")

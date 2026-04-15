@@ -91,7 +91,8 @@ export const columns: ColumnDef<any>[] = [
       <DataTableColumnHeader column={column} title="Posizioni" />
     ),
     cell: ({ row }) => {
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       const { qualityControls } = row.original;
       return (
         <div suppressHydrationWarning>
@@ -111,7 +112,8 @@ export const columns: ColumnDef<any>[] = [
       <DataTableColumnHeader column={column} title="Utente" />
     ),
     cell: ({ row }) => {
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       const { userDetails } = row.original;
       return (
         <div suppressHydrationWarning>

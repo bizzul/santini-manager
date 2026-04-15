@@ -157,7 +157,8 @@ async function fetchUserContext(): Promise<UserContext | null> {
                 .eq("user_id", userToUse.id),
         ]);
 
-        let { data: userData, error: userError } = userResult;
+        let { data: userData } = userResult;
+        const { error: userError } = userResult;
         const { data: userOrgData, error: userOrgError } = orgResult;
 
         // If assistance_level column doesn't exist yet, retry without it

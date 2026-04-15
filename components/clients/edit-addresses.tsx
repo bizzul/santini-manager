@@ -3,7 +3,7 @@ import { ClientAddressType } from "./client-type-definitions";
 import { ClientAddressesEditForm } from "./edit-addresses-form";
 type Props = {
   type: ClientAddressType;
-  showSameAsMainOption?: Boolean;
+  showSameAsMainOption?: boolean;
   loading: boolean;
   preloadedValues: any;
 };

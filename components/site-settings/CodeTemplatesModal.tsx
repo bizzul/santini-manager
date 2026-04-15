@@ -470,7 +470,7 @@ export default function CodeTemplatesModal({
                   </CardTitle>
                   <CardDescription className="text-white/60">
                     Configura quale kanban di produzione usare per ogni
-                    categoria di prodotto. Quando una task passa in "Produzione"
+                    categoria di prodotto. Quando una task passa in &quot;Produzione&quot;
                     dalla kanban Avor, verrà indirizzata alla kanban corretta.
                   </CardDescription>
                 </CardHeader>
@@ -487,7 +487,7 @@ export default function CodeTemplatesModal({
                     <div className="text-center py-8 text-white/50">
                       <p>Nessuna kanban di produzione trovata.</p>
                       <p className="text-sm mt-2">
-                        Crea una kanban e abilitala come "Kanban Produzione" per
+                        Crea una kanban e abilitala come &quot;Kanban Produzione&quot; per
                         configurare il routing.
                       </p>
                     </div>
@@ -547,7 +547,7 @@ export default function CodeTemplatesModal({
                     <ul className="space-y-2 text-sm text-white/70">
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">1.</span>
-                        Task in kanban "Avor" va in colonna "Produzione"
+                        Task in kanban &quot;Avor&quot; va in colonna &quot;Produzione&quot;
                       </li>
                       <li className="flex items-start gap-2">
                         <span className="text-blue-400">2.</span>
@@ -627,11 +627,11 @@ export default function CodeTemplatesModal({
                     <ul className="space-y-2 text-sm text-white/70">
                       <li className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-green-500" />
-                        Offerte "Vinte" → diventano verdi e piccole
+                        Offerte &quot;Vinte&quot; → diventano verdi e piccole
                       </li>
                       <li className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-red-500" />
-                        Offerte "Perse" → diventano rosse e piccole
+                        Offerte &quot;Perse&quot; → diventano rosse e piccole
                       </li>
                       <li className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-gray-500" />

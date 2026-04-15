@@ -94,11 +94,13 @@ const CreateProductForm = ({
     try {
       const dataObject = { data: d, fileIds: fileIds };
       const res = await createItem(dataObject, domain);
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       if (res?.error === true) {
         toast({
           variant: "destructive",
-          //@ts-ignore
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore: legacy typing constraint
           description: `Errore! ${res?.message || "Creazione fallita"}`,
         });
         return;

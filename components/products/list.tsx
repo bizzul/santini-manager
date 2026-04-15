@@ -119,7 +119,8 @@ export const List: FC<Props> = ({
                   <td className="border p-2 h-14">
                     {(() => {
                       const mostRecentItem = [...i.Action].sort((a, b) => {
-                        // @ts-ignore
+                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                        // @ts-ignore: legacy typing constraint
                         return new Date(b.createdAt) - new Date(a.createdAt);
                       })[0];
                       // // console.log(mostRecentItem);

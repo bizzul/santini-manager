@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     if (findError) throw findError;
 
     if (task) {
-      let updateData: any = { ferramenta: ferramentaStatus };
+      const updateData: any = { ferramenta: ferramentaStatus };
 
       if (ferramentaStatus === true && task.ferramenta === false) {
         logger.debug("adding ferramenta");

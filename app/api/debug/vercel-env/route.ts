@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
             process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY?.length || 0;
 
         // Test Supabase connection with service client
-        let supabaseTest = {
+        const supabaseTest = {
             success: false,
             error: null as string | null,
             sitesCount: 0,

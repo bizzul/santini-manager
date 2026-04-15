@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const generator = require("generate-password");
 
 type Props = {
@@ -184,8 +184,10 @@ export const CreateModal: FC<Props> = ({
                       disabled={loading || isSubmitting}
                       {...register("password", { required: true })}
                     />
-                    {/*@ts-ignore*/}
-                    {errors.password && <span>{errors.password.message}</span>}
+                    
+                    {errors.password?.message && (
+                      <span>{String(errors.password.message)}</span>
+                    )}
 
                     <PasswordStrengthBar
                       password={watchPassword}

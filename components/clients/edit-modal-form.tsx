@@ -68,8 +68,9 @@ export const EditModalForm: FC<Props> = ({
   const watchClientType = watch("clientType", preloadedValues.clientType); // you can supply default value as second argument
 
   useEffect(() => {
-    let defaultValues = {};
-    //@ts-ignore
+    const defaultValues = {};
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore: legacy typing constraint
     defaultValues.clientType = preloadedValues.clientType;
     reset({ ...defaultValues });
   }, []);

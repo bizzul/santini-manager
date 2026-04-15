@@ -387,7 +387,7 @@ function DialogImportCSV() {
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
             <br />• <strong>Per aggiornare:</strong> esporta i fornitori,
-            modifica il CSV e reimporta (l'ID identifica i record)
+            modifica il CSV e reimporta (l&apos;ID identifica i record)
             <br />• Solo il <strong>NOME</strong> è obbligatorio
             <br />• La CATEGORIA viene creata automaticamente se non esiste
             <br />• ABBREVIATO è utile per codici brevi (es. FORN-ES)

@@ -84,17 +84,23 @@ export async function GET(request: Request) {
             return null; // Skip archived tasks
           }
           return {
-            //@ts-ignore
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             ...historicalVersion,
-            //@ts-ignore
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             column_id: historicalVersion.kanbanColumnId,
-            //@ts-ignore
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             kanban_id: historicalVersion.kanbanId,
-            //@ts-ignore
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             column_position: historicalVersion.column_position,
-            //@ts-ignore
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             kanban_columns: historicalVersion.column,
-            //@ts-ignore
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             kanbans: historicalVersion.kanban,
             isPreview: true,
           };

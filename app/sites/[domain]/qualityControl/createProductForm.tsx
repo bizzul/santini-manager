@@ -35,7 +35,8 @@ const CreateProductForm = ({ handleClose }: Props) => {
   const { isSubmitting } = form.formState;
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       await createSellProductAction(d);
       handleClose(false);
       toast({

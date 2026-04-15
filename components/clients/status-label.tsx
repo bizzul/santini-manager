@@ -9,7 +9,7 @@ type Props = {
 
 export const ImportStatusLabel : FC<Props> = ({value,size="normal"}) => {
     let classes = `rounded-sm uppercase tracking-wide font-bold ${(size==='small') ?  `text-sm p-1` : `p-2 text-sm`}` 
-    let label = value
+    const label = value
     let icon = faCircle
     switch(value){
         case 'CREATED':

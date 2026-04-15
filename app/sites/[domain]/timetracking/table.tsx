@@ -192,13 +192,12 @@ export function DataTable<TData, TValue>({
 
   const uniqueUsers = Array.from(
     new Set(
-      data.map((item) =>
-        //@ts-ignore
-        item.user
-          ? //@ts-ignore
-            `${item.user.family_name} ${item.user.given_name}`
-          : "Unknown User"
-      )
+      data.map((item) => {
+        const user = (item as { user?: { family_name?: string; given_name?: string } }).user;
+        return user
+          ? `${user.family_name ?? ""} ${user.given_name ?? ""}`.trim() || "Unknown User"
+          : "Unknown User";
+      })
     )
   );
 

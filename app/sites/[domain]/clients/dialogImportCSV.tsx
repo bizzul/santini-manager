@@ -438,7 +438,7 @@ function DialogImportCSV() {
           <p className="text-xs text-muted-foreground">
             <span className="font-medium">Note:</span>
             <br />• <strong>Per aggiornare:</strong> esporta i clienti, modifica
-            il CSV e reimporta (l'ID identifica i record)
+            il CSV e reimporta (l&apos;ID identifica i record)
             <br />• TIPO deve essere BUSINESS (azienda) o INDIVIDUAL (privato)
             <br />• Per BUSINESS è richiesta RAGIONE_SOCIALE
             <br />• Per INDIVIDUAL sono richiesti NOME e COGNOME

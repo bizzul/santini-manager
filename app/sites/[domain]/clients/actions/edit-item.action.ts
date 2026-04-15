@@ -69,7 +69,8 @@ export async function editItem(props: Client, id: number, domain: string) {
             ? result.data?.businessName
             : "",
           individualFirstName: result.data?.individualFirstName,
-          //@ts-ignore
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore: legacy typing constraint
           clientType: result.data.clientType,
           individualLastName: result.data?.individualLastName,
           address: result.data?.address,

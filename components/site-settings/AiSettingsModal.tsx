@@ -366,7 +366,7 @@ export default function AiSettingsModal({
                             <Alert>
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertDescription>
-                                    Per utilizzare le funzionalità AI (come l'input vocale),
+                                    Per utilizzare le funzionalità AI (come l&apos;input vocale),
                                     è necessario configurare una API key.
                                 </AlertDescription>
                             </Alert>

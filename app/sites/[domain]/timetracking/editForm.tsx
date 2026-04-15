@@ -240,12 +240,14 @@ const EditForm = ({
 
   const onSubmit: SubmitHandler<EditFormValues> = async (d) => {
     try {
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       const timetracking = await editItem(d, data.id, domain);
       if (timetracking && timetracking.id) {
         handleClose(false);
         toast({
-          //@ts-ignore
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore: legacy typing constraint
           description: `Elemento ${timetracking.id} aggiornato correttamente!`,
         });
         form.reset();

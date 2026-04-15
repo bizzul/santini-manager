@@ -137,7 +137,7 @@ function LoginContent() {
             {deactivatedMessage && (
               <div className="text-white text-sm text-center bg-amber-500/20 border border-amber-400/50 rounded-lg p-3 backdrop-blur-sm flex items-center gap-2 justify-center">
                 <UserX className="w-4 h-4" />
-                Il tuo account è stato disattivato. Contatta l'amministratore.
+                Il tuo account è stato disattivato. Contatta l&apos;amministratore.
               </div>
             )}
 

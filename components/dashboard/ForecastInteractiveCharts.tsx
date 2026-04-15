@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { ApexOptions } from "apexcharts";
-import { BarChart3, BrainCircuit, Link2, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Clock3, Factory, TrendingUp, Wallet } from "lucide-react";
 import { DashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -14,428 +14,420 @@ interface ForecastInteractiveChartsProps {
   data: DashboardStats;
 }
 
-type ForecastIntegration = {
-  name: string;
-  type: "Dati" | "Automazione" | "Controllo" | "Human-in-the-loop";
-  impact: number;
-  note: string;
-};
+type ConversionPeriod = "month" | "q1" | "q2" | "q3" | "q4";
+type CashFlowPeriod = 1 | 3 | 6 | 12;
 
-type ForecastFunction = {
-  id: string;
-  label: string;
-  source: "pipeline" | "department";
-  pointLabel: string;
-  pointValue: number;
-  accuracy: number;
-  integrations: ForecastIntegration[];
-  usesVirtualAgents: boolean;
-  usesHumanResources: boolean;
-};
-
-const DEPARTMENT_COLORS: { [key: string]: string } = {
-  Vendita: "#3b82f6",
-  AVOR: "#f97316",
-  Produzione: "#22c55e",
-  "Prod.": "#22c55e",
-  Install: "#8b5cf6",
-  "Install.": "#8b5cf6",
-  Service: "#ec4899",
-  Altro: "#6b7280",
-};
+function formatCurrency(value: number): string {
+  if (Math.abs(value) >= 1000000) {
+    return `CHF ${(value / 1000000).toFixed(1)}M`;
+  }
+  if (Math.abs(value) >= 1000) {
+    return `CHF ${(value / 1000).toFixed(0)}k`;
+  }
+  return `CHF ${value.toFixed(0)}`;
+}
 
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
-function buildForecastFunctions(data: DashboardStats): ForecastFunction[] {
-  const pipelineFunctions = data.pipelineData.map((entry, index) => {
-    const normalizedValue = data.pipelineData.length
-      ? entry.value / Math.max(...data.pipelineData.map((item) => item.value || 1))
-      : 0;
-
-    const accuracy = clamp(74 + normalizedValue * 21 + (index % 3), 60, 98);
-    const usesVirtualAgents = true;
-    const usesHumanResources = index % 2 === 0;
-
-    return {
-      id: `pipeline-${index}`,
-      label: `Forecast Pipeline ${entry.month}`,
-      source: "pipeline" as const,
-      pointLabel: entry.month,
-      pointValue: entry.value,
-      accuracy: Number(accuracy.toFixed(1)),
-      usesVirtualAgents,
-      usesHumanResources,
-      integrations: [
-        {
-          name: "CRM commerciale",
-          type: "Dati" as const,
-          impact: 30,
-          note: "Aggiorna lo storico offerte e la qualità del trend.",
-        },
-        {
-          name: "ERP ordini",
-          type: "Automazione" as const,
-          impact: 25,
-          note: "Allinea priorita ordini e disponibilita materiali.",
-        },
-        {
-          name: "Workflow agent virtuale",
-          type: "Controllo" as const,
-          impact: 20,
-          note: "Valida anomalie e outlier di previsione.",
-        },
-        {
-          name: "Revisione PM",
-          type: "Human-in-the-loop" as const,
-          impact: 25,
-          note: "Conferma eccezioni e override previsivi.",
-        },
-      ],
-    };
-  });
-
-  const maxDepartmentCount = Math.max(
-    ...data.departmentWorkload.map((d) => d.count || 1),
-    1
-  );
-
-  const departmentFunctions = data.departmentWorkload.map((entry, index) => {
-    const normalizedCount = entry.count / maxDepartmentCount;
-    const accuracy = clamp(70 + normalizedCount * 24 + ((index + 1) % 4), 58, 97);
-    const usesVirtualAgents = normalizedCount >= 0.35;
-    const usesHumanResources = true;
-
-    return {
-      id: `department-${index}`,
-      label: `Forecast Capacita ${entry.department}`,
-      source: "department" as const,
-      pointLabel: entry.department,
-      pointValue: entry.count,
-      accuracy: Number(accuracy.toFixed(1)),
-      usesVirtualAgents,
-      usesHumanResources,
-      integrations: [
-        {
-          name: "Time Tracking",
-          type: "Dati" as const,
-          impact: 28,
-          note: "Contribuisce ai tempi medi e lead time effettivo.",
-        },
-        {
-          name: "Kanban realtime",
-          type: "Automazione" as const,
-          impact: 24,
-          note: "Aggiorna il carico commesse in tempo quasi reale.",
-        },
-        {
-          name: "Agent routing",
-          type: "Controllo" as const,
-          impact: 22,
-          note: "Ribilancia il carico su reparti e finestre operative.",
-        },
-        {
-          name: "Conferma responsabile reparto",
-          type: "Human-in-the-loop" as const,
-          impact: 26,
-          note: "Valida colli di bottiglia e disponibilita risorse.",
-        },
-      ],
-    };
-  });
-
-  return [...pipelineFunctions, ...departmentFunctions];
-}
-
-function NeuralDna3DCard({ selected }: { selected: ForecastFunction }) {
-  const helixNodes = Array.from({ length: 10 }, (_, idx) => {
-    const offset = (idx % 2) * 32;
-    return {
-      id: idx,
-      top: idx * 22 + 8,
-      leftA: 18 + offset,
-      leftB: 130 - offset,
-    };
-  });
-
-  return (
-    <div className="rounded-2xl border border-cyan-400/30 bg-slate-950/70 p-4 shadow-[0_0_35px_rgba(56,189,248,0.2)]">
-      <div className="mb-3 flex items-center gap-2 text-cyan-300">
-        <BrainCircuit className="h-4 w-4" />
-        <p className="text-sm font-semibold">Rete neurale 3D / DNA</p>
-      </div>
-      <div className="[perspective:1400px]">
-        <div className="relative h-[240px] overflow-hidden rounded-xl border border-cyan-400/20 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 [transform:rotateX(16deg)_rotateY(-10deg)]">
-          {helixNodes.map((node) => (
-            <div key={`left-${node.id}`}>
-              <span
-                className="absolute h-3 w-3 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)]"
-                style={{ top: `${node.top}px`, left: `${node.leftA}px` }}
-              />
-              <span
-                className="absolute h-3 w-3 rounded-full bg-fuchsia-400 shadow-[0_0_12px_rgba(232,121,249,0.9)]"
-                style={{ top: `${node.top}px`, left: `${node.leftB}px` }}
-              />
-              <span
-                className="absolute h-[2px] bg-gradient-to-r from-cyan-400/80 to-fuchsia-400/80"
-                style={{
-                  top: `${node.top + 5}px`,
-                  left: `${Math.min(node.leftA, node.leftB) + 5}px`,
-                  width: `${Math.abs(node.leftA - node.leftB) - 2}px`,
-                }}
-              />
-            </div>
-          ))}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.2),transparent_60%)]" />
-        </div>
-      </div>
-      <p className="mt-3 text-xs text-slate-300">
-        Funzione ibrida rilevata: <span className="font-semibold">{selected.label}</span>
-      </p>
-    </div>
-  );
-}
-
 export default function ForecastInteractiveCharts({
   data,
 }: ForecastInteractiveChartsProps) {
-  const forecastFunctions = useMemo(() => buildForecastFunctions(data), [data]);
-  const [selectedFunctionId, setSelectedFunctionId] = useState<string | null>(
-    null
+  const conversionData = useMemo(
+    () => data.forecast?.conversion ?? [],
+    [data.forecast?.conversion]
   );
+  const occupancyCategories = useMemo(
+    () => data.forecast?.occupancy?.categories ?? [],
+    [data.forecast?.occupancy?.categories]
+  );
+  const plannedHoursData = data.forecast?.plannedHours;
+  const cashFlowData = data.forecast?.cashFlow;
 
-  const selectedFunction = useMemo(
+  const availableYears = useMemo(() => {
+    const years = Array.from(new Set(conversionData.map((entry) => entry.year))).sort();
+    if (years.length > 0) return years;
+    const currentYear = new Date().getFullYear();
+    return [currentYear - 2, currentYear - 1, currentYear];
+  }, [conversionData]);
+
+  const [conversionPeriod, setConversionPeriod] = useState<ConversionPeriod>("month");
+  const [conversionYear, setConversionYear] = useState<number>(
+    availableYears[availableYears.length - 1] || new Date().getFullYear()
+  );
+  const [cashFlowPeriod, setCashFlowPeriod] = useState<CashFlowPeriod>(3);
+
+  const selectedConversion = useMemo(
     () =>
-      forecastFunctions.find((item) => item.id === selectedFunctionId) ||
-      forecastFunctions[0],
-    [forecastFunctions, selectedFunctionId]
+      conversionData.find(
+        (entry) => entry.period === conversionPeriod && entry.year === conversionYear
+      ) || {
+        year: conversionYear,
+        period: conversionPeriod,
+        sentValue: 0,
+        acquiredValue: 0,
+        sentCount: 0,
+        acquiredCount: 0,
+        rate: 0,
+      },
+    [conversionData, conversionPeriod, conversionYear]
   );
 
-  const pipelineFunctions = useMemo(
-    () => forecastFunctions.filter((item) => item.source === "pipeline"),
-    [forecastFunctions]
-  );
+  const occupancySeries = [
+    {
+      name: "Reparti",
+      data: occupancyCategories.map((category) =>
+        Number(clamp(category.departmentLoad, 0, 100).toFixed(1))
+      ),
+    },
+    {
+      name: "Macchinari",
+      data: occupancyCategories.map((category) =>
+        Number(clamp(category.machineLoad, 0, 100).toFixed(1))
+      ),
+    },
+  ];
 
-  const departmentFunctions = useMemo(
-    () => forecastFunctions.filter((item) => item.source === "department"),
-    [forecastFunctions]
-  );
-
-  const pipelineChartOptions: ApexOptions = {
+  const occupancyChartOptions: ApexOptions = {
     chart: {
-      type: "area",
-      height: 300,
+      type: "bar",
+      stacked: true,
       toolbar: { show: false },
       background: "transparent",
-      events: {
-        dataPointSelection: (_, __, config) => {
-          const target = pipelineFunctions[config.dataPointIndex];
-          if (target) {
-            setSelectedFunctionId(target.id);
-          }
+    },
+    plotOptions: {
+      bar: {
+        borderRadius: 6,
+        columnWidth: "52%",
+      },
+    },
+    colors: ["#3b82f6", "#22d3ee"],
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: occupancyCategories.map((item) => item.name),
+      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
+    },
+    yaxis: {
+      max: 100,
+      title: { text: "% Carico", style: { color: "#94a3b8" } },
+      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
+    },
+    grid: { borderColor: "#3f3f46", strokeDashArray: 3 },
+    legend: { labels: { colors: "#cbd5e1" } },
+    tooltip: {
+      theme: "dark",
+      y: {
+        formatter: (value, context) => {
+          const index = context.dataPointIndex;
+          const category = occupancyCategories[index];
+          if (!category) return `${value.toFixed(1)}%`;
+          return `${value.toFixed(1)}% (${Math.round(category.workHours)} h)`;
         },
       },
+    },
+  };
+
+  const workHoursSeries = [
+    {
+      name: "Ore pianificate",
+      data: (plannedHoursData?.byDepartment || []).map((item) => Math.round(item.hours)),
+    },
+  ];
+
+  const workHoursChartOptions: ApexOptions = {
+    chart: {
+      type: "area",
+      toolbar: { show: false },
+      background: "transparent",
+      sparkline: { enabled: true },
     },
     stroke: { curve: "smooth", width: 2 },
     fill: {
       type: "gradient",
-      gradient: { opacityFrom: 0.72, opacityTo: 0.2, stops: [0, 100] },
+      gradient: { opacityFrom: 0.45, opacityTo: 0.15, stops: [0, 100] },
     },
-    colors: ["#3b82f6"],
+    colors: ["#a78bfa"],
+    dataLabels: { enabled: false },
     xaxis: {
-      categories: pipelineFunctions.map((item) => item.pointLabel),
-      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
+      categories: (plannedHoursData?.byDepartment || []).map((item) => item.department),
     },
-    yaxis: {
-      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
-    },
-    grid: { borderColor: "#3f3f46", strokeDashArray: 3 },
-    tooltip: {
-      theme: "dark",
-      custom: ({ dataPointIndex }) => {
-        const current = pipelineFunctions[dataPointIndex];
-        if (!current) return "";
-        return `<div style="padding:8px 10px">
-          <strong>${current.label}</strong><br/>
-          Accuratezza: ${current.accuracy}%
-        </div>`;
-      },
-    },
+    tooltip: { theme: "dark", y: { formatter: (value) => `${value} h` } },
   };
 
-  const departmentChartOptions: ApexOptions = {
+  const selectedHorizon = useMemo(
+    () =>
+      cashFlowData?.horizons?.find((entry) => entry.months === cashFlowPeriod) || {
+        months: cashFlowPeriod,
+        value: 0,
+        inflowInProgress: 0,
+        inflowFuture: 0,
+        outflowLabor: 0,
+      },
+    [cashFlowData, cashFlowPeriod]
+  );
+
+  const cashFlowTrendSeries = [
+    {
+      name: "Cash flow stimato",
+      data: (cashFlowData?.monthlySeries || []).map((item) => Number(item.value.toFixed(0))),
+    },
+  ];
+
+  const cashFlowTrendOptions: ApexOptions = {
     chart: {
-      type: "bar",
-      height: 300,
+      type: "line",
       toolbar: { show: false },
       background: "transparent",
-      events: {
-        dataPointSelection: (_, __, config) => {
-          const target = departmentFunctions[config.dataPointIndex];
-          if (target) {
-            setSelectedFunctionId(target.id);
-          }
-        },
-      },
     },
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 8,
-        borderRadiusApplication: "end",
-      },
-    },
-    colors: departmentFunctions.map(
-      (item) => DEPARTMENT_COLORS[item.pointLabel] || "#6b7280"
-    ),
+    stroke: { curve: "smooth", width: 2 },
+    colors: [selectedHorizon.value >= 0 ? "#10b981" : "#ef4444"],
     xaxis: {
-      categories: departmentFunctions.map((item) => item.pointLabel),
-      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
+      categories: (cashFlowData?.monthlySeries || []).map((item) => item.label),
+      labels: { style: { colors: "#a1a1aa", fontSize: "11px" } },
     },
-    yaxis: { labels: { style: { colors: "#a1a1aa", fontSize: "12px" } } },
+    yaxis: {
+      labels: {
+        formatter: (value) => `CHF ${(value / 1000).toFixed(0)}k`,
+        style: { colors: "#a1a1aa", fontSize: "11px" },
+      },
+    },
     grid: { borderColor: "#3f3f46", strokeDashArray: 3 },
+    dataLabels: { enabled: false },
     tooltip: {
       theme: "dark",
-      custom: ({ dataPointIndex }) => {
-        const current = departmentFunctions[dataPointIndex];
-        if (!current) return "";
-        return `<div style="padding:8px 10px">
-          <strong>${current.label}</strong><br/>
-          Accuratezza: ${current.accuracy}%
-        </div>`;
-      },
+      y: { formatter: (value) => formatCurrency(value) },
     },
   };
-
-  const pipelineSeries = [
-    {
-      name: "Accuratezza Forecast",
-      data: pipelineFunctions.map((item) => item.accuracy),
-    },
-  ];
-
-  const departmentSeries = [
-    {
-      name: "Accuratezza Forecast",
-      data: departmentFunctions.map((item) => item.accuracy),
-    },
-  ];
-
-  const isHybridMode =
-    selectedFunction?.usesVirtualAgents && selectedFunction?.usesHumanResources;
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-100">
-        Clicca su un punto dei grafici Forecast per aprire le integrazioni che
-        influenzano l accuratezza della funzione selezionata.
+        KPI Forecast collegati ai dati reali del database, con calcolo periodale per
+        conversione commerciale e cash flow previsionale.
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="dashboard-panel p-6">
-          <div className="mb-5 flex items-center gap-3">
+          <div className="mb-4 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/20">
               <TrendingUp className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <h3 className="dashboard-panel-title">Forecast Pipeline</h3>
+              <h3 className="dashboard-panel-title">KPI Tasso di conversione</h3>
               <p className="dashboard-panel-subtitle">
-                Accuratezza funzioni previsionali nel tempo
+                Valore offerte inviate / commesse acquisite
               </p>
             </div>
           </div>
+          <h4 className="mb-1 text-[1.85rem] font-bold leading-tight">
+            {selectedConversion.rate.toFixed(1)}%
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(selectedConversion.acquiredValue)} acquisito su{" "}
+            {formatCurrency(selectedConversion.sentValue)} inviato
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {selectedConversion.acquiredCount}/{selectedConversion.sentCount} commesse
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[
+              { id: "month", label: "Mese" },
+              { id: "q1", label: "Q1" },
+              { id: "q2", label: "Q2" },
+              { id: "q3", label: "Q3" },
+              { id: "q4", label: "Q4" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setConversionPeriod(item.id as ConversionPeriod)}
+                className={`rounded-lg border px-2.5 py-1 text-xs transition ${
+                  conversionPeriod === item.id
+                    ? "border-blue-400 bg-blue-500/20 text-blue-200"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-blue-300/40"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {availableYears.map((year) => (
+              <button
+                key={year}
+                type="button"
+                onClick={() => setConversionYear(year)}
+                className={`rounded-lg border px-2.5 py-1 text-xs transition ${
+                  conversionYear === year
+                    ? "border-cyan-400 bg-cyan-500/15 text-cyan-200"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-cyan-300/30"
+                }`}
+              >
+                {year}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="dashboard-panel p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/20">
+              <Factory className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="dashboard-panel-title">Occupazione reparti</h3>
+              <p className="dashboard-panel-subtitle">
+                Carico reparti e macchinari per prodotti/categorie
+              </p>
+            </div>
+          </div>
+          <h4 className="mb-2 text-[1.6rem] font-bold leading-tight">
+            {(data.forecast?.occupancy?.averageLoad || 0).toFixed(0)}%
+          </h4>
+          <p className="mb-2 text-xs text-muted-foreground">
+            Carico medio produttivo sulle commesse acquisite pianificate
+          </p>
           <ReactApexChart
-            options={pipelineChartOptions}
-            series={pipelineSeries}
-            type="area"
-            height={300}
+            options={occupancyChartOptions}
+            series={occupancySeries}
+            type="bar"
+            height={190}
           />
         </div>
 
         <div className="dashboard-panel p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/20">
-              <BarChart3 className="h-5 w-5 text-blue-500" />
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/20">
+              <Clock3 className="h-5 w-5 text-violet-400" />
             </div>
             <div>
-              <h3 className="dashboard-panel-title">Forecast Capacita Reparti</h3>
+              <h3 className="dashboard-panel-title">Ore lavoro pianificate</h3>
               <p className="dashboard-panel-subtitle">
-                Accuratezza forecast per funzioni operative
+                Personale necessario per commesse acquisite future
               </p>
             </div>
           </div>
-          <ReactApexChart
-            options={departmentChartOptions}
-            series={departmentSeries}
-            type="bar"
-            height={300}
-          />
+          <h4 className="mb-1 text-[1.85rem] font-bold leading-tight">
+            {Math.round(plannedHoursData?.totalHours || 0)} h
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            Fabbisogno medio: {(plannedHoursData?.fte || 0).toFixed(1)} FTE
+          </p>
+          <div className="mt-3">
+            <ReactApexChart
+              options={workHoursChartOptions}
+              series={workHoursSeries}
+              type="area"
+              height={92}
+            />
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+            {(plannedHoursData?.byDepartment || []).slice(0, 4).map((item) => (
+              <div
+                key={item.department}
+                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1.5"
+              >
+                <p className="text-muted-foreground">{item.department}</p>
+                <p className="font-medium">{Math.round(item.hours)} h</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="dashboard-panel p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/20">
+              <Wallet className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="dashboard-panel-title">KPI Cash flow stimato</h3>
+              <p className="dashboard-panel-subtitle">
+                In corso, commesse future e liquidita disponibile
+              </p>
+            </div>
+          </div>
+          <h4 className="mb-1 text-[1.8rem] font-bold leading-tight">
+            {formatCurrency(selectedHorizon.value)}
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            Orizzonte a {cashFlowPeriod} {cashFlowPeriod === 1 ? "mese" : "mesi"}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {[1, 3, 6, 12].map((period) => (
+              <button
+                key={period}
+                type="button"
+                onClick={() => setCashFlowPeriod(period as CashFlowPeriod)}
+                className={`rounded-lg border px-2.5 py-1 text-xs transition ${
+                  cashFlowPeriod === period
+                    ? "border-emerald-400 bg-emerald-500/20 text-emerald-100"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:border-emerald-300/30"
+                }`}
+              >
+                +{period}m
+              </button>
+            ))}
+          </div>
+          <div className="mt-3">
+            <ReactApexChart
+              options={cashFlowTrendOptions}
+              series={cashFlowTrendSeries}
+              type="line"
+              height={130}
+            />
+          </div>
         </div>
       </div>
 
-      {selectedFunction && (
-        <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Funzione selezionata
-                </p>
-                <h4 className="text-lg font-semibold">{selectedFunction.label}</h4>
-              </div>
-              <span className="rounded-full bg-blue-500/15 px-3 py-1 text-sm font-semibold text-blue-300">
-                Accuratezza {selectedFunction.accuracy}%
-              </span>
-            </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="dashboard-panel p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-blue-300" />
+            <p className="text-sm font-semibold">Dettaglio occupazione categorie</p>
+          </div>
+          <ReactApexChart
+            options={occupancyChartOptions}
+            series={occupancySeries}
+            type="bar"
+            height={290}
+          />
+        </div>
 
-            <div className="mb-4 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-cyan-400/40 px-2 py-1 text-cyan-300">
-                Agenti virtuali:{" "}
-                {selectedFunction.usesVirtualAgents ? "attivi" : "non attivi"}
-              </span>
-              <span className="rounded-full border border-fuchsia-400/40 px-2 py-1 text-fuchsia-300">
-                Risorse umane:{" "}
-                {selectedFunction.usesHumanResources ? "attive" : "non attive"}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              {selectedFunction.integrations.map((integration) => (
-                <div
-                  key={`${selectedFunction.id}-${integration.name}`}
-                  className="rounded-xl border border-white/10 bg-slate-900/35 p-3"
-                >
-                  <div className="mb-1 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Link2 className="h-4 w-4 text-blue-300" />
-                      <p className="font-medium">{integration.name}</p>
-                    </div>
-                    <span className="text-xs text-blue-300">
-                      Impatto {integration.impact}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{integration.note}</p>
-                </div>
-              ))}
+        <div className="dashboard-panel p-6">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-cyan-200">DNA Loop Centrale</p>
+            <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-200">
+              video loop
+            </span>
+          </div>
+          <div className="mx-auto w-full max-w-[340px]">
+            <div className="aspect-square overflow-hidden rounded-2xl border border-cyan-400/30 bg-slate-950/70 shadow-[0_0_35px_rgba(56,189,248,0.18)]">
+              <video
+                src="/video/dna-loop.mp4"
+                className="h-full w-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="metadata"
+              />
             </div>
           </div>
-
-          {isHybridMode ? (
-            <NeuralDna3DCard selected={selectedFunction} />
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-              <div className="mb-3 flex items-center gap-2">
-                <Users className="h-4 w-4 text-slate-300" />
-                <p className="text-sm font-semibold">Modalita standard</p>
-              </div>
-              <p className="dashboard-panel-subtitle">
-                Il grafico 3D rete neurale / DNA viene mostrato quando una
-                funzione combina agenti virtuali e risorse umane di progetto.
-              </p>
-            </div>
-          )}
         </div>
-      )}
+
+        <div className="dashboard-panel p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-emerald-300" />
+            <p className="text-sm font-semibold">Proiezione cash flow</p>
+          </div>
+          <ReactApexChart
+            options={cashFlowTrendOptions}
+            series={cashFlowTrendSeries}
+            type="line"
+            height={290}
+          />
+        </div>
+      </div>
     </div>
   );
 }

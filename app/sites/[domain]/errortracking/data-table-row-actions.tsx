@@ -53,7 +53,8 @@ export function DataTableRowActions<TData>({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[160px]">
           <DropdownMenuItem
-            //@ts-expect-error
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore: legacy typing constraint
             onClick={() => navigator.clipboard.writeText(data.id.toString())}
           >
             Copia ID

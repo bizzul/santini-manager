@@ -36,7 +36,7 @@ const TaskCard = ({
   quality,
   onClick,
 }: {
-  quality: QualityControl;
+  quality: any;
   onClick: any;
 }) => {
   return (
@@ -46,13 +46,13 @@ const TaskCard = ({
     >
       <CardHeader>
         <CardTitle>
-          {/* @ts-ignore */}
+          
           {quality.task?.unique_code} -{" "}
           <span className="text-sm">POS.{quality.position_nr}</span>
         </CardTitle>
         <CardDescription>
           <span className="text-sm font-light">
-            {/* @ts-ignore */}
+            
             {quality.task?.sellProduct?.name}{" "}
           </span>
         </CardDescription>
@@ -81,7 +81,7 @@ function MobilePage({
 }) {
   const router = useRouter();
 
-  const handleQualityClick = (quality: QualityControl) => {
+  const handleQualityClick = (quality: any) => {
     router.push(`/qualityControl/edit/${quality.id}`);
   };
 

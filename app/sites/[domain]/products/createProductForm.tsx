@@ -151,7 +151,8 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
-      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore: legacy typing constraint
       await createSellProductAction(d, domain, siteId);
       handleClose(false);
       toast({

@@ -1,6 +1,7 @@
 import { FC, useEffect } from "react";
 import { ClientAddressType } from "./client-type-definitions";
-//@ts-ignore
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: legacy typing constraint
 import GoogleAutocomplete from "./google-autocomplete.js";
 import { countries } from "./countries";
 import { jobsType } from "./jobs";
@@ -23,7 +24,7 @@ import Image from "next/image";
 type Props = {
   type: ClientAddressType;
   form: any;
-  showSameAsMainOption?: Boolean;
+  showSameAsMainOption?: boolean;
   isSubmitting: boolean;
   errors: any;
 };

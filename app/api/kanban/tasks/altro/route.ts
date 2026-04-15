@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     if (findError) throw findError;
 
     if (task) {
-      let updateData: any = { altro: altroStatus };
+      const updateData: any = { altro: altroStatus };
 
       if (altroStatus === true && task.altro === false) {
         updateData.percentStatus = (task.percentStatus || 0) + 15;

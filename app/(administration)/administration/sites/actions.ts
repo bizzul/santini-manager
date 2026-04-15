@@ -35,7 +35,7 @@ export async function duplicateSite(siteId: string) {
     }
 
     // Genera subdomain univoco (subdomain-copia, subdomain-copia-2, ...)
-    let baseSubdomain = site.subdomain.replace(/-copia(-\d+)?$/, "");
+    const baseSubdomain = site.subdomain.replace(/-copia(-\d+)?$/, "");
     let newSubdomain = `${baseSubdomain}-copia`;
     let attempts = 0;
     while (attempts < 20) {
