@@ -444,7 +444,7 @@ export function GlobalSupportAssistant() {
             <img
               src="/api/assistant/vera-avatar?variant=chat"
               alt="Vera avatar"
-              className="h-full w-full object-cover"
+              className="h-full w-full scale-150 object-cover object-[center_22%]"
             />
           </span>
           <p className="text-sm font-medium">
@@ -661,7 +661,7 @@ export function GlobalSupportAssistant() {
                       <img
                         src="/api/assistant/vera-avatar?variant=chat"
                         alt="Vera assistant"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full scale-150 object-cover object-[center_22%]"
                       />
                     </span>
                     <p className="text-sm font-semibold text-slate-900">Vera Assistente</p>
@@ -697,7 +697,7 @@ export function GlobalSupportAssistant() {
                           <img
                             src="/api/assistant/vera-avatar?variant=chat"
                             alt="Vera avatar"
-                            className="h-full w-full object-cover"
+                            className="h-full w-full scale-150 object-cover object-[center_22%]"
                           />
                         </span>
                         <div className="rounded-2xl rounded-bl-md bg-white/90 px-3 py-2 shadow-sm">
@@ -717,7 +717,7 @@ export function GlobalSupportAssistant() {
                             <img
                               src="/api/assistant/vera-avatar?variant=chat"
                               alt="Vera avatar"
-                              className="h-full w-full object-cover"
+                              className="h-full w-full scale-150 object-cover object-[center_22%]"
                             />
                           </span>
                           <div className="max-w-[83%] rounded-2xl rounded-bl-md bg-white/90 px-3 py-2 shadow-sm">
@@ -725,7 +725,7 @@ export function GlobalSupportAssistant() {
                               <img
                                 src="/api/assistant/vera-avatar?variant=chat"
                                 alt="Foto di Vera"
-                                className="h-full w-full object-cover"
+                                className="h-full w-full scale-150 object-cover object-[center_22%]"
                               />
                             </span>
                           </div>
@@ -735,7 +735,7 @@ export function GlobalSupportAssistant() {
                             <img
                               src="/api/assistant/vera-avatar?variant=chat"
                               alt="Vera avatar"
-                              className="h-full w-full object-cover"
+                              className="h-full w-full scale-150 object-cover object-[center_22%]"
                             />
                           </span>
                           <p className="max-w-[83%] rounded-2xl rounded-bl-md bg-white/90 px-3 py-2 text-sm shadow-sm">
@@ -805,11 +805,13 @@ export function GlobalSupportAssistant() {
               ) : miniChatStage === "thinking" ? (
                 <div className="space-y-4 rounded-xl border border-violet-300/30 bg-violet-500/10 p-4 text-center">
                   <span className="mx-auto inline-flex h-20 w-20 overflow-hidden rounded-full border border-white/30 shadow-lg animate-pulse">
-                    <img
-                      src="/api/assistant/vera-avatar?variant=chat"
-                      alt="Vera thinking"
-                      className="h-full w-full object-cover animate-[spin_3s_linear_infinite]"
-                    />
+                    <span className="block h-full w-full scale-150">
+                      <img
+                        src="/api/assistant/vera-avatar?variant=chat"
+                        alt="Vera thinking"
+                        className="h-full w-full object-cover object-[center_22%] animate-[spin_3s_linear_infinite]"
+                      />
+                    </span>
                   </span>
                   <p className="text-sm font-semibold">Vera sta pensando...</p>
                   <p className="text-xs text-muted-foreground">

@@ -20,7 +20,7 @@ export function IntegratedAssistantButton() {
         <img
           src="/api/assistant/vera-avatar?variant=launcher"
           alt="Vera assistant avatar"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="h-full w-full scale-150 object-cover object-[center_22%] transition-transform duration-500 group-hover:scale-[1.6]"
         />
       </span>
       <MessageCircleMore className="h-4 w-4 text-violet-100/90 transition-colors duration-300 group-hover:text-violet-50" />
