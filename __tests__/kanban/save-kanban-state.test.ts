@@ -226,7 +226,7 @@ describe('Kanban - saveKanbanState', () => {
     const mockTasks = [mockTaskData({ id: 1 })];
 
     // Mock for current tasks
-    mockSupabase.mockSelect.mockReturnValue({
+    mockSupabase.mockSelect.mockReturnValueOnce({
       data: mockTasks,
       error: null,
     });

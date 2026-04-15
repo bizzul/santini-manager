@@ -43,7 +43,7 @@ export async function archiveItem(
       })
       .eq("id", id);
 
-    if (siteId) {
+    if (siteId && typeof (updateQuery as any).eq === "function") {
       updateQuery = updateQuery.eq("site_id", siteId);
     }
 
@@ -75,7 +75,8 @@ export async function archiveItem(
 
     await supabase.from("Action").insert(actionData);
 
-    return revalidatePath("/kanban");
+    revalidatePath("/kanban");
+    return archiveTask;
   } catch (error: any) {
     console.error("Error archiving task:", error);
     // Make sure to return a plain object

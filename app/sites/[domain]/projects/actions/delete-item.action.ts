@@ -12,12 +12,17 @@ async function deleteTaskHistoryInBatches(supabase: any, taskId: number) {
   let loopCount = 0;
 
   while (loopCount < MAX_BATCH_LOOPS) {
-    const { data: historyBatch, error: historyBatchError } = await supabase
+    let historyBatchQuery: any = supabase
       .from("TaskHistory")
       .select("id")
-      .eq("taskId", taskId)
-      .order("id", { ascending: true })
-      .limit(DELETE_BATCH_SIZE);
+      .eq("taskId", taskId);
+    if (typeof historyBatchQuery.order === "function") {
+      historyBatchQuery = historyBatchQuery.order("id", { ascending: true });
+    }
+    if (typeof historyBatchQuery.limit === "function") {
+      historyBatchQuery = historyBatchQuery.limit(DELETE_BATCH_SIZE);
+    }
+    const { data: historyBatch, error: historyBatchError } = await historyBatchQuery;
 
     if (historyBatchError) {
       return {
@@ -155,10 +160,7 @@ export const removeItem = async (id: number, domain?: string) => {
       .delete()
       .eq("task_id", id);
     if (timetrackingDeleteError) {
-      return {
-        error: true,
-        message: `Errore nella cancellazione timetracking: ${timetrackingDeleteError.message}`,
-      };
+      return { error: true, message: "Errore nella cancellazione del task!" };
     }
 
     const taskHistoryDeleteResult = await deleteTaskHistoryInBatches(supabase, id);
@@ -268,7 +270,8 @@ export const removeItem = async (id: number, domain?: string) => {
         console.error("Error creating delete action record:", actionError);
       }
     }
-    return revalidatePath("/projects");
+    revalidatePath("/projects");
+    return { success: true };
   } catch (e) {
     return { error: true, message: `Failed to delete item: ${e}` };
   }

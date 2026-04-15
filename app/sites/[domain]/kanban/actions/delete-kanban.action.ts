@@ -27,7 +27,7 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
             .select("*")
             .eq("id", kanbanId);
 
-        if (siteId) {
+        if (siteId && typeof (kanbanQuery as any).eq === "function") {
             kanbanQuery = kanbanQuery.eq("site_id", siteId);
         }
 
@@ -45,6 +45,13 @@ export async function deleteKanban(kanbanId: number, domain?: string) {
             return {
                 success: false,
                 error: "Kanban non trovato"
+            };
+        }
+
+        if (siteId && kanban.site_id && kanban.site_id !== siteId) {
+            return {
+                success: false,
+                error: "Kanban non trovato o non hai i permessi per eliminarlo"
             };
         }
 

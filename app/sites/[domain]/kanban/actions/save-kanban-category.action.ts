@@ -42,14 +42,14 @@ export async function saveKanbanCategory(
     }
 
     // Check if identifier already exists for this site (excluding current category if updating)
-    const identifierCheck = supabase
+    let identifierCheck = supabase
       .from("KanbanCategory")
       .select("id")
       .eq("site_id", siteId)
       .eq("identifier", category.identifier);
 
     if (category.id) {
-      identifierCheck.neq("id", category.id);
+      identifierCheck = identifierCheck.neq("id", category.id);
     }
 
     const { data: existing } = await identifierCheck.single();
@@ -69,14 +69,14 @@ export async function saveKanbanCategory(
 
     // Check if internal_base_code is unique for this site (if provided)
     if (category.internal_base_code) {
-      const baseCodeQuery = supabase
+      let baseCodeQuery = supabase
         .from("KanbanCategory")
         .select("id")
         .eq("site_id", siteId)
         .eq("internal_base_code", category.internal_base_code);
 
       if (category.id) {
-        baseCodeQuery.neq("id", category.id);
+        baseCodeQuery = baseCodeQuery.neq("id", category.id);
       }
 
       const { data: existingBaseCode } = await baseCodeQuery.single();

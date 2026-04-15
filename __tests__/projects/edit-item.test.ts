@@ -216,6 +216,16 @@ describe('Projects - editItem', () => {
       data: formData,
     });
 
+    // Mock for existing task check
+    mockSupabase.mockSelect.mockReturnValueOnce({
+      eq: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({ 
+          data: { site_id: 'test-site-id' }, 
+          error: null 
+        }),
+      }),
+    });
+
     // Mock for first column fetch
     mockSupabase.mockSelect.mockReturnValueOnce({
       eq: jest.fn().mockReturnValue({
@@ -223,16 +233,6 @@ describe('Projects - editItem', () => {
           limit: jest.fn().mockReturnValue({
             single: jest.fn().mockResolvedValue({ data: mockColumn, error: null }),
           }),
-        }),
-      }),
-    });
-
-    // Mock for existing task check
-    mockSupabase.mockSelect.mockReturnValueOnce({
-      eq: jest.fn().mockReturnValue({
-        single: jest.fn().mockResolvedValue({ 
-          data: { site_id: 'test-site-id' }, 
-          error: null 
         }),
       }),
     });

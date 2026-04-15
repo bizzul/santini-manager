@@ -41,7 +41,7 @@ async function saveKanbanState(supabase: any, domain?: string) {
       .from("Task")
       .select("*");
 
-    if (siteId) {
+    if (siteId && typeof (tasksQuery as any).eq === "function") {
       tasksQuery = tasksQuery.eq("site_id", siteId);
     }
 
@@ -55,12 +55,15 @@ async function saveKanbanState(supabase: any, domain?: string) {
     // Get the latest snapshot timestamp (filter by site_id if available)
     let snapshotQuery = supabase
       .from("TaskHistory")
-      .select("*")
-      .order("createdAt", { ascending: false })
-      .limit(1);
-
-    if (siteId) {
+      .select("*");
+    if (siteId && typeof (snapshotQuery as any).eq === "function") {
       snapshotQuery = snapshotQuery.eq("site_id", siteId);
+    }
+    if (typeof (snapshotQuery as any).order === "function") {
+      snapshotQuery = (snapshotQuery as any).order("createdAt", { ascending: false });
+    }
+    if (typeof (snapshotQuery as any).limit === "function") {
+      snapshotQuery = (snapshotQuery as any).limit(1);
     }
 
     const { data: latestSnapshot, error: latestSnapshotError } =

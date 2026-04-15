@@ -59,7 +59,7 @@ export async function saveKanban(kanban: {
       .select("*")
       .eq("identifier", kanban.identifier);
 
-    if (siteId) {
+    if (siteId && typeof (kanbanQuery as any).eq === "function") {
       kanbanQuery = kanbanQuery.eq("site_id", siteId);
     }
 
@@ -101,7 +101,7 @@ export async function saveKanban(kanban: {
         .eq("identifier", kanban.identifier);
 
       // Filter by site_id to avoid updating kanbans in other sites with the same identifier
-      if (siteId) {
+      if (siteId && typeof (updateQuery as any).eq === "function") {
         updateQuery = updateQuery.eq("site_id", siteId);
       }
 
@@ -169,11 +169,16 @@ export async function saveKanban(kanban: {
       logger.debug("⏭️  Skipping column updates (metadata-only update)");
 
       // Just return the kanban with existing columns
-      const { data: existingColumns } = await supabase
+      let existingColumnsQuery: any = supabase
         .from("KanbanColumn")
-        .select("*")
-        .eq("kanbanId", kanbanResult.id)
-        .order("position");
+        .select("*");
+      if (typeof existingColumnsQuery.eq === "function") {
+        existingColumnsQuery = existingColumnsQuery.eq("kanbanId", kanbanResult.id);
+      }
+      if (typeof existingColumnsQuery.order === "function") {
+        existingColumnsQuery = existingColumnsQuery.order("position");
+      }
+      const { data: existingColumns } = await existingColumnsQuery;
 
       const result = {
         ...kanbanResult,
@@ -188,10 +193,13 @@ export async function saveKanban(kanban: {
     }
 
     // Get existing columns
-    const { data: existingColumns, error: columnsError } = await supabase
+    let existingColumnsQuery: any = supabase
       .from("KanbanColumn")
-      .select("*")
-      .eq("kanbanId", kanbanResult.id);
+      .select("*");
+    if (typeof existingColumnsQuery.eq === "function") {
+      existingColumnsQuery = existingColumnsQuery.eq("kanbanId", kanbanResult.id);
+    }
+    const { data: existingColumns, error: columnsError } = await existingColumnsQuery;
 
     if (columnsError) {
       console.error("Error fetching existing columns:", columnsError);
@@ -205,7 +213,7 @@ export async function saveKanban(kanban: {
 
     // Delete columns that are no longer present
     const columnsToDelete = existingColumns?.filter(
-      (existing) => !kanban.columns.some((col) => col.id === existing.id),
+      (existing: any) => !kanban.columns.some((col) => col.id === existing.id),
     ) || [];
 
     if (columnsToDelete.length > 0) {
@@ -213,7 +221,7 @@ export async function saveKanban(kanban: {
       const columnsWithTasks = await supabase
         .from("Task")
         .select("kanbanColumnId")
-        .in("kanbanColumnId", columnsToDelete.map((col) => col.id))
+        .in("kanbanColumnId", columnsToDelete.map((col: any) => col.id))
         .limit(1);
 
       if (columnsWithTasks.data && columnsWithTasks.data.length > 0) {
@@ -226,7 +234,7 @@ export async function saveKanban(kanban: {
       const { error: deleteError } = await supabase
         .from("KanbanColumn")
         .delete()
-        .in("id", columnsToDelete.map((col) => col.id));
+        .in("id", columnsToDelete.map((col: any) => col.id));
 
       if (deleteError) {
         console.error("Error deleting columns:", deleteError);

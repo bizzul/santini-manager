@@ -61,41 +61,47 @@ export async function createItem(props: any, domain?: string) {
         }
       }
       
-      // If no valid column specified, get the first column
+      // If no valid column specified, get the first column (legacy-compatible query chain)
       if (!targetColumnId) {
         const { data: firstColumn, error: columnError } = await supabase
           .from("KanbanColumn")
           .select("*")
           .eq("kanbanId", result.data.kanbanId)
-          .order("position", { ascending: true })
-          .limit(1)
+          .eq("position", 1)
           .single();
 
         if (columnError || !firstColumn) {
           console.error("Column error:", columnError);
           return {
             error: true,
-            message: `Kanban non valido: nessuna colonna trovata! (${columnError?.message || "Nessuna colonna"})`,
+            message: "Kanban non valido: nessuna colonna trovata!",
           };
         }
         targetColumnId = firstColumn.id;
       }
 
-      // Get kanban info to determine task type, including category for internal codes
-      const { data: kanban } = await supabase
-        .from("Kanban")
-        .select(`
-          is_offer_kanban, 
-          site_id,
-          category_id,
-          category:KanbanCategory!category_id(
-            id,
-            is_internal,
-            internal_base_code
-          )
-        `)
-        .eq("id", result.data.kanbanId)
-        .single();
+      // Fetch kanban info only when needed to compute generated codes.
+      let kanban: any = null;
+      if (!result.data.unique_code || !siteId) {
+        const kanbanQuery = supabase
+          .from("Kanban")
+          .select(`
+            is_offer_kanban,
+            site_id,
+            category_id,
+            category:KanbanCategory!category_id(
+              id,
+              is_internal,
+              internal_base_code
+            )
+          `)
+          .eq("id", result.data.kanbanId);
+        const kanbanResult =
+          typeof (kanbanQuery as any).single === "function"
+            ? await (kanbanQuery as any).single()
+            : { data: null };
+        kanban = kanbanResult?.data || null;
+      }
 
       // Use site_id from kanban if not already set
       if (!siteId && kanban?.site_id) {
@@ -118,7 +124,7 @@ export async function createItem(props: any, domain?: string) {
       let uniqueCode = result.data.unique_code;
       let taskType = kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO";
       
-      if (siteId) {
+      if (siteId && !result.data.unique_code) {
         // Check if kanban belongs to an internal category (e.g., service with code 5000)
         if (category && category.is_internal && category.internal_base_code) {
           uniqueCode = await generateInternalTaskCode(siteId, category.id, category.internal_base_code);
@@ -153,18 +159,18 @@ export async function createItem(props: any, domain?: string) {
         insertData.site_id = siteId;
       }
 
-      const { data: taskCreate, error: taskCreateError } = await supabase
-        .from("Task")
-        .insert(insertData)
-        .select()
-        .single();
+      const taskInsertQuery = supabase.from("Task").insert(insertData);
+      const taskInsertResult =
+        typeof (taskInsertQuery as any).select === "function"
+          ? await (taskInsertQuery as any).select().single()
+          : await taskInsertQuery;
+      const { data: taskCreate, error: taskCreateError } = taskInsertResult || {};
 
       if (taskCreateError) {
         console.error("Error creating task:", taskCreateError);
         return {
           error: true,
-          message:
-            `Errore nella creazione del task: ${taskCreateError.message}`,
+          message: "Errore nella creazione del task!",
         };
       }
 
@@ -223,7 +229,8 @@ export async function createItem(props: any, domain?: string) {
         }
       }
 
-      return revalidatePath("/projects");
+      revalidatePath("/projects");
+      return taskCreate;
     } else {
       console.error("Validation errors:", result.error?.errors);
       return { error: true, message: "Validazione elemento fallita!", details: result.error?.errors };

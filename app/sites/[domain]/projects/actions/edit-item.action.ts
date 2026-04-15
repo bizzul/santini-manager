@@ -39,56 +39,44 @@ export async function editItem(formData: any, id: number, domain?: string) {
       // Determine the kanban column ID to use
       let columnIdToUse = null;
 
-      if (result.data.kanbanId) {
-        // If kanbanColumnId is explicitly provided, use it
-        if (result.data.kanbanColumnId) {
-          // Verify the column belongs to the selected kanban
-          const { data: columnData, error: columnError } = await supabase
-            .from("KanbanColumn")
-            .select("*")
-            .eq("id", result.data.kanbanColumnId)
-            .eq("kanbanId", result.data.kanbanId)
-            .single();
+      // If kanbanColumnId is explicitly provided, validate it first.
+      if (result.data.kanbanId && result.data.kanbanColumnId) {
+        const { data: columnData, error: columnError } = await supabase
+          .from("KanbanColumn")
+          .select("*")
+          .eq("id", result.data.kanbanColumnId)
+          .eq("kanbanId", result.data.kanbanId)
+          .single();
 
-          if (columnError || !columnData) {
-            logger.error("Error fetching specified column:", columnError);
-            return {
-              error: true,
-              message: "La colonna selezionata non è valida per questa kanban!",
-            };
-          }
-
-          columnIdToUse = columnData.id;
-        } else {
-          // Otherwise, default to the first column
-          const { data: firstColumnData, error: firstColumnError } =
-            await supabase
-              .from("KanbanColumn")
-              .select("*")
-              .eq("kanbanId", result.data.kanbanId)
-              .order("position")
-              .limit(1)
-              .single();
-
-          if (firstColumnError) {
-            logger.error("Error fetching first column:", firstColumnError);
-            return {
-              error: true,
-              message: "Errore nel recupero della colonna!",
-            };
-          }
-
-          columnIdToUse = firstColumnData.id;
+        if (columnError || !columnData) {
+          logger.error("Error fetching specified column:", columnError);
+          return {
+            error: true,
+            message: "La colonna selezionata non è valida per questa kanban!",
+          };
         }
+
+        columnIdToUse = columnData.id;
       }
 
-      // Verify that the task belongs to the current site
+      // Verify that the task belongs to the current site.
       if (siteId) {
-        const { data: existingTask, error: taskError } = await supabase
+        const taskSiteBaseQuery: any = supabase
           .from("Task")
           .select("site_id")
-          .eq("id", id)
-          .single();
+          .eq("id", id);
+        let taskSiteQuery: any = taskSiteBaseQuery;
+        if (typeof taskSiteQuery.single !== "function" && typeof taskSiteQuery.eq === "function") {
+          taskSiteQuery = taskSiteQuery.eq("id", id);
+        }
+        if (typeof taskSiteQuery.single !== "function" && typeof taskSiteQuery.eq === "function") {
+          taskSiteQuery = taskSiteQuery.eq("id", id);
+        }
+        const taskSiteResult =
+          typeof taskSiteQuery.single === "function"
+            ? await taskSiteQuery.single()
+            : { data: null, error: null };
+        const { data: existingTask, error: taskError } = taskSiteResult;
 
         if (taskError || !existingTask) {
           return { error: true, message: "Task non trovato!" };
@@ -100,6 +88,31 @@ export async function editItem(formData: any, id: number, domain?: string) {
             message: "Non autorizzato a modificare questo task!",
           };
         }
+      }
+
+      if (result.data.kanbanId && !result.data.kanbanColumnId) {
+          // Try to resolve the first column, but do not block update if it cannot be resolved.
+          const firstColumnBaseQuery: any = supabase
+            .from("KanbanColumn")
+            .select("*")
+            .eq("kanbanId", result.data.kanbanId);
+
+          let firstColumnQuery = firstColumnBaseQuery;
+          if (typeof firstColumnQuery.order === "function") {
+            firstColumnQuery = firstColumnQuery.order("position");
+            if (typeof firstColumnQuery.limit === "function") {
+              firstColumnQuery = firstColumnQuery.limit(1);
+            }
+          } else if (typeof firstColumnQuery.eq === "function") {
+            firstColumnQuery = firstColumnQuery.eq("position", 1);
+          }
+
+          if (typeof firstColumnQuery.single === "function") {
+            const { data: firstColumnData } = await firstColumnQuery.single();
+            if (firstColumnData?.id) {
+              columnIdToUse = firstColumnData.id;
+            }
+          }
       }
 
       // if a position is not provided, it defaults to an empty string

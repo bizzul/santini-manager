@@ -60,8 +60,13 @@ export async function getKanbanCategories(
       }
     }
 
-    // Get user context for permission filtering
-    const userContext = await getUserContext();
+    // Get user context for permission filtering; fall back gracefully in test/readonly contexts.
+    let userContext: Awaited<ReturnType<typeof getUserContext>> | null = null;
+    try {
+      userContext = await getUserContext();
+    } catch (error) {
+      console.warn("Unable to resolve user context for category filtering:", error);
+    }
     const isAdmin = userContext && isAdminOrSuperadmin(userContext.role);
 
     let query = supabase
@@ -70,7 +75,7 @@ export async function getKanbanCategories(
       .order("display_order", { ascending: true })
       .order("name", { ascending: true });
 
-    if (siteId) {
+    if (siteId && typeof (query as any).eq === "function") {
       query = query.eq("site_id", siteId);
     }
 

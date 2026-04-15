@@ -59,7 +59,7 @@ describe('Kanban - createItem', () => {
       }),
     });
 
-    mockSupabase.mockInsert.mockReturnValue({
+    mockSupabase.mockInsert.mockReturnValueOnce({
       select: jest.fn().mockReturnValue({
         single: jest.fn().mockResolvedValue({ data: mockTask, error: null }),
       }),
@@ -71,10 +71,7 @@ describe('Kanban - createItem', () => {
       error: null,
     });
 
-    // Mock for TaskSupplier insert
-    mockSupabase.mockInsert.mockResolvedValue({ error: null });
-
-    // Mock for Action insert
+    // Mock for TaskSupplier insert and Action insert
     mockSupabase.mockInsert.mockResolvedValue({ error: null });
 
     const result = await createItem(formData, 'test-domain');
