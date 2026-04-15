@@ -1,69 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo } from "react";
-import L from "leaflet";
-import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NormalizedProjectLocation } from "@/utils/project-location-map";
+
+/** OpenStreetMap standard tile layer (usage policy: https://operations.osmfoundation.org/policies/tiles/) */
+const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 interface ActiveProjectsMapProps {
   projects: NormalizedProjectLocation[];
   domain: string;
-}
-
-const markerIcon = L.divIcon({
-  className: "dashboard-map-pin",
-  html: '<span class="dashboard-map-pin-dot"></span>',
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-  popupAnchor: [0, -10],
-});
-
-function MapBoundsUpdater({
-  points,
-}: {
-  points: Array<[number, number]>;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (points.length === 0) {
-      return;
-    }
-
-    const bounds = L.latLngBounds(points);
-    map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14, animate: false });
-  }, [map, points]);
-
-  return null;
-}
-
-function MapResizeUpdater() {
-  const map = useMap();
-
-  useEffect(() => {
-    const invalidate = () => {
-      map.invalidateSize({ pan: false, debounceMoveend: true });
-    };
-
-    const container = map.getContainer();
-    const observer = new ResizeObserver(() => invalidate());
-    observer.observe(container);
-    if (container.parentElement) {
-      observer.observe(container.parentElement);
-    }
-
-    window.addEventListener("resize", invalidate);
-    const frameId = window.requestAnimationFrame(invalidate);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", invalidate);
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [map]);
-
-  return null;
 }
 
 function formatTechnician(project: NormalizedProjectLocation): string {
@@ -76,7 +23,20 @@ function formatTechnician(project: NormalizedProjectLocation): string {
   return `${project.primaryTechnician} +${project.technicianCount - 1}`;
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
   const geolocatedProjects = useMemo(
     () => projects.filter((project) => project.coordinates),
     [projects],
@@ -91,59 +51,150 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
     [geolocatedProjects],
   );
 
-  const mapCenter = points[0] || [45.4642, 9.19];
+  const mapCenter = useMemo<[number, number]>(
+    () => points[0] || [45.4642, 9.19],
+    [points],
+  );
+
+  const applyMarkers = useCallback(async () => {
+    const map = mapRef.current;
+    const layer = markersLayerRef.current;
+    if (!map || !layer) {
+      return;
+    }
+
+    const L = await import("leaflet");
+    layer.clearLayers();
+
+    const markerIcon = L.divIcon({
+      className: "dashboard-map-pin",
+      html: '<span class="dashboard-map-pin-dot"></span>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      popupAnchor: [0, -10],
+    });
+
+    geolocatedProjects.forEach((project) => {
+      const name = escapeHtml(project.name || "");
+      const status = escapeHtml(project.status || "");
+      const addr = escapeHtml(project.fullAddress || "Indirizzo non disponibile");
+      const tech = escapeHtml(formatTechnician(project));
+
+      const marker = L.marker([project.coordinates!.lat, project.coordinates!.lng], {
+        icon: markerIcon,
+      });
+      marker.bindPopup(
+        `
+          <div class="min-w-[190px] space-y-2 text-xs text-slate-200">
+            <div class="space-y-1">
+              <p class="text-sm font-semibold text-white">${name}</p>
+              <p class="text-slate-400">${status}</p>
+            </div>
+            <p class="leading-relaxed text-slate-300">${addr}</p>
+            <p class="text-slate-300"><span class="font-medium text-slate-100">Tecnico:</span> ${tech}</p>
+            <a class="inline-flex items-center rounded-md border border-blue-400/50 bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-100 transition hover:bg-blue-500/35" href="/sites/${domain}/projects?edit=${project.id}">Apri scheda progetto</a>
+          </div>
+        `,
+        { className: "dashboard-map-popup" },
+      );
+      marker.addTo(layer);
+    });
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points);
+      map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14, animate: false });
+    } else {
+      map.setView(mapCenter, 6, { animate: false });
+    }
+  }, [domain, geolocatedProjects, mapCenter, points]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let onResize: (() => void) | null = null;
+
+    async function initMap() {
+      const el = mapContainerRef.current;
+      if (!el || mapRef.current) {
+        return;
+      }
+
+      const L = await import("leaflet");
+      if (cancelled || !mapContainerRef.current) {
+        return;
+      }
+
+      const map = L.map(mapContainerRef.current, {
+        center: mapCenter,
+        zoom: 6,
+        scrollWheelZoom: true,
+        dragging: true,
+        doubleClickZoom: true,
+        boxZoom: true,
+        zoomControl: true,
+        touchZoom: true,
+      });
+
+      L.tileLayer(OSM_TILE_URL, {
+        attribution: OSM_ATTRIBUTION,
+        maxZoom: 19,
+      }).addTo(map);
+
+      mapRef.current = map;
+      markersLayerRef.current = L.layerGroup().addTo(map);
+
+      const invalidate = () => {
+        map.invalidateSize({ pan: false, debounceMoveend: true });
+      };
+      onResize = invalidate;
+      resizeObserver = new ResizeObserver(invalidate);
+      resizeObserver.observe(mapContainerRef.current);
+      window.addEventListener("resize", invalidate);
+      requestAnimationFrame(() => {
+        invalidate();
+        setMapReady(true);
+      });
+    }
+
+    void initMap();
+
+    return () => {
+      cancelled = true;
+      setMapReady(false);
+      resizeObserver?.disconnect();
+      if (onResize) {
+        window.removeEventListener("resize", onResize);
+      }
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markersLayerRef.current = null;
+      }
+    };
+  }, [mapCenter]);
+
+  useEffect(() => {
+    if (!mapReady) {
+      return;
+    }
+    void applyMarkers();
+  }, [applyMarkers, mapReady]);
 
   return (
-    <MapContainer
-      center={mapCenter}
-      zoom={6}
-      scrollWheelZoom={true}
-      dragging={true}
-      doubleClickZoom={true}
-      boxZoom={true}
-      zoomControl={true}
-      touchZoom={true}
-      className="h-full w-full rounded-xl"
-      style={{ height: "100%", width: "100%" }}
-      attributionControl
-    >
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; CARTO'
+    <div className="absolute inset-0 z-[2] min-h-[200px]">
+      {/* Sottile fallback OSM: se i tile Leaflet non caricano, resta comunque un riferimento geografico */}
+      <iframe
+        title="OpenStreetMap (fallback)"
+        className="pointer-events-none absolute inset-0 z-0 h-full w-full border-0 opacity-25"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=8.4,45.3,9.8,45.5&layer=mapnik"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
       />
-
-      <MapResizeUpdater />
-      <MapBoundsUpdater points={points} />
-
-      {geolocatedProjects.map((project) => (
-        <Marker
-          key={project.id}
-          position={[project.coordinates!.lat, project.coordinates!.lng]}
-          icon={markerIcon}
-        >
-          <Popup className="dashboard-map-popup" closeButton>
-            <div className="min-w-[190px] space-y-2 text-xs text-slate-200">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-white">{project.name}</p>
-                <p className="text-slate-400">{project.status}</p>
-              </div>
-              <p className="leading-relaxed text-slate-300">
-                {project.fullAddress || "Indirizzo non disponibile"}
-              </p>
-              <p className="text-slate-300">
-                <span className="font-medium text-slate-100">Tecnico:</span>{" "}
-                {formatTechnician(project)}
-              </p>
-              <Link
-                href={`/sites/${domain}/projects?edit=${project.id}`}
-                className="inline-flex items-center rounded-md border border-blue-400/50 bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-100 transition hover:bg-blue-500/35"
-              >
-                Apri scheda progetto
-              </Link>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+      <div
+        ref={mapContainerRef}
+        className="leaflet-container relative z-[1] h-full w-full rounded-xl bg-transparent"
+        style={{ minHeight: "100%" }}
+      />
+    </div>
   );
 }

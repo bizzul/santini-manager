@@ -14,6 +14,41 @@ interface CollaboratorUpdateData {
     initials?: string;
 }
 
+type AssistantId = "vera" | "mira" | "aura";
+
+export interface AssistantCollaboratorProfileInput {
+    displayName: string;
+    roleSummary: string;
+    initials?: string | null;
+    color?: string | null;
+    picture?: string | null;
+    enabled?: boolean;
+}
+
+export interface AssistantCollaboratorProfileRecord
+    extends AssistantCollaboratorProfileInput {
+    assistantId: AssistantId;
+    updatedAt: string;
+}
+
+function normalizeAssistantSettingsPayload(value: unknown): {
+    profiles: Partial<Record<AssistantId, AssistantCollaboratorProfileRecord>>;
+} {
+    if (!value || typeof value !== "object") {
+        return { profiles: {} };
+    }
+    const root = value as Record<string, unknown>;
+    const profiles = root.profiles;
+    if (!profiles || typeof profiles !== "object") {
+        return { profiles: {} };
+    }
+    return {
+        profiles: profiles as Partial<
+            Record<AssistantId, AssistantCollaboratorProfileRecord>
+        >,
+    };
+}
+
 /**
  * Check if the current user is an admin for the site's organization
  */
@@ -288,6 +323,8 @@ export async function inviteNewCollaborator(
     givenName: string,
     familyName: string,
     companyRole: string | null,
+    initials: string | null,
+    color: string | null,
     domain: string,
 ) {
     const supabase = await createClient();
@@ -356,6 +393,8 @@ export async function inviteNewCollaborator(
             given_name: givenName,
             family_name: familyName,
             company_role: companyRole,
+            initials: initials || null,
+            color: color || null,
             role: "user",
             enabled: false, // Will be enabled after email confirmation
         });
@@ -393,6 +432,7 @@ export async function inviteNewCollaborator(
     revalidatePath(`/sites/${domain}/collaborators`);
     return {
         success: true,
+        userId,
         message:
             "Invito inviato con successo! L'utente riceverà un'email per completare la registrazione.",
     };
@@ -449,6 +489,85 @@ export async function checkIsAdmin(siteId: string) {
 export async function getCurrentUserRole(): Promise<string | null> {
     const userContext = await getUserContext();
     return userContext?.role || null;
+}
+
+export async function getAssistantCollaboratorProfiles(
+    siteId: string,
+): Promise<Partial<Record<AssistantId, AssistantCollaboratorProfileRecord>>> {
+    const supabase = await createClient();
+    const { data } = await supabase
+        .from("site_settings")
+        .select("setting_value")
+        .eq("site_id", siteId)
+        .eq("setting_key", "assistant_collaborators")
+        .maybeSingle();
+
+    if (!data?.setting_value) return {};
+    const parsed = normalizeAssistantSettingsPayload(data.setting_value);
+    return parsed.profiles || {};
+}
+
+export async function upsertAssistantCollaboratorProfile(
+    siteId: string,
+    assistantId: AssistantId,
+    profile: AssistantCollaboratorProfileInput,
+    domain: string,
+) {
+    const supabase = await createClient();
+    const { isAdmin } = await checkAdminAccess(siteId);
+
+    if (!isAdmin) {
+        return {
+            success: false,
+            error: "Non autorizzato a modificare i profili agente",
+        };
+    }
+
+    const { data: existing } = await supabase
+        .from("site_settings")
+        .select("setting_value")
+        .eq("site_id", siteId)
+        .eq("setting_key", "assistant_collaborators")
+        .maybeSingle();
+
+    const parsed = normalizeAssistantSettingsPayload(existing?.setting_value);
+    const previous = parsed.profiles?.[assistantId];
+
+    const nextProfile: AssistantCollaboratorProfileRecord = {
+        assistantId,
+        displayName: profile.displayName,
+        roleSummary: profile.roleSummary,
+        initials: profile.initials ?? previous?.initials ?? null,
+        color: profile.color ?? previous?.color ?? null,
+        picture: profile.picture ?? previous?.picture ?? null,
+        enabled: profile.enabled ?? previous?.enabled ?? true,
+        updatedAt: new Date().toISOString(),
+    };
+
+    const settingValue = {
+        profiles: {
+            ...(parsed.profiles || {}),
+            [assistantId]: nextProfile,
+        },
+    };
+
+    const { error } = await supabase
+        .from("site_settings")
+        .upsert(
+            {
+                site_id: siteId,
+                setting_key: "assistant_collaborators",
+                setting_value: settingValue,
+            },
+            { onConflict: "site_id,setting_key" },
+        );
+
+    if (error) {
+        return { success: false, error: error.message };
+    }
+
+    revalidatePath(`/sites/${domain}/collaborators`);
+    return { success: true, message: "Profilo agente aggiornato" };
 }
 
 /**

@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import type {
-  AssistantsChatRequest,
-  AssistantsChatResponse,
-} from "@/types/assistants";
-import { AssistantContextBuilderService } from "@/services/assistants/context-builder.service";
-import { AssistantRouterService } from "@/services/assistants/assistant-router.service";
+import type { AssistantsChatRequest } from "@/types/assistants";
+import { getUserContext, getUserSites } from "@/lib/auth-utils";
+import { getSiteData } from "@/lib/fetchers";
+import { AssistantChatOrchestratorService } from "@/services/assistants/chat-orchestrator.service";
 
 function isValidChatRequest(value: unknown): value is AssistantsChatRequest {
   if (!value || typeof value !== "object") return false;
@@ -13,8 +11,7 @@ function isValidChatRequest(value: unknown): value is AssistantsChatRequest {
     typeof payload.message === "string" &&
     typeof payload.siteId === "string" &&
     typeof payload.domain === "string" &&
-    typeof payload.pathname === "string" &&
-    typeof payload.userId === "string"
+    typeof payload.pathname === "string"
   );
 }
 
@@ -32,49 +29,46 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contextBuilder = new AssistantContextBuilderService();
-    const routerService = new AssistantRouterService();
+    const userContext = await getUserContext();
+    if (!userContext?.userId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+        },
+        { status: 401 }
+      );
+    }
 
-    const context = await contextBuilder.buildContext({
-      siteId: body.siteId,
-      domain: body.domain,
-      userId: body.userId,
-      pathname: body.pathname,
-      message: body.message,
-      moduleName: body.moduleName,
-      entityType: body.entityType ?? null,
-      entityId: body.entityId ?? null,
-      currentKanbanId: body.currentKanbanId ?? null,
+    const siteData = await getSiteData(body.domain);
+    const resolvedSiteId = siteData?.data?.id as string | undefined;
+    if (!resolvedSiteId || resolvedSiteId !== body.siteId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid site context",
+        },
+        { status: 400 }
+      );
+    }
+
+    const accessibleSites = await getUserSites();
+    const hasAccess = accessibleSites.some((site) => site.id === body.siteId);
+    if (!hasAccess && userContext.role !== "superadmin") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Forbidden: site access denied",
+        },
+        { status: 403 }
+      );
+    }
+
+    const orchestrator = new AssistantChatOrchestratorService();
+    const response = await orchestrator.orchestrate({
+      ...body,
+      authenticatedUserId: userContext.userId,
     });
-
-    const routing = await routerService.route({
-      context,
-      requestedAssistant: body.requestedAssistant ?? null,
-      inferredIntent: null,
-    });
-
-    // Stub v1: placeholder response. Business logic arrivera' in step successivo.
-    const response: AssistantsChatResponse = {
-      success: true,
-      assistant: routing.selectedAssistant,
-      fallbackAssistant: routing.fallbackAssistant,
-      confidence: routing.confidence,
-      confidenceReason: routing.confidenceReason,
-      explicitHandoff: routing.explicitHandoff,
-      backstageConsultationWith: routing.backstageConsultationWith ?? null,
-      inferredIntent: "unknown",
-      response: {
-        summary: "Assistants Foundation attiva.",
-        answer:
-          "Endpoint /api/assistants/chat operativo in modalita stub. Prossimo step: orchestrazione reale con prompt, retrieval e action layer.",
-        suggestedActions: [],
-        sourceRefs: [],
-      },
-      context: {
-        site: context.site,
-        module: context.module,
-      },
-    };
 
     return NextResponse.json(response);
   } catch (error) {

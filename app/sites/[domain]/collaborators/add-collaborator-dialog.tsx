@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -11,34 +11,12 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Loader2, UserPlus, Mail } from "lucide-react";
-import { getAvailableUsersForSite, addCollaboratorToSite, inviteNewCollaborator } from "./actions";
-
-interface User {
-    id: number;
-    authId: string | null;
-    email: string;
-    given_name: string | null;
-    family_name: string | null;
-    role: string | null;
-    company_role: string | null;
-}
+import { Plus, Loader2, Upload, X } from "lucide-react";
+import { inviteNewCollaborator } from "./actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface AddCollaboratorDialogProps {
     siteId: string;
@@ -48,74 +26,50 @@ interface AddCollaboratorDialogProps {
 export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [availableUsers, setAvailableUsers] = useState<User[]>([]);
-    const [selectedUserId, setSelectedUserId] = useState<string>("");
-    const [activeTab, setActiveTab] = useState("existing");
-    
-    // Form state for new user invitation
     const [newUserEmail, setNewUserEmail] = useState("");
     const [newUserGivenName, setNewUserGivenName] = useState("");
     const [newUserFamilyName, setNewUserFamilyName] = useState("");
     const [newUserCompanyRole, setNewUserCompanyRole] = useState("");
-    
+    const [initials, setInitials] = useState("");
+    const [selectedColor, setSelectedColor] = useState("#6366f1");
+    const [pictureFile, setPictureFile] = useState<File | null>(null);
+    const [picturePreview, setPicturePreview] = useState<string | null>(null);
+
     const { toast } = useToast();
 
-    // Fetch available users when dialog opens
-    useEffect(() => {
-        if (isOpen) {
-            fetchAvailableUsers();
-        }
-    }, [isOpen]);
+    const computedInitials = useMemo(() => {
+        if (initials) return initials;
+        return `${newUserGivenName.charAt(0) || ""}${newUserFamilyName.charAt(0) || ""}`.toUpperCase();
+    }, [initials, newUserGivenName, newUserFamilyName]);
 
-    const fetchAvailableUsers = async () => {
-        const result = await getAvailableUsersForSite(siteId);
-        if (result.success) {
-            setAvailableUsers(result.users);
-        } else {
+    const handlePictureChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
             toast({
-                title: "Errore",
-                description: result.error,
-                variant: "destructive",
-            });
-        }
-    };
-
-    const handleAddExisting = async () => {
-        if (!selectedUserId) {
-            toast({
-                title: "Errore",
-                description: "Seleziona un utente",
+                title: "Formato non valido",
+                description: "Seleziona un'immagine valida.",
                 variant: "destructive",
             });
             return;
         }
+        setPictureFile(file);
+        setPicturePreview(URL.createObjectURL(file));
+    };
 
-        setIsLoading(true);
-        try {
-            const result = await addCollaboratorToSite(siteId, selectedUserId, domain);
-            if (result.success) {
-                toast({
-                    title: "Successo",
-                    description: result.message,
-                });
-                setIsOpen(false);
-                setSelectedUserId("");
-            } else {
-                toast({
-                    title: "Errore",
-                    description: result.error,
-                    variant: "destructive",
-                });
-            }
-        } catch (error) {
-            toast({
-                title: "Errore",
-                description: "Si è verificato un errore",
-                variant: "destructive",
-            });
-        } finally {
-            setIsLoading(false);
+    const uploadProfilePicture = async (userId: string) => {
+        if (!pictureFile) return true;
+        const formData = new FormData();
+        formData.append("picture", pictureFile);
+        const response = await fetch(`/api/users/${userId}/picture`, {
+            method: "POST",
+            body: formData,
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data?.error || "Errore upload immagine");
         }
+        return true;
     };
 
     const handleInviteNew = async () => {
@@ -136,9 +90,14 @@ export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogP
                 newUserGivenName,
                 newUserFamilyName,
                 newUserCompanyRole || null,
+                computedInitials || null,
+                selectedColor || null,
                 domain
             );
             if (result.success) {
+                if (result.userId && pictureFile) {
+                    await uploadProfilePicture(result.userId);
+                }
                 toast({
                     title: "Successo",
                     description: result.message,
@@ -152,7 +111,7 @@ export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogP
                     variant: "destructive",
                 });
             }
-        } catch (error) {
+        } catch {
             toast({
                 title: "Errore",
                 description: "Si è verificato un errore",
@@ -168,7 +127,10 @@ export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogP
         setNewUserGivenName("");
         setNewUserFamilyName("");
         setNewUserCompanyRole("");
-        setSelectedUserId("");
+        setInitials("");
+        setSelectedColor("#6366f1");
+        setPictureFile(null);
+        setPicturePreview(null);
     };
 
     return (
@@ -179,147 +141,147 @@ export function AddCollaboratorDialog({ siteId, domain }: AddCollaboratorDialogP
                     Aggiungi Collaboratore
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[740px] rounded-2xl border border-slate-700/70 bg-slate-950/95 text-slate-100">
                 <DialogHeader>
                     <DialogTitle>Aggiungi Collaboratore</DialogTitle>
-                    <DialogDescription>
-                        Aggiungi un collaboratore esistente o invita un nuovo utente
+                    <DialogDescription className="text-slate-300">
+                        Inserisci i dati del collaboratore e carica una foto profilo opzionale.
                     </DialogDescription>
                 </DialogHeader>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="existing" className="gap-2">
-                            <UserPlus className="h-4 w-4" />
-                            Esistente
-                        </TabsTrigger>
-                        <TabsTrigger value="new" className="gap-2">
-                            <Mail className="h-4 w-4" />
-                            Nuovo Invito
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="existing" className="space-y-4 mt-4">
-                        {availableUsers.length > 0 ? (
-                            <div className="space-y-2">
-                                <Label>Seleziona Utente</Label>
-                                <Select
-                                    value={selectedUserId}
-                                    onValueChange={setSelectedUserId}
+                <div className="grid gap-4 py-2">
+                    <div className="flex items-center gap-4 rounded-xl border border-slate-700/70 bg-slate-900/40 p-3">
+                        <Avatar className="h-16 w-16">
+                            <AvatarImage src={picturePreview || undefined} />
+                            <AvatarFallback
+                                className="text-white font-semibold"
+                                style={{ backgroundColor: selectedColor }}
+                            >
+                                {computedInitials || "CL"}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-wrap gap-2">
+                            <Label
+                                htmlFor="newProfilePicture"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-600 px-3 py-2 text-sm hover:bg-slate-800/70"
+                            >
+                                <Upload className="h-4 w-4" />
+                                Carica foto profilo
+                            </Label>
+                            <input
+                                id="newProfilePicture"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handlePictureChange}
+                            />
+                            {picturePreview && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="border-slate-600 bg-transparent hover:bg-slate-800/70"
+                                    onClick={() => {
+                                        setPictureFile(null);
+                                        setPicturePreview(null);
+                                    }}
                                 >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleziona un utente..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {availableUsers.map((user) => (
-                                            <SelectItem
-                                                key={user.authId}
-                                                value={user.authId || ""}
-                                            >
-                                                {user.given_name} {user.family_name} ({user.email})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        ) : (
-                            <p className="text-muted-foreground text-center py-4">
-                                Non ci sono utenti disponibili da aggiungere.
-                                Invita un nuovo utente.
-                            </p>
-                        )}
-
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsOpen(false)}
-                                disabled={isLoading}
-                            >
-                                Annulla
-                            </Button>
-                            <Button
-                                onClick={handleAddExisting}
-                                disabled={isLoading || !selectedUserId}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Aggiunta...
-                                    </>
-                                ) : (
-                                    "Aggiungi"
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </TabsContent>
-
-                    <TabsContent value="new" className="space-y-4 mt-4">
-                        <div className="grid gap-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email *</Label>
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    placeholder="email@esempio.com"
-                                    value={newUserEmail}
-                                    onChange={(e) => setNewUserEmail(e.target.value)}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="givenName">Nome *</Label>
-                                    <Input
-                                        id="givenName"
-                                        placeholder="Nome"
-                                        value={newUserGivenName}
-                                        onChange={(e) => setNewUserGivenName(e.target.value)}
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="familyName">Cognome *</Label>
-                                    <Input
-                                        id="familyName"
-                                        placeholder="Cognome"
-                                        value={newUserFamilyName}
-                                        onChange={(e) => setNewUserFamilyName(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="companyRole">Ruolo in Azienda</Label>
-                                <Input
-                                    id="companyRole"
-                                    placeholder="es. Sviluppatore, Manager, Operaio..."
-                                    value={newUserCompanyRole}
-                                    onChange={(e) => setNewUserCompanyRole(e.target.value)}
-                                />
-                            </div>
+                                    <X className="h-4 w-4 mr-2" />
+                                    Rimuovi foto
+                                </Button>
+                            )}
                         </div>
+                    </div>
 
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => setIsOpen(false)}
-                                disabled={isLoading}
-                            >
-                                Annulla
-                            </Button>
-                            <Button
-                                onClick={handleInviteNew}
-                                disabled={isLoading || !newUserEmail || !newUserGivenName || !newUserFamilyName}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Invio...
-                                    </>
-                                ) : (
-                                    "Invia Invito"
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </TabsContent>
-                </Tabs>
+                    <div className="grid gap-2">
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="email@esempio.com"
+                            value={newUserEmail}
+                            onChange={(e) => setNewUserEmail(e.target.value)}
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="givenName">Nome *</Label>
+                            <Input
+                                id="givenName"
+                                placeholder="Nome"
+                                value={newUserGivenName}
+                                onChange={(e) => setNewUserGivenName(e.target.value)}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="familyName">Cognome *</Label>
+                            <Input
+                                id="familyName"
+                                placeholder="Cognome"
+                                value={newUserFamilyName}
+                                onChange={(e) => setNewUserFamilyName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="companyRole">Ruolo in Azienda</Label>
+                        <Input
+                            id="companyRole"
+                            placeholder="es. Sviluppatore, Manager, Operaio..."
+                            value={newUserCompanyRole}
+                            onChange={(e) => setNewUserCompanyRole(e.target.value)}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="newInitials">Iniziali</Label>
+                        <Input
+                            id="newInitials"
+                            maxLength={3}
+                            value={initials}
+                            onChange={(e) => setInitials(e.target.value.toUpperCase())}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label>Colore Avatar</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {["#6366f1", "#8b5cf6", "#d946ef", "#ec4899", "#f43f5e", "#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e", "#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6"].map((color) => (
+                                <button
+                                    key={color}
+                                    type="button"
+                                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                                        selectedColor === color
+                                            ? "border-foreground scale-110"
+                                            : "border-transparent hover:scale-105"
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    onClick={() => setSelectedColor(color)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button
+                        variant="outline"
+                        onClick={() => setIsOpen(false)}
+                        disabled={isLoading}
+                    >
+                        Annulla
+                    </Button>
+                    <Button
+                        onClick={handleInviteNew}
+                        disabled={isLoading || !newUserEmail || !newUserGivenName || !newUserFamilyName}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Invio...
+                            </>
+                        ) : (
+                            "Salva Collaboratore"
+                        )}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

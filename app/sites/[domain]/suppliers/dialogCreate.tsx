@@ -20,10 +20,12 @@ function DialogCreate({ data, domain }: { data: any[]; domain: string }) {
           Aggiungi fornitore
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-scroll">
+      <DialogContent className="sm:max-w-[740px] max-h-[85vh] overflow-y-auto rounded-2xl border border-slate-700/70 bg-slate-950/95 text-slate-100">
         <DialogHeader>
           <DialogTitle>Nuovo fornitore</DialogTitle>
-          <DialogDescription>Crea un nuovo fornitore</DialogDescription>
+          <DialogDescription className="text-slate-300">
+            Inserisci i dati del fornitore con lo stesso layout dei container collaboratori.
+          </DialogDescription>
         </DialogHeader>
         <CreateProductForm
           data={data}

@@ -143,6 +143,14 @@
   background: #020617;
 }
 
+/* Tailwind preflight sets img { max-width: 100% }, which can break Leaflet tiles. */
+.leaflet-container .leaflet-tile,
+.leaflet-container .leaflet-marker-icon,
+.leaflet-container .leaflet-marker-shadow {
+  max-width: none !important;
+  max-height: none !important;
+}
+
 .home-gradient-bg {
   @apply bg-transparent;
 }

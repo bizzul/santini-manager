@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -13,9 +13,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { updateCollaborator } from "./actions";
 import { Collaborator } from "./columns";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface EditCollaboratorDialogProps {
     collaborator: Collaborator;
@@ -56,6 +57,8 @@ export function EditCollaboratorDialog({
     const [companyRole, setCompanyRole] = useState(collaborator.company_role || "");
     const [initials, setInitials] = useState(collaborator.initials || "");
     const [selectedColor, setSelectedColor] = useState(collaborator.color || AVATAR_COLORS[0]);
+    const [pictureFile, setPictureFile] = useState<File | null>(null);
+    const [picturePreview, setPicturePreview] = useState<string | null>(collaborator.picture || null);
     
     const { toast } = useToast();
 
@@ -67,8 +70,40 @@ export function EditCollaboratorDialog({
             setCompanyRole(collaborator.company_role || "");
             setInitials(collaborator.initials || "");
             setSelectedColor(collaborator.color || AVATAR_COLORS[0]);
+            setPictureFile(null);
+            setPicturePreview(collaborator.picture || null);
         }
     }, [collaborator, isOpen]);
+
+    const handlePictureChange = (event: ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0] || null;
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            toast({
+                title: "Formato non valido",
+                description: "Seleziona un'immagine valida.",
+                variant: "destructive",
+            });
+            return;
+        }
+        setPictureFile(file);
+        setPicturePreview(URL.createObjectURL(file));
+    };
+
+    const uploadProfilePicture = async (userId: string) => {
+        if (!pictureFile) return true;
+        const formData = new FormData();
+        formData.append("picture", pictureFile);
+        const response = await fetch(`/api/users/${userId}/picture`, {
+            method: "POST",
+            body: formData,
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data?.error || "Errore upload immagine");
+        }
+        return true;
+    };
 
     const handleSave = async () => {
         if (!givenName || !familyName) {
@@ -96,6 +131,9 @@ export function EditCollaboratorDialog({
             );
 
             if (result.success) {
+                if (collaborator.authId && pictureFile) {
+                    await uploadProfilePicture(collaborator.authId);
+                }
                 toast({
                     title: "Successo",
                     description: result.message,
@@ -108,7 +146,7 @@ export function EditCollaboratorDialog({
                     variant: "destructive",
                 });
             }
-        } catch (error) {
+        } catch {
             toast({
                 title: "Errore",
                 description: "Si è verificato un errore",
@@ -127,15 +165,56 @@ export function EditCollaboratorDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[740px] rounded-2xl border border-slate-700/70 bg-slate-950/95 text-slate-100">
                 <DialogHeader>
                     <DialogTitle>Modifica Collaboratore</DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription className="text-slate-300">
                         Modifica i dati di {collaborator.given_name} {collaborator.family_name}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-4 py-4">
+                <div className="grid gap-4 py-2">
+                    <div className="flex items-center gap-4 rounded-xl border border-slate-700/70 bg-slate-900/40 p-3">
+                        <Avatar className="h-16 w-16">
+                            <AvatarImage src={picturePreview || undefined} />
+                            <AvatarFallback
+                                className="text-white font-semibold"
+                                style={{ backgroundColor: selectedColor }}
+                            >
+                                {initials || `${givenName.charAt(0)}${familyName.charAt(0)}`.toUpperCase()}
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-wrap gap-2">
+                            <Label
+                                htmlFor="editProfilePicture"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-600 px-3 py-2 text-sm hover:bg-slate-800/70"
+                            >
+                                <Upload className="h-4 w-4" />
+                                Carica foto profilo
+                            </Label>
+                            <input
+                                id="editProfilePicture"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handlePictureChange}
+                            />
+                            {picturePreview && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="border-slate-600 bg-transparent hover:bg-slate-800/70"
+                                    onClick={() => {
+                                        setPictureFile(null);
+                                        setPicturePreview(null);
+                                    }}
+                                >
+                                    <X className="h-4 w-4 mr-2" />
+                                    Rimuovi foto
+                                </Button>
+                            )}
+                        </div>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="editGivenName">Nome *</Label>
@@ -167,7 +246,7 @@ export function EditCollaboratorDialog({
                             id="editEmail"
                             value={collaborator.email}
                             disabled
-                            className="bg-muted"
+                            className="bg-slate-900/60 text-slate-300"
                         />
                         <p className="text-xs text-muted-foreground">
                             L&apos;email non può essere modificata

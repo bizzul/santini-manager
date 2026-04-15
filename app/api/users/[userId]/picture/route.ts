@@ -20,7 +20,7 @@ export async function POST(
 ) {
   try {
     const userContext = await getUserContext();
-    if (!userContext || userContext.role !== "superadmin") {
+    if (!userContext || (userContext.role !== "superadmin" && userContext.role !== "admin")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

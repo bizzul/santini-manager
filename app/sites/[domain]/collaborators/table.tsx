@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -33,6 +32,7 @@ import {
 import { Collaborator } from "./columns";
 import { getColumnsWithActions } from "./columns-with-actions";
 import { AddCollaboratorDialog } from "./add-collaborator-dialog";
+import { AddAgentDialog } from "./add-agent-dialog";
 
 interface DataTableProps {
   data: Collaborator[];
@@ -108,7 +108,12 @@ export function DataTable({
             </SelectContent>
           </Select>
         </div>
-        {isAdmin && <AddCollaboratorDialog siteId={siteId} domain={domain} />}
+        {isAdmin && (
+          <div className="flex items-center gap-2">
+            <AddAgentDialog siteId={siteId} domain={domain} />
+            <AddCollaboratorDialog siteId={siteId} domain={domain} />
+          </div>
+        )}
       </div>
       <div className="rounded-md border">
         <Table>

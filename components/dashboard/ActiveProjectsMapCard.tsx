@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import type { DashboardProjectLocation } from "@/lib/server-data";
 import { useActiveProjectMap } from "@/hooks/use-active-project-map";
+import { cn } from "@/lib/utils";
 
 const ActiveProjectsMap = dynamic(() => import("@/components/dashboard/ActiveProjectsMap"), {
   ssr: false,
@@ -12,11 +13,15 @@ const ActiveProjectsMap = dynamic(() => import("@/components/dashboard/ActivePro
 interface ActiveProjectsMapCardProps {
   projects: DashboardProjectLocation[];
   domain: string;
+  className?: string;
+  mapHeightClassName?: string;
 }
 
 export default function ActiveProjectsMapCard({
   projects,
   domain,
+  className,
+  mapHeightClassName = "h-[420px]",
 }: ActiveProjectsMapCardProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [technicianFilter, setTechnicianFilter] = useState("all");
@@ -58,7 +63,7 @@ export default function ActiveProjectsMapCard({
   );
 
   return (
-    <div className="dashboard-panel p-6 space-y-4">
+    <div className={cn("dashboard-panel p-6 space-y-4", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="dashboard-panel-title">Mappa Cantieri Attivi</h3>
@@ -100,14 +105,16 @@ export default function ActiveProjectsMapCard({
       </div>
 
       <div
-        className="relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60"
-        style={{ height: 420 }}
+        className={cn(
+          "relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60",
+          mapHeightClassName,
+        )}
       >
         <ActiveProjectsMap projects={visibleProjects} domain={domain} />
 
         {visibleProjects.length === 0 && (
-          <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center bg-slate-950/55 px-6 text-center backdrop-blur-[1px]">
-            <div className="pointer-events-none space-y-2">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 max-w-lg -translate-x-1/2 px-4 text-center">
+            <div className="pointer-events-none space-y-2 rounded-lg border border-slate-700/70 bg-slate-950/80 px-4 py-3 shadow-lg backdrop-blur-sm">
               <p className="text-sm font-medium text-slate-100">
                 {geocoding ? "Geocodifica cantieri in corso..." : "Nessun cantiere geolocalizzabile"}
               </p>

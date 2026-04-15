@@ -6,8 +6,7 @@ import {
   fetchCollaborators,
 } from "@/lib/server-data";
 import DataWrapper from "./dataWrapper";
-import { checkIsAdmin } from "./actions";
-import { AddCollaboratorDialog } from "./add-collaborator-dialog";
+import { checkIsAdmin, getAssistantCollaboratorProfiles } from "./actions";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export default async function Page({
@@ -34,6 +33,7 @@ export default async function Page({
 
   // Fetch collaborators
   const collaborators = await fetchCollaborators(siteId);
+  const assistantProfiles = await getAssistantCollaboratorProfiles(siteId);
 
   return (
     <PageLayout>
@@ -48,25 +48,14 @@ export default async function Page({
         </div>
       </PageHeader>
       <PageContent>
-        {collaborators.length > 0 ? (
-          <DataWrapper
-            data={collaborators}
-            domain={domain}
-            siteId={siteId}
-            isAdmin={isAdmin}
-            currentUserRole={currentUserRole}
-          />
-        ) : (
-          <div className="w-full h-80 text-center flex flex-col justify-center items-center gap-4">
-            <h2 className="font-bold text-xl">Nessun collaboratore trovato</h2>
-            <p className="text-muted-foreground">
-              Non ci sono collaboratori collegati a questo sito.
-            </p>
-            {isAdmin && (
-              <AddCollaboratorDialog siteId={siteId} domain={domain} />
-            )}
-          </div>
-        )}
+        <DataWrapper
+          data={collaborators}
+          domain={domain}
+          siteId={siteId}
+          isAdmin={isAdmin}
+          currentUserRole={currentUserRole}
+          agentProfiles={assistantProfiles}
+        />
       </PageContent>
     </PageLayout>
   );

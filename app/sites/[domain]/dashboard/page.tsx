@@ -11,7 +11,6 @@ import KPICards from "@/components/dashboard/KPICards";
 import ActiveProjectsMapCard from "@/components/dashboard/ActiveProjectsMapCard";
 import PipelineChart from "@/components/dashboard/PipelineChart";
 import DepartmentWorkloadChart from "@/components/dashboard/DepartmentWorkloadChart";
-import AggregatedKanbanStatus from "@/components/dashboard/AggregatedKanbanStatus";
 import LatestNotifications from "@/components/dashboard/LatestNotifications";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
@@ -86,18 +85,19 @@ export default async function SiteDashboardPage({
       <PageContent>
         <div className="space-y-6">
           <KPICards data={dashboardData} />
-          <ActiveProjectsMapCard
-            domain={domain}
-            projects={dashboardData.activeProjectLocations}
-          />
           <div className="grid gap-4 md:grid-cols-2">
-            <PipelineChart data={dashboardData} />
-            <DepartmentWorkloadChart data={dashboardData} />
+            <div className="space-y-4">
+              <PipelineChart data={dashboardData} />
+              <DepartmentWorkloadChart data={dashboardData} />
+            </div>
+            <ActiveProjectsMapCard
+              className="h-full"
+              mapHeightClassName="h-[420px] md:h-[860px]"
+              domain={domain}
+              projects={dashboardData.activeProjectLocations}
+            />
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <AggregatedKanbanStatus data={dashboardData} />
-            <LatestNotifications siteId={siteContext.siteId} />
-          </div>
+          <LatestNotifications siteId={siteContext.siteId} />
         </div>
       </PageContent>
     </PageLayout>

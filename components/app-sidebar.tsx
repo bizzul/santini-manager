@@ -557,9 +557,15 @@ export function AppSidebar() {
   const { toast } = useToast();
   const { isOnline } = useOnlineStatus();
   const queryClient = useQueryClient();
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Track if Kanban section has been opened at least once (for lazy loading)
   const [kanbanOpened, setKanbanOpened] = useState(getInitialKanbanOpened);
+
+  // Persist collapsed menus state to localStorage
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Persist collapsed menus state to localStorage
   useEffect(() => {
@@ -970,8 +976,10 @@ export function AppSidebar() {
   // Header/footer load from hydration, so usually instant
   const isLoadingHeader = useMemo(() => {
     if (!domain) return false;
+    // Keep the first client paint equal to SSR output to avoid hydration mismatch.
+    if (!isHydrated) return true;
     return loadingSiteData;
-  }, [domain, loadingSiteData]);
+  }, [domain, isHydrated, loadingSiteData]);
 
   // Menu items depend on modules
   const isLoadingMenuItems = useMemo(() => {

@@ -11,6 +11,7 @@ import { CollaboratorActions } from "./collaborator-actions";
 
 const getRoleBadgeVariant = (role: string | null, isOrgAdmin?: boolean) => {
   if (isOrgAdmin || role === "org_admin") return "default";
+  if (role === "agent") return "outline";
   switch (role) {
     case "admin":
       return "default";
@@ -23,6 +24,7 @@ const getRoleBadgeVariant = (role: string | null, isOrgAdmin?: boolean) => {
 
 const getRoleLabel = (role: string | null, isOrgAdmin?: boolean) => {
   if (isOrgAdmin || role === "org_admin") return "Admin Organizzazione";
+  if (role === "agent") return "Agente AI";
   switch (role) {
     case "admin":
       return "Amministratore";
@@ -85,7 +87,10 @@ export function getColumnsWithActions(
         <DataTableColumnHeader column={column} title="Email" />
       ),
       cell: ({ row }) => {
-        const { email } = row.original;
+        const { email, is_virtual_agent } = row.original;
+        if (is_virtual_agent) {
+          return <span className="text-muted-foreground">{email}</span>;
+        }
         return (
           <a href={`mailto:${email}`} className="text-primary hover:underline">
             {email}
@@ -111,9 +116,12 @@ export function getColumnsWithActions(
         <DataTableColumnHeader column={column} title="Ruolo Sistema" />
       ),
       cell: ({ row }) => {
-        const { role } = row.original;
+        const { role, is_virtual_agent } = row.original;
         return (
-          <Badge variant={getRoleBadgeVariant(role)}>
+          <Badge
+            variant={getRoleBadgeVariant(role)}
+            className={is_virtual_agent ? "border-violet-500/50 text-violet-200" : undefined}
+          >
             {getRoleLabel(role)}
           </Badge>
         );
@@ -128,7 +136,14 @@ export function getColumnsWithActions(
         <DataTableColumnHeader column={column} title="Stato" />
       ),
       cell: ({ row }) => {
-        const { enabled } = row.original;
+        const { enabled, is_virtual_agent } = row.original;
+        if (is_virtual_agent) {
+          return (
+            <Badge variant="outline" className="border-violet-500/40 text-violet-200">
+              Agente Attivo
+            </Badge>
+          );
+        }
         return enabled ? (
           <Badge variant="default" className="bg-green-600">
             Attivo
@@ -163,15 +178,18 @@ export function getColumnsWithActions(
     baseColumns.push({
       id: "actions",
       header: "",
-      cell: ({ row }) => (
-        <CollaboratorActions
-          collaborator={row.original}
-          siteId={siteId}
-          domain={domain}
-          isAdmin={isAdmin}
-          currentUserRole={currentUserRole}
-        />
-      ),
+      cell: ({ row }) =>
+        row.original.is_virtual_agent ? (
+          <span className="text-xs text-muted-foreground">Gestito da Assistant Hub</span>
+        ) : (
+          <CollaboratorActions
+            collaborator={row.original}
+            siteId={siteId}
+            domain={domain}
+            isAdmin={isAdmin}
+            currentUserRole={currentUserRole}
+          />
+        ),
       enableSorting: false,
     });
   }

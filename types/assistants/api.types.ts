@@ -13,12 +13,17 @@ export interface AssistantsChatRequest {
   siteId: string;
   domain: string;
   pathname: string;
-  userId: string;
+  userId?: string;
   moduleName?: string;
   entityType?: string | null;
   entityId?: string | number | null;
   currentKanbanId?: number | null;
   requestedAssistant?: AssistantId | null;
+  audioAttachment?: {
+    filename: string;
+    mimeType: string;
+    transcript: string;
+  } | null;
 }
 
 export interface AssistantsChatResponse {
@@ -43,7 +48,7 @@ export interface AssistantsRouteRequest {
   siteId: string;
   domain: string;
   pathname: string;
-  userId: string;
+  userId?: string;
   moduleName?: string;
   message?: string;
   inferredIntent?: AssistantIntent | null;

@@ -32,6 +32,8 @@ export type Collaborator = {
   enabled: boolean;
   joined_site_at: string | null;
   assigned_roles?: AssignedRole[];
+  is_virtual_agent?: boolean;
+  assistant_id?: "vera" | "mira" | "aura";
 };
 
 const getRoleBadgeVariant = (role: string | null, isOrgAdmin?: boolean) => {
