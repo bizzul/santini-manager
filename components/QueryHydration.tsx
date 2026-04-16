@@ -9,6 +9,7 @@ interface SiteDataForHydration {
   id: string;
   name: string;
   image: string | null;
+  logo?: string | null;
   organization: { name: string };
   verticalProfile?: unknown;
 }
