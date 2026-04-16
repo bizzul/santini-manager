@@ -189,7 +189,7 @@ export function GlobalSupportAssistant() {
   }
   const requesterUserId = userContext.userId || userContext.user?.id;
   const assistantDock = (
-    <div className="fixed right-4 top-14 z-[70] flex items-center gap-2 rounded-full border border-slate-700/90 bg-slate-950/92 px-2 py-1.5 shadow-[0_16px_42px_rgba(2,6,23,0.55)] backdrop-blur">
+    <div className="fixed right-4 top-3 z-[60] flex max-w-[calc(100vw-1rem)] items-center gap-2 rounded-full border border-slate-700/90 bg-slate-950/92 px-2 py-1.5 shadow-[0_16px_42px_rgba(2,6,23,0.55)] backdrop-blur md:right-6">
       {AVAILABLE_ASSISTANTS.map((assistantId) => {
         const meta = getAssistantMeta(assistantId);
         const isSelected = assistantId === activeAssistant;
@@ -386,7 +386,7 @@ export function GlobalSupportAssistant() {
   return (
     <>
       {assistantDock}
-      <div className="fixed right-4 top-[104px] z-50 w-[352px] max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-700/80 bg-slate-950/95 text-slate-100 shadow-[0_24px_70px_rgba(2,6,23,0.72)] backdrop-blur">
+      <div className="fixed right-4 top-[72px] z-50 w-[352px] max-w-[calc(100vw-1rem)] rounded-2xl border border-slate-700/80 bg-slate-950/95 text-slate-100 shadow-[0_24px_70px_rgba(2,6,23,0.72)] backdrop-blur md:right-6">
       <div className="flex items-center justify-between gap-3 border-b border-slate-800/80 px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-slate-600">

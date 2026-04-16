@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Collaborator } from "./columns";
 import { CollaboratorActions } from "./collaborator-actions";
+import { AgentActions } from "./agent-actions";
 
 const getRoleBadgeVariant = (role: string | null, isOrgAdmin?: boolean) => {
   if (isOrgAdmin || role === "org_admin") return "default";
@@ -180,7 +181,11 @@ export function getColumnsWithActions(
       header: "",
       cell: ({ row }) =>
         row.original.is_virtual_agent ? (
-          <span className="text-xs text-muted-foreground">Gestito da Assistant Hub</span>
+          <AgentActions
+            collaborator={row.original}
+            siteId={siteId}
+            domain={domain}
+          />
         ) : (
           <CollaboratorActions
             collaborator={row.original}
