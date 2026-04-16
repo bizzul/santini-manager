@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Loader2, Paperclip, Send, X } from "lucide-react";
 import { toast } from "sonner";
@@ -112,46 +112,31 @@ export function GlobalSupportAssistant() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
-  const autoMinimizeTimeoutRef = useRef<number | null>(null);
   const domain = extractDomain(pathname);
   const { siteId } = useSiteId(domain || undefined);
 
   const assistantMeta = getAssistantMeta(activeAssistant);
 
-  const clearAutoMinimizeTimeout = useCallback(() => {
-    if (autoMinimizeTimeoutRef.current) {
-      window.clearTimeout(autoMinimizeTimeoutRef.current);
-      autoMinimizeTimeoutRef.current = null;
-    }
-  }, []);
-
   useEffect(() => {
     if (!isSiteRoute) {
-      clearAutoMinimizeTimeout();
       setOpen(false);
       return;
     }
     const next = resolveAssistantFromPathname(pathname);
     setActiveAssistant(next);
-    setOpen(true);
-    clearAutoMinimizeTimeout();
-    autoMinimizeTimeoutRef.current = window.setTimeout(() => {
-      setOpen(false);
-    }, 5000);
-
-    return () => {
-      clearAutoMinimizeTimeout();
-    };
-  }, [isSiteRoute, pathname, clearAutoMinimizeTimeout]);
+  }, [isSiteRoute, pathname]);
 
   useEffect(() => {
     if (!isSiteRoute) return;
-    const greeting = `Ciao, sono ${assistantMeta.label}. Come posso aiutarti in questa schermata?`;
+    const greeting = `Ciao, sono ${getAssistantMeta(activeAssistant).label}. Come posso aiutarti in questa schermata?`;
     setMessages((current) => {
-      if (current.length > 0) return current;
-      return [createMessage("assistant", activeAssistant, greeting)];
+      const hasGreetingForAssistant = current.some(
+        (message) => message.assistant === activeAssistant && message.role === "assistant"
+      );
+      if (hasGreetingForAssistant) return current;
+      return [...current, createMessage("assistant", activeAssistant, greeting)];
     });
-  }, [isSiteRoute, assistantMeta.label, activeAssistant]);
+  }, [isSiteRoute, activeAssistant]);
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -160,17 +145,19 @@ export function GlobalSupportAssistant() {
       if (forced) {
         setActiveAssistant(forced);
       }
-      clearAutoMinimizeTimeout();
       setOpen(true);
       requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     window.addEventListener("open-support-assistant", handler as EventListener);
     return () => {
-      clearAutoMinimizeTimeout();
       window.removeEventListener("open-support-assistant", handler as EventListener);
     };
-  }, [clearAutoMinimizeTimeout]);
+  }, []);
+
+  const visibleMessages = useMemo(() => {
+    return messages.filter((message) => message.assistant === activeAssistant);
+  }, [messages, activeAssistant]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -212,7 +199,6 @@ export function GlobalSupportAssistant() {
             type="button"
             title={`Apri ${meta.label}`}
             onClick={() => {
-              clearAutoMinimizeTimeout();
               setActiveAssistant(assistantId);
               setOpen(true);
               requestAnimationFrame(() => inputRef.current?.focus());
@@ -425,7 +411,6 @@ export function GlobalSupportAssistant() {
             size="icon"
             className="h-7 w-7 text-slate-300 hover:bg-slate-800 hover:text-white"
             onClick={() => {
-              clearAutoMinimizeTimeout();
               setOpen(false);
             }}
           >
@@ -436,7 +421,7 @@ export function GlobalSupportAssistant() {
 
       <div className="max-h-[52vh] min-h-[320px] overflow-y-auto px-3 py-3">
         <div className="space-y-2.5">
-          {messages.map((message) => (
+          {visibleMessages.map((message) => (
             <div
               key={message.id}
               className={`rounded-xl px-3 py-2 text-sm leading-relaxed ${

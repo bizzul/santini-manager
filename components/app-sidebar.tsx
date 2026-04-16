@@ -128,6 +128,7 @@ const iconMap = {
 type SiteDataQueryResult = {
   id: string;
   name: string;
+  logo: string | null;
   image: string | null;
   verticalProfile?: unknown;
   organization: { name: string };
@@ -141,6 +142,7 @@ async function fetchSiteData(domain: string): Promise<SiteDataQueryResult> {
   return {
     id: data.id,
     name: data.name || domain,
+    logo: data.logo || null,
     image: data.image || null,
     verticalProfile: data.verticalProfile || null,
     organization: { name: data.organization?.name || "" },
@@ -906,7 +908,10 @@ export function AppSidebar() {
     return "Organization";
   }, [siteData]);
 
-  const siteImage = useMemo(() => siteData?.image || null, [siteData]);
+  const siteImage = useMemo(
+    () => siteData?.logo || siteData?.image || null,
+    [siteData]
+  );
   const canManageSettings =
     userContext?.role === "admin" || userContext?.role === "superadmin";
   const settingsHref = useMemo(() => {

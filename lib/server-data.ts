@@ -1755,6 +1755,13 @@ export const fetchDashboardData = cache(
             .select("id, is_offer_kanban, title, identifier")
             .eq("site_id", siteId);
 
+        if (kanbansResult.error) {
+            console.error("[Dashboard] Kanban query failed", {
+                siteId,
+                error: kanbansResult.error,
+            });
+        }
+
         const kanbans = kanbansResult.data || [];
         const kanbanIds = kanbans.map((k) => k.id);
 
@@ -1784,6 +1791,7 @@ export const fetchDashboardData = cache(
                 assigned_collaborator_ids,
                 produzione_collaborator_ids,
                 posa_collaborator_ids,
+                clientId,
                 sellProductId,
                 created_at,
                 updated_at,
@@ -1791,19 +1799,7 @@ export const fetchDashboardData = cache(
                 offer_send_date,
                 deliveryDate,
                 hours,
-                numero_pezzi,
-                SellProduct:sellProductId(id, name, category:category_id(id, name, color)),
-                Client:clientId (
-                    businessName,
-                    individualFirstName,
-                    individualLastName,
-                    zipCode,
-                    address,
-                    city,
-                    countryCode,
-                    latitude,
-                    longitude
-                )
+                numero_pezzi
             `)
                 .eq("site_id", siteId)
                 .eq("archived", false),
@@ -1844,6 +1840,113 @@ export const fetchDashboardData = cache(
         const userSites = usersResult.data || [];
         const columns = columnsResult.data || [];
         const historicalTasks = historicalTasksResult.data || [];
+
+        if (tasksResult.error) {
+            console.error("[Dashboard] Task query failed", {
+                siteId,
+                error: tasksResult.error,
+            });
+        }
+        if (categoriesResult.error) {
+            console.error("[Dashboard] Category query failed", {
+                siteId,
+                error: categoriesResult.error,
+            });
+        }
+        if (usersResult.error) {
+            console.error("[Dashboard] User sites query failed", {
+                siteId,
+                error: usersResult.error,
+            });
+        }
+        if ("error" in columnsResult && columnsResult.error) {
+            console.error("[Dashboard] Kanban columns query failed", {
+                siteId,
+                error: columnsResult.error,
+            });
+        }
+        if (historicalTasksResult.error) {
+            console.error("[Dashboard] Historical tasks query failed", {
+                siteId,
+                error: historicalTasksResult.error,
+            });
+        }
+        if (tasks.length === 0) {
+            console.warn("[Dashboard] Empty task dataset: KPI containers may show zero", {
+                siteId,
+                kanbans: kanbans.length,
+                columns: columns.length,
+                categories: categories.length,
+                users: userSites.length,
+            });
+        }
+
+        const clientIds = Array.from(
+            new Set(
+                tasks
+                    .map((task: any) => Number(task.clientId))
+                    .filter((id: number) => Number.isFinite(id) && id > 0),
+            ),
+        );
+        const sellProductIds = Array.from(
+            new Set(
+                tasks
+                    .map((task: any) => Number(task.sellProductId))
+                    .filter((id: number) => Number.isFinite(id) && id > 0),
+            ),
+        );
+
+        const [
+            { data: clientsData, error: clientsError },
+            { data: sellProductsData, error: sellProductsError },
+        ] = await Promise.all([
+            clientIds.length > 0
+                ? supabase
+                    .from("Client")
+                    .select(`
+                        id,
+                        businessName,
+                        individualFirstName,
+                        individualLastName,
+                        zipCode,
+                        address,
+                        city,
+                        countryCode,
+                        latitude,
+                        longitude
+                    `)
+                    .in("id", clientIds)
+                : Promise.resolve({ data: [], error: null }),
+            sellProductIds.length > 0
+                ? supabase
+                    .from("SellProduct")
+                    .select("id, name, category_id")
+                    .in("id", sellProductIds)
+                : Promise.resolve({ data: [], error: null }),
+        ]);
+
+        if (clientsError) {
+            console.error("[Dashboard] Client lookup query failed", {
+                siteId,
+                error: clientsError,
+                clientIdsCount: clientIds.length,
+            });
+        }
+        if (sellProductsError) {
+            console.error("[Dashboard] SellProduct lookup query failed", {
+                siteId,
+                error: sellProductsError,
+                sellProductIdsCount: sellProductIds.length,
+            });
+        }
+
+        const clientsById = new Map((clientsData || []).map((client: any) => [client.id, client]));
+        const sellProductsById = new Map(
+            (sellProductsData || []).map((product: any) => [product.id, product]),
+        );
+        const categoriesById = new Map(
+            categories.map((category: any) => [category.id, category]),
+        );
 
         const { data: timetrackingEntriesRaw } = await supabase
             .from("Timetracking")
@@ -2044,9 +2147,12 @@ export const fetchDashboardData = cache(
         tasks.forEach((task: any) => {
             const column = columnMap.get(task.kanbanColumnId);
             const isOffer = isOfferTask(task);
-            const categoryName = task.SellProduct?.category?.name || "Altro";
-            const categoryColor = task.SellProduct?.category?.color ||
-                "#6b7280";
+            const sellProduct = sellProductsById.get(task.sellProductId);
+            const taskCategory = sellProduct
+                ? categoriesById.get(sellProduct.category_id)
+                : null;
+            const categoryName = taskCategory?.name || "Altro";
+            const categoryColor = taskCategory?.color || "#6b7280";
             const sellPrice = task.sellPrice || 0;
             const positionsCount = getTaskItems(task);
 
@@ -2155,7 +2261,7 @@ export const fetchDashboardData = cache(
                 return !isOffer && !isInvoice && !isClosedStatus;
             })
             .map((task: any) => {
-                const client = task.Client;
+                const client = clientsById.get(task.clientId);
                 const column = columnMap.get(task.kanbanColumnId);
                 const candidateAddress = [
                     typeof task.luogo === "string" ? task.luogo.trim() : "",
@@ -2569,7 +2675,11 @@ export const fetchDashboardData = cache(
         const plannedHoursByDepartmentMap = new Map<string, { hours: number; tasks: number }>();
 
         forecastTasks.forEach((task: any) => {
-            const categoryName = task.SellProduct?.category?.name || "Altro";
+            const sellProduct = sellProductsById.get(task.sellProductId);
+            const taskCategory = sellProduct
+                ? categoriesById.get(sellProduct.category_id)
+                : null;
+            const categoryName = taskCategory?.name || "Altro";
             const hours = resolvePlannedTaskHours(task);
             const machineHours = cncHoursByTaskId.get(task.id) || hours * 0.45;
             const items = getTaskItems(task);

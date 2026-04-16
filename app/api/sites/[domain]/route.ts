@@ -15,7 +15,7 @@ export async function GET(
                 status: 404,
             });
         }
-        const { id, name, organization_id, image } = response.data;
+        const { id, name, organization_id, image, logo } = response.data;
         const supabase = createServiceClient();
         const { data: siteVertical } = await supabase
             .from("site_settings")
@@ -29,6 +29,7 @@ export async function GET(
             name,
             organization_id,
             image,
+            logo,
             verticalProfile: resolveSiteVerticalProfile(siteVertical?.setting_value),
             organization: {
                 name: response.data.organization?.name || "",

@@ -2,6 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { getUserContext } from "@/lib/auth-utils";
+import { revalidateTag } from "next/cache";
 
 export async function POST(
   req: NextRequest,
@@ -25,7 +26,7 @@ export async function POST(
 
     const { data: site, error: siteError } = await supabase
       .from("sites")
-      .select("logo")
+      .select("logo, subdomain")
       .eq("id", siteId)
       .single();
 
@@ -102,6 +103,10 @@ export async function POST(
       );
     }
 
+    if (site?.subdomain) {
+      revalidateTag(`${site.subdomain}-metadata`);
+    }
+
     return NextResponse.json({
       success: true,
       logoUrl: publicUrl,
@@ -137,7 +142,7 @@ export async function DELETE(
 
     const { data: site, error: siteError } = await supabase
       .from("sites")
-      .select("logo")
+      .select("logo, subdomain")
       .eq("id", siteId)
       .single();
 
@@ -162,6 +167,10 @@ export async function DELETE(
         { error: "Failed to update site: " + updateError.message },
         { status: 500 }
       );
+    }
+
+    if (site?.subdomain) {
+      revalidateTag(`${site.subdomain}-metadata`);
     }
 
     return NextResponse.json({
