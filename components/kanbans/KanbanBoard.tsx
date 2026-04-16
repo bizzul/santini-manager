@@ -1488,7 +1488,16 @@ function KanbanBoard({
                     <div className="text-sm text-muted-foreground">Categorie non configurate</div>
                   )}
 
-                  {/* Pulsante configurazione card rimosso dalla top bar su richiesta */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={openCardConfigDialog}
+                    className="ml-auto shrink-0 text-xs"
+                  >
+                    <FileEdit className="mr-2 h-3.5 w-3.5" />
+                    Configura campi card
+                  </Button>
                 </div>
               </div>
             </div>
