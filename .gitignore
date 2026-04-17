@@ -32,6 +32,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Cursor local CLI config (per-machine, should not be shared)
+.cursor/cli.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
