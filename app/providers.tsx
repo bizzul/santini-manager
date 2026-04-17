@@ -9,6 +9,7 @@ import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persist
 import { Suspense, useState, useEffect } from "react";
 import { GlobalVoiceAssistant } from "@/components/voice-assistant/GlobalVoiceAssistant";
 import { GlobalSupportAssistant } from "@/components/assistance/GlobalSupportAssistant";
+import { QUERY_CACHE_PERSIST_KEY } from "@/lib/cache-keys";
 
 // Query keys that should be persisted to localStorage
 // ONLY persist stable data that doesn't affect navigation or permissions
@@ -69,7 +70,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       storage: window.localStorage,
       // Bump the cache key to discard stale persisted entries
       // after changing the site-modules caching strategy.
-      key: "matris-query-cache-v2",
+      key: QUERY_CACHE_PERSIST_KEY,
       // Throttle writes to localStorage
       throttleTime: 1000,
     });

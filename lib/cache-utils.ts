@@ -2,8 +2,9 @@
  * Utilities for managing React Query persistent cache
  */
 
-const CACHE_KEY = "matris-query-cache";
-const USER_CACHE_KEY = "matris-cache-user-id";
+import { QUERY_CACHE_PERSIST_KEY, USER_CACHE_KEY } from "@/lib/cache-keys";
+
+const CACHE_KEY = QUERY_CACHE_PERSIST_KEY;
 
 /**
  * Clear the persistent React Query cache from localStorage.
