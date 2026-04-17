@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { assertDebugAccess } from "@/lib/api/debug-guard";
 
 export async function GET(request: NextRequest) {
+    const denied = assertDebugAccess(request);
+    if (denied) return denied;
+
     try {
         const debugInfo: any = {
             timestamp: new Date().toISOString(),
@@ -103,6 +107,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json(debugInfo);
     } catch (error) {
+        // eslint-disable-next-line no-console -- debug endpoint already gated
         console.error("Error in basic debug endpoint:", error);
         return NextResponse.json({
             error: "Internal server error",

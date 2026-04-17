@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/utils/supabase/server";
+import { assertDebugAccess } from "@/lib/api/debug-guard";
 
 export async function GET(request: NextRequest) {
+    const denied = assertDebugAccess(request);
+    if (denied) return denied;
+
     try {
         const supabase = await createServiceClient();
 

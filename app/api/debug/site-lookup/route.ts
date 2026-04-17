@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/utils/supabase/server";
 import { revalidateTag } from "next/cache";
 import { getSiteData } from "@/lib/fetchers";
+import { assertDebugAccess } from "@/lib/api/debug-guard";
 
 /**
  * Debug endpoint to diagnose site lookup issues
@@ -10,6 +11,9 @@ import { getSiteData } from "@/lib/fetchers";
  * GET /api/debug/site-lookup?subdomain=santini&revalidate=true
  */
 export async function GET(request: NextRequest) {
+    const denied = assertDebugAccess(request);
+    if (denied) return denied;
+
     try {
         const searchParams = request.nextUrl.searchParams;
         const subdomain = searchParams.get("subdomain");

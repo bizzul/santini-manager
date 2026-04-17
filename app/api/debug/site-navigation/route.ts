@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "@/lib/fetchers";
+import { assertDebugAccess } from "@/lib/api/debug-guard";
 
 export async function GET(request: NextRequest) {
+    const denied = assertDebugAccess(request);
+    if (denied) return denied;
+
     try {
         const { searchParams } = new URL(request.url);
         const testDomain = searchParams.get("domain");

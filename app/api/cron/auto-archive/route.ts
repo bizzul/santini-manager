@@ -19,12 +19,25 @@ import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
-    // Verifica autorizzazione (opzionale, per sicurezza)
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    // Se è configurato un secret, verificalo
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    // CRON_SECRET is REQUIRED. Missing env var or wrong header => 401.
+    // In non-production environments, a missing secret only disables the cron
+    // (returns 503) so local dev does not accidentally run archival logic.
+    if (!cronSecret) {
+      if (process.env.NODE_ENV === "production") {
+        logger.error(
+          "CRON_SECRET is not configured in production. Cron route is disabled.",
+        );
+      }
+      return NextResponse.json(
+        { error: "Cron secret not configured" },
+        { status: 503 },
+      );
+    }
+
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 },
@@ -43,7 +56,7 @@ export async function GET(request: NextRequest) {
       .lt("auto_archive_at", now);
 
     if (findError) {
-      console.error("Error finding tasks to archive:", findError);
+      logger.error("Error finding tasks to archive:", findError);
       return NextResponse.json(
         { error: "Failed to find tasks" },
         { status: 500 },
@@ -71,7 +84,7 @@ export async function GET(request: NextRequest) {
       .in("id", taskIds);
 
     if (updateError) {
-      console.error("Error archiving tasks:", updateError);
+      logger.error("Error archiving tasks:", updateError);
       return NextResponse.json(
         { error: "Failed to archive tasks" },
         { status: 500 },
@@ -89,7 +102,7 @@ export async function GET(request: NextRequest) {
       taskIds: taskIds,
     });
   } catch (error) {
-    console.error("Error in auto-archive cron:", error);
+    logger.error("Error in auto-archive cron:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

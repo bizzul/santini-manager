@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/utils/supabase/server";
+import { assertDebugAccess } from "@/lib/api/debug-guard";
 
 /**
  * Debug endpoint to check Vercel environment and Supabase connection
@@ -7,6 +8,9 @@ import { createServiceClient } from "@/utils/supabase/server";
  * GET /api/debug/vercel-env
  */
 export async function GET(request: NextRequest) {
+    const denied = assertDebugAccess(request);
+    if (denied) return denied;
+
     try {
         // Check environment variables (without exposing secrets)
         const envCheck = {
