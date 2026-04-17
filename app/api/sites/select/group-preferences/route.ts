@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserContext, getUserSites } from "@/lib/auth-utils";
-import { createClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 
 type SiteGroupKey = "active" | "custom" | "beta" | "alpha";
 
@@ -44,7 +44,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
+    // Authorization is fully enforced above (superadmin + site access).
+    // Use the service client so the write does not depend on RLS, whose
+    // policy on this table historically referenced `auth.role()` instead
+    // of the application role (see migration 20260418100000).
+    const supabase = createServiceClient();
     const { error } = await supabase.from("user_site_select_preferences").upsert(
       {
         user_id: userId,
