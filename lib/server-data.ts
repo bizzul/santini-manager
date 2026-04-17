@@ -14,6 +14,10 @@ import type {
 import { logger } from "@/lib/logger";
 import { cache } from "react";
 import { AVAILABLE_MODULES, ModuleConfig } from "@/lib/module-config";
+import {
+    getProductCategoryLabelAndColor,
+    normalizeSupabaseRelation,
+} from "@/lib/product-category-label";
 
 const log = logger.scope("ServerData");
 
@@ -3579,10 +3583,9 @@ export const fetchAvorDashboardData = cache(
 
             const columnName = column.title || column.identifier ||
                 `Col ${column.position}`;
-            const categoryName = task.SellProduct?.category?.name ||
-                "Senza Categoria";
-            const categoryColor = task.SellProduct?.category?.color ||
-                "#6b7280";
+            const { label: categoryName, color: resolvedColor } =
+                getProductCategoryLabelAndColor(task, "Senza Categoria");
+            const categoryColor = resolvedColor || "#6b7280";
             const positionsCount = task.positions?.length || 1;
 
             if (!categoryWorkloadMap.has(categoryName)) {
@@ -3995,8 +3998,9 @@ export const fetchProduzioneDashboardData = cache(
             );
             if (!summary) return;
 
-            const categoryName = task.SellProduct?.category?.name || "Senza categoria";
-            const categoryColor = task.SellProduct?.category?.color || "#64748b";
+            const { label: categoryName, color: resolvedColor } =
+                getProductCategoryLabelAndColor(task, "Senza categoria");
+            const categoryColor = resolvedColor || "#64748b";
             const elementiCount = task.positions?.length || task.numero_pezzi || 1;
 
             summary.commesse += 1;
@@ -4089,11 +4093,13 @@ export const fetchProduzioneDashboardData = cache(
                         }
                     }
 
-                    const categoryName = task.SellProduct?.category?.name ||
-                        "Senza categoria";
-                    const categoryId = task.SellProduct?.category?.id;
-                    const categoryColor = task.SellProduct?.category?.color ||
-                        "#64748b";
+                    const { label: categoryName, color: resolvedColor } =
+                        getProductCategoryLabelAndColor(task, "Senza categoria");
+                    const sellProductCategory = normalizeSupabaseRelation(
+                        task.SellProduct?.category as any,
+                    );
+                    const categoryId = sellProductCategory?.id;
+                    const categoryColor = resolvedColor || "#64748b";
 
                     const current = productWorkloadMap.get(categoryName) || {
                         categoryId,

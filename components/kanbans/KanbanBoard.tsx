@@ -15,7 +15,7 @@ import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import OfferQuickAdd from "./OfferQuickAdd";
 import DraftCompletionWizard from "./DraftCompletionWizard";
-import { Plus, FileEdit, X, RotateCcw } from "lucide-react";
+import { Plus, FileEdit, X, RotateCcw, Eraser } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
@@ -1120,6 +1120,43 @@ function KanbanBoard({
     });
   }, [draftCardFieldConfig, toast, kanban?.id, domain, shouldPersistCardConfigLocally]);
 
+  const resetKanbanPreferences = useCallback(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const prefixesToRemove = [
+        "isSmall-",
+        "card-cover-preference-",
+        "kanban-card-fields-",
+      ];
+      const keysToRemove: string[] = [];
+      for (let index = 0; index < window.localStorage.length; index += 1) {
+        const storageKey = window.localStorage.key(index);
+        if (!storageKey) continue;
+        if (prefixesToRemove.some((prefix) => storageKey.startsWith(prefix))) {
+          keysToRemove.push(storageKey);
+        }
+      }
+      keysToRemove.forEach((storageKey) =>
+        window.localStorage.removeItem(storageKey)
+      );
+      toast({
+        description:
+          keysToRemove.length > 0
+            ? `Reset preferenze kanban completato (${keysToRemove.length} chiavi rimosse). Ricarico...`
+            : "Nessuna preferenza kanban in locale. Ricarico per sicurezza...",
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    } catch (error) {
+      logger.warn("Error resetting kanban preferences:", error);
+      toast({
+        variant: "destructive",
+        description: "Errore durante il reset preferenze kanban.",
+      });
+    }
+  }, [toast]);
+
   const handleSaveKanban = async (kanbanData: any) => {
     try {
       // Use the domain passed as prop instead of window.location.hostname
@@ -1488,16 +1525,29 @@ function KanbanBoard({
                     <div className="text-sm text-muted-foreground">Categorie non configurate</div>
                   )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={openCardConfigDialog}
-                    className="ml-auto shrink-0 text-xs"
-                  >
-                    <FileEdit className="mr-2 h-3.5 w-3.5" />
-                    Configura campi card
-                  </Button>
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={resetKanbanPreferences}
+                      className="text-xs"
+                      title="Reset preferenze locali kanban (isSmall, cover, configurazione campi card)"
+                    >
+                      <Eraser className="mr-2 h-3.5 w-3.5" />
+                      Reset preferenze
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openCardConfigDialog}
+                      className="text-xs"
+                    >
+                      <FileEdit className="mr-2 h-3.5 w-3.5" />
+                      Configura campi card
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
