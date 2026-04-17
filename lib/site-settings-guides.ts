@@ -69,6 +69,14 @@ export const SITE_SETTINGS_GUIDES = {
       "Puoi inviare una richiesta assistenza specifica con priorita direttamente dal pannello.",
     ],
   },
+  commandDeck: {
+    summary:
+      "Abilita la navigazione immersiva Command Deck per questo spazio.",
+    details: [
+      "Quando la 3D Desk View e attiva, un bottone Orbit compare nella sidebar accanto al logo del sito e la rotta /command-deck diventa disponibile.",
+      "I cerchi orbitanti attorno ai 7 nodi principali (Clienti, Fornitori, Prodotti, Progetti, Inventario, Fabbrica, Admin) sono popolati con i dati reali gia presenti nel sito.",
+    ],
+  },
 } as const;
 
 export type SiteSettingsGuideKey = keyof typeof SITE_SETTINGS_GUIDES;

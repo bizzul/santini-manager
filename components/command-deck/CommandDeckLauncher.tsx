@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Orbit } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -21,20 +22,24 @@ interface CommandDeckLauncherProps {
 /**
  * Small launcher button for the Command Deck.
  *
- * Designed to sit next to the site logo in the sidebar header so the
- * immersive navigation is always one click away. Matches the visual
- * weight of the adjacent QuickActions "+" button (40×40 rounded-xl) but
- * uses a sky/cyan palette that echoes the Command Deck aesthetic.
+ * Visibility is driven by the per-site `commandDeckEnabled` flag, which is
+ * hydrated server-side into the React Query cache (`["site-data", domain]`)
+ * by the site layout. We read it directly from the cache — no extra fetch.
  *
- * When the user is already on the Command Deck the button switches to an
- * "active" style (solid sky fill) to act as a breadcrumb.
+ * When the flag is `true` the button sits next to the site logo in the
+ * sidebar header and navigates to `/sites/{domain}/command-deck`. When the
+ * flag is `false` (or not yet hydrated) the component renders `null` so
+ * the UI stays pristine on every space where the feature is disabled.
  */
 export function CommandDeckLauncher({ domain }: CommandDeckLauncherProps) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
 
-  // Alpha-demo gate: the launcher is visible only on "copia" spaces so
-  // production sites see no trace of the feature until we promote it.
-  if (!isCommandDeckEnabled(domain)) return null;
+  const siteData = queryClient.getQueryData<{
+    commandDeckEnabled?: boolean;
+  }>(["site-data", domain]);
+
+  if (!isCommandDeckEnabled(siteData?.commandDeckEnabled)) return null;
 
   const href = `/sites/${domain}/command-deck`;
   const isActive = pathname === href || pathname?.startsWith(`${href}/`);

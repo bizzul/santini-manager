@@ -133,6 +133,8 @@ type SiteDataQueryResult = {
   image: string | null;
   verticalProfile?: unknown;
   organization: { name: string };
+  /** Per-site Command Deck toggle, persisted in `site_settings`. */
+  commandDeckEnabled?: boolean;
 };
 
 // Fetch functions for React Query
@@ -147,6 +149,7 @@ async function fetchSiteData(domain: string): Promise<SiteDataQueryResult> {
     image: data.image || null,
     verticalProfile: data.verticalProfile || null,
     organization: { name: data.organization?.name || "" },
+    commandDeckEnabled: Boolean(data.commandDeckEnabled),
   };
 }
 

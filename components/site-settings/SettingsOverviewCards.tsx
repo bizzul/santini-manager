@@ -6,6 +6,7 @@ import {
   Factory,
   Headset,
   Layers,
+  Orbit,
   Package,
   Palette,
   Settings,
@@ -48,6 +49,10 @@ interface SettingsOverviewCardsProps {
   aiAction: React.ReactNode;
   themeAction: React.ReactNode;
   supportAction: React.ReactNode;
+  /** Trigger for the 3D Desk View (Command Deck) per-site toggle modal. */
+  commandDeckAction: React.ReactNode;
+  /** Current persisted state of the Command Deck flag, used for the badge. */
+  commandDeckEnabled: boolean;
 }
 
 export default function SettingsOverviewCards({
@@ -62,6 +67,8 @@ export default function SettingsOverviewCards({
   aiAction,
   themeAction,
   supportAction,
+  commandDeckAction,
+  commandDeckEnabled,
 }: SettingsOverviewCardsProps) {
   const cards: SettingsOverviewCard[] = [
     {
@@ -146,6 +153,17 @@ export default function SettingsOverviewCards({
       badge: "Supporto immediato",
       action: supportAction,
       className: "border-emerald-300/25 bg-emerald-500/10",
+    },
+    {
+      key: "commandDeck",
+      title: "3D Desk View",
+      description:
+        "Mostra la navigazione immersiva Command Deck per questo spazio.",
+      guideKey: "commandDeck",
+      icon: Orbit,
+      badge: commandDeckEnabled ? "Attiva" : "Disattiva",
+      action: commandDeckAction,
+      className: "border-sky-300/25 bg-sky-500/10",
     },
     {
       key: "ai",

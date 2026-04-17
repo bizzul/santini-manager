@@ -12,6 +12,8 @@ interface SiteDataForHydration {
   logo?: string | null;
   organization: { name: string };
   verticalProfile?: unknown;
+  /** When `true`, the Command Deck page and launcher are available. */
+  commandDeckEnabled?: boolean;
 }
 
 interface HydrationData {

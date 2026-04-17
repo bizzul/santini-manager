@@ -12,6 +12,10 @@ import {
   resolveSiteThemeSettings,
   SITE_THEME_SETTING_KEY,
 } from "@/lib/site-theme";
+import {
+  COMMAND_DECK_SETTING_KEY,
+  parseCommandDeckEnabled,
+} from "@/lib/command-deck-settings";
 
 export default async function EditSitePage({
   params,
@@ -38,21 +42,36 @@ export default async function EditSitePage({
   const users = (await getUsers()).filter((u: any) => u.role !== "admin");
   const supabase = await createClient();
 
-  const { data: themeSetting } = await supabase
-    .from("site_settings")
-    .select("setting_value")
-    .eq("site_id", id)
-    .eq("setting_key", SITE_THEME_SETTING_KEY)
-    .maybeSingle();
-  const { data: supportBotSetting } = await supabase
-    .from("site_settings")
-    .select("setting_value")
-    .eq("site_id", id)
-    .eq("setting_key", "support_bot_enabled")
-    .maybeSingle();
+  const [
+    { data: themeSetting },
+    { data: supportBotSetting },
+    { data: commandDeckSetting },
+  ] = await Promise.all([
+    supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("site_id", id)
+      .eq("setting_key", SITE_THEME_SETTING_KEY)
+      .maybeSingle(),
+    supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("site_id", id)
+      .eq("setting_key", "support_bot_enabled")
+      .maybeSingle(),
+    supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("site_id", id)
+      .eq("setting_key", COMMAND_DECK_SETTING_KEY)
+      .maybeSingle(),
+  ]);
 
   const initialThemeSettings = resolveSiteThemeSettings(themeSetting?.setting_value);
   const initialSupportBotEnabled = Boolean(supportBotSetting?.setting_value ?? false);
+  const initialCommandDeckEnabled = parseCommandDeckEnabled(
+    commandDeckSetting?.setting_value,
+  );
 
   if (!site)
     return (
@@ -125,6 +144,7 @@ export default async function EditSitePage({
             userRole={userContext?.role}
             initialThemeSettings={initialThemeSettings}
             initialSupportBotEnabled={initialSupportBotEnabled}
+            initialCommandDeckEnabled={initialCommandDeckEnabled}
           />
         </div>
       </div>

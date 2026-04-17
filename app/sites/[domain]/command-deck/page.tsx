@@ -11,7 +11,6 @@ import {
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { CommandDeckView } from "@/components/command-deck/CommandDeckView";
-import { isCommandDeckEnabled } from "@/components/command-deck/feature-gate";
 import {
   buildOrbitSet,
   normalizeAdminUsers,
@@ -22,9 +21,8 @@ import {
   normalizeProjects,
   normalizeSuppliers,
   type OrbitGroups,
-  type OrbitItem,
 } from "@/components/command-deck/orbit-items";
-import { DEMO_ORBIT_ITEMS } from "@/components/command-deck/demo-orbit-items";
+import { getCommandDeckEnabledForSite } from "@/lib/command-deck-settings.server";
 
 export async function generateMetadata({
   params,
@@ -45,21 +43,17 @@ export async function generateMetadata({
 /**
  * Santini Command Deck — user-centric immersive home.
  *
- * Server component handles auth + site resolution + orbit data fetching,
- * then hands off to the `<CommandDeckView />` client component which mounts
- * the 3D scene via `next/dynamic({ ssr: false })`.
+ * Gating (v2.5+):
+ *  - Reads `site_settings.command_deck_enabled` for the current site via
+ *    `getCommandDeckEnabledForSite()`. When the flag is false we return
+ *    `notFound()`, so the route stays invisible on spaces that did not
+ *    opt into the feature from the admin settings page.
  *
- * Orbit data strategy
- * -------------------
- * On first render we fetch the 7 real data sources in parallel (all of them
- * are `React.cache()`-wrapped, so re-visiting the module page later reuses
- * the same fetch). Each source is normalized to the common `OrbitItem`
- * shape. When a category is empty for the current site (typical on fresh
- * workspaces — see the "Nessun cliente registrato" state), we fall back to
- * a small set of realistic demo items defined in `demo-orbit-items.ts`.
- *
- * As soon as real entities are inserted into the corresponding tables, the
- * demo fallback disappears automatically — the page doesn't need to change.
+ * Data:
+ *  - Real data only. Each of the 7 module nodes is fed from the existing
+ *    server fetchers in `lib/server-data.ts`. Empty categories render as
+ *    empty orbits (no demo fallback) — the admin can populate them from
+ *    the corresponding module page.
  */
 export default async function CommandDeckPage({
   params,
@@ -68,15 +62,17 @@ export default async function CommandDeckPage({
 }) {
   const { domain } = await params;
 
-  // Alpha-demo gate: Command Deck is currently available only on "copia"
-  // spaces. Any other subdomain gets a 404 so the feature is invisible on
-  // production sites until we promote it.
-  if (!isCommandDeckEnabled(domain)) {
+  const siteContext = await getServerSiteContext(domain);
+  if (!siteContext) {
     notFound();
   }
 
-  const siteContext = await getServerSiteContext(domain);
-  if (!siteContext) {
+  // Per-site feature gate. Kept before any data fetching so non-enabled
+  // sites never pay the cost of the orbit fetchers.
+  const commandDeckEnabled = await getCommandDeckEnabledForSite(
+    siteContext.siteId,
+  );
+  if (!commandDeckEnabled) {
     notFound();
   }
 
@@ -117,9 +113,6 @@ export default async function CommandDeckPage({
         commanderRole={userContext.role ?? null}
         commanderAvatarUrl={commanderAvatarUrl}
         orbitGroups={orbitGroups}
-        // Flip to `false` to surface a visible-but-disabled CTA preview,
-        // useful for offline demos / screenshots. `true` turns the CTA and
-        // the double-click node shortcut into real navigation.
         enableModuleOpen={true}
       />
     </div>
@@ -131,24 +124,18 @@ export default async function CommandDeckPage({
 // ---------------------------------------------------------------------------
 
 /**
- * Fetches the 7 real data sources in parallel, normalizes each to
- * `OrbitItem[]` and falls back to the category-specific demo set when the
- * real source is empty.
+ * Fetches the 7 real data sources in parallel, normalizes each to the
+ * common `OrbitItem` shape and wraps it into an `OrbitSet` with the
+ * pre-cap total. Per-source failures are isolated: if any fetcher throws
+ * we log and treat that category as empty so the rest of the command
+ * deck keeps rendering.
  *
- * All fetchers are `React.cache()`-wrapped, so:
- *  - calling `fetchProjectsData` here reuses `fetchClients` and
- *    `fetchSellProducts` if they run concurrently (they share the siteId),
- *  - navigating to the real module pages afterwards hits the same cache.
- *
- * Failures are isolated: if any fetcher throws we log and treat that
- * category as empty (→ demo fallback), so a single flaky table doesn't
- * brick the whole command deck.
+ * There is no demo fallback since v2.5 — when a category has no entities
+ * the orbit renders empty and the right panel reads "0 in orbita". This
+ * matches the user's intent of showing only real data when the feature
+ * toggle is enabled.
  */
 async function buildOrbitGroups(siteId: string): Promise<OrbitGroups> {
-  // Per-source catch handlers: keep the fetcher's native return type so we
-  // don't have to weaken the generic signature of `safe()`. If any single
-  // source fails we log and return an "empty" value of the correct shape;
-  // the rest of the command deck keeps rendering.
   const logAndReturn = <T,>(label: string, empty: T) =>
     (err: unknown): T => {
       console.error(`[CommandDeck] ${label} fetch failed:`, err);
@@ -180,7 +167,6 @@ async function buildOrbitGroups(siteId: string): Promise<OrbitGroups> {
     fetchFactoryDashboardData(siteId).catch(
       logAndReturn(
         "factoryDashboard",
-        // Minimal safe shape: the normalizer only reads `departments`.
         { departments: [] } as unknown as Awaited<
           ReturnType<typeof fetchFactoryDashboardData>
         >,
@@ -189,27 +175,17 @@ async function buildOrbitGroups(siteId: string): Promise<OrbitGroups> {
     fetchUsers(siteId).catch(logAndReturn("users", [])),
   ]);
 
-  const real: Record<string, OrbitItem[]> = {
-    clienti: normalizeClients(clients),
-    fornitori: normalizeSuppliers(suppliers),
-    prodotti: normalizeProducts(products),
-    progetti: normalizeProjects(projectsData.tasks ?? []),
-    inventario: normalizeInventory(inventory),
-    fabbrica: normalizeFactoryDepartments(factory.departments ?? []),
-    admin: normalizeAdminUsers(users),
+  const groups: OrbitGroups = {
+    clienti: buildOrbitSet(normalizeClients(clients)),
+    fornitori: buildOrbitSet(normalizeSuppliers(suppliers)),
+    prodotti: buildOrbitSet(normalizeProducts(products)),
+    progetti: buildOrbitSet(normalizeProjects(projectsData.tasks ?? [])),
+    inventario: buildOrbitSet(normalizeInventory(inventory)),
+    fabbrica: buildOrbitSet(
+      normalizeFactoryDepartments(factory.departments ?? []),
+    ),
+    admin: buildOrbitSet(normalizeAdminUsers(users)),
   };
-
-  // For each category: use real if available, otherwise demo fallback.
-  const groups: OrbitGroups = {};
-  for (const nodeId of Object.keys(real)) {
-    const realItems = real[nodeId];
-    if (realItems.length > 0) {
-      groups[nodeId] = buildOrbitSet(realItems, { isDemo: false });
-    } else {
-      const demoItems = DEMO_ORBIT_ITEMS[nodeId] ?? [];
-      groups[nodeId] = buildOrbitSet(demoItems, { isDemo: true });
-    }
-  }
 
   return groups;
 }

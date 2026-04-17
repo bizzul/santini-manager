@@ -33,19 +33,34 @@ stato persistito (localStorage) o differenze di configurazione.
 
 ## Flag Command Deck
 
-### `NEXT_PUBLIC_COMMAND_DECK_DOMAINS`
-- **Tipo:** stringa CSV (es. `santini-copia,acme-copia`) oppure `undefined`.
-- **Dove:**
-  - `components/command-deck/feature-gate.ts` (`isCommandDeckEnabled`)
-  - `components/command-deck/CommandDeckLauncher.tsx` (nasconde il bottone)
-  - `app/sites/[domain]/command-deck/page.tsx` (404 se non abilitato)
-- **Scopo:** allowlist dei siti su cui il Command Deck e' attivo durante
-  la fase alpha demo. Quando non impostata, il gate ricade su una regex
-  che matcha qualunque subdomain contenente "copia" (case-insensitive).
-- **Raccomandazione:**
-  - `production`: non impostato → gate automatico su "copia"
-  - `staging`: opzionale per testare domini custom
-  - `development`: non impostato (fallback regex ok)
+### Sorgente di verita: `site_settings.command_deck_enabled`
+- **Tipo:** boolean persistito nella tabella `site_settings` (stessa usata
+  per tema, support bot e vertical profile). Chiave:
+  `command_deck_enabled` (costante in `lib/command-deck-settings.ts`).
+- **Dove si imposta:** pannello superadmin di ciascun sito
+  (`/administration/sites/{id}/edit`), card "3D Desk View" che apre la
+  modale `SiteCommandDeckModal`.
+- **Dove si legge:**
+  - Server: `getCommandDeckEnabledForSite(siteId)` (React.cache-wrapped)
+    in `lib/command-deck-settings.ts`. Usato dal layout del sito
+    (`app/sites/[domain]/layout.tsx`) e dalla rotta del Command Deck
+    per gate 404.
+  - API: `GET /api/sites/[domain]` restituisce il flag nel payload, cosi
+    il sidebar client lo ha gia in cache React Query
+    (`["site-data", domain]`).
+  - Client: `CommandDeckLauncher` legge il flag dalla query cache via
+    `useQueryClient().getQueryData(["site-data", domain])` e nasconde
+    il bottone quando `false`.
+- **Migration:** nessuna — la tabella `site_settings` esiste gia, la
+  scrittura passa per `/api/settings/site-config` (PUT generico).
+- **Comportamento:**
+  - `true` → launcher visibile in sidebar, rotta `/command-deck` attiva
+    con dati reali degli spazi.
+  - `false` (o assente) → launcher nullo, rotta `notFound()`.
+
+> Nota storica: le versioni 2.3 e 2.4 gating erano basate su regex sul
+> subdomain (`/copia/i`) o su allowlist `NEXT_PUBLIC_COMMAND_DECK_DOMAINS`.
+> Entrambe sono state sostituite dal flag per-sito a partire dalla 2.5.
 
 ## Flag internazionalizzazione
 

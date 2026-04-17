@@ -1,46 +1,33 @@
 /**
  * Feature gate for the Command Deck.
  *
- * During the alpha demo phase we want the immersive navigation live only
- * on the "copia" spaces (e.g. `santini-copia`). Production spaces (e.g.
- * `santini`) must see no launcher button and receive a `notFound()` when
- * they try to hit `/sites/{domain}/command-deck` directly.
+ * Source of truth since v2.5: the `site_settings.command_deck_enabled`
+ * boolean toggle, manageable per-site by superadmins from the admin site
+ * edit page ("Abilita 3D Desk View" card).
  *
- * Policy:
- *  1. If `NEXT_PUBLIC_COMMAND_DECK_DOMAINS` is set, it is parsed as a
- *     comma-separated allowlist (exact match, case-insensitive).
- *     This is the recommended way to scale the gate later without code
- *     changes — just flip the env variable in Vercel.
- *  2. Otherwise, falls back to a regex matching any subdomain that
- *     contains the literal substring "copia" (case-insensitive).
- *     This is sufficient for the current alpha demo naming convention.
+ * Previous iterations gated the feature via a subdomain regex (`/copia/i`)
+ * or via the `NEXT_PUBLIC_COMMAND_DECK_DOMAINS` env allowlist. Both are now
+ * retired in favour of the persistent per-space flag, which gives the
+ * admin full control at runtime without a redeploy.
  *
- * The function is safe to call from both server and client code.
+ * - Client callers should receive the boolean already resolved (e.g. from
+ *   the hydrated React Query cache or from a server prop) and pass it into
+ *   `isCommandDeckEnabled(flag)`.
+ * - Server callers should use `getCommandDeckEnabledForSite(siteId)` from
+ *   `lib/command-deck-settings.ts` directly — it is `React.cache()`-wrapped
+ *   so repeated calls during a single render are free.
  */
 
-const ALPHA_DEMO_PATTERN = /copia/i;
-
-function parseAllowlist(raw: string | undefined): Set<string> | null {
-  if (!raw) return null;
-  const parts = raw
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter((s) => s.length > 0);
-  if (parts.length === 0) return null;
-  return new Set(parts);
-}
-
+/**
+ * Pure predicate. Kept as a named export so call sites read clearly:
+ *
+ *   if (!isCommandDeckEnabled(siteData?.commandDeckEnabled)) return null;
+ *
+ * Tolerates `null` / `undefined` (treated as disabled), matching the
+ * behaviour of the server reader which coerces missing rows to `false`.
+ */
 export function isCommandDeckEnabled(
-  domain: string | null | undefined,
+  enabled: boolean | null | undefined,
 ): boolean {
-  if (!domain) return false;
-
-  const allowlist = parseAllowlist(
-    process.env.NEXT_PUBLIC_COMMAND_DECK_DOMAINS,
-  );
-  if (allowlist) {
-    return allowlist.has(domain.toLowerCase());
-  }
-
-  return ALPHA_DEMO_PATTERN.test(domain);
+  return enabled === true;
 }

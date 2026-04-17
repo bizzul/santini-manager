@@ -41,6 +41,7 @@ import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
 import AiSettingsModal from "@/components/site-settings/AiSettingsModal";
 import SiteThemeSettingsModal from "@/components/site-settings/SiteThemeSettingsModal";
 import SiteSupportAndSubscriptionModal from "@/components/site-settings/SiteSupportAndSubscriptionModal";
+import { SiteCommandDeckModal } from "@/components/site-settings/SiteCommandDeckModal";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
 import { logger } from "@/lib/logger";
 import type { SiteThemeSettings } from "@/lib/site-theme";
@@ -108,6 +109,7 @@ export default function EditSiteForm({
   userRole,
   initialThemeSettings,
   initialSupportBotEnabled,
+  initialCommandDeckEnabled,
 }: {
   site: any;
   siteUsers: any[];
@@ -116,6 +118,7 @@ export default function EditSiteForm({
   userRole?: string;
   initialThemeSettings: SiteThemeSettings;
   initialSupportBotEnabled: boolean;
+  initialCommandDeckEnabled: boolean;
 }) {
   const [form, setForm] = useState({
     name: site.name || "",
@@ -909,6 +912,24 @@ export default function EditSiteForm({
                       className="border-emerald-300/35 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25"
                     >
                       Apri assistenza e abbonamento
+                    </Button>
+                  }
+                />
+              }
+              commandDeckEnabled={initialCommandDeckEnabled}
+              commandDeckAction={
+                <SiteCommandDeckModal
+                  siteId={site.id}
+                  siteName={site.name || site.subdomain}
+                  initialEnabled={initialCommandDeckEnabled}
+                  canConfigure={userRole === "superadmin"}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="border-sky-300/35 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25"
+                    >
+                      Abilita 3D Desk View
                     </Button>
                   }
                 />

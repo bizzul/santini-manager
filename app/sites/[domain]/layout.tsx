@@ -24,6 +24,7 @@ import {
   SITE_THEME_SETTING_KEY,
 } from "@/lib/site-theme";
 import { SiteThemeStyle } from "@/components/site-theme-style";
+import { getCommandDeckEnabledForSite } from "@/lib/command-deck-settings.server";
 
 /**
  * Check if user has access to a specific site
@@ -167,6 +168,12 @@ export default async function SiteLayout({
       .maybeSingle();
     const siteThemeSettings = resolveSiteThemeSettings(themeSetting?.setting_value);
 
+    // Read per-site Command Deck toggle so both the launcher (sidebar) and
+    // the `/command-deck` route can gate on a single source of truth. The
+    // reader is React.cache()-wrapped, so calling it again from the page
+    // server component is free.
+    const commandDeckEnabled = await getCommandDeckEnabledForSite(data.id);
+
     return (
       <KanbanModalProvider>
         <QuickActionsProvider>
@@ -183,6 +190,7 @@ export default async function SiteLayout({
                   logo: data.logo || null,
                   verticalProfile: data.verticalProfile || null,
                   organization: { name: data.organization?.name || "" },
+                  commandDeckEnabled,
                 },
                 domain,
               }}
