@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Orbit } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -19,25 +19,55 @@ interface CommandDeckLauncherProps {
   domain: string;
 }
 
+/** Minimal shape consumed by this component. The sidebar's `fetchSiteData`
+ *  stores the full `SiteDataQueryResult` under the same query key; we only
+ *  read the flag. */
+type SiteDataForLauncher = {
+  commandDeckEnabled?: boolean;
+};
+
+/**
+ * Fetches the minimal site payload from the public API.
+ *
+ * Duplicated intentionally from `AppSidebar.fetchSiteData` so the launcher
+ * subscribes to the same `["site-data", domain]` query key. React Query
+ * deduplicates the in-flight request, so this does not double the network
+ * cost — it just ensures the launcher re-renders when the cache lands.
+ */
+async function fetchSiteDataForLauncher(
+  domain: string,
+): Promise<SiteDataForLauncher> {
+  const response = await fetch(`/api/sites/${domain}`);
+  if (!response.ok) throw new Error("Failed to fetch site data");
+  const data = await response.json();
+  return { commandDeckEnabled: Boolean(data.commandDeckEnabled) };
+}
+
 /**
  * Small launcher button for the Command Deck.
  *
- * Visibility is driven by the per-site `commandDeckEnabled` flag, which is
- * hydrated server-side into the React Query cache (`["site-data", domain]`)
- * by the site layout. We read it directly from the cache — no extra fetch.
+ * Visibility is driven by the per-site `commandDeckEnabled` flag. We
+ * subscribe to the `["site-data", domain]` React Query cache (same entry
+ * used by the sidebar) so the button pops in as soon as the flag is known
+ * — including the case where the persistent cache was stale and the first
+ * render had no data.
  *
- * When the flag is `true` the button sits next to the site logo in the
- * sidebar header and navigates to `/sites/{domain}/command-deck`. When the
- * flag is `false` (or not yet hydrated) the component renders `null` so
- * the UI stays pristine on every space where the feature is disabled.
+ * While the flag is unknown (or explicitly `false`) the component renders
+ * `null` so the UI stays pristine on every space where the feature is
+ * disabled.
  */
 export function CommandDeckLauncher({ domain }: CommandDeckLauncherProps) {
   const pathname = usePathname();
-  const queryClient = useQueryClient();
 
-  const siteData = queryClient.getQueryData<{
-    commandDeckEnabled?: boolean;
-  }>(["site-data", domain]);
+  const { data: siteData } = useQuery<SiteDataForLauncher>({
+    queryKey: ["site-data", domain],
+    queryFn: () => fetchSiteDataForLauncher(domain),
+    enabled: Boolean(domain),
+    // Mirror the sidebar's staleTime/gcTime so we share the exact cache
+    // entry and don't trigger independent refetches.
+    staleTime: 15 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+  });
 
   if (!isCommandDeckEnabled(siteData?.commandDeckEnabled)) return null;
 
