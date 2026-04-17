@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
           siteId = siteResult.data.id;
         }
       } catch (error) {
-        console.error("Error fetching site data:", error);
+        logger.error("Error fetching site data:", error);
       }
     }
 
@@ -739,7 +739,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (actionError) {
-        console.error("Error creating action:", actionError);
+        logger.error("Error creating action:", actionError);
       }
 
       return NextResponse.json({
