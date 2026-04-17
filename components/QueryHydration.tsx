@@ -63,12 +63,20 @@ export function QueryHydration({ data }: { data: HydrationData }) {
 
     if (data.siteData && data.domain) {
       // Only set if cache is empty to avoid overwriting fresh data
-      const existingSiteData = queryClient.getQueryData([
+      const existingSiteData = queryClient.getQueryData<SiteDataForHydration>([
         "site-data",
         data.domain,
       ]);
       if (!existingSiteData) {
         queryClient.setQueryData(["site-data", data.domain], data.siteData);
+      } else if (existingSiteData.commandDeckEnabled === undefined) {
+        // Back-compat: persistent caches from pre-v3 builds may be missing
+        // the `commandDeckEnabled` flag. Patch it from the server payload
+        // without overwriting any fresher fields (e.g. realtime name/logo).
+        queryClient.setQueryData(["site-data", data.domain], {
+          ...existingSiteData,
+          commandDeckEnabled: data.siteData.commandDeckEnabled,
+        });
       }
     }
   }
