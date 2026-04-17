@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --ci
+
+      - name: Build
+        run: npm run build
+        env:
+          # Placeholder values for build-time env checks.
+          # Real credentials must live in GitHub Secrets, never in this file.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+          NEXT_PUBLIC_ROOT_DOMAIN: example.com
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Scan for hard-coded secrets
+        run: |
+          set -euo pipefail
+          # Patterns: GitHub PAT, generic API keys, Postgres URI with inline password
+          if rg --no-heading --line-number \
+               -e 'ghp_[A-Za-z0-9]{20,}' \
+               -e 'github_pat_[A-Za-z0-9_]{20,}' \
+               -e 'postgresql://postgres:[^[\s]' \
+               -e 'sk_live_[A-Za-z0-9]+' \
+               --glob '!node_modules/**' \
+               --glob '!.next/**' \
+               --glob '!docs/chat-exports/**' \
+               .; then
+            echo "::error::Potential hard-coded secret detected. Rotate the credential and remove it from the diff."
+            exit 1
+          fi
+          echo "Secret scan passed."
