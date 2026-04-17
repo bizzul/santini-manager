@@ -31,6 +31,22 @@ stato persistito (localStorage) o differenze di configurazione.
   - `staging`: opzionale per QA visivo
   - `development`: `true` se stai lavorando sul resolver copertina
 
+## Flag Command Deck
+
+### `NEXT_PUBLIC_COMMAND_DECK_DOMAINS`
+- **Tipo:** stringa CSV (es. `santini-copia,acme-copia`) oppure `undefined`.
+- **Dove:**
+  - `components/command-deck/feature-gate.ts` (`isCommandDeckEnabled`)
+  - `components/command-deck/CommandDeckLauncher.tsx` (nasconde il bottone)
+  - `app/sites/[domain]/command-deck/page.tsx` (404 se non abilitato)
+- **Scopo:** allowlist dei siti su cui il Command Deck e' attivo durante
+  la fase alpha demo. Quando non impostata, il gate ricade su una regex
+  che matcha qualunque subdomain contenente "copia" (case-insensitive).
+- **Raccomandazione:**
+  - `production`: non impostato → gate automatico su "copia"
+  - `staging`: opzionale per testare domini custom
+  - `development`: non impostato (fallback regex ok)
+
 ## Flag internazionalizzazione
 
 ### `NEXT_PUBLIC_TIMEZONE`

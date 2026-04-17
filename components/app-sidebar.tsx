@@ -65,6 +65,7 @@ import {
   faListUl,
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
+import { CommandDeckLauncher } from "@/components/command-deck/CommandDeckLauncher";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { cn } from "@/lib/utils";
 
@@ -1443,7 +1444,10 @@ export function AppSidebar() {
                 ) : (
                   <span className="truncate">{displayTitle}</span>
                 )}
-                <QuickActions />
+                <div className="flex items-center gap-1.5">
+                  {domain && <CommandDeckLauncher domain={domain} />}
+                  <QuickActions />
+                </div>
               </div>
             )}
           </SidebarGroupLabel>
