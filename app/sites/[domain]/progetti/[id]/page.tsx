@@ -132,7 +132,7 @@ async function getData(id: number, siteId: string): Promise<any> {
       sellProduct:SellProduct!sellProductId(id, name, type, category_id, category:sellproduct_categories(id, name, color)),
       client:Client!clientId(id, businessName, individualFirstName, individualLastName, address, city, zipCode),
       column:KanbanColumn!kanbanColumnId(id, title, identifier, position),
-      kanban:Kanban!kanbanId(id, title, show_category_colors)
+      kanban:Kanban!kanbanId(id, title, identifier, show_category_colors)
     `
     )
     .eq("id", id)
@@ -385,17 +385,25 @@ export default async function Page({
   const showInfoSections =
     Boolean(contactPhone || clientAddress) || Boolean(data.other) || taskSuppliers.length > 0;
 
+  const kanbanIdentifier = Array.isArray(data.kanban)
+    ? data.kanban[0]?.identifier
+    : data.kanban?.identifier;
+  const backHref = kanbanIdentifier
+    ? `/sites/${domain}/kanban?name=${encodeURIComponent(kanbanIdentifier)}`
+    : `/sites/${domain}/projects`;
+  const backLabel = kanbanIdentifier ? "Torna al kanban" : "Torna ai progetti";
+
   return (
     <div className="min-h-screen bg-transparent">
       <div className="container max-w-6xl mx-auto py-6 px-4">
         {/* Back link */}
         <div className="mb-6">
           <Link
-            href={`/sites/${domain}/projects`}
+            href={backHref}
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Torna ai progetti
+            {backLabel}
           </Link>
         </div>
 

@@ -366,12 +366,10 @@ export default function Card({
         // Save to localStorage only on manual toggle (double click)
         saveToLocalStorage(newValue);
       } else {
-        // Single click - open modal after delay
+        // Single click - open modal after delay (for every role)
         setClickTimeout(
           setTimeout(() => {
-            if (canAccessConsuntivo && resolvedDomain) {
-              router.push(`/sites/${resolvedDomain}/progetti/${id}`);
-            } else if (!showModal) {
+            if (!showModal) {
               setShowModal(true);
             }
             setClickTimeout(null);
@@ -379,16 +377,18 @@ export default function Card({
         );
       }
     },
-    [showModal, isSmall, clickTimeout, canAccessConsuntivo, resolvedDomain, router, id]
+    [showModal, isSmall, clickTimeout]
   );
 
-  const handleOpenProjectSheet = useCallback(
+  // Admin/superadmin: clicking the project code navigates to the consuntivo page.
+  // Non-admin users see unique_code as plain text (no handler).
+  const handleOpenProjectConsuntivo = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (!resolvedDomain) return;
-      router.push(`/sites/${resolvedDomain}/projects?edit=${id}`);
+      if (!canAccessConsuntivo || !resolvedDomain) return;
+      router.push(`/sites/${resolvedDomain}/progetti/${id}`);
     },
-    [resolvedDomain, router, id]
+    [canAccessConsuntivo, resolvedDomain, router, id]
   );
 
   const handleOpenClientSheet = useCallback(
@@ -724,13 +724,20 @@ export default function Card({
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
                   {isFieldVisible("projectCode") ? (
-                    <button
-                      type="button"
-                      onClick={handleOpenProjectSheet}
-                      className="font-bold text-sm hover:underline underline-offset-4"
-                    >
-                      {data.unique_code}
-                    </button>
+                    canAccessConsuntivo ? (
+                      <button
+                        type="button"
+                        onClick={handleOpenProjectConsuntivo}
+                        className="font-bold text-sm hover:underline underline-offset-4"
+                        title="Apri consuntivi progetto"
+                      >
+                        {data.unique_code}
+                      </button>
+                    ) : (
+                      <span className="font-bold text-sm">
+                        {data.unique_code}
+                      </span>
+                    )
                   ) : (
                     <span />
                   )}
@@ -1028,7 +1035,18 @@ export default function Card({
                       />
                     )}
                     {isFieldVisible("projectCode") && (
-                      <span className="font-bold text-sm">{data.unique_code}</span>
+                      canAccessConsuntivo ? (
+                        <button
+                          type="button"
+                          onClick={handleOpenProjectConsuntivo}
+                          className="font-bold text-sm hover:underline underline-offset-4"
+                          title="Apri consuntivi progetto"
+                        >
+                          {data.unique_code}
+                        </button>
+                      ) : (
+                        <span className="font-bold text-sm">{data.unique_code}</span>
+                      )
                     )}
                   </div>
                   <div className="flex items-center gap-1">
@@ -1091,7 +1109,14 @@ export default function Card({
                 {(isFieldVisible("client") || isFieldVisible("objectName")) && (
                   <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
                     {isFieldVisible("client") && (
-                      <span className="font-medium">{getClientName()}</span>
+                      <button
+                        type="button"
+                        onClick={handleOpenClientSheet}
+                        className="font-medium text-left hover:underline underline-offset-4"
+                        title="Apri scheda cliente"
+                      >
+                        {getClientName()}
+                      </button>
                     )}
                     {isFieldVisible("objectName") && data.name && (
                       <>

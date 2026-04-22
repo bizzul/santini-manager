@@ -894,10 +894,10 @@ function KanbanBoard({
     }
   };
 
-  // null = non ancora attivato (usa default/localStorage)
-  // true = "Chiudi tutte le tab" attivo
+  // true = "Chiudi tutte le tab" attivo (default all'apertura del Kanban)
   // false = "Apri tutte le tab" attivo
-  const [areAllTabsClosed, setAreAllTabsClosed] = useState<boolean | null>(null);
+  // Le card si aprono sempre in modalità ridotta quando si entra in una Kanban.
+  const [areAllTabsClosed, setAreAllTabsClosed] = useState<boolean | null>(true);
 
   const closeAllTabs = () => {
     // Toggle: null -> true -> false -> true -> false...

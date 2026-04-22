@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { formatMinutesAsHours, formatTimeLabel } from "./calendar-utils";
 import DialogEdit from "@/app/sites/[domain]/timetracking/dialogEdit";
+import { useUserContext } from "@/hooks/use-user-context";
 import type { Roles, Task, User } from "@/types/supabase";
 import type {
   WeeklyCalendarItem,
@@ -50,6 +51,9 @@ export function ProjectOrSiteDetailDrawer({
 }: ProjectOrSiteDetailDrawerProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const noopSetData = () => null;
+  const { userContext } = useUserContext();
+  const canAccessConsuntivo =
+    userContext?.role === "admin" || userContext?.role === "superadmin";
   const start = item ? new Date(item.startDatetime) : null;
   const end = item ? new Date(item.endDatetime) : null;
   const scheduleDisplay = item?.scheduleDisplay || "timed";
@@ -261,7 +265,7 @@ export function ProjectOrSiteDetailDrawer({
                     </Link>
                   </Button>
                 )}
-                {item.detailHref && (
+                {item.detailHref && canAccessConsuntivo && (
                   <Button asChild className="flex-1">
                     <Link href={item.detailHref}>
                       Apri scheda completa
