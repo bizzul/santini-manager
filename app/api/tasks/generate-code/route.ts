@@ -164,14 +164,40 @@ export async function GET(request: NextRequest) {
       return { type: codeType, sequence };
     };
 
-    // Cerca il massimo esistente nei Task (supporta qualsiasi formato)
+    // Helper: verifica se un codice appartiene al sequenceType cercato.
+    // Si basa principalmente sul suffisso del codice (più affidabile di task_type).
+    const codeMatchesType = (
+      code: string,
+      dbTaskType: string | null | undefined,
+    ): boolean => {
+      const codeUpper = code.toUpperCase();
+      const dbType = dbTaskType?.toUpperCase();
+      if (template.sequenceType === "OFFERTA") {
+        if (codeUpper.includes("OFF")) return true;
+        return dbType === "OFFERTA";
+      }
+      if (template.sequenceType === "FATTURA") {
+        if (codeUpper.includes("FATT")) return true;
+        return dbType === "FATTURA";
+      }
+      if (template.sequenceType === "LAVORO") {
+        if (codeUpper.includes("OFF") || codeUpper.includes("FATT")) {
+          return false;
+        }
+        return !dbType || dbType === "LAVORO";
+      }
+      return dbType === template.sequenceType;
+    };
+
+    // Cerca il massimo esistente nei Task (supporta qualsiasi formato).
+    // Niente order by stringa: rischierebbe di troncare sequenze alte
+    // (es. "26-9-OFF" > "26-100-OFF" lessicograficamente).
     const { data: tasks } = await supabase
       .from("Task")
       .select("unique_code, task_type")
       .eq("site_id", siteId)
       .or(`unique_code.like.%${yearPrefix}%,unique_code.like.%${yearLong}%`)
-      .order("unique_code", { ascending: false })
-      .limit(1000);
+      .limit(10000);
 
     let maxFromTasks = 0;
     if (tasks && tasks.length > 0) {
@@ -179,16 +205,10 @@ export async function GET(request: NextRequest) {
         const code = task.unique_code;
         if (!code) continue;
 
-        // Usa task_type se disponibile, altrimenti parsing
-        let taskType = task.task_type?.toUpperCase();
         const parsed = parseTaskCode(code);
         if (!parsed) continue;
-        
-        if (!taskType) {
-          taskType = parsed.type;
-        }
 
-        if (taskType !== template.sequenceType) continue;
+        if (!codeMatchesType(code, task.task_type)) continue;
 
         if (parsed.sequence > maxFromTasks) {
           maxFromTasks = parsed.sequence;

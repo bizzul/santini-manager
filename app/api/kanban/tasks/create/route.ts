@@ -2,7 +2,12 @@ import { createClient } from "../../../../../utils/supabase/server";
 import { validation } from "../../../../../validation/task/create"; //? <--- The validation schema
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
-import { generateTaskCode, generateInternalTaskCode } from "../../../../../lib/code-generator";
+import {
+  generateTaskCode,
+  generateInternalTaskCode,
+  findMaxExistingSequenceForSite,
+  setSequenceCurrentValue,
+} from "../../../../../lib/code-generator";
 import { createProjectFolders } from "../../../../../lib/project-folders";
 import { toDateString } from "../../../../../lib/utils";
 import {
@@ -179,7 +184,7 @@ export async function POST(req: NextRequest) {
       let uniqueCode = result.data.unique_code;
       let taskCreate: any = null;
       let taskError: any = null;
-      const maxRetries = 3;
+      const maxRetries = 6;
       let retryCount = 0;
 
       while (retryCount < maxRetries && !taskCreate) {
@@ -255,14 +260,43 @@ export async function POST(req: NextRequest) {
         }
 
         taskError = error;
-        
+
         // Check if error is a duplicate key constraint violation (case-insensitive check)
         if (error && error.code === "23505" && error.message?.toLowerCase().includes("task_site_unique_code_key")) {
-          // Duplicate key error - retry with a new code
+          // Duplicate key error - resync the sequence counter to the real max
+          // before retrying, so the next generateTaskCode produces a fresh value.
+          if (siteId && !isInternalCategory) {
+            try {
+              const sequenceTypeForResync =
+                taskType === "OFFERTA" || taskType === "FATTURA" || taskType === "LAVORO"
+                  ? taskType
+                  : "LAVORO";
+              const realMax = await findMaxExistingSequenceForSite(
+                supabase,
+                siteId,
+                sequenceTypeForResync,
+                new Date().getFullYear(),
+              );
+              // Force code_sequences.current_value to be at least realMax,
+              // so the next RPC increment returns realMax + 1 (or more).
+              if (realMax > 0) {
+                await setSequenceCurrentValue(
+                  supabase,
+                  siteId,
+                  sequenceTypeForResync,
+                  new Date().getFullYear(),
+                  realMax,
+                );
+              }
+            } catch (resyncError) {
+              console.error("Error resyncing sequence after duplicate:", resyncError);
+            }
+          }
+
           retryCount++;
           if (retryCount < maxRetries) {
             // Wait a bit before retrying to avoid race conditions
-            await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
+            await new Promise(resolve => setTimeout(resolve, 150 * retryCount));
             continue;
           }
         } else if (error) {

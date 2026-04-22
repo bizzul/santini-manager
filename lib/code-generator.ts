@@ -153,6 +153,143 @@ function parseTaskCode(
 }
 
 /**
+ * Determina se un codice appartiene a un certo `sequenceType` basandosi sul
+ * suffisso presente nel codice (OFF/FATT) e/o sul `task_type` salvato in DB.
+ *
+ * Importante: NON ci si affida solo a `task_type`, perché può essere disallineato
+ * (vecchi task, import, modifiche manuali). Il suffisso nel `unique_code` è la
+ * fonte più affidabile per stabilire il tipo del codice ai fini della sequenza.
+ */
+function codeMatchesSequenceType(
+  code: string,
+  dbTaskType: string | null | undefined,
+  sequenceType: string,
+): boolean {
+  const codeUpper = code.toUpperCase();
+  const dbType = dbTaskType?.toUpperCase();
+
+  if (sequenceType === "OFFERTA") {
+    if (codeUpper.includes("OFF")) return true;
+    return dbType === "OFFERTA";
+  }
+  if (sequenceType === "FATTURA") {
+    if (codeUpper.includes("FATT")) return true;
+    return dbType === "FATTURA";
+  }
+  if (sequenceType === "LAVORO") {
+    // LAVORO: nessun suffisso noto. Considera LAVORO se il codice non contiene
+    // suffissi di altri tipi e il task_type è compatibile (LAVORO o assente).
+    if (codeUpper.includes("OFF") || codeUpper.includes("FATT")) {
+      return false;
+    }
+    return !dbType || dbType === "LAVORO";
+  }
+  // Tipi custom: usa solo task_type
+  return dbType === sequenceType;
+}
+
+/**
+ * Versione pubblica di findMaxExistingSequence per essere usata dai route.
+ * Crea la propria istanza Supabase server-side.
+ */
+export async function findMaxExistingSequenceForSite(
+  supabase: any,
+  siteId: string,
+  sequenceType: string,
+  year: number,
+): Promise<number> {
+  return findMaxExistingSequence(supabase, siteId, sequenceType, year);
+}
+
+/**
+ * Aggiorna o inserisce in modo sicuro `code_sequences.current_value` per la
+ * combinazione (siteId, sequenceType, year) quando category_id IS NULL.
+ *
+ * Usa SELECT + UPDATE/INSERT espliciti invece di upsert con onConflict, perché
+ * a seconda dello stato delle migration la tabella può non avere un vincolo
+ * UNIQUE compatibile con `(site_id, sequence_type, year)` (esiste solo un
+ * indice basato su COALESCE(category_id, -1)).
+ *
+ * Restituisce il valore effettivamente persistito.
+ */
+export async function setSequenceCurrentValue(
+  supabase: any,
+  siteId: string,
+  sequenceType: string,
+  year: number,
+  desiredValue: number,
+): Promise<number> {
+  const { data: existing, error: selectError } = await supabase
+    .from("code_sequences")
+    .select("id, current_value")
+    .eq("site_id", siteId)
+    .eq("sequence_type", sequenceType)
+    .eq("year", year)
+    .is("category_id", null)
+    .maybeSingle();
+
+  if (selectError && selectError.code !== "PGRST116") {
+    logger.warn("setSequenceCurrentValue select failed:", selectError);
+  }
+
+  if (existing?.id) {
+    // Aggiorna solo se il valore desiderato è maggiore (mai retrocedere)
+    const newValue = Math.max(existing.current_value || 0, desiredValue);
+    if (newValue !== existing.current_value) {
+      const { error: updateError } = await supabase
+        .from("code_sequences")
+        .update({
+          current_value: newValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id);
+      if (updateError) {
+        logger.warn("setSequenceCurrentValue update failed:", updateError);
+      }
+    }
+    return newValue;
+  }
+
+  const { error: insertError } = await supabase
+    .from("code_sequences")
+    .insert({
+      site_id: siteId,
+      sequence_type: sequenceType,
+      year,
+      category_id: null,
+      current_value: desiredValue,
+      updated_at: new Date().toISOString(),
+    });
+  if (insertError) {
+    // Race condition: qualcun altro ha appena inserito. Riprova con update.
+    logger.warn(
+      "setSequenceCurrentValue insert failed (likely race), trying update:",
+      insertError,
+    );
+    const { data: retryRow } = await supabase
+      .from("code_sequences")
+      .select("id, current_value")
+      .eq("site_id", siteId)
+      .eq("sequence_type", sequenceType)
+      .eq("year", year)
+      .is("category_id", null)
+      .maybeSingle();
+    if (retryRow?.id) {
+      const newValue = Math.max(retryRow.current_value || 0, desiredValue);
+      await supabase
+        .from("code_sequences")
+        .update({
+          current_value: newValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", retryRow.id);
+      return newValue;
+    }
+  }
+  return desiredValue;
+}
+
+/**
  * Trova il numero di sequenza massimo esistente nei Task per un dato sito/anno/tipo
  * Supporta qualsiasi formato di template configurato dal cliente
  */
@@ -165,15 +302,16 @@ async function findMaxExistingSequence(
   const yearPrefix = String(year).slice(-2); // es: "26" per 2026
   const yearLong = String(year); // es: "2026"
 
-  // Query tutti i task del sito che contengono l'anno (sia formato corto che lungo)
-  // Usa OR per supportare entrambi i formati
+  // Query tutti i task del sito che contengono l'anno (sia formato corto che lungo).
+  // Niente .order("unique_code") perché l'ordinamento alfabetico su stringa
+  // può "nascondere" sequenze numeriche alte oltre il limite (es. 26-9 > 26-100).
+  // Il limite è alzato per garantire copertura su siti con molti task.
   const { data: tasks, error } = await supabase
     .from("Task")
     .select("unique_code, task_type")
     .eq("site_id", siteId)
     .or(`unique_code.like.%${yearPrefix}%,unique_code.like.%${yearLong}%`)
-    .order("unique_code", { ascending: false })
-    .limit(1000);
+    .limit(10000);
 
   if (error || !tasks || tasks.length === 0) {
     return 0;
@@ -186,22 +324,14 @@ async function findMaxExistingSequence(
     const code = task.unique_code;
     if (!code) continue;
 
-    // Prima prova a usare task_type se disponibile
-    let taskType = task.task_type?.toUpperCase();
-
     // Parsing del codice
     const parsed = parseTaskCode(code, yearPrefix);
     if (!parsed) {
       continue;
     }
 
-    // Se task_type non è disponibile, usa il tipo determinato dal parsing
-    if (!taskType) {
-      taskType = parsed.type;
-    }
-
-    // Solo se il tipo corrisponde
-    if (taskType !== sequenceType) {
+    // Filtra per tipo usando suffisso nel codice (più affidabile di task_type)
+    if (!codeMatchesSequenceType(code, task.task_type, sequenceType)) {
       continue;
     }
 
@@ -238,8 +368,8 @@ export async function getNextSequenceValue(
       error,
     );
 
-    // Fallback: usa un approccio manuale se la funzione RPC non esiste
-    // Prima controlla il numero massimo esistente nei Task per evitare duplicati
+    // Fallback: approccio manuale (usato anche quando la RPC fallisce per
+    // problemi di ON CONFLICT con l'indice attuale di code_sequences).
     const maxExisting = await findMaxExistingSequence(
       supabase,
       siteId,
@@ -247,91 +377,26 @@ export async function getNextSequenceValue(
       currentYear,
     );
 
-    const { data: existingSeq, error: seqError } = await supabase
+    const { data: existingSeq } = await supabase
       .from("code_sequences")
       .select("current_value")
       .eq("site_id", siteId)
       .eq("sequence_type", sequenceType)
       .eq("year", currentYear)
-      .single();
+      .is("category_id", null)
+      .maybeSingle();
 
-    if (seqError && seqError.code !== "PGRST116") {
-      // PGRST116 = no rows found, that's ok
-      // Usa il massimo esistente + 1
-      logger.warn("code_sequences table not available, using max existing + 1");
-      const nextValue = maxExisting + 1;
-
-      // Prova comunque ad aggiornare la sequenza per il futuro
-      await supabase
-        .from("code_sequences")
-        .upsert({
-          site_id: siteId,
-          sequence_type: sequenceType,
-          year: currentYear,
-          current_value: nextValue,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: "site_id,sequence_type,year",
-        });
-
-      return nextValue;
-    }
-
-    // Usa il massimo tra la sequenza salvata e quella esistente nei task
     const sequenceValue = existingSeq?.current_value || 0;
     const nextValue = Math.max(sequenceValue, maxExisting) + 1;
 
-    // Aggiorna o inserisci il valore con retry in caso di conflitto
-    let retries = 3;
-    let lastError = null;
-    while (retries > 0) {
-      const { error: upsertError } = await supabase
-        .from("code_sequences")
-        .upsert({
-          site_id: siteId,
-          sequence_type: sequenceType,
-          year: currentYear,
-          current_value: nextValue,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: "site_id,sequence_type,year",
-        });
-
-      if (!upsertError) {
-        break;
-      }
-
-      lastError = upsertError;
-      retries--;
-
-      // Se c'è un conflitto, rileggi il valore corrente e ricalcola
-      if (retries > 0) {
-        const { data: updatedSeq } = await supabase
-          .from("code_sequences")
-          .select("current_value")
-          .eq("site_id", siteId)
-          .eq("sequence_type", sequenceType)
-          .eq("year", currentYear)
-          .single();
-
-        const updatedMaxExisting = await findMaxExistingSequence(
-          supabase,
-          siteId,
-          sequenceType,
-          currentYear,
-        );
-        const updatedSequenceValue = updatedSeq?.current_value || 0;
-        const updatedNextValue =
-          Math.max(updatedSequenceValue, updatedMaxExisting) + 1;
-
-        // Usa il valore aggiornato per il prossimo tentativo
-        return updatedNextValue;
-      }
-    }
-
-    if (lastError) {
-      logger.warn("Failed to update sequence after retries:", lastError);
-    }
+    // Persisti il nuovo valore in modo sicuro (SELECT + UPDATE/INSERT espliciti)
+    await setSequenceCurrentValue(
+      supabase,
+      siteId,
+      sequenceType,
+      currentYear,
+      nextValue,
+    );
 
     return nextValue;
   }
@@ -356,17 +421,13 @@ export async function getNextSequenceValue(
     const correctValue = maxExisting + 1;
 
     // Aggiorna la tabella code_sequences per sincronizzare
-    await supabase
-      .from("code_sequences")
-      .upsert({
-        site_id: siteId,
-        sequence_type: sequenceType,
-        year: currentYear,
-        current_value: correctValue,
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: "site_id,sequence_type,year",
-      });
+    await setSequenceCurrentValue(
+      supabase,
+      siteId,
+      sequenceType,
+      currentYear,
+      correctValue,
+    );
 
     return correctValue;
   }
