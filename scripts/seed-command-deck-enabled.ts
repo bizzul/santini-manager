@@ -78,9 +78,9 @@ async function main() {
   }
 
   console.log(`[seed] matched ${siteIds.size} site(s):`);
-  for (const [id, subdomain] of siteIds) {
+  siteIds.forEach((subdomain, id) => {
     console.log(`  - ${subdomain} (${id})`);
-  }
+  });
 
   // Check existing entries (pure reporting; the upsert will handle skips).
   const { data: existing } = await supabase
@@ -94,14 +94,14 @@ async function main() {
   );
 
   console.log("[seed] existing command_deck_enabled rows:");
-  for (const [id, subdomain] of siteIds) {
+  siteIds.forEach((subdomain, id) => {
     const current = existingMap.get(id);
     console.log(
       `  - ${subdomain}: ${
         current === undefined ? "(missing)" : JSON.stringify(current)
       }`,
     );
-  }
+  });
 
   // Build the upsert payload. We only write for sites that don't already
   // have an explicit entry — this mirrors ON CONFLICT DO NOTHING semantics
