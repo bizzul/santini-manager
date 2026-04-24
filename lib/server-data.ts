@@ -18,6 +18,7 @@ import {
     getProductCategoryLabelAndColor,
     normalizeSupabaseRelation,
 } from "@/lib/product-category-label";
+import { assertDashboardQuery } from "@/lib/dashboard-query-guard";
 
 const log = logger.scope("ServerData");
 
@@ -1759,12 +1760,7 @@ export const fetchDashboardData = cache(
             .select("id, is_offer_kanban, title, identifier")
             .eq("site_id", siteId);
 
-        if (kanbansResult.error) {
-            console.error("[Dashboard] Kanban query failed", {
-                siteId,
-                error: kanbansResult.error,
-            });
-        }
+        assertDashboardQuery(kanbansResult, "Overview:Kanban", { siteId });
 
         const kanbans = kanbansResult.data || [];
         const kanbanIds = kanbans.map((k) => k.id);
@@ -1802,7 +1798,6 @@ export const fetchDashboardData = cache(
                 sent_date,
                 offer_send_date,
                 deliveryDate,
-                hours,
                 numero_pezzi
             `)
                 .eq("site_id", siteId)
@@ -1845,44 +1840,27 @@ export const fetchDashboardData = cache(
         const columns = columnsResult.data || [];
         const historicalTasks = historicalTasksResult.data || [];
 
-        if (tasksResult.error) {
-            console.error("[Dashboard] Task query failed", {
-                siteId,
-                error: tasksResult.error,
-            });
-        }
-        if (categoriesResult.error) {
-            console.error("[Dashboard] Category query failed", {
-                siteId,
-                error: categoriesResult.error,
-            });
-        }
-        if (usersResult.error) {
-            console.error("[Dashboard] User sites query failed", {
-                siteId,
-                error: usersResult.error,
-            });
-        }
-        if ("error" in columnsResult && columnsResult.error) {
-            console.error("[Dashboard] Kanban columns query failed", {
-                siteId,
-                error: columnsResult.error,
-            });
-        }
-        if (historicalTasksResult.error) {
-            console.error("[Dashboard] Historical tasks query failed", {
-                siteId,
-                error: historicalTasksResult.error,
-            });
-        }
+        assertDashboardQuery(tasksResult, "Overview:Task", { siteId });
+        assertDashboardQuery(categoriesResult, "Overview:Category", { siteId });
+        assertDashboardQuery(usersResult, "Overview:UserSites", { siteId });
+        assertDashboardQuery(
+            columnsResult as { error?: { code?: string | null; message?: string | null } | null },
+            "Overview:KanbanColumn",
+            { siteId, kanbanIdsCount: kanbanIds.length },
+        );
+        assertDashboardQuery(historicalTasksResult, "Overview:HistoricalTask", { siteId });
+
         if (tasks.length === 0) {
-            console.warn("[Dashboard] Empty task dataset: KPI containers may show zero", {
-                siteId,
-                kanbans: kanbans.length,
-                columns: columns.length,
-                categories: categories.length,
-                users: userSites.length,
-            });
+            log.warn(
+                "[Dashboard] Empty task dataset: KPI containers will show zero",
+                {
+                    siteId,
+                    kanbans: kanbans.length,
+                    columns: columns.length,
+                    categories: categories.length,
+                    users: userSites.length,
+                },
+            );
         }
 
         const clientIds = Array.from(
@@ -1929,20 +1907,16 @@ export const fetchDashboardData = cache(
                 : Promise.resolve({ data: [], error: null }),
         ]);
 
-        if (clientsError) {
-            console.error("[Dashboard] Client lookup query failed", {
-                siteId,
-                error: clientsError,
-                clientIdsCount: clientIds.length,
-            });
-        }
-        if (sellProductsError) {
-            console.error("[Dashboard] SellProduct lookup query failed", {
-                siteId,
-                error: sellProductsError,
-                sellProductIdsCount: sellProductIds.length,
-            });
-        }
+        assertDashboardQuery(
+            { error: clientsError },
+            "Overview:Client",
+            { siteId, clientIdsCount: clientIds.length },
+        );
+        assertDashboardQuery(
+            { error: sellProductsError },
+            "Overview:SellProduct",
+            { siteId, sellProductIdsCount: sellProductIds.length },
+        );
 
         const clientsById = new Map((clientsData || []).map((client: any) => [client.id, client]));
         const sellProductsById = new Map(
@@ -1992,8 +1966,8 @@ export const fetchDashboardData = cache(
                 name.includes("officina") || name.includes("lavorazione")
             ) return "Prod.";
             if (
-                name.includes("fattura") || name.includes("fatturazione") ||
-                name.includes("billing")
+                name.includes("fattur") || name.includes("billing") ||
+                name.includes("invoic")
             ) return "Fatturazione";
             if (
                 name.includes("install") || name.includes("montaggio") ||
@@ -2076,7 +2050,7 @@ export const fetchDashboardData = cache(
         let trackedReferenceItems = 0;
         tasks.forEach((task: any) => {
             if (isOfferTask(task) || isInvoiceTask(task)) return;
-            const trackedHours = trackedHoursByTaskId.get(task.id) || Number(task.hours || 0);
+            const trackedHours = trackedHoursByTaskId.get(task.id) || 0;
             if (!Number.isFinite(trackedHours) || trackedHours <= 0) return;
             trackedReferenceHours += trackedHours;
             trackedReferenceItems += getTaskItems(task);
@@ -2086,10 +2060,6 @@ export const fetchDashboardData = cache(
             : 1.6;
 
         const resolvePlannedTaskHours = (task: any): number => {
-            const explicitHours = Number(task.hours || 0);
-            if (Number.isFinite(explicitHours) && explicitHours > 0) {
-                return explicitHours;
-            }
             const trackedHours = trackedHoursByTaskId.get(task.id);
             if (trackedHours && trackedHours > 0) {
                 return trackedHours;
@@ -2542,7 +2512,7 @@ export const fetchDashboardData = cache(
             if (title.includes("corso") || title.includes("produzione")) {
                 return "In corso";
             }
-            if (title.includes("emettere") || title.includes("fattura")) {
+            if (title.includes("emettere") || title.includes("fattur")) {
                 return "Da emettere";
             }
             if (title.includes("completato") || title.includes("finito")) {
@@ -2963,6 +2933,8 @@ export const fetchVenditaDashboardData = cache(
             .select("id, is_offer_kanban, is_production_kanban, title, identifier, category_id, category:KanbanCategory!category_id(id, name, display_order, is_internal)")
             .eq("site_id", siteId);
 
+        assertDashboardQuery(kanbansResult, "Vendita:Kanban", { siteId });
+
         const kanbans = kanbansResult.data || [];
         const kanbanIds = kanbans.map((k) => k.id);
 
@@ -3017,6 +2989,14 @@ export const fetchVenditaDashboardData = cache(
                 .eq("archived", false)
                 .gte("created_at", sixMonthsAgo.toISOString()),
         ]);
+
+        assertDashboardQuery(tasksResult, "Vendita:Task", { siteId });
+        assertDashboardQuery(
+            columnsResult as { error?: { code?: string | null; message?: string | null } | null },
+            "Vendita:KanbanColumn",
+            { siteId, kanbanIdsCount: kanbanIds.length },
+        );
+        assertDashboardQuery(historicalTasksResult, "Vendita:HistoricalTask", { siteId });
 
         const tasks = tasksResult.data || [];
         const columns = columnsResult.data || [];
@@ -3442,6 +3422,8 @@ export const fetchAvorDashboardData = cache(
             .select("id, title, identifier, is_work_kanban, is_offer_kanban, color, icon")
             .eq("site_id", siteId);
 
+        assertDashboardQuery(kanbansResult, "Avor:Kanban", { siteId });
+
         const allKanbans = kanbansResult.data || [];
 
         // Find AVOR kanban - prefer is_work_kanban flag, fallback to name matching
@@ -3517,6 +3499,13 @@ export const fetchAvorDashboardData = cache(
                         .eq("site_id", siteId),
                 ],
             );
+
+        assertDashboardQuery(columnsResult, "Avor:KanbanColumn", {
+            siteId,
+            avorKanbanId,
+        });
+        assertDashboardQuery(tasksResult, "Avor:Task", { siteId, avorKanbanId });
+        assertDashboardQuery(categoriesResult, "Avor:Category", { siteId });
 
         const columns = columnsResult.data || [];
         const tasks = tasksResult.data || [];
@@ -3855,6 +3844,9 @@ export const fetchProduzioneDashboardData = cache(
                 .eq("site_id", siteId),
         ]);
 
+        assertDashboardQuery(kanbansResult, "Produzione:Kanban", { siteId });
+        assertDashboardQuery(categoriesResult, "Produzione:KanbanCategory", { siteId });
+
         const allKanbans = kanbansResult.data || [];
         const allCategories = categoriesResult.data || [];
         const kanbanMap = new Map(allKanbans.map((kanban) => [kanban.id, kanban]));
@@ -3961,13 +3953,12 @@ export const fetchProduzioneDashboardData = cache(
                 categories: new Map<string, ProduzioneCalendarCategorySummary>(),
             };
         });
-        const { data: calendarTasks } = await supabase
+        const calendarTasksResult = await supabase
             .from("Task")
             .select(
                 `
                     id,
                     kanbanId,
-                    kanban_id,
                     deliveryDate,
                     termine_produzione,
                     positions,
@@ -3982,13 +3973,16 @@ export const fetchProduzioneDashboardData = cache(
             .eq("archived", false)
             .or("deliveryDate.not.is.null,termine_produzione.not.is.null");
 
+        assertDashboardQuery(calendarTasksResult, "Produzione:CalendarTask", { siteId });
+        const calendarTasks = calendarTasksResult.data;
+
         (calendarTasks || []).forEach((task: any) => {
             const dateValue = task.deliveryDate || task.termine_produzione;
             if (!dateValue) return;
             const taskDate = new Date(dateValue);
             if (Number.isNaN(taskDate.getTime())) return;
 
-            const kanbanId = task.kanbanId || task.kanban_id;
+            const kanbanId = task.kanbanId;
             if (!kanbanId) return;
             const calendarType = getCalendarTypeFromKanban(kanbanMap.get(kanbanId));
             if (!calendarType) return;
@@ -4049,7 +4043,7 @@ export const fetchProduzioneDashboardData = cache(
                 const produzionKanbanIds = produzionKanbans.map((k) => k.id);
 
                 // Fetch tasks for all production kanbans (with deliveryDate for ritardo)
-                const { data: prodTasks } = await supabase
+                const prodTasksResult = await supabase
                     .from("Task")
                     .select(
                         `
@@ -4066,6 +4060,12 @@ export const fetchProduzioneDashboardData = cache(
                     )
                     .in("kanbanId", produzionKanbanIds)
                     .eq("archived", false);
+
+                assertDashboardQuery(prodTasksResult, "Produzione:ProdTask", {
+                    siteId,
+                    produzionKanbanIdsCount: produzionKanbanIds.length,
+                });
+                const prodTasks = prodTasksResult.data;
 
                 const tasksPerKanban = new Map<number, { lavori: number; elementi: number; ritardo: number }>();
                 const productWorkloadMap = new Map<
@@ -4200,6 +4200,15 @@ export const fetchProduzioneDashboardData = cache(
                 .eq("kanbanId", productionKanbanId)
                 .eq("archived", false),
         ]);
+
+        assertDashboardQuery(columnsResult, "Produzione:KanbanColumn", {
+            siteId,
+            productionKanbanId,
+        });
+        assertDashboardQuery(tasksResult, "Produzione:Task", {
+            siteId,
+            productionKanbanId,
+        });
 
         const columns = columnsResult.data || [];
         const tasks = tasksResult.data || [];
@@ -4354,8 +4363,8 @@ export const fetchFactoryDashboardData = cache(
         const now = new Date();
         const productionDashboardData = await fetchProduzioneDashboardData(siteId);
 
-        const [kanbansResult, categoriesResult, columnsResult, tasksResult] =
-            await Promise.all([
+        const [kanbansResult, categoriesResult, tasksResult] = await Promise
+            .all([
                 supabase
                     .from("Kanban")
                     .select(
@@ -4366,11 +4375,6 @@ export const fetchFactoryDashboardData = cache(
                     .from("KanbanCategory")
                     .select("id, name, identifier")
                     .eq("site_id", siteId),
-                supabase
-                    .from("KanbanColumn")
-                    .select("id, kanbanId, title, identifier, position")
-                    .eq("site_id", siteId)
-                    .order("position", { ascending: true }),
                 supabase
                     .from("Task")
                     .select(
@@ -4391,6 +4395,24 @@ export const fetchFactoryDashboardData = cache(
                     .eq("site_id", siteId)
                     .eq("archived", false),
             ]);
+
+        assertDashboardQuery(kanbansResult, "Factory:Kanban", { siteId });
+        assertDashboardQuery(categoriesResult, "Factory:KanbanCategory", { siteId });
+        assertDashboardQuery(tasksResult, "Factory:Task", { siteId });
+
+        const kanbanIdsForColumns = (kanbansResult.data || []).map((k) => k.id);
+        const columnsResult = kanbanIdsForColumns.length > 0
+            ? await supabase
+                .from("KanbanColumn")
+                .select("id, kanbanId, title, identifier, position")
+                .in("kanbanId", kanbanIdsForColumns)
+                .order("position", { ascending: true })
+            : { data: [], error: null };
+
+        assertDashboardQuery(columnsResult, "Factory:KanbanColumn", {
+            siteId,
+            kanbanIdsCount: kanbanIdsForColumns.length,
+        });
 
         const allKanbans = kanbansResult.data || [];
         const allCategories = categoriesResult.data || [];
@@ -4618,31 +4640,38 @@ export const fetchFatturazioneDashboardData = cache(
         const now = new Date();
         const periodStart = getPeriodStartDate(period);
 
-        // Fetch invoice kanban and its columns
-        const [kanbansResult, columnsResult] = await Promise.all([
-            supabase
-                .from("Kanban")
-                .select("id, title, identifier, is_invoice_kanban")
-                .eq("site_id", siteId),
-            supabase
-                .from("KanbanColumn")
-                .select("id, kanbanId, title, position, column_type")
-                .eq("site_id", siteId)
-                .order("position", { ascending: true }),
-        ]);
+        // Fetch invoice kanban first, then columns filtered by its ids
+        const kanbansResult = await supabase
+            .from("Kanban")
+            .select("id, title, identifier")
+            .eq("site_id", siteId);
+
+        assertDashboardQuery(kanbansResult, "Fatturazione:Kanban", { siteId });
 
         const allKanbans = kanbansResult.data || [];
+        const allKanbanIds = allKanbans.map((k) => k.id);
+
+        const columnsResult = allKanbanIds.length > 0
+            ? await supabase
+                .from("KanbanColumn")
+                .select("id, kanbanId, title, position, column_type")
+                .in("kanbanId", allKanbanIds)
+                .order("position", { ascending: true })
+            : { data: [], error: null };
+
+        assertDashboardQuery(columnsResult, "Fatturazione:KanbanColumn", {
+            siteId,
+            kanbanIdsCount: allKanbanIds.length,
+        });
+
         const allColumns = columnsResult.data || [];
 
-        // Find invoice kanban
+        // Find invoice kanban (no dedicated DB flag: match by name only).
+        // Use "fattur" to catch "fattura", "fatture", "fatturazione" and
+        // "invoic" to catch "invoice" / "invoices".
         const invoiceKanbans = allKanbans.filter((k) => {
-            if (k.is_invoice_kanban) return true;
-            const name = (k.title || k.identifier || "").toLowerCase();
-            return (
-                name.includes("fattura") ||
-                name.includes("invoice") ||
-                name.includes("fatturazione")
-            );
+            const name = `${k.title || ""} ${k.identifier || ""}`.toLowerCase();
+            return name.includes("fattur") || name.includes("invoic");
         });
 
         const invoiceKanban = invoiceKanbans[0];
@@ -4684,6 +4713,8 @@ export const fetchFatturazioneDashboardData = cache(
             .eq("site_id", siteId)
             .eq("archived", false);
 
+        assertDashboardQuery(tasksResult, "Fatturazione:Task", { siteId });
+
         const allTasks = tasksResult.data || [];
 
         // Filter invoice tasks
@@ -4714,6 +4745,10 @@ export const fetchFatturazioneDashboardData = cache(
         const sevenDaysFromNow = new Date(now);
         sevenDaysFromNow.setDate(now.getDate() + 7);
 
+        // Card semantics:
+        // - Da emettere + Emesse + Pagate are mutually exclusive (sum = total invoices)
+        // - Scadute and In scadenza are warning sub-counters over "Emesse"
+        //   (i.e. Scadute ⊆ Emesse, In scadenza ⊆ Emesse)
         invoices.forEach((inv: any) => {
             const price = inv.sellPrice || 0;
             const column = columnMap.get(inv.kanbanColumnId);
@@ -4726,35 +4761,32 @@ export const fetchFatturazioneDashboardData = cache(
                 return;
             }
 
-            // Da emettere (in first column and no sent_date)
-            if (firstColumn && inv.kanbanColumnId === firstColumn.id && !inv.sent_date) {
+            // Da emettere: in first column (default creation column) and not yet sent
+            if (
+                firstColumn &&
+                inv.kanbanColumnId === firstColumn.id &&
+                !inv.sent_date
+            ) {
                 invoiceStatus.daEmettere.count++;
                 invoiceStatus.daEmettere.value += price;
                 return;
             }
 
-            // Check delivery date for scadenza
+            // Everything else is "Emesse" (sent but not paid). Overdue and
+            // due-soon are additional warning signals over the same invoice.
+            invoiceStatus.emesse.count++;
+            invoiceStatus.emesse.value += price;
+
             if (inv.deliveryDate) {
                 const dueDate = new Date(inv.deliveryDate);
-
-                // Scadute (overdue)
                 if (dueDate < now) {
                     invoiceStatus.scadute.count++;
                     invoiceStatus.scadute.value += price;
-                    return;
-                }
-
-                // In scadenza (due within 7 days)
-                if (dueDate <= sevenDaysFromNow) {
+                } else if (dueDate <= sevenDaysFromNow) {
                     invoiceStatus.inScadenza.count++;
                     invoiceStatus.inScadenza.value += price;
-                    return;
                 }
             }
-
-            // Emesse (sent but not paid, not overdue, not expiring soon)
-            invoiceStatus.emesse.count++;
-            invoiceStatus.emesse.value += price;
         });
 
         // Separate open vs paid invoices for aging
@@ -4900,6 +4932,9 @@ export const fetchInterniDashboardData = cache(
                 .select("id, code, label")
                 .or(`site_id.eq.${siteId},site_id.is.null`),
         ]);
+
+        assertDashboardQuery(timetrackingResult, "Interni:Timetracking", { siteId });
+        assertDashboardQuery(activitiesResult, "Interni:InternalActivities", { siteId });
 
         const timeEntries = timetrackingResult.data || [];
         const activities = activitiesResult.data || [];
@@ -5342,6 +5377,11 @@ export const fetchInventoryDashboardData = cache(
                     .eq("site_id", siteId),
             ]);
 
+        assertDashboardQuery(itemsResult, "Inventory:Items", { siteId });
+        assertDashboardQuery(stockResult, "Inventory:Stock", { siteId });
+        assertDashboardQuery(movementsResult, "Inventory:Movements", { siteId });
+        assertDashboardQuery(categoriesResult, "Inventory:Categories", { siteId });
+
         const items = itemsResult.data || [];
         const stock = stockResult.data || [];
         const movements = movementsResult.data || [];
@@ -5615,6 +5655,10 @@ export const fetchProductsDashboardData = cache(
                     .eq("site_id", siteId)
                     .eq("archived", false),
             ]);
+
+        assertDashboardQuery(productsResult, "Products:SellProduct", { siteId });
+        assertDashboardQuery(categoriesResult, "Products:Category", { siteId });
+        assertDashboardQuery(tasksResult, "Products:Task", { siteId });
 
         const products = productsResult.data || [];
         const categories = categoriesResult.data || [];
