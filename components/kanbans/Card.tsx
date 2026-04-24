@@ -32,7 +32,8 @@ import {
   Archive,
   Users,
   Truck,
-  Cog
+  Cog,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
@@ -169,7 +170,6 @@ export default function Card({
     process.env.NEXT_PUBLIC_ENABLE_CARD_PREFS === "true";
   const [showModal, setShowModal] = useState(false);
   const [isLocked, setIsLocked] = useState(data.locked);
-  const [timeState, setTimeState] = useState("normal");
   const [clickTimeout, setClickTimeout] = useState<any | null>(null);
   const [currentValue, setCurrentValue] = useState(0);
   const { toast } = useToast();
@@ -275,21 +275,36 @@ export default function Card({
     [cardCoverPreferenceStorageKey, shouldPersistVisualPreferences]
   );
 
-  useEffect(() => {
-    // Check if delivery date is past
-    if (data.deliveryDate) {
-      const todayStr = formatLocalDate(new Date());
-      const deliveryStr = formatLocalDate(parseLocalDate(data.deliveryDate));
-      if (
-        todayStr > deliveryStr &&
-        data.column?.identifier !== "SPEDITO"
-      ) {
-        setTimeState("late");
-      } else {
-        setTimeState("normal");
-      }
+  // Stato temporale a 4 livelli:
+  // - "normal": nessuna urgenza (no data, colonna SPEDITO, o consegna > 3 giorni futuri)
+  // - "atRisk": consegna tra oggi e +3 giorni
+  // - "late": consegna passata fino a 7 giorni fa
+  // - "critical": consegna passata da piu' di 7 giorni
+  // Soglie centralizzate qui: cambiarle se serve una policy diversa.
+  const deliveryTimeInfo = useMemo<{
+    state: "normal" | "atRisk" | "late" | "critical";
+    days: number;
+  }>(() => {
+    if (!data.deliveryDate || data.column?.identifier === "SPEDITO") {
+      return { state: "normal", days: 0 };
+    }
+    try {
+      const today = startOfLocalDay(new Date());
+      const delivery = startOfLocalDay(parseLocalDate(data.deliveryDate));
+      const diffDays = Math.round(
+        (delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (diffDays < -7) return { state: "critical", days: -diffDays };
+      if (diffDays < 0) return { state: "late", days: -diffDays };
+      if (diffDays <= 3) return { state: "atRisk", days: diffDays };
+      return { state: "normal", days: diffDays };
+    } catch {
+      return { state: "normal", days: 0 };
     }
   }, [data.deliveryDate, data.column?.identifier]);
+
+  const timeState = deliveryTimeInfo.state;
+  const daysDelta = deliveryTimeInfo.days;
 
   useEffect(() => {
     setCurrentValue(calculateCurrentValue(data, columnIndex));
@@ -561,8 +576,24 @@ export default function Card({
   const showCoverSourceBadge =
     process.env.NEXT_PUBLIC_SHOW_COVER_SOURCE_BADGE === "true";
 
-  // Determina il colore del bordo sinistro in base allo stato
+  // Determina il colore del bordo sinistro in base allo stato.
+  //
+  // Regola (da AVOR in avanti / tutti i kanban con show_category_colors = true):
+  //   il bordo riflette UNICAMENTE il colore categoria del prodotto.
+  //   Gli altri segnali (bozza / esito offerta / ritardo) sono comunicati
+  //   tramite badge e stili alternativi (bordo tratteggiato per bozza,
+  //   sfondo rosso tenue per critical, badge -Xg per late/atRisk/critical).
+  //
+  // Regola legacy (usata nel kanban offerte dove show_category_colors = false):
+  //   priorita' bozza -> esito offerta -> ritardo -> neutro.
   const getBorderColor = () => {
+    if (showCategoryColors) {
+      // Modalita' "colore prodotto": il bordo segue solo la categoria prodotto.
+      // Se manca, neutro (slate) - gli altri stati restano visibili nei badge.
+      return productCategory?.color || "#64748b"; // slate-500 come fallback
+    }
+
+    // --- Logica legacy (kanban offerte) ---
     // Bozza ha priorità - bordo arancione
     if (isDraft) {
       return "#f59e0b"; // amber-500
@@ -574,13 +605,12 @@ export default function Card({
     if (displayMode === "small_red") {
       return "#ef4444"; // red-500
     }
-    // Ritardo
-    if (timeState === "late") {
+    // Fallback sullo stato temporale
+    if (timeState === "critical" || timeState === "late") {
       return "#ef4444"; // red-500
     }
-    // Usa il colore della categoria prodotto solo se abilitato nelle impostazioni kanban
-    if (showCategoryColors && productCategory?.color) {
-      return productCategory.color;
+    if (timeState === "atRisk") {
+      return "#eab308"; // yellow-500
     }
     // Normale
     return "#64748b"; // slate-500
@@ -681,12 +711,55 @@ export default function Card({
 
   const showActivity = isFieldVisible("activity");
 
+  // Badge di stato temporale da mostrare inline nell'header
+  // (visibile sia in modalita' normal che small)
+  const renderTimeStatusBadge = (compact: boolean = false) => {
+    if (timeState === "normal") return null;
+    const baseClasses = compact
+      ? "h-4 px-1 text-[9px] gap-0.5"
+      : "h-5 px-1.5 text-[10px] gap-1";
+    const colorClasses =
+      timeState === "critical"
+        ? "bg-red-600 text-white hover:bg-red-700 animate-pulse"
+        : timeState === "late"
+        ? "bg-red-500 text-white hover:bg-red-600"
+        : "bg-amber-500 text-white hover:bg-amber-600"; // atRisk
+    const label =
+      timeState === "atRisk"
+        ? daysDelta === 0
+          ? "Oggi"
+          : `+${daysDelta}g`
+        : `-${daysDelta}g`;
+    const tooltip =
+      timeState === "atRisk"
+        ? daysDelta === 0
+          ? "Consegna in scadenza oggi"
+          : `Consegna tra ${daysDelta} ${daysDelta === 1 ? "giorno" : "giorni"}`
+        : `In ritardo di ${daysDelta} ${daysDelta === 1 ? "giorno" : "giorni"}`;
+    return (
+      <Badge
+        title={tooltip}
+        className={`inline-flex items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+      >
+        <AlertTriangle className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
+        {label}
+      </Badge>
+    );
+  };
+
+  // Sfondo tenue per lo stato critical, per rafforzare la segnalazione
+  // quando il bordo sinistro e' occupato dal colore categoria
+  const criticalBgClass =
+    timeState === "critical"
+      ? "bg-red-50/70 dark:bg-red-950/20"
+      : "bg-white dark:bg-slate-900";
+
   return (
     <ContextMenu>
       <div
         className={`
           w-full mb-2 rounded-r-xl rounded-l-sm select-none overscroll-contain
-          bg-white dark:bg-slate-900 
+          ${criticalBgClass}
           border-y border-r border-slate-200 dark:border-slate-700
           border-l-4
           shadow-sm hover:shadow-md transition-all duration-200
@@ -742,6 +815,7 @@ export default function Card({
                     <span />
                   )}
                   <div className="flex items-center gap-1">
+                    {renderTimeStatusBadge(false)}
                     <ManagerGuideButton
                       label="Apri guida card progetto"
                       stepId="offer-details"
@@ -1050,6 +1124,7 @@ export default function Card({
                     )}
                   </div>
                   <div className="flex items-center gap-1">
+                    {renderTimeStatusBadge(true)}
                     <ManagerGuideButton
                       label="Apri guida card progetto"
                       stepId="offer-details"
