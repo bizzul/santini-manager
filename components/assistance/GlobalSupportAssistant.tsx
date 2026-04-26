@@ -108,6 +108,7 @@ export function GlobalSupportAssistant() {
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceAssistantOpen, setVoiceAssistantOpen] = useState(false);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -155,6 +156,24 @@ export function GlobalSupportAssistant() {
     };
   }, []);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ open?: boolean }>;
+      setVoiceAssistantOpen(custom.detail?.open === true);
+    };
+
+    window.addEventListener(
+      "voice-assistant-open-change",
+      handler as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "voice-assistant-open-change",
+        handler as EventListener
+      );
+    };
+  }, []);
+
   const visibleMessages = useMemo(() => {
     return messages.filter((message) => message.assistant === activeAssistant);
   }, [messages, activeAssistant]);
@@ -188,7 +207,7 @@ export function GlobalSupportAssistant() {
     return null;
   }
   const requesterUserId = userContext.userId || userContext.user?.id;
-  const assistantDock = (
+  const assistantDock = voiceAssistantOpen ? null : (
     <div className="fixed right-4 top-3 z-[60] flex max-w-[calc(100vw-1rem)] items-center gap-2 rounded-full border border-slate-700/90 bg-slate-950/92 px-2 py-1.5 shadow-[0_16px_42px_rgba(2,6,23,0.55)] backdrop-blur md:right-6">
       {AVAILABLE_ASSISTANTS.map((assistantId) => {
         const meta = getAssistantMeta(assistantId);
@@ -198,12 +217,13 @@ export function GlobalSupportAssistant() {
             key={assistantId}
             type="button"
             title={`Apri ${meta.label}`}
+            aria-label={`Apri assistente ${meta.label}`}
             onClick={() => {
               setActiveAssistant(assistantId);
               setOpen(true);
               requestAnimationFrame(() => inputRef.current?.focus());
             }}
-            className={`inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border transition hover:scale-105 ${
+            className={`inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${
               isSelected
                 ? "border-cyan-400/90 ring-2 ring-cyan-400/50"
                 : "border-slate-600/90 hover:border-slate-400"

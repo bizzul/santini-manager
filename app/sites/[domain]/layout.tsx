@@ -6,9 +6,9 @@ import { Metadata } from "next";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
   SidebarProvider,
-  SidebarTrigger,
   SidebarInset,
 } from "@/components/ui/sidebar";
+import { SiteTopbar } from "@/components/site-topbar";
 import { cookies } from "next/headers";
 import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
@@ -208,9 +208,7 @@ export default async function SiteLayout({
             >
               <AppSidebar />
               <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
-                <header className="flex h-12 shrink-0 items-center justify-between border-b bg-[hsl(var(--page)/0.96)] px-4 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)]">
-                  <SidebarTrigger className="-ml-1" />
-                </header>
+                <SiteTopbar siteName={data.name || domain} />
                 <div className="flex-1 overflow-auto bg-[hsl(var(--page))]">{children}</div>
               </SidebarInset>
 

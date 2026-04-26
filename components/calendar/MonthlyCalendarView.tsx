@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
-  RefreshCw,
   TimerReset,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CalendarProjectCard } from "./CalendarProjectCard";
 import { ProjectOrSiteDetailDrawer } from "./ProjectOrSiteDetailDrawer";
-import { CalendarFiltersBar, CalendarLegend } from "./WeeklyCalendarView";
+import { CalendarLegend } from "./WeeklyCalendarView";
 import {
   applyCalendarFilters,
   createDefaultFilters,
@@ -219,24 +218,8 @@ export function MonthlyCalendarView({
             )}
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-fit"
-            onClick={() => setFilters(createDefaultFilters(mode === "personal"))}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset filtri
-          </Button>
         </div>
       </div>
-
-      <CalendarFiltersBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        options={filterOptions}
-        currentUserId={currentUserId}
-      />
 
       {legendItems.length > 0 && <CalendarLegend items={legendItems} />}
 

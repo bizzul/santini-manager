@@ -111,6 +111,7 @@
 .dashboard-map-pin {
   background: transparent;
   border: 0;
+  position: relative;
 }
 
 .dashboard-map-pin-dot {
@@ -121,6 +122,103 @@
   background: #38bdf8;
   border: 2px solid rgba(15, 23, 42, 0.95);
   box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.25);
+}
+
+.dashboard-map-pin-count {
+  align-items: center;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 9999px;
+  color: #f8fafc;
+  display: flex;
+  font-size: 10px;
+  font-weight: 700;
+  height: 16px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 16px;
+  padding: 0 4px;
+  position: absolute;
+  right: -7px;
+  top: -8px;
+}
+
+.dashboard-map-hover-tooltip {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.dashboard-map-hover-tooltip::before {
+  display: none;
+}
+
+.dashboard-map-hover-card {
+  background: rgba(2, 6, 23, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 12px;
+  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.42);
+  color: #e2e8f0;
+  max-width: min(420px, calc(100vw - 48px));
+  min-width: 240px;
+  padding: 8px;
+}
+
+.dashboard-map-hover-title {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px;
+  text-transform: uppercase;
+}
+
+.dashboard-map-hover-list {
+  display: grid;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.dashboard-map-hover-row {
+  align-items: start;
+  border-radius: 8px;
+  color: inherit;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 10px max-content minmax(0, 1fr);
+  padding: 7px 8px;
+  text-decoration: none;
+}
+
+.dashboard-map-hover-row:hover {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.dashboard-map-hover-dot {
+  border: 1px solid rgba(15, 23, 42, 0.95);
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
+  height: 10px;
+  margin-top: 3px;
+  width: 10px;
+}
+
+.dashboard-map-hover-number {
+  color: #bfdbfe;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-map-hover-name {
+  color: #f8fafc;
+  font-size: 12px;
+  line-height: 1.25;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .dashboard-map-popup .leaflet-popup-content-wrapper {

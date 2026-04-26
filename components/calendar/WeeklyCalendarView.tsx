@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import {
@@ -12,12 +13,18 @@ import {
   Filter,
   LayoutGrid,
   ListFilter,
-  RefreshCw,
   TimerReset,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -57,9 +64,11 @@ import type {
   WeeklyCalendarTargetConfig,
 } from "./weekly-calendar-types";
 
-const SLOT_HEIGHT = 34;
-const TIME_COLUMN_WIDTH = 60;
-const DAY_COLUMN_MIN_WIDTH = 168;
+const SLOT_HEIGHT = 42;
+const TIME_COLUMN_WIDTH = 56;
+const DAY_COLUMN_MIN_WIDTH = 110;
+const LUNCH_START_HOUR = 12;
+const LUNCH_END_HOUR = 13;
 
 interface WeeklyCalendarViewProps {
   items: WeeklyCalendarItem[];
@@ -77,6 +86,8 @@ interface WeeklyCalendarViewProps {
   compactSummaryPanel?: boolean;
   collapsibleSummaryPanel?: boolean;
   visibleWeekDays?: number;
+  /** Numero di settimane affiancate (es. 2 = corrente + successiva). */
+  weeksToShow?: number;
   timetrackingEditConfig?: WeeklyCalendarTimetrackingEditConfig;
 }
 
@@ -97,10 +108,13 @@ interface CalendarTimeGridProps {
   items: WeeklyCalendarItem[];
   weekStart: Date;
   visibleWeekDays?: number;
+  /** Quante settimane affiancate disegnare (almeno 1). */
+  weeksToShow?: number;
   slotStartHour: number;
   slotEndHour: number;
   slotMinutes: number;
   onItemClick: (item: WeeklyCalendarItem) => void;
+  onDayClick?: (day: Date) => void;
 }
 
 interface HoursSummaryPanelProps {
@@ -124,7 +138,8 @@ export function WeeklyCalendarView({
   showFiltersBar = true,
   compactSummaryPanel = false,
   collapsibleSummaryPanel = false,
-  visibleWeekDays = 5,
+  visibleWeekDays = 7,
+  weeksToShow = 1,
   timetrackingEditConfig,
 }: WeeklyCalendarViewProps) {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
@@ -133,11 +148,27 @@ export function WeeklyCalendarView({
   );
   const [selectedItem, setSelectedItem] = useState<WeeklyCalendarItem | null>(null);
   const [isSummaryPanelOpen, setIsSummaryPanelOpen] = useState(true);
+  const [expandedDay, setExpandedDay] = useState<Date | null>(null);
 
-  const weekItems = useMemo(
-    () => filterItemsForWeek(items, weekStart),
-    [items, weekStart]
+  const visibleSpanDays = useMemo(
+    () => Math.max(1, weeksToShow) * Math.max(1, visibleWeekDays),
+    [visibleWeekDays, weeksToShow]
   );
+
+  const weekItems = useMemo(() => {
+    const aggregated: WeeklyCalendarItem[] = [];
+    const seen = new Set<string>();
+    for (let weekIndex = 0; weekIndex < Math.max(1, weeksToShow); weekIndex += 1) {
+      const start = addDaysSafe(weekStart, weekIndex * 7);
+      filterItemsForWeek(items, start).forEach((item) => {
+        if (!seen.has(item.id)) {
+          seen.add(item.id);
+          aggregated.push(item);
+        }
+      });
+    }
+    return aggregated;
+  }, [items, weekStart, weeksToShow]);
 
   const filterOptions = useMemo(() => {
     const collaborators = new Map<string, string>();
@@ -252,7 +283,9 @@ export function WeeklyCalendarView({
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="px-3 py-1">
               <Clock3 className="mr-1.5 h-3.5 w-3.5" />
-              {formatWeekRangeLabel(weekStart)}
+              {weeksToShow > 1
+                ? `${formatWeekRangeLabel(weekStart)} -> ${formatWeekRangeLabel(addDaysSafe(weekStart, (weeksToShow - 1) * 7))}`
+                : formatWeekRangeLabel(weekStart)}
             </Badge>
             <Badge variant="outline">
               {filteredItems.length} card{filteredItems.length === 1 ? "a" : ""}
@@ -266,74 +299,35 @@ export function WeeklyCalendarView({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {collapsibleSummaryPanel && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-fit"
-                onClick={() => setIsSummaryPanelOpen((current) => !current)}
-              >
-                {isSummaryPanelOpen ? (
-                  <ChevronRight className="mr-2 h-4 w-4" />
-                ) : (
-                  <ChevronLeft className="mr-2 h-4 w-4" />
-                )}
-                {isSummaryPanelOpen ? "Nascondi riepilogo" : "Mostra riepilogo"}
-              </Button>
-            )}
-            {showFiltersBar && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-fit"
-                onClick={() => setFilters(createDefaultFilters(mode === "personal"))}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reset filtri
-              </Button>
-            )}
-          </div>
+          <div className="flex flex-wrap items-center gap-2" />
         </div>
       </div>
 
-      {showFiltersBar && (
-        <CalendarFiltersBar
-          filters={filters}
-          onFiltersChange={setFilters}
-          options={filterOptions}
-          currentUserId={currentUserId}
-        />
-      )}
-
       {legendItems.length > 0 && <CalendarLegend items={legendItems} />}
 
-      <div
-        className={cn(
-          "grid gap-4",
-          isSummaryPanelOpen &&
-            (compactSummaryPanel
-              ? "2xl:grid-cols-[minmax(0,1fr)_250px]"
-              : "2xl:grid-cols-[minmax(0,1fr)_320px]")
-        )}
-      >
+      <div className="grid gap-4">
         <CalendarTimeGrid
           items={filteredItems}
           weekStart={weekStart}
           visibleWeekDays={visibleWeekDays}
+          weeksToShow={Math.max(1, weeksToShow)}
           slotStartHour={slotStartHour}
           slotEndHour={slotEndHour}
           slotMinutes={slotMinutes}
           onItemClick={setSelectedItem}
+          onDayClick={(day) => setExpandedDay(day)}
         />
-        {isSummaryPanelOpen && (
-          <HoursSummaryPanel
-            summary={summary}
-            mode={mode}
-            compact={compactSummaryPanel}
-          />
-        )}
       </div>
+
+      <DayDetailDialog
+        day={expandedDay}
+        items={filteredItems}
+        slotStartHour={slotStartHour}
+        slotEndHour={slotEndHour}
+        slotMinutes={slotMinutes}
+        onClose={() => setExpandedDay(null)}
+        onItemClick={setSelectedItem}
+      />
 
       {filteredItems.length === 0 && (
         <Card>
@@ -519,27 +513,39 @@ export function CalendarLegend({
 export function CalendarTimeGrid({
   items,
   weekStart,
-  visibleWeekDays = 5,
+  visibleWeekDays = 7,
+  weeksToShow = 1,
   slotStartHour,
   slotEndHour,
   slotMinutes,
   onItemClick,
+  onDayClick,
 }: CalendarTimeGridProps) {
-  const weekDays = useMemo(
-    () => getWeekDays(weekStart).slice(0, visibleWeekDays),
-    [visibleWeekDays, weekStart]
-  );
-  const positionedItems = useMemo(
+  const router = useRouter();
+  const safeWeeks = Math.max(1, weeksToShow);
+  const safeDaysPerWeek = Math.max(1, visibleWeekDays);
+
+  const weeks = useMemo(() => {
+    return Array.from({ length: safeWeeks }, (_, index) => ({
+      weekIndex: index,
+      start: addDaysSafe(weekStart, index * 7),
+      days: getWeekDays(addDaysSafe(weekStart, index * 7)).slice(0, safeDaysPerWeek),
+    }));
+  }, [safeDaysPerWeek, safeWeeks, weekStart]);
+
+  const positionedByWeek = useMemo(
     () =>
-      buildPositionedCalendarItems(
-        items,
-        weekStart,
-        slotStartHour,
-        slotEndHour,
-        slotMinutes,
-        SLOT_HEIGHT
+      weeks.map((week) =>
+        buildPositionedCalendarItems(
+          items,
+          week.start,
+          slotStartHour,
+          slotEndHour,
+          slotMinutes,
+          SLOT_HEIGHT
+        )
       ),
-    [items, weekStart, slotStartHour, slotEndHour, slotMinutes]
+    [items, slotEndHour, slotMinutes, slotStartHour, weeks]
   );
 
   const slots = useMemo(() => {
@@ -556,78 +562,115 @@ export function CalendarTimeGrid({
 
   const gridHeight = ((slotEndHour - slotStartHour) * 60 * SLOT_HEIGHT) / slotMinutes;
 
+  const handleItemClick = (item: WeeklyCalendarItem) => {
+    if (item.detailHref) {
+      router.push(item.detailHref);
+      return;
+    }
+    onItemClick(item);
+  };
+
+  const totalDayColumns = safeWeeks * safeDaysPerWeek;
+
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardContent className="p-0">
         <div className="hidden lg:block">
-          <div className="max-h-[78vh] overflow-auto">
-            <div
-              className="grid"
-              style={{
-                gridTemplateColumns: `${TIME_COLUMN_WIDTH}px repeat(${weekDays.length}, minmax(${DAY_COLUMN_MIN_WIDTH}px, 1fr))`,
-              }}
-            >
-              <div className="sticky top-0 z-20 border-b bg-card" />
-              {weekDays.map((day) => (
-                <div
-                  key={day.toISOString()}
-                  className={cn(
-                    "sticky top-0 z-20 border-b border-l bg-card px-2.5 py-3",
-                    isTodayInWeek(day) && "bg-primary/5"
-                  )}
-                >
-                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {format(day, "EEEE", { locale: it })}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-base font-semibold capitalize xl:text-lg">
-                      {formatDayLabel(day)}
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: `${TIME_COLUMN_WIDTH}px repeat(${totalDayColumns}, minmax(${DAY_COLUMN_MIN_WIDTH}px, 1fr))`,
+            }}
+          >
+            <div className="border-b bg-card" />
+            {weeks.flatMap((week) =>
+              week.days.map((day, dayIndexInWeek) => {
+                const isFutureWeek = week.weekIndex > 0;
+                return (
+                  <button
+                    type="button"
+                    key={`${week.weekIndex}-${day.toISOString()}`}
+                    onClick={() => onDayClick?.(day)}
+                    className={cn(
+                      "border-b border-l px-2 py-2 text-center transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      week.weekIndex === 0 ? "bg-card" : "bg-muted/10",
+                      isTodayInWeek(day) && "bg-primary/5",
+                      dayIndexInWeek === 0 && week.weekIndex > 0 && "border-l-2 border-l-border",
+                      isFutureWeek && "opacity-70"
+                    )}
+                    title="Apri giornata in modalita estesa"
+                  >
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {format(day, "EEEEEE", { locale: it })}
                     </p>
-                    {isTodayInWeek(day) && <Badge>Oggi</Badge>}
-                  </div>
-                </div>
-              ))}
+                    <p className="text-sm font-semibold capitalize">
+                      {format(day, "d MMM", { locale: it })}
+                    </p>
+                  </button>
+                );
+              })
+            )}
 
-              <div className="relative border-r bg-muted/20">
-                {slots.slice(0, -1).map((slot, index) => (
+            <div className="relative border-r bg-muted/20">
+              {slots.slice(0, -1).map((slot, index) => {
+                const slotHour = slot.getHours();
+                const isLunch = slotHour >= LUNCH_START_HOUR && slotHour < LUNCH_END_HOUR;
+                return (
                   <div
                     key={slot.toISOString()}
-                    className="absolute inset-x-0 border-t px-2 pt-1 text-[11px] text-muted-foreground"
+                    className={cn(
+                      "absolute inset-x-0 border-t px-2 pt-0.5 text-[10px] text-muted-foreground",
+                      isLunch && "bg-amber-500/10 text-amber-600 dark:text-amber-300"
+                    )}
                     style={{ top: index * SLOT_HEIGHT, height: SLOT_HEIGHT }}
                   >
                     {formatTimeLabel(slot)}
                   </div>
-                ))}
-              </div>
+                );
+              })}
+            </div>
 
-              {weekDays.map((day) => {
+            {weeks.flatMap((week, weekIdx) => {
+              const positionedItems = positionedByWeek[weekIdx] || [];
+              const isFutureWeek = week.weekIndex > 0;
+              return week.days.map((day, dayIndexInWeek) => {
                 const dayKey = format(day, "yyyy-MM-dd");
                 const dayItems = positionedItems.filter((item) => item.dayKey === dayKey);
 
                 return (
                   <div
-                    key={dayKey}
+                    key={`day-${week.weekIndex}-${dayKey}`}
                     className={cn(
                       "relative border-l",
-                      isTodayInWeek(day) && "bg-primary/5"
+                      isTodayInWeek(day) && "bg-primary/5",
+                      dayIndexInWeek === 0 && week.weekIndex > 0 && "border-l-2 border-l-border",
+                      isFutureWeek && "bg-muted/5 opacity-75"
                     )}
                     style={{ height: gridHeight }}
                   >
-                    {slots.slice(0, -1).map((slot, index) => (
-                      <div
-                        key={`${dayKey}-${slot.toISOString()}`}
-                        className={cn(
-                          "absolute inset-x-0 border-t",
-                          index % 2 === 0 ? "bg-transparent" : "bg-muted/10"
-                        )}
-                        style={{ top: index * SLOT_HEIGHT, height: SLOT_HEIGHT }}
-                      />
-                    ))}
+                    {slots.slice(0, -1).map((slot, index) => {
+                      const slotHour = slot.getHours();
+                      const isLunch = slotHour >= LUNCH_START_HOUR && slotHour < LUNCH_END_HOUR;
+                      return (
+                        <div
+                          key={`${dayKey}-${slot.toISOString()}-${week.weekIndex}`}
+                          className={cn(
+                            "absolute inset-x-0 border-t",
+                            isLunch
+                              ? "bg-amber-500/10 dark:bg-amber-500/15"
+                              : index % 2 === 0
+                                ? "bg-transparent"
+                                : "bg-muted/10"
+                          )}
+                          style={{ top: index * SLOT_HEIGHT, height: SLOT_HEIGHT }}
+                        />
+                      );
+                    })}
 
                     {dayItems.map((item) => (
                       <div
-                        key={item.id}
-                        className="absolute px-1"
+                        key={`${item.id}-${week.weekIndex}`}
+                        className="absolute px-0.5"
                         style={{
                           top: item.top,
                           left: `${(item.column / item.columnCount) * 100}%`,
@@ -648,60 +691,70 @@ export function CalendarTimeGrid({
                               endDatetime: item.end.toISOString(),
                             }}
                             compact
-                            onClick={() => onItemClick(item)}
+                            onClick={() => handleItemClick(item)}
                           />
                         </div>
                       </div>
                     ))}
                   </div>
                 );
-              })}
-            </div>
+              });
+            })}
           </div>
         </div>
 
         <div className="space-y-4 p-4 lg:hidden">
-          {weekDays.map((day) => {
-            const dayKey = format(day, "yyyy-MM-dd");
-            const dayItems = positionedItems.filter((item) => item.dayKey === dayKey);
+          {weeks.flatMap((week, weekIdx) => {
+            const positionedItems = positionedByWeek[weekIdx] || [];
+            const isFutureWeek = week.weekIndex > 0;
+            return week.days.map((day) => {
+              const dayKey = format(day, "yyyy-MM-dd");
+              const dayItems = positionedItems.filter((item) => item.dayKey === dayKey);
 
-            return (
-              <div key={dayKey} className="rounded-xl border">
+              return (
                 <div
+                  key={`mobile-${week.weekIndex}-${dayKey}`}
                   className={cn(
-                    "flex items-center justify-between border-b px-4 py-3",
-                    isTodayInWeek(day) && "bg-primary/5"
+                    "rounded-xl border",
+                    isFutureWeek && "opacity-70"
                   )}
                 >
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {format(day, "EEEE", { locale: it })}
-                    </p>
-                    <p className="font-semibold capitalize">{formatDayLabel(day)}</p>
-                  </div>
-                  {isTodayInWeek(day) && <Badge>Oggi</Badge>}
-                </div>
-                <div className="space-y-3 p-3">
-                  {dayItems.length > 0 ? (
-                    dayItems.map((item) => (
-                      <CalendarProjectCard
-                        key={item.id}
-                        item={{
-                          ...item,
-                          startDatetime: item.start.toISOString(),
-                          endDatetime: item.end.toISOString(),
-                        }}
-                        onClick={() => onItemClick(item)}
-                      />
-                    ))
-                  ) : (
-                    <div className="rounded-lg border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
-                      Nessuna attivita prevista
+                  <div
+                    className={cn(
+                      "flex items-center justify-between border-b px-4 py-3",
+                      isTodayInWeek(day) && "bg-primary/5"
+                    )}
+                  >
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {format(day, "EEEE", { locale: it })}
+                      </p>
+                      <p className="font-semibold capitalize">{formatDayLabel(day)}</p>
                     </div>
-                  )}
+                    {isTodayInWeek(day) && <Badge>Oggi</Badge>}
+                  </div>
+                  <div className="space-y-3 p-3">
+                    {dayItems.length > 0 ? (
+                      dayItems.map((item) => (
+                        <CalendarProjectCard
+                          key={item.id}
+                          item={{
+                            ...item,
+                            startDatetime: item.start.toISOString(),
+                            endDatetime: item.end.toISOString(),
+                          }}
+                          onClick={() => handleItemClick(item)}
+                        />
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed px-4 py-5 text-center text-sm text-muted-foreground">
+                        Nessuna attivita prevista
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
+              );
+            });
           })}
         </div>
       </CardContent>
@@ -890,6 +943,241 @@ function toOptions(map: Map<string, string>): CalendarFilterOption[] {
   return Array.from(map.entries())
     .sort((left, right) => left[1].localeCompare(right[1], "it"))
     .map(([value, label]) => ({ value, label }));
+}
+
+interface DayDetailDialogProps {
+  day: Date | null;
+  items: WeeklyCalendarItem[];
+  slotStartHour: number;
+  slotEndHour: number;
+  slotMinutes: number;
+  onClose: () => void;
+  onItemClick: (item: WeeklyCalendarItem) => void;
+}
+
+const DAY_DETAIL_HOUR_HEIGHT = 64;
+const DAY_DETAIL_UNTIMED_SLOTS: Array<{ startHour: number; endHour: number }> = [
+  { startHour: 6, endHour: 8 },
+  { startHour: 8, endHour: 10 },
+  { startHour: 10, endHour: 12 },
+  { startHour: 13, endHour: 15 },
+  { startHour: 15, endHour: 17 },
+  { startHour: 17, endHour: 19 },
+];
+
+function DayDetailDialog({
+  day,
+  items,
+  slotStartHour,
+  slotEndHour,
+  slotMinutes,
+  onClose,
+  onItemClick,
+}: DayDetailDialogProps) {
+  const router = useRouter();
+
+  const isOpen = Boolean(day);
+  const dayKey = day ? format(day, "yyyy-MM-dd") : null;
+
+  const totalHours = Math.max(1, slotEndHour - slotStartHour);
+  const stepsPerHour = Math.max(1, Math.round(60 / Math.max(1, slotMinutes)));
+  const gridHeight = totalHours * DAY_DETAIL_HOUR_HEIGHT;
+
+  const hourSlots = useMemo(() => {
+    return Array.from({ length: totalHours }, (_, idx) => slotStartHour + idx);
+  }, [slotStartHour, totalHours]);
+
+  const dayItems = useMemo(() => {
+    if (!dayKey) return [] as WeeklyCalendarItem[];
+    return items.filter((item) => {
+      const start = new Date(item.startDatetime);
+      if (Number.isNaN(start.getTime())) return false;
+      return format(start, "yyyy-MM-dd") === dayKey;
+    });
+  }, [items, dayKey]);
+
+  const timedItems = useMemo(
+    () => dayItems.filter((item) => (item.scheduleDisplay || "timed") === "timed"),
+    [dayItems]
+  );
+  const untimedItems = useMemo(
+    () => dayItems.filter((item) => (item.scheduleDisplay || "timed") !== "timed"),
+    [dayItems]
+  );
+
+  const positionFromHour = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const offsetHours = hours + minutes / 60 - slotStartHour;
+    return Math.max(0, offsetHours) * DAY_DETAIL_HOUR_HEIGHT;
+  };
+
+  const heightFromMinutes = (durationMinutes: number) => {
+    return Math.max(
+      DAY_DETAIL_HOUR_HEIGHT / stepsPerHour,
+      (durationMinutes / 60) * DAY_DETAIL_HOUR_HEIGHT
+    );
+  };
+
+  const handleItemClick = (item: WeeklyCalendarItem) => {
+    if (item.detailHref) {
+      router.push(item.detailHref);
+      onClose();
+      return;
+    }
+    onItemClick(item);
+    onClose();
+  };
+
+  // Distribuzione progetti senza orario nelle 6 fasce 06-08, 08-10, 10-12, 13-15, 15-17, 17-19.
+  const untimedAssignments: Array<{
+    item: WeeklyCalendarItem;
+    slotIndex: number;
+  }> = useMemo(() => {
+    return untimedItems.slice(0, DAY_DETAIL_UNTIMED_SLOTS.length).map((item, idx) => ({
+      item,
+      slotIndex: idx,
+    }));
+  }, [untimedItems]);
+
+  const untimedOverflow = useMemo(
+    () => untimedItems.slice(DAY_DETAIL_UNTIMED_SLOTS.length),
+    [untimedItems]
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(next) => (!next ? onClose() : undefined)}>
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[760px] flex-col overflow-hidden p-0">
+        <DialogHeader className="border-b px-6 py-4">
+          <DialogTitle>
+            {day
+              ? `${format(day, "EEEE d MMMM yyyy", { locale: it })}`
+              : "Dettaglio giornata"}
+          </DialogTitle>
+          <DialogDescription>
+            Modalita estesa: {dayItems.length} progetto
+            {dayItems.length === 1 ? "" : "i"} programmat
+            {dayItems.length === 1 ? "o" : "i"} per la giornata.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: "60px minmax(0, 1fr)" }}
+          >
+            <div className="relative border-r" style={{ height: gridHeight }}>
+              {hourSlots.map((hour, idx) => (
+                <div
+                  key={`hour-${hour}`}
+                  className={cn(
+                    "absolute inset-x-0 border-t px-2 pt-1 text-[11px] text-muted-foreground",
+                    hour >= LUNCH_START_HOUR && hour < LUNCH_END_HOUR
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-300"
+                      : ""
+                  )}
+                  style={{
+                    top: idx * DAY_DETAIL_HOUR_HEIGHT,
+                    height: DAY_DETAIL_HOUR_HEIGHT,
+                  }}
+                >
+                  {String(hour).padStart(2, "0")}:00
+                </div>
+              ))}
+            </div>
+
+            <div className="relative" style={{ height: gridHeight }}>
+              {hourSlots.map((hour, idx) => (
+                <div
+                  key={`row-${hour}`}
+                  className={cn(
+                    "absolute inset-x-0 border-t",
+                    hour >= LUNCH_START_HOUR && hour < LUNCH_END_HOUR
+                      ? "bg-amber-500/10 dark:bg-amber-500/15"
+                      : idx % 2 === 0
+                        ? "bg-transparent"
+                        : "bg-muted/10"
+                  )}
+                  style={{
+                    top: idx * DAY_DETAIL_HOUR_HEIGHT,
+                    height: DAY_DETAIL_HOUR_HEIGHT,
+                  }}
+                />
+              ))}
+
+              {timedItems.map((item) => {
+                const start = new Date(item.startDatetime);
+                const end = new Date(item.endDatetime);
+                if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+                  return null;
+                }
+                const top = positionFromHour(start);
+                const durationMinutes =
+                  (end.getTime() - start.getTime()) / 60000;
+                const height = heightFromMinutes(Math.max(60, durationMinutes));
+                return (
+                  <div
+                    key={`timed-${item.id}`}
+                    className="absolute inset-x-2"
+                    style={{ top, height: Math.min(height, gridHeight - top) }}
+                  >
+                    <CalendarProjectCard
+                      item={item}
+                      onClick={() => handleItemClick(item)}
+                    />
+                  </div>
+                );
+              })}
+
+              {untimedAssignments.map(({ item, slotIndex }) => {
+                const slot = DAY_DETAIL_UNTIMED_SLOTS[slotIndex];
+                const startDate = new Date(0);
+                startDate.setHours(slot.startHour, 0, 0, 0);
+                const top =
+                  (slot.startHour - slotStartHour) * DAY_DETAIL_HOUR_HEIGHT;
+                const height =
+                  (slot.endHour - slot.startHour) * DAY_DETAIL_HOUR_HEIGHT;
+                return (
+                  <div
+                    key={`untimed-${item.id}`}
+                    className="absolute inset-x-2"
+                    style={{ top, height }}
+                  >
+                    <CalendarProjectCard
+                      item={item}
+                      onClick={() => handleItemClick(item)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {untimedOverflow.length > 0 && (
+            <div className="mt-4 space-y-2 rounded-xl border border-dashed border-muted p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Altri progetti senza orario ({untimedOverflow.length})
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {untimedOverflow.map((item) => (
+                  <CalendarProjectCard
+                    key={`overflow-${item.id}`}
+                    item={item}
+                    onClick={() => handleItemClick(item)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {dayItems.length === 0 && (
+            <div className="mt-6 rounded-xl border border-dashed px-6 py-10 text-center text-sm text-muted-foreground">
+              Nessun progetto programmato per questa giornata.
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function formatSignedMinutes(value: number): string {

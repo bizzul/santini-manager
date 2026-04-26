@@ -1709,9 +1709,11 @@ export interface DashboardStats {
 
 export interface DashboardProjectLocation {
     id: number;
+    uniqueCode?: string | null;
     name: string;
     status: string;
     taskType: string | null;
+    mapStatus: "in_progress" | "completed" | "offer" | "other";
     addressLine?: string | null;
     city?: string | null;
     zipCode?: number | null;
@@ -1720,6 +1722,11 @@ export interface DashboardProjectLocation {
     longitude?: number | null;
     primaryTechnician?: string | null;
     technicianCount: number;
+    productId?: number | null;
+    productName?: string | null;
+    categoryId?: number | null;
+    categoryName?: string | null;
+    categoryColor?: string | null;
 }
 
 /**
@@ -1757,7 +1764,7 @@ export const fetchDashboardData = cache(
         // First fetch kanbans to get their IDs for column query
         const kanbansResult = await supabase
             .from("Kanban")
-            .select("id, is_offer_kanban, title, identifier")
+            .select("id, is_offer_kanban, is_work_kanban, is_production_kanban, title, identifier")
             .eq("site_id", siteId);
 
         assertDashboardQuery(kanbansResult, "Overview:Kanban", { siteId });
@@ -1768,6 +1775,7 @@ export const fetchDashboardData = cache(
         // Fetch remaining data in parallel
         const [
             tasksResult,
+            mapTasksResult,
             categoriesResult,
             usersResult,
             columnsResult,
@@ -1778,6 +1786,7 @@ export const fetchDashboardData = cache(
                 .from("Task")
                 .select(`
                 id,
+                unique_code,
                 name,
                 title,
                 status,
@@ -1802,6 +1811,28 @@ export const fetchDashboardData = cache(
             `)
                 .eq("site_id", siteId)
                 .eq("archived", false),
+            // All tasks, including archived, for the overview project map filters
+            supabase
+                .from("Task")
+                .select(`
+                id,
+                unique_code,
+                name,
+                title,
+                status,
+                luogo,
+                task_type,
+                display_mode,
+                kanbanId,
+                kanbanColumnId,
+                assigned_collaborator_ids,
+                produzione_collaborator_ids,
+                posa_collaborator_ids,
+                clientId,
+                sellProductId,
+                archived
+            `)
+                .eq("site_id", siteId),
             // Categories
             supabase
                 .from("sellproduct_categories")
@@ -1816,7 +1847,7 @@ export const fetchDashboardData = cache(
             kanbanIds.length > 0
                 ? supabase
                     .from("KanbanColumn")
-                    .select("id, kanbanId, column_type, title, position")
+                    .select("id, kanbanId, column_type, title, identifier, position")
                     .in("kanbanId", kanbanIds)
                 : Promise.resolve({ data: [] }),
             // Historical tasks for pipeline chart (last 6 months)
@@ -1835,12 +1866,14 @@ export const fetchDashboardData = cache(
         ]);
 
         const tasks = tasksResult.data || [];
+        const mapTasks = mapTasksResult.data || [];
         const categories = categoriesResult.data || [];
         const userSites = usersResult.data || [];
         const columns = columnsResult.data || [];
         const historicalTasks = historicalTasksResult.data || [];
 
         assertDashboardQuery(tasksResult, "Overview:Task", { siteId });
+        assertDashboardQuery(mapTasksResult, "Overview:MapTask", { siteId });
         assertDashboardQuery(categoriesResult, "Overview:Category", { siteId });
         assertDashboardQuery(usersResult, "Overview:UserSites", { siteId });
         assertDashboardQuery(
@@ -1863,16 +1896,17 @@ export const fetchDashboardData = cache(
             );
         }
 
+        const projectLocationSourceTasks = [...tasks, ...mapTasks];
         const clientIds = Array.from(
             new Set(
-                tasks
+                projectLocationSourceTasks
                     .map((task: any) => Number(task.clientId))
                     .filter((id: number) => Number.isFinite(id) && id > 0),
             ),
         );
         const sellProductIds = Array.from(
             new Set(
-                tasks
+                projectLocationSourceTasks
                     .map((task: any) => Number(task.sellProductId))
                     .filter((id: number) => Number.isFinite(id) && id > 0),
             ),
@@ -1990,6 +2024,77 @@ export const fetchDashboardData = cache(
 
         const isInvoiceTask = (task: any): boolean =>
             task.task_type === "FATTURA";
+
+        const normalizeWorkflowLabel = (value: unknown): string =>
+            String(value || "")
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .trim();
+
+        const getKanbanSearchText = (kanbanId: number | null): string => {
+            if (!kanbanId) return "";
+            const kanban = kanbanMap.get(kanbanId);
+            return normalizeWorkflowLabel(`${kanban?.title || ""} ${kanban?.identifier || ""}`);
+        };
+
+        const getColumnSearchText = (column: any): string =>
+            normalizeWorkflowLabel(`${column?.title || ""} ${column?.identifier || ""}`);
+
+        const isInProgressMapTask = (task: any): boolean => {
+            if (task.archived === true) return false;
+            const kanban = kanbanMap.get(task.kanbanId);
+            const kanbanText = getKanbanSearchText(task.kanbanId);
+
+            return (
+                kanbanText.includes("avor") ||
+                kanbanText.includes("ufficio tecnico") ||
+                Boolean(kanban?.is_production_kanban) ||
+                kanbanText.includes("produzione") ||
+                kanbanText.includes("production") ||
+                kanbanText.includes("officina") ||
+                kanbanText.includes("lavorazione") ||
+                kanbanText.includes("service") ||
+                kanbanText.includes("assistenza") ||
+                kanbanText.includes("manutenzione")
+            );
+        };
+
+        const isCompletedMapTask = (task: any): boolean => {
+            const kanbanText = getKanbanSearchText(task.kanbanId);
+            return (
+                isInvoiceTask(task) ||
+                kanbanText.includes("fattur") ||
+                kanbanText.includes("billing") ||
+                kanbanText.includes("invoice")
+            );
+        };
+
+        const isOfferMapTask = (task: any): boolean => {
+            if (task.archived === true) return false;
+            if (!isOfferTask(task)) return false;
+
+            const column = columnMap.get(task.kanbanColumnId);
+            const columnText = getColumnSearchText(column);
+            return (
+                columnText.includes("to do") ||
+                columnText.includes("todo") ||
+                columnText.includes("da fare") ||
+                columnText.includes("elaborazione") ||
+                columnText.includes("inviata") ||
+                columnText.includes("inviato") ||
+                columnText.includes("trattativa")
+            );
+        };
+
+        const getMapStatus = (
+            task: any,
+        ): DashboardProjectLocation["mapStatus"] => {
+            if (isCompletedMapTask(task)) return "completed";
+            if (isOfferMapTask(task)) return "offer";
+            if (isInProgressMapTask(task)) return "in_progress";
+            return "other";
+        };
 
         const isWonTask = (task: any): boolean => {
             const column = columnMap.get(task.kanbanColumnId);
@@ -2225,22 +2330,12 @@ export const fetchDashboardData = cache(
             return fullName || fallbackId;
         };
 
-        const activeProjectLocations: DashboardProjectLocation[] = tasks
-            .filter((task: any) => {
-                const column = columnMap.get(task.kanbanColumnId);
-                const isOffer = isOfferTask(task);
-                const isInvoice = isInvoiceTask(task);
-                const isClosedStatus = ["done", "won", "lost", "archived", "completed"]
-                    .includes(String(column?.column_type || "").toLowerCase());
-                return !isOffer && !isInvoice && !isClosedStatus;
-            })
+        const activeProjectLocations: DashboardProjectLocation[] = mapTasks
             .map((task: any) => {
                 const client = clientsById.get(task.clientId);
                 const column = columnMap.get(task.kanbanColumnId);
-                const candidateAddress = [
-                    typeof task.luogo === "string" ? task.luogo.trim() : "",
-                    typeof client?.address === "string" ? client.address.trim() : "",
-                ].filter(Boolean);
+                const siteAddress = typeof task.luogo === "string" ? task.luogo.trim() : "";
+                const clientAddress = typeof client?.address === "string" ? client.address.trim() : "";
 
                 const technicianIds = Array.from(
                     new Set(
@@ -2262,19 +2357,32 @@ export const fetchDashboardData = cache(
                     formatTechnicianName(usersByAuthId.get(id), id)
                 );
 
+                const sellProduct = sellProductsById.get(task.sellProductId) as any;
+                const productCategoryId = sellProduct?.category_id ?? null;
+                const productCategory = productCategoryId
+                    ? (categoriesById.get(productCategoryId) as any)
+                    : null;
+
                 return {
                     id: task.id,
+                    uniqueCode: task.unique_code ?? null,
                     name: task.name || task.title || `Progetto #${task.id}`,
                     status: column?.title || task.status || "In corso",
                     taskType: task.task_type ?? null,
-                    addressLine: candidateAddress[0] ?? null,
-                    city: client?.city ?? null,
-                    zipCode: client?.zipCode ?? null,
-                    countryCode: client?.countryCode ?? null,
+                    mapStatus: getMapStatus(task),
+                    addressLine: siteAddress || clientAddress || null,
+                    city: siteAddress ? null : client?.city ?? null,
+                    zipCode: siteAddress ? null : client?.zipCode ?? null,
+                    countryCode: siteAddress ? null : client?.countryCode ?? null,
                     latitude: client?.latitude ?? null,
                     longitude: client?.longitude ?? null,
                     primaryTechnician: technicianNames[0] ?? null,
                     technicianCount: technicianNames.length,
+                    productId: sellProduct?.id ?? null,
+                    productName: sellProduct?.name ?? null,
+                    categoryId: productCategoryId,
+                    categoryName: productCategory?.name ?? null,
+                    categoryColor: productCategory?.color ?? null,
                 };
             });
 

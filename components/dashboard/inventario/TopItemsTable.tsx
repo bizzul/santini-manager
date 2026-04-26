@@ -2,8 +2,15 @@
 
 import { Package } from "lucide-react";
 import { InventoryDashboardStats } from "@/lib/server-data";
-import Link from "next/link";
 import { useParams } from "next/navigation";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface TopItemsTableProps {
   data: InventoryDashboardStats["topItems"];
@@ -53,71 +60,80 @@ export default function TopItemsTable({ data }: TopItemsTableProps) {
           Nessun articolo disponibile
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+        <div className="dashboard-panel-inner overflow-x-auto">
+          <Table className="min-w-[720px]">
+            <TableHeader>
+              <TableRow className="border-white/10 hover:bg-transparent">
+                <TableHead className="bg-slate-950/80 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Nome
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Categoria
-                </th>
-                <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Qtà
-                </th>
-                <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Costo unit.
-                </th>
-                <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Valore
-                </th>
-                <th className="text-right text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Ultimo agg.
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-white/5">
               {data.map((item) => (
-                <tr
+                <TableRow
                   key={`${item.id}-${item.variantId}`}
-                  className="hover:bg-white/5 transition-colors cursor-pointer"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Apri articolo ${item.name}`}
+                  className="cursor-pointer border-white/5 transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none"
                   onClick={() => {
                     window.location.href = `/sites/${domain}/inventory?itemId=${item.id}`;
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      window.location.href = `/sites/${domain}/inventory?itemId=${item.id}`;
+                    }
+                  }}
                 >
-                  <td className="py-3 px-2">
+                  <TableCell className="px-3 py-3">
                     <span className="text-sm font-medium">{item.name}</span>
-                  </td>
-                  <td className="py-3 px-2">
+                  </TableCell>
+                  <TableCell className="px-3 py-3">
                     <span className="dashboard-panel-subtitle">
                       {item.category}
                     </span>
-                  </td>
-                  <td className="py-3 px-2 text-right">
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-right">
                     <span className="text-sm">
                       {formatNumber(item.quantity)}
                     </span>
-                  </td>
-                  <td className="py-3 px-2 text-right">
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-right">
                     <span className="dashboard-panel-subtitle">
                       {formatCurrency(item.unitCost)}
                     </span>
-                  </td>
-                  <td className="py-3 px-2 text-right">
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-right">
                     <span className="text-sm font-medium text-green-400">
                       {formatCurrency(item.totalValue)}
                     </span>
-                  </td>
-                  <td className="py-3 px-2 text-right">
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-right">
                     <span className="text-xs text-muted-foreground">
                       {formatDate(item.lastUpdate)}
                     </span>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

@@ -15,7 +15,7 @@ import OfferMiniCard from "./OfferMiniCard";
 import OfferFollowUpDialog from "./OfferFollowUpDialog";
 import OfferQuickAdd from "./OfferQuickAdd";
 import DraftCompletionWizard from "./DraftCompletionWizard";
-import { Plus, FileEdit, X, RotateCcw, Eraser } from "lucide-react";
+import { Check, Plus, FileEdit, X, RotateCcw, Eraser } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
 import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
@@ -45,7 +45,6 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { saveState } from "@/app/sites/[domain]/kanban/actions/save-kanban-state.action";
-import TimelineClient from "./TimelineClient";
 import KanbanManagementModal from "./KanbanManagementModal";
 import { saveKanban } from "@/app/sites/[domain]/kanban/actions/save-kanban.action";
 import { saveKanbanCardConfig } from "@/app/sites/[domain]/kanban/actions/save-kanban-card-config.action";
@@ -315,7 +314,7 @@ const Column = ({
   };
 
   const renderStat = (label: string, value: any) => (
-    <div className="rounded-md border bg-muted/40 px-2 py-1.5">
+    <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
@@ -326,9 +325,9 @@ const Column = ({
   return (
     <div
       key={column.id}
-      className="flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden rounded-lg border bg-background shadow-sm"
+      className="dashboard-panel flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden p-0"
     >
-      <div className="shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="shrink-0 border-b border-slate-700/70 bg-slate-900/40 px-4 py-3 backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-lg font-semibold leading-tight">
@@ -383,13 +382,14 @@ const Column = ({
             {isCreationColumn &&
               (isOfferKanban ? (
                 <button
-                  className="cursor-pointer rounded border bg-red-600 p-2 text-white transition-colors hover:bg-red-700"
+                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border bg-red-600 text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() =>
                     router.push(
                       `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`
                     )
                   }
                   title="Crea nuova offerta"
+                  aria-label="Crea nuova offerta"
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -400,28 +400,31 @@ const Column = ({
                 >
                   <DialogTrigger asChild>
                     <button
-                      className="cursor-pointer rounded border p-2 hover:bg-accent"
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border bg-background transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => setModalCreate(true)}
+                      aria-label="Crea nuovo progetto"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
-                    <DialogHeader>
+                  <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1100px] flex-col overflow-hidden p-0">
+                    <DialogHeader className="border-b px-6 py-4">
                       <DialogTitle>Crea progetto</DialogTitle>
                       <DialogDescription>Crea un progetto nuovo</DialogDescription>
                     </DialogHeader>
-                    <CreateProductForm
-                      data={data}
-                      handleClose={(success?: boolean) => {
-                        setModalCreate(false);
-                        if (success && onTaskCreated) {
-                          onTaskCreated();
-                        }
-                      }}
-                      kanbanId={(kanban as any)?.id}
-                      domain={domain}
-                    />
+                    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                      <CreateProductForm
+                        data={data}
+                        handleClose={(success?: boolean) => {
+                          setModalCreate(false);
+                          if (success && onTaskCreated) {
+                            onTaskCreated();
+                          }
+                        }}
+                        kanbanId={(kanban as any)?.id}
+                        domain={domain}
+                      />
+                    </div>
                   </DialogContent>
                 </Dialog>
               ))}
@@ -849,51 +852,6 @@ function KanbanBoard({
     }
   };
 
-  const handlePreviewSnapshot = async (timestamp: Date | null) => {
-    if (!timestamp) {
-      // Reset to original state - reload page to get fresh data
-      window.location.reload();
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `/api/kanban/snapshot?timestamp=${timestamp.toISOString()}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch snapshot");
-      }
-
-      const snapshotTasks = await response.json();
-
-      // Ensure snapshotTasks is an array
-      if (Array.isArray(snapshotTasks)) {
-        safeSetTasks(snapshotTasks);
-        toast({
-          title: "Anteprima modalità",
-          description:
-            "Stato kanban al " + new Date(timestamp).toLocaleString(),
-        });
-      } else {
-        safeSetTasks([]);
-        toast({
-          variant: "destructive",
-          title: "Errore",
-          description: "Formato dati non valido",
-        });
-      }
-    } catch (error) {
-      logger.error("Error fetching snapshot:", error);
-      safeSetTasks([]); // Set empty array on error
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: "Caricamento stato fallito",
-      });
-    }
-  };
-
   // true = "Chiudi tutte le tab" attivo (default all'apertura del Kanban)
   // false = "Apri tutte le tab" attivo
   // Le card si aprono sempre in modalità ridotta quando si entra in una Kanban.
@@ -924,12 +882,6 @@ function KanbanBoard({
   const isPreviewMode =
     initialTasks?.length > 0 && initialTasks.some((task) => task.isPreview);
 
-  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
-  const [snapshots, setSnapshots] = useState<
-    { timestamp: Date; taskCount: number }[]
-  >([]);
-  const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
-  const [hasLoadedSnapshots, setHasLoadedSnapshots] = useState(false);
   const isSomeCategoriesSelected =
     selectedCategories.length > 0 && !allCategoriesSelected;
 
@@ -968,68 +920,6 @@ function KanbanBoard({
         );
       })
     : [];
-
-  useEffect(() => {
-    setSnapshots([]);
-    setHasLoadedSnapshots(false);
-    setIsTimelineOpen(false);
-  }, [siteId]);
-
-  useEffect(() => {
-    if (!isTimelineOpen || !siteId || hasLoadedSnapshots) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    const loadSnapshots = async () => {
-      try {
-        setIsLoadingSnapshots(true);
-        const response = await fetch("/api/kanban/available-snapshots", {
-          headers: {
-            "x-site-id": siteId,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch snapshots");
-        }
-
-        const data = await response.json();
-        if (!isCancelled) {
-          setSnapshots(
-            Array.isArray(data)
-              ? data.map((snapshot) => ({
-                  ...snapshot,
-                  timestamp: new Date(snapshot.timestamp),
-                }))
-              : []
-          );
-          setHasLoadedSnapshots(true);
-        }
-      } catch (error) {
-        logger.error("Error fetching snapshots:", error);
-        if (!isCancelled) {
-          setSnapshots([]);
-          toast({
-            variant: "destructive",
-            title: "Errore",
-            description: "Impossibile caricare la timeline del kanban",
-          });
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingSnapshots(false);
-        }
-      }
-    };
-
-    void loadSnapshots();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [hasLoadedSnapshots, isTimelineOpen, siteId, toast]);
 
   useEffect(() => {
     const key = kanban?.id ? `kanban-card-fields-${kanban.id}` : null;
@@ -1383,93 +1273,95 @@ function KanbanBoard({
         {kanban && (
           <div className="shrink-0 w-full pt-4 pb-2 px-8 overflow-x-auto">
             <div style={{ width: `${boardColumnsWidthRem}rem` }} className="min-w-max">
-              <div
-                className="text-2xl font-bold mb-4 p-4 rounded-lg flex items-center gap-3 shadow-md"
-                style={{
-                  backgroundColor: kanban.color || "#1e293b",
-                  color: getContrastColor(kanban.color || "#1e293b"),
-                }}
-              >
-                {(() => {
-                  const IconComponent = getKanbanIcon(kanban.icon);
-                  return (
-                    <IconComponent
-                      className="h-6 w-6 shrink-0"
-                      style={{
-                        color: getContrastColor(kanban.color || "#1e293b"),
-                      }}
+              <div className="dashboard-panel sticky top-0 z-20 p-3 backdrop-blur">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div
+                    className="flex min-w-[260px] flex-1 items-center gap-3 rounded-xl px-4 py-3 shadow-sm"
+                    style={{
+                      backgroundColor: kanban.color || "#1e293b",
+                      color: getContrastColor(kanban.color || "#1e293b"),
+                    }}
+                  >
+                    {(() => {
+                      const IconComponent = getKanbanIcon(kanban.icon);
+                      return (
+                        <IconComponent
+                          className="h-6 w-6 shrink-0"
+                          style={{
+                            color: getContrastColor(kanban.color || "#1e293b"),
+                          }}
+                        />
+                      );
+                    })()}
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] opacity-75">
+                        Kanban operativo
+                      </p>
+                      <h1 className="truncate text-2xl font-bold leading-tight">
+                        {kanban.title.toUpperCase()}
+                      </h1>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-700/70 bg-slate-900/40 p-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 rounded-lg px-3 text-xs font-semibold"
+                        onClick={closeAllTabs}
+                        title={
+                          showOpenAllText
+                            ? "Apri tutte le tab"
+                            : "Chiudi tutte le tab"
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                        {showOpenAllText ? "Apri tab" : "Chiudi tab"}
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 rounded-lg px-3 text-xs font-semibold disabled:cursor-not-allowed"
+                        onClick={undoLastMove}
+                        disabled={!lastAction}
+                        title="Annulla ultima azione"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Annulla
+                      </Button>
+                    </div>
+
+                    <KanbanManagementModal
+                      kanban={kanban}
+                      onSave={handleSaveKanban}
+                      mode="edit"
+                      hasTasks={tasks.length > 0}
+                      domain={domain}
+                      trigger={
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="h-9 rounded-lg px-4 text-xs font-semibold shadow-sm"
+                        >
+                          Modifica Kanban
+                        </Button>
+                      }
                     />
-                  );
-                })()}
-                <span>{kanban.title.toUpperCase()}</span>
-              </div>
-              <div className="flex justify-between items-center gap-4 w-full">
-              <div
-                className={`flex justify-start gap-2 ${
-                  isTimelineOpen ? "opacity-0" : "opacity-100"
-                } transition-all duration-300`}
-              >
-                <button
-                  className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md"
-                  onClick={closeAllTabs}
-                  title={
-                    showOpenAllText
-                      ? "Apri tutte le tab"
-                      : "Chiudi tutte le tab"
-                  }
-                >
-                  <X className="h-4 w-4 transition-transform group-hover:scale-110" />
-                  <span>
-                    {showOpenAllText
-                      ? "Apri tutte le tab"
-                      : "Chiudi tutte le tab"}
-                  </span>
-                </button>
+                  </div>
+                </div>
 
-                <button
-                  className="group flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md border border-border bg-background hover:bg-accent hover:text-accent-foreground transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={undoLastMove}
-                  disabled={!lastAction}
-                  title="Annulla ultima azione"
-                >
-                  <RotateCcw className="h-4 w-4 transition-transform group-hover:rotate-180" />
-                  <span>Annulla ultima azione</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <KanbanManagementModal
-                  kanban={kanban}
-                  onSave={handleSaveKanban}
-                  mode="edit"
-                  hasTasks={tasks.length > 0}
-                  domain={domain}
-                  trigger={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs bg-background hover:bg-accent"
-                    >
-                      Modifica Kanban
-                    </Button>
-                  }
-                />
-                <h4
-                  className={`text-foreground text-sm font-semibold cursor-pointer hover:underline transition-all duration-300 ${
-                    isTimelineOpen ? "opacity-50" : "opacity-100"
-                  }`}
-                  onClick={() => setIsTimelineOpen(!isTimelineOpen)}
-                >
-                  Time machine
-                </h4>
-              </div>
-              </div>
-              <div className="mt-4 rounded-lg border bg-background/80 px-4 py-3 shadow-sm">
-                <div className="flex items-start gap-4">
+                <div className="dashboard-panel-inner mt-3 px-3 py-3">
+                  <div className="flex items-start gap-4">
                   {safeCategories.length > 0 ? (
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2 pr-2">
-                      <span className="text-sm font-medium">Categoria:</span>
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <div className="flex min-w-0 flex-1 items-start gap-3 pr-2">
+                      <span className="shrink-0 rounded-full bg-background px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                        Categoria
+                      </span>
+                      <div className="flex max-h-20 flex-wrap items-center gap-x-3 gap-y-2 overflow-y-auto pr-1">
                         <div className="flex items-center space-x-2">
                           <Checkbox
                             id="all-project-types"
@@ -1484,7 +1376,7 @@ function KanbanBoard({
                           />
                           <Label
                             htmlFor="all-project-types"
-                            className="cursor-pointer text-sm font-normal"
+                            className="cursor-pointer text-sm font-medium"
                           >
                             Tutte le categorie
                           </Label>
@@ -1506,7 +1398,7 @@ function KanbanBoard({
                               />
                               <Label
                                 htmlFor={`project-type-${category.id}`}
-                                className="flex cursor-pointer items-center gap-2 text-sm font-normal"
+                                className="flex cursor-pointer items-center gap-2 rounded-full bg-background/70 px-2 py-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
                               >
                                 {category.color && (
                                   <span
@@ -1531,7 +1423,7 @@ function KanbanBoard({
                       variant="outline"
                       size="sm"
                       onClick={resetKanbanPreferences}
-                      className="text-xs"
+                      className="h-9 rounded-lg text-xs"
                       title="Reset preferenze locali kanban (isSmall, cover, configurazione campi card)"
                     >
                       <Eraser className="mr-2 h-3.5 w-3.5" />
@@ -1542,7 +1434,7 @@ function KanbanBoard({
                       variant="outline"
                       size="sm"
                       onClick={openCardConfigDialog}
-                      className="text-xs"
+                      className="h-9 rounded-lg text-xs"
                     >
                       <FileEdit className="mr-2 h-3.5 w-3.5" />
                       Configura campi card
@@ -1550,23 +1442,31 @@ function KanbanBoard({
                   </div>
                 </div>
               </div>
+              </div>
             </div>
 
             <Dialog open={isCardConfigDialogOpen} onOpenChange={setIsCardConfigDialogOpen}>
-              <DialogContent className="sm:max-w-[700px]">
+              <DialogContent className="max-h-[88vh] overflow-hidden sm:max-w-[760px]">
                 <DialogHeader>
                   <DialogTitle>Configurazione Card Progetto</DialogTitle>
                   <DialogDescription>
                     Modifica i campi visibili nella versione estesa/ridotta delle card.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-1">
                   {(["normal", "small"] as CardDisplayMode[]).map((mode) => (
-                    <div key={mode} className="space-y-2 rounded-md border p-3">
-                      <div className="text-xs font-semibold uppercase text-muted-foreground">
-                        {mode === "normal" ? "Versione estesa" : "Versione ridotta"}
+                    <div key={mode} className="space-y-3 rounded-xl border bg-muted/20 p-4">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {mode === "normal" ? "Versione estesa" : "Versione ridotta"}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {mode === "normal"
+                            ? "Campi mostrati quando la card e' aperta."
+                            : "Campi mostrati nella card compatta."}
+                        </p>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         {(Object.keys(CARD_FIELD_LABELS) as CardDisplayField[]).map((field) => {
                           const checked = draftCardFieldConfig[mode][field];
                           return (
@@ -1574,20 +1474,22 @@ function KanbanBoard({
                               key={`${mode}-${field}`}
                               type="button"
                               onClick={() => toggleCardField(mode, field)}
-                              className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${
+                              className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                                 checked
                                   ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                  : "border-slate-300 bg-background text-slate-500 dark:border-slate-700 dark:text-slate-400"
+                                  : "border-slate-300 bg-background text-slate-500 hover:text-slate-700 dark:border-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                               }`}
                             >
-                              {CARD_FIELD_LABELS[field]}
+                              <span>{CARD_FIELD_LABELS[field]}</span>
+                              {checked && <Check className="h-3.5 w-3.5" />}
                             </button>
                           );
                         })}
                       </div>
                     </div>
                   ))}
-                  <div className="flex justify-end gap-2">
+                </div>
+                <div className="flex justify-end gap-2 border-t pt-4">
                     <Button
                       type="button"
                       variant="outline"
@@ -1599,27 +1501,8 @@ function KanbanBoard({
                       Salva configurazione
                     </Button>
                   </div>
-                </div>
               </DialogContent>
             </Dialog>
-            {isTimelineOpen && (
-              <div className="w-full mt-2">
-                {isLoadingSnapshots ? (
-                  <div className="text-sm text-muted-foreground px-2 py-3">
-                    Caricamento timeline...
-                  </div>
-                ) : snapshots.length > 0 ? (
-                  <TimelineClient
-                    snapshots={snapshots}
-                    onPreviewSnapshot={handlePreviewSnapshot}
-                  />
-                ) : (
-                  <div className="text-sm text-muted-foreground px-2 py-3">
-                    Nessuno snapshot disponibile per questo kanban.
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
         {kanban ? (

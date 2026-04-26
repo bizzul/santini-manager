@@ -1665,7 +1665,7 @@ export function AppSidebar() {
           {domain && (
             <div
               className={cn(
-                "rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.9)] py-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none",
+                "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] py-2 shadow-[0_8px_20px_hsl(var(--sidebar-card-shadow)/0.1)] dark:bg-black/10 dark:shadow-none",
                 state === "collapsed"
                   ? "flex-col gap-1 justify-center px-0"
                   : "flex-row justify-around px-2"
@@ -1675,6 +1675,7 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/timetracking`}
                   title="Ore"
+                  aria-label="Apri ore"
                   className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
@@ -1687,6 +1688,7 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/errortracking`}
                   title="Errori"
+                  aria-label="Apri errori"
                   className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
@@ -1701,6 +1703,7 @@ export function AppSidebar() {
                 <Link
                   href={`${basePath}/reports`}
                   title="Reports"
+                  aria-label="Apri reports"
                   className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon

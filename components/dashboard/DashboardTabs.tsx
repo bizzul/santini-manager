@@ -75,9 +75,9 @@ export default function DashboardTabs() {
   );
 
   return (
-    <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur supports-[backdrop-filter]:bg-slate-900/60 border-b border-slate-800">
+    <div className="sticky top-0 z-10 border-b border-slate-600/70 bg-slate-950/90 backdrop-blur supports-[backdrop-filter]:bg-slate-950/75">
       <div className="flex items-center gap-4 px-4 py-3 md:px-6 lg:px-8">
-        <div className="flex items-center gap-1 overflow-x-auto flex-1 min-w-0 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-slate-800 [&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded">
+        <div className="dashboard-panel-inner flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto p-1 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-track]:bg-transparent">
           {tabs.map((tab) => {
             const tabPath = tab.href || "";
             const isActive =
@@ -90,10 +90,10 @@ export default function DashboardTabs() {
                 key={tab.name}
                 href={`${basePath}${tabPath}`}
                 className={cn(
-                  "px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-2 flex-shrink-0",
+                  "flex h-9 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
                   isActive
-                    ? "bg-blue-500 text-white"
-                    : "text-slate-300 hover:text-white hover:bg-slate-800/50"
+                    ? "bg-blue-500 text-white shadow-sm"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 )}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />

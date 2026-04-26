@@ -65,12 +65,22 @@ export function ThemeSwitcher() {
     window.dispatchEvent(new Event("site-theme-mode-change"));
   };
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <div
+        aria-hidden="true"
+        className={cn(
+          "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] p-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:bg-black/10 dark:shadow-none",
+          isCollapsed ? "h-[124px] w-[44px]" : "h-[52px] w-full"
+        )}
+      />
+    );
+  }
 
   return (
     <div
       className={cn(
-        "rounded-2xl border border-[hsl(var(--sidebar-border)/0.8)] bg-[hsl(var(--sidebar-card)/0.9)] p-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-none",
+        "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] p-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:bg-black/10 dark:shadow-none",
         isCollapsed ? "w-[44px]" : "w-full"
       )}
     >
@@ -89,6 +99,7 @@ export function ThemeSwitcher() {
               key={mode}
               type="button"
               onClick={() => handleSelectMode(mode)}
+              aria-label={`Imposta modalita ${MODE_META[mode].label}`}
               className={cn(
                 "flex items-center justify-center rounded-xl border transition-colors",
                 "border-transparent text-[hsl(var(--sidebar-foreground)/0.68)] hover:bg-[hsl(var(--sidebar-card-strong)/0.7)] hover:text-[hsl(var(--sidebar-foreground))]",

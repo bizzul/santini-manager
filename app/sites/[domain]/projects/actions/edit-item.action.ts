@@ -192,6 +192,7 @@ export async function editItem(formData: any, id: number, domain?: string) {
       if (domain) {
         revalidatePath(`/sites/${domain}/projects`);
         revalidatePath(`/sites/${domain}/kanban`);
+        revalidatePath(`/sites/${domain}/dashboard`);
       }
       revalidatePath("/projects");
       return { success: true };

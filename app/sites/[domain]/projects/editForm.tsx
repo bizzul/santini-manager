@@ -95,6 +95,30 @@ type CollaboratorTimeSummary = {
   entries: number;
 };
 
+function splitSiteAddress(value: string | null | undefined) {
+  const normalized = (value || "").trim();
+  if (!normalized) {
+    return { street: "", town: "" };
+  }
+
+  const [firstPart, ...rest] = normalized.split(",").map((part) => part.trim()).filter(Boolean);
+  if (rest.length > 0) {
+    return {
+      street: firstPart || "",
+      town: rest.join(", "),
+    };
+  }
+
+  const looksLikeStreet = /\d|via|viale|piazza|strada|corso|vicolo|rue|route|platz/i.test(normalized);
+  return looksLikeStreet
+    ? { street: normalized, town: "" }
+    : { street: "", town: normalized };
+}
+
+function formatSiteAddress(street: string, town: string) {
+  return [street.trim(), town.trim()].filter(Boolean).join(", ");
+}
+
 const EditForm = ({ handleClose, resource, domain }: Props) => {
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
@@ -140,6 +164,8 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
   const [history, setHistory] = useState<Action[]>([]);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [siteAddressStreet, setSiteAddressStreet] = useState("");
+  const [siteAddressTown, setSiteAddressTown] = useState("");
   const [collaboratorSummary, setCollaboratorSummary] = useState<{
     totalHours: number;
     collaborators: CollaboratorTimeSummary[];
@@ -266,6 +292,9 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
       form.setValue("squadra", resource.squadra ?? null);
       form.setValue("name", resource.name ?? "");
       form.setValue("luogo", resource.luogo ?? "");
+      const siteAddress = splitSiteAddress(resource.luogo);
+      setSiteAddressStreet(siteAddress.street);
+      setSiteAddressTown(siteAddress.town);
       form.setValue("other", resource.other ?? undefined);
       form.setValue("sellPrice", resource.sellPrice!);
       form.setValue("numero_pezzi", resource.numero_pezzi ?? null);
@@ -351,9 +380,20 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
 
   const { errors, isSubmitting } = form.formState;
 
+  const updateSiteAddress = (street: string, town: string) => {
+    setSiteAddressStreet(street);
+    setSiteAddressTown(town);
+    form.setValue("luogo", formatSiteAddress(street, town), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
+    const normalizedSiteAddress = formatSiteAddress(siteAddressStreet, siteAddressTown);
     const dataWithKanban = {
       ...d,
+      luogo: normalizedSiteAddress,
       kanbanId: selectedKanbanId,
       kanbanColumnId: selectedColumnId,
     };
@@ -392,12 +432,17 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
   }, [selectedClient]);
 
   const currentLuogo = form.watch("luogo") || resource?.luogo;
-  const hasDifferentSiteAddress = useMemo(() => {
-    if (!currentLuogo || !selectedClient?.address) return false;
-    const normalizedLuogo = currentLuogo.toLowerCase().trim();
-    const normalizedClientAddr = selectedClient.address.toLowerCase().trim();
-    return normalizedLuogo !== normalizedClientAddr && normalizedLuogo !== "";
-  }, [currentLuogo, selectedClient?.address]);
+  const clientAddress = useMemo(() => {
+    if (!selectedClient) return "";
+    return [
+      selectedClient.address,
+      selectedClient.city,
+      selectedClient.zipCode,
+      selectedClient.countryCode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }, [selectedClient]);
 
   const handleAddSupplier = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -518,20 +563,48 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
           </div>
 
           {/* Construction Site Address */}
-          <div className="space-y-1">
+          <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>Cantiere</span>
+              <span>Indirizzo cantiere</span>
             </div>
-            {hasDifferentSiteAddress ? (
-              <span className="text-sm ml-6 block">{currentLuogo}</span>
-            ) : currentLuogo ? (
-              <span className="text-sm text-muted-foreground ml-6 block">
-                Come cliente
+            <div className="ml-6 grid grid-cols-1 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground" htmlFor="site-address-street">
+                  Via
+                </label>
+                <Input
+                  id="site-address-street"
+                  value={siteAddressStreet}
+                  onChange={(event) => updateSiteAddress(event.target.value, siteAddressTown)}
+                  placeholder="Via / strada"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground" htmlFor="site-address-town">
+                  Paese
+                </label>
+                <Input
+                  id="site-address-town"
+                  value={siteAddressTown}
+                  onChange={(event) => updateSiteAddress(siteAddressStreet, event.target.value)}
+                  placeholder="Paese"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+            {currentLuogo ? (
+              <span className="text-xs text-muted-foreground ml-6 block">
+                Salvato come: {currentLuogo}
+              </span>
+            ) : clientAddress ? (
+              <span className="text-xs text-muted-foreground ml-6 block">
+                Se vuoto, sulla mappa viene usato: {clientAddress}
               </span>
             ) : (
-              <span className="text-sm text-muted-foreground italic ml-6 block">
-                Non specificato
+              <span className="text-xs text-muted-foreground italic ml-6 block">
+                Nessun indirizzo cliente disponibile come fallback.
               </span>
             )}
           </div>
@@ -747,27 +820,14 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
             />
           </div>
 
-          {/* Row 2: Nome oggetto + Luogo */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 2: Nome oggetto */}
+          <div className="grid grid-cols-1 gap-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nome oggetto</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="luogo"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Luogo</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>

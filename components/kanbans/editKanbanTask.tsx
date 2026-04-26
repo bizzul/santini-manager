@@ -238,6 +238,30 @@ function isImageFilename(filename: string | null | undefined): boolean {
   return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(extension);
 }
 
+function splitSiteAddress(value: string | null | undefined) {
+  const normalized = (value || "").trim();
+  if (!normalized) {
+    return { street: "", town: "" };
+  }
+
+  const [firstPart, ...rest] = normalized.split(",").map((part) => part.trim()).filter(Boolean);
+  if (rest.length > 0) {
+    return {
+      street: firstPart || "",
+      town: rest.join(", "),
+    };
+  }
+
+  const looksLikeStreet = /\d|via|viale|piazza|strada|corso|vicolo|rue|route|platz/i.test(normalized);
+  return looksLikeStreet
+    ? { street: normalized, town: "" }
+    : { street: "", town: normalized };
+}
+
+function formatSiteAddress(street: string, town: string) {
+  return [street.trim(), town.trim()].filter(Boolean).join(", ");
+}
+
 const EditTaskKanban = ({
   handleClose,
   resource,
@@ -291,6 +315,8 @@ const EditTaskKanban = ({
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
+  const [siteAddressStreet, setSiteAddressStreet] = useState("");
+  const [siteAddressTown, setSiteAddressTown] = useState("");
   const [isUploadingProjectImage, setIsUploadingProjectImage] = useState(false);
   const [productImageDraftUrl, setProductImageDraftUrl] = useState<string | null>(
     null
@@ -565,6 +591,9 @@ const EditTaskKanban = ({
       form.setValue("squadra", (resource as any).squadra ?? null);
       form.setValue("name", resource.name ?? "");
       form.setValue("luogo", resource.luogo ?? "");
+      const siteAddress = splitSiteAddress(resource.luogo);
+      setSiteAddressStreet(siteAddress.street);
+      setSiteAddressTown(siteAddress.town);
       form.setValue("other", resource.other ?? undefined);
       form.setValue("sellPrice", resource.sellPrice!);
       form.setValue("numero_pezzi", resource.numero_pezzi ?? null);
@@ -666,6 +695,15 @@ const EditTaskKanban = ({
   const { errors, isSubmitting } = form.formState;
   logger.debug("Form errors:", errors);
 
+  const updateSiteAddress = (street: string, town: string) => {
+    setSiteAddressStreet(street);
+    setSiteAddressTown(town);
+    form.setValue("luogo", formatSiteAddress(street, town), {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     if (productionRequired && !d.produzione_data_fine) {
       toast({
@@ -680,6 +718,7 @@ const EditTaskKanban = ({
     }
 
     const sanitizedProducts = sanitizeOfferProducts(offerProducts);
+    const normalizedSiteAddress = formatSiteAddress(siteAddressStreet, siteAddressTown);
     const firstProductId =
       sanitizedProducts.find((item) => item.productId)?.productId || null;
     const totalPieces = sumOfferPieces(sanitizedProducts);
@@ -694,7 +733,7 @@ const EditTaskKanban = ({
       body: JSON.stringify({
         unique_code: d.unique_code || null,
         name: d.name || null,
-        luogo: d.luogo || null,
+        luogo: normalizedSiteAddress || null,
         clientId: d.clientId || null,
         sellProductId: firstProductId,
         sellPrice: d.sellPrice ? Number(d.sellPrice) : 0,
@@ -832,15 +871,18 @@ const EditTaskKanban = ({
     return selectedClient.mobilePhone || selectedClient.phone || selectedClient.landlinePhone || null;
   }, [selectedClient]);
 
-  // Check if construction site address (luogo) is different from client address
   const currentLuogo = form.watch("luogo") || resource?.luogo;
-  const hasDifferentSiteAddress = useMemo(() => {
-    if (!currentLuogo || !selectedClient?.address) return false;
-    // Compare normalized addresses (lowercase, trimmed)
-    const normalizedLuogo = currentLuogo.toLowerCase().trim();
-    const normalizedClientAddr = selectedClient.address.toLowerCase().trim();
-    return normalizedLuogo !== normalizedClientAddr && normalizedLuogo !== "";
-  }, [currentLuogo, selectedClient?.address]);
+  const clientAddress = useMemo(() => {
+    if (!selectedClient) return "";
+    return [
+      selectedClient.address,
+      selectedClient.city,
+      selectedClient.zipCode,
+      selectedClient.countryCode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }, [selectedClient]);
 
   const productOptions = useMemo(
     () =>
@@ -1554,22 +1596,48 @@ const EditTaskKanban = ({
             </div>
 
             {/* Construction Site Address */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>Cantiere</span>
+                <span>Indirizzo cantiere</span>
               </div>
-              {hasDifferentSiteAddress ? (
-                <span className="text-sm ml-6 block">
-                  {currentLuogo}
+              <div className="ml-6 grid grid-cols-1 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground" htmlFor="kanban-site-address-street">
+                    Via
+                  </label>
+                  <Input
+                    id="kanban-site-address-street"
+                    value={siteAddressStreet}
+                    onChange={(event) => updateSiteAddress(event.target.value, siteAddressTown)}
+                    placeholder="Via / strada"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground" htmlFor="kanban-site-address-town">
+                    Paese
+                  </label>
+                  <Input
+                    id="kanban-site-address-town"
+                    value={siteAddressTown}
+                    onChange={(event) => updateSiteAddress(siteAddressStreet, event.target.value)}
+                    placeholder="Paese"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+              {currentLuogo ? (
+                <span className="text-xs text-muted-foreground ml-6 block">
+                  Salvato come: {currentLuogo}
                 </span>
-              ) : currentLuogo ? (
-                <span className="text-sm text-muted-foreground ml-6 block">
-                  Come cliente
+              ) : clientAddress ? (
+                <span className="text-xs text-muted-foreground ml-6 block">
+                  Se vuoto, sulla mappa viene usato: {clientAddress}
                 </span>
               ) : (
-                <span className="text-sm text-muted-foreground italic ml-6 block">
-                  Non specificato
+                <span className="text-xs text-muted-foreground italic ml-6 block">
+                  Nessun indirizzo cliente disponibile come fallback.
                 </span>
               )}
             </div>
@@ -1797,7 +1865,7 @@ const EditTaskKanban = ({
         </div>
           </div>
           <div className="space-y-4 w-1/2 min-w-0">
-            {/* Row 1+2: Codice + Cliente + Nome + Luogo */}
+            {/* Row 1+2: Codice + Cliente + Nome */}
           <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
@@ -1846,26 +1914,13 @@ const EditTaskKanban = ({
                 }}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome oggetto</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="luogo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Luogo</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>

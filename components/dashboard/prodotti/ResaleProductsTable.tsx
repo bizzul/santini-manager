@@ -7,6 +7,14 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -61,18 +69,18 @@ export default function ResaleProductsTable({
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-2">
+        <div className="dashboard-panel-inner flex flex-wrap items-center gap-2 p-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Cerca..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 w-48 h-8 text-sm bg-slate-800/50 border-slate-700"
+              className="h-9 w-48 rounded-xl border-slate-700 bg-slate-900/80 pl-9 text-sm"
             />
           </div>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-40 h-8 text-sm bg-slate-800/50 border-slate-700">
+            <SelectTrigger className="h-9 w-40 rounded-xl border-slate-700 bg-slate-900/80 text-sm">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -92,47 +100,56 @@ export default function ResaleProductsTable({
           Nessun prodotto trovato
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+        <div className="dashboard-panel-inner overflow-x-auto">
+          <Table className="min-w-[620px]">
+            <TableHeader>
+              <TableRow className="border-white/10 hover:bg-transparent">
+                <TableHead className="bg-slate-950/80 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Nome
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Categoria
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Codice
-                </th>
-                <th className="text-center text-xs font-medium text-muted-foreground uppercase tracking-wide py-3 px-2">
+                </TableHead>
+                <TableHead className="bg-slate-950/80 py-3 text-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Stato
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-white/5">
               {displayProducts.map((product) => (
-                <tr
+                <TableRow
                   key={product.id}
-                  className="hover:bg-white/5 transition-colors cursor-pointer"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Apri prodotto ${product.name}`}
+                  className="cursor-pointer border-white/5 transition-colors hover:bg-white/5 focus-visible:bg-white/5 focus-visible:outline-none"
                   onClick={() => {
                     window.location.href = `/sites/${domain}/products?productId=${product.id}`;
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      window.location.href = `/sites/${domain}/products?productId=${product.id}`;
+                    }
+                  }}
                 >
-                  <td className="py-3 px-2">
+                  <TableCell className="px-3 py-3">
                     <span className="text-sm font-medium">{product.name}</span>
-                  </td>
-                  <td className="py-3 px-2">
+                  </TableCell>
+                  <TableCell className="px-3 py-3">
                     <span className="dashboard-panel-subtitle">
                       {product.category}
                     </span>
-                  </td>
-                  <td className="py-3 px-2">
+                  </TableCell>
+                  <TableCell className="px-3 py-3">
                     <span className="dashboard-panel-subtitle font-mono">
                       {product.sku || "-"}
                     </span>
-                  </td>
-                  <td className="py-3 px-2 text-center">
+                  </TableCell>
+                  <TableCell className="px-3 py-3 text-center">
                     <span
                       className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                         product.active
@@ -142,11 +159,11 @@ export default function ResaleProductsTable({
                     >
                       {product.active ? "Attivo" : "Inattivo"}
                     </span>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           {filteredProducts.length > 50 && (
             <div className="text-center py-3 text-xs text-muted-foreground">
               Mostrando 50 di {filteredProducts.length} prodotti.{" "}

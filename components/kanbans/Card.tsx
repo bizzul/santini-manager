@@ -5,59 +5,27 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Action,
   Client,
-  KanbanColumn,
-  PackingControl,
-  QualityControl,
-  SellProduct,
   Task,
-  User,
 } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
-import { calculateCurrentValue } from "../../package/utils/various/calculateCurrentValue";
 import { logger } from "@/lib/logger";
 import { formatLocalDate, parseLocalDate, startOfLocalDay } from "@/lib/utils";
-import { 
-  FileEdit, 
-  MapPin, 
-  Sofa, 
-  DoorOpen, 
-  LayoutGrid, 
-  Wrench, 
-  Package,
-  Tag,
+import {
+  MapPin,
   Image as ImageIcon,
-  LucideIcon,
   Copy,
   Trash2,
   Archive,
   Users,
   Truck,
   Cog,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
 import { ManagerGuideButton } from "@/components/manager-guide";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useRouter } from "next/navigation";
-
-// Mappatura icone categoria (fallback per categorie senza icona custom)
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  "arredamento": Sofa,
-  "porte": DoorOpen,
-  "serramenti": LayoutGrid,
-  "accessori": Wrench,
-};
-
-// Icona di default per categorie non mappate
-const DEFAULT_CATEGORY_ICON = Tag;
-
-// Funzione per ottenere l'icona della categoria
-const getCategoryIcon = (categoryName?: string | null): LucideIcon => {
-  if (!categoryName) return DEFAULT_CATEGORY_ICON;
-  const normalizedName = categoryName.toLowerCase().trim();
-  return CATEGORY_ICONS[normalizedName] || DEFAULT_CATEGORY_ICON;
-};
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
 
@@ -145,7 +113,7 @@ type CollaboratorTimeSummary = {
 
 export default function Card({
   id,
-  title,
+  title: _title,
   data,
   columnIndex,
   history,
@@ -171,7 +139,6 @@ export default function Card({
   const [showModal, setShowModal] = useState(false);
   const [isLocked, setIsLocked] = useState(data.locked);
   const [clickTimeout, setClickTimeout] = useState<any | null>(null);
-  const [currentValue, setCurrentValue] = useState(0);
   const { toast } = useToast();
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -307,10 +274,6 @@ export default function Card({
   const daysDelta = deliveryTimeInfo.days;
 
   useEffect(() => {
-    setCurrentValue(calculateCurrentValue(data, columnIndex));
-  }, [data, columnIndex]);
-
-  useEffect(() => {
     if (Array.isArray(data.taskSuppliers)) {
       setTaskSuppliers(data.taskSuppliers);
       return;
@@ -411,7 +374,13 @@ export default function Card({
       e.stopPropagation();
       const clientId = data?.client?.id || data?.clientId;
       if (!resolvedDomain || !clientId) return;
-      router.push(`/sites/${resolvedDomain}/clients?edit=${clientId}`);
+      const returnTo =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : "";
+      const qs = new URLSearchParams({ edit: String(clientId) });
+      if (returnTo) qs.set("returnTo", returnTo);
+      router.push(`/sites/${resolvedDomain}/clients?${qs.toString()}`);
     },
     [resolvedDomain, router, data?.client?.id, data?.clientId]
   );
@@ -499,11 +468,6 @@ export default function Card({
     const categoryData = Array.isArray(category) ? category[0] : category;
     return categoryData || null;
   }, [data.sellProduct, data.sell_product]);
-
-  // Get category icon (from mapping based on name)
-  const CategoryIcon = useMemo(() => {
-    return getCategoryIcon(productCategory?.name);
-  }, [productCategory?.name]);
 
   // Get derived colors from database color
   const categoryColors = useMemo(() => {
@@ -751,20 +715,27 @@ export default function Card({
   // quando il bordo sinistro e' occupato dal colore categoria
   const criticalBgClass =
     timeState === "critical"
-      ? "bg-red-50/70 dark:bg-red-950/20"
-      : "bg-white dark:bg-slate-900";
+      ? "bg-red-50/70 dark:bg-red-950/30"
+      : "bg-slate-50 dark:bg-slate-900/70";
+
+  // Dimensioni fisse per garantire allineamento e densita' coerente nelle colonne.
+  // Altezze pensate per far entrare tutti i campi attivi nelle versioni small ed estesa.
+  const cardSizeClass = isSmall
+    ? "h-[170px]"
+    : "h-[300px]";
 
   return (
     <ContextMenu>
       <div
         className={`
-          w-full mb-2 rounded-r-xl rounded-l-sm select-none overscroll-contain
+          relative w-full mb-2 rounded-r-xl rounded-l-sm select-none overscroll-contain
           ${criticalBgClass}
-          border-y border-r border-slate-200 dark:border-slate-700
+          ${cardSizeClass}
+          border-y border-r border-slate-700/70
           border-l-4
-          shadow-sm hover:shadow-md transition-all duration-200
+          shadow-sm ring-1 ring-transparent hover:shadow-md hover:ring-slate-600/70 transition-all duration-200
           ${data.isPreview ? "opacity-75 cursor-not-allowed" : ""}
-          ${isDraft ? "border-2 border-dashed border-amber-400" : ""}
+          ${isDraft ? "border border-dashed border-amber-400" : ""}
         `}
         ref={data.isPreview ? undefined : setNodeRef}
         style={{
@@ -779,55 +750,38 @@ export default function Card({
         onContextMenu={(e) => e.preventDefault()}
         onClick={onClick}
       >
-        {/* Draft badge */}
-        {isDraft && (
-          <div className="absolute -top-2 -right-2 z-10">
-            <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-1.5 py-0.5 flex items-center gap-1">
-              <FileEdit className="h-3 w-3" />
-              Bozza
-            </Badge>
-          </div>
-        )}
-
         <ContextMenuTrigger>
           {!isSmall ? (
             /* ==================== CARD NORMAL (ESPANSA) ==================== */
-            <div className="relative text-slate-800 dark:text-slate-100 pb-2">
-              <div className="px-2.5 pt-2.5 pb-1.5">
+            <div className="relative flex h-full flex-col text-slate-800 dark:text-slate-100">
+              <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-3 pt-3 pb-5 overflow-hidden">
                 {/* Header: N°, Data, Settimana */}
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
                   {isFieldVisible("projectCode") ? (
                     canAccessConsuntivo ? (
                       <button
                         type="button"
                         onClick={handleOpenProjectConsuntivo}
-                        className="font-bold text-sm hover:underline underline-offset-4"
+                        className="inline-flex min-h-8 items-center whitespace-nowrap rounded-md px-1.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
                         title="Apri consuntivi progetto"
+                        aria-label={`Apri consuntivi progetto ${data.unique_code}`}
                       >
                         {data.unique_code}
                       </button>
                     ) : (
-                      <span className="font-bold text-sm">
+                      <span className="whitespace-nowrap text-sm font-bold">
                         {data.unique_code}
                       </span>
                     )
                   ) : (
                     <span />
                   )}
-                  <div className="flex items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
                     {renderTimeStatusBadge(false)}
-                    <ManagerGuideButton
-                      label="Apri guida card progetto"
-                      stepId="offer-details"
-                      variant="ghost"
-                      size="icon"
-                      showMascot={false}
-                      className="h-7 w-7 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                    />
                     {isFieldVisible("date") && data.deliveryDate && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
-                        <span className="font-semibold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                        <span className="whitespace-nowrap">{DateManager.formatEUDate(data.deliveryDate)}</span>
+                        <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 font-semibold dark:bg-slate-800">
                           S.{DateManager.getWeekNumber(data.deliveryDate)}
                         </span>
                       </div>
@@ -840,18 +794,14 @@ export default function Card({
                   showCategoryColors &&
                   (productCategory || productDisplayName) && (
                     <div
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md mb-2 -mx-0.5"
+                      className="-mx-0.5 flex items-center gap-1.5 rounded-md px-2 py-1"
                       style={{
                         backgroundColor: categoryColors.bgColor,
                         borderLeft: `3px solid ${categoryColors.color}`,
                       }}
                     >
-                      <CategoryIcon
-                        className="h-4 w-4 shrink-0"
-                        style={{ color: categoryColors.color }}
-                      />
                       <span
-                        className="font-semibold text-sm truncate"
+                        className="truncate text-sm font-semibold"
                         style={{ color: categoryColors.textColor }}
                       >
                         {productCategory?.name || productDisplayName || "Prodotto"}
@@ -860,7 +810,7 @@ export default function Card({
                         productDisplayName &&
                         productCategory.name !== productDisplayName && (
                           <span
-                            className="text-xs opacity-75 truncate"
+                            className="truncate text-xs opacity-75"
                             style={{ color: categoryColors.textColor }}
                           >
                             · {productDisplayName}
@@ -895,14 +845,16 @@ export default function Card({
                   <button
                     type="button"
                     onClick={handleOpenClientSheet}
-                    className="font-semibold text-base mb-1 truncate text-left hover:underline underline-offset-4"
+                    className="mb-1 inline-flex min-h-8 max-w-full items-center rounded-md px-1 text-left text-base font-semibold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
+                    title="Apri scheda cliente"
+                    aria-label={`Apri scheda cliente ${getClientName()}`}
                   >
-                    {getClientName()}
+                    <span className="truncate">{getClientName()}</span>
                   </button>
                 )}
 
                 {(isFieldVisible("location") || isFieldVisible("objectName")) && (
-                  <div className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                  <div className="mb-2 flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400">
                     {isFieldVisible("location") && data.luogo && (
                       <>
                         <MapPin className="h-3 w-3" />
@@ -917,7 +869,7 @@ export default function Card({
                 )}
 
                 {(isFieldVisible("pieces") || isFieldVisible("value")) && (
-                  <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2">
+                  <div className="mb-2 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-800/50">
                     {isFieldVisible("pieces") && (
                       <div className="text-center">
                         <span className="text-xs text-slate-500 dark:text-slate-400 block">
@@ -945,7 +897,7 @@ export default function Card({
                 )}
 
                 {isFieldVisible("notes") && data.other && (
-                  <div className="text-xs text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-lg px-2.5 py-1.5 mb-2 line-clamp-2">
+                  <div className="mb-2 line-clamp-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
                     {data.other}
                   </div>
                 )}
@@ -1094,49 +1046,33 @@ export default function Card({
             </div>
           ) : (
             /* ==================== CARD SMALL (COMPRESSA) ==================== */
-            <div className="relative text-slate-800 dark:text-slate-100 pb-1.5">
-              <div className="px-2 pt-2 pb-1">
-                {/* Riga 1: N° + Icona Categoria (se abilitata), Data, Settimana */}
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    {/* Icona categoria prodotto - solo se abilitato */}
-                    {isFieldVisible("productCategory") &&
-                      showCategoryColors &&
-                      productCategory && (
-                      <CategoryIcon 
-                        className="h-3.5 w-3.5 shrink-0" 
-                        style={{ color: categoryColors.color }}
-                      />
-                    )}
+            <div className="relative flex h-full flex-col text-slate-800 dark:text-slate-100">
+              <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-3 pt-3 pb-4 overflow-hidden">
+                {/* Riga 1: N°, Data, Settimana */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
                     {isFieldVisible("projectCode") && (
                       canAccessConsuntivo ? (
                         <button
                           type="button"
                           onClick={handleOpenProjectConsuntivo}
-                          className="font-bold text-sm hover:underline underline-offset-4"
+                          className="inline-flex min-h-8 items-center whitespace-nowrap rounded-md px-1.5 text-sm font-bold transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-slate-800"
                           title="Apri consuntivi progetto"
+                          aria-label={`Apri consuntivi progetto ${data.unique_code}`}
                         >
                           {data.unique_code}
                         </button>
                       ) : (
-                        <span className="font-bold text-sm">{data.unique_code}</span>
+                        <span className="whitespace-nowrap text-sm font-bold">{data.unique_code}</span>
                       )
                     )}
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
                     {renderTimeStatusBadge(true)}
-                    <ManagerGuideButton
-                      label="Apri guida card progetto"
-                      stepId="offer-details"
-                      variant="ghost"
-                      size="icon"
-                      showMascot={false}
-                      className="h-6 w-6 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                    />
                     {isFieldVisible("date") && data.deliveryDate && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <span>{DateManager.formatEUDate(data.deliveryDate)}</span>
-                        <span className="font-semibold">
+                        <span className="whitespace-nowrap">{DateManager.formatEUDate(data.deliveryDate)}</span>
+                        <span className="whitespace-nowrap font-semibold">
                           S.{DateManager.getWeekNumber(data.deliveryDate)}
                         </span>
                       </div>
@@ -1149,7 +1085,7 @@ export default function Card({
                   showCategoryColors &&
                   (productCategory || productDisplayName) && (
                     <div
-                      className="text-xs font-medium truncate mb-1 px-1.5 py-0.5 rounded inline-flex items-center gap-1"
+                      className="mb-1.5 inline-flex max-w-full items-center gap-1 truncate rounded-md px-2 py-1 text-xs font-semibold"
                       style={{
                         backgroundColor: `${categoryColors.color}15`,
                         color: categoryColors.textColor,
@@ -1182,15 +1118,16 @@ export default function Card({
                 )}
 
                 {(isFieldVisible("client") || isFieldVisible("objectName")) && (
-                  <div className="text-sm truncate mb-1 text-slate-700 dark:text-slate-300">
+                  <div className="mb-1 flex min-w-0 items-center text-sm text-slate-700 dark:text-slate-300">
                     {isFieldVisible("client") && (
                       <button
                         type="button"
                         onClick={handleOpenClientSheet}
-                        className="font-medium text-left hover:underline underline-offset-4"
+                        className="inline-flex min-h-8 min-w-0 items-center rounded-md px-1 text-left font-semibold transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-slate-800"
                         title="Apri scheda cliente"
+                        aria-label={`Apri scheda cliente ${getClientName()}`}
                       >
-                        {getClientName()}
+                        <span className="truncate">{getClientName()}</span>
                       </button>
                     )}
                     {isFieldVisible("objectName") && data.name && (
@@ -1207,7 +1144,7 @@ export default function Card({
                 )}
 
                 {(isFieldVisible("location") || isFieldVisible("pieces") || isFieldVisible("value")) && (
-                  <div className="flex items-center gap-1.5 text-xs mb-1">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-xs">
                     {isFieldVisible("location") && data.luogo && (
                       <>
                         <MapPin className="h-3 w-3 text-slate-500" />
@@ -1335,8 +1272,8 @@ export default function Card({
           )}
 
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
-              <DialogHeader className="pr-10">
+            <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1100px] flex-col overflow-hidden !bg-background p-0 dark:!bg-muted">
+              <DialogHeader className="border-b px-6 py-4 pr-14">
                 <div className="flex items-center justify-between gap-3">
                   <DialogTitle>Modifica {data.unique_code}</DialogTitle>
                   <ManagerGuideButton
@@ -1348,23 +1285,25 @@ export default function Card({
                   />
                 </div>
               </DialogHeader>
-              <EditTaskKanban
-                handleClose={(wasDeleted?: boolean) => {
-                  setShowModal(false);
-                  if (wasDeleted && onTaskDeleted) {
-                    onTaskDeleted();
-                  }
-                }}
-                setIsLocked={setIsLocked}
-                open={showModal}
-                setOpenModal={setShowModal}
-                setOpen={setShowModal}
-                resource={data}
-                history={history}
-                domain={domain}
-                preferProjectCoverImage={preferProjectCoverImage}
-                onPreferProjectCoverImageChange={persistCoverPreference}
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                <EditTaskKanban
+                  handleClose={(wasDeleted?: boolean) => {
+                    setShowModal(false);
+                    if (wasDeleted && onTaskDeleted) {
+                      onTaskDeleted();
+                    }
+                  }}
+                  setIsLocked={setIsLocked}
+                  open={showModal}
+                  setOpenModal={setShowModal}
+                  setOpen={setShowModal}
+                  resource={data}
+                  history={history}
+                  domain={domain}
+                  preferProjectCoverImage={preferProjectCoverImage}
+                  onPreferProjectCoverImageChange={persistCoverPreference}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         </ContextMenuTrigger>

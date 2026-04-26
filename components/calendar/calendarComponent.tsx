@@ -180,6 +180,12 @@ export default function CalendarComponent({
               ? "Planner operativo per tenere sotto controllo le scadenze giornaliere di produzione."
               : "Planner operativo con card progetto stile Kanban e segnalazione per gli orari ancora da definire."
           }
+          slotStartHour={6}
+          slotEndHour={19}
+          slotMinutes={60}
+          visibleWeekDays={7}
+          weeksToShow={2}
+          showFiltersBar={false}
           emptyStateTitle="Nessun progetto in settimana"
           emptyStateDescription={
             isProductionCalendar

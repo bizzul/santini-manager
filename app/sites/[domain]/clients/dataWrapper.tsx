@@ -35,6 +35,11 @@ const DataWrapper = ({ data, domain }: { data: any[]; domain: string }) => {
     setEditOpen(false);
     setSelectedClient(null);
     if (searchParams.get("edit")) {
+      const returnTo = searchParams.get("returnTo");
+      if (returnTo && returnTo.startsWith("/")) {
+        router.replace(returnTo, { scroll: false });
+        return;
+      }
       router.replace(`/sites/${domain}/clients`, { scroll: false });
     }
   };

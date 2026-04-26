@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Copy } from "lucide-react";
-import { getKanbanIcon } from "@/lib/kanban-icons";
 import {
   Dialog,
   DialogContent,
@@ -27,14 +26,12 @@ import { DialogFooter } from "../ui/dialog";
 import { logger } from "@/lib/logger";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "../ui/alert-dialog";
 import { deleteKanban } from "@/app/sites/[domain]/kanban/actions/delete-kanban.action";
 import { duplicateKanban } from "@/app/sites/[domain]/kanban/actions/duplicate-kanban.action";
@@ -404,8 +401,8 @@ export default function KanbanManagementModal({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[88vh] flex-col overflow-hidden p-0 sm:max-w-[720px]">
+        <DialogHeader className="border-b px-6 py-4">
           <div className="flex items-center justify-between">
             <DialogTitle>
               {mode === "create" ? "Crea Nuovo Kanban" : "Modifica Kanban"}
@@ -425,7 +422,7 @@ export default function KanbanManagementModal({
                       }}
                       className="text-xs px-2 py-1"
                     >
-                      📁 {selectedCategory.name}
+                      Categoria: {selectedCategory.name}
                     </Badge>
                   );
                 }
@@ -440,7 +437,8 @@ export default function KanbanManagementModal({
               : "Modifica la configurazione del kanban"}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="title">Titolo</Label>
             <Input
@@ -498,8 +496,13 @@ export default function KanbanManagementModal({
           )}
 
           {/* Sezione Tipo Kanban */}
-          <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
-            <Label className="text-sm font-semibold">Tipo Kanban</Label>
+          <div className="space-y-3 rounded-xl border bg-muted/25 p-4">
+            <div>
+              <Label className="text-sm font-semibold">Tipo Kanban</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Definisce il comportamento operativo delle colonne speciali.
+              </p>
+            </div>
 
             {/* Kanban Offerte */}
             <div className="space-y-2">
@@ -705,8 +708,13 @@ export default function KanbanManagementModal({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Colonne</Label>
+          <div className="space-y-3 rounded-xl border bg-muted/10 p-4">
+            <div>
+              <Label>Colonne</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Riordina e configura le colonne senza modificare l&apos;identificatore delle colonne esistenti.
+              </p>
+            </div>
             <div className="flex items-center gap-2 font-semibold text-xs text-muted-foreground px-1">
               <div className="w-8" />
               <div className="flex-1">Titolo</div>
@@ -894,7 +902,8 @@ export default function KanbanManagementModal({
               </Button>
             )}
           </div>
-          <DialogFooter>
+          </div>
+          <DialogFooter className="border-t bg-background px-6 py-4 dark:bg-muted">
             <div className="flex justify-between w-full items-center gap-2">
               <div className="flex gap-2">
                 {mode === "edit" && kanban?.id && (
@@ -907,7 +916,7 @@ export default function KanbanManagementModal({
                       title="Duplica Kanban"
                     >
                       {isDuplicating ? (
-                        <span className="animate-spin">⏳</span>
+                        <span className="text-xs">...</span>
                       ) : (
                         <Copy className="h-4 w-4 mr-2" />
                       )}
@@ -939,7 +948,7 @@ export default function KanbanManagementModal({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>⚠️ Conferma Eliminazione Kanban</AlertDialogTitle>
+            <AlertDialogTitle>Conferma eliminazione Kanban</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
                 Stai per eliminare la kanban <strong>&quot;{kanban?.title}&quot;</strong>.
@@ -947,7 +956,7 @@ export default function KanbanManagementModal({
 
               {hasTasks && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded">
-                  <p className="text-yellow-800 font-semibold">⚠️ ATTENZIONE</p>
+                  <p className="text-yellow-800 font-semibold">Attenzione</p>
                   <p className="text-yellow-700 text-sm mt-1">
                     Questo kanban contiene task associati. Le task verranno{" "}
                     <strong>scollegate</strong>

@@ -12,11 +12,10 @@ import {
   getEventStyleFromProduct,
   getProductCategoryIcon,
 } from "@/lib/calendar-product-styling";
-import { CalendarSummaryBar } from "./CalendarSummaryBar";
 import type { TaskWithKanban } from "./calendarComponent";
 import { matchesCalendarType } from "./calendarComponent";
 import { DateManager } from "@/package/utils/dates/date-manager";
-import { parseLocalDate, formatLocalDate } from "@/lib/utils";
+import { parseLocalDate } from "@/lib/utils";
 
 const RESOURCES = [
   { id: "squadra-1", title: "Squadra 1" },
@@ -117,12 +116,6 @@ export default function CalendarTimeView({
   const effectiveDomain = domain ?? (params?.domain as string);
   const [mounted, setMounted] = useState(false);
   const [currentTitle, setCurrentTitle] = useState("");
-  const [dateRange, setDateRange] = useState<{
-    weekStart: Date | null;
-    weekEnd: Date | null;
-    monthStart: Date | null;
-    monthEnd: Date | null;
-  }>({ weekStart: null, weekEnd: null, monthStart: null, monthEnd: null });
   const calendarRef = useRef<any>(null);
   const [components, setComponents] = useState<any>(null);
 
@@ -227,22 +220,6 @@ export default function CalendarTimeView({
     if (dateInfo?.view?.title) {
       setCurrentTitle(fixCalendarTitle(dateInfo.view.title));
     }
-    const start = dateInfo?.view?.currentStart;
-    if (start) {
-      const s = new Date(start);
-      const monthStart = new Date(s.getFullYear(), s.getMonth(), 1);
-      const monthEnd = new Date(s.getFullYear(), s.getMonth() + 1, 0);
-      const midMonth = new Date(s.getFullYear(), s.getMonth(), 15);
-      const dayOfWeek = midMonth.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const weekStart = new Date(midMonth);
-      weekStart.setDate(midMonth.getDate() + mondayOffset);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 4);
-      weekEnd.setHours(23, 59, 59, 999);
-      setDateRange({ weekStart, weekEnd, monthStart, monthEnd });
-    }
   }, []);
 
   useEffect(() => {
@@ -283,13 +260,6 @@ export default function CalendarTimeView({
         <h1 className="text-2xl font-bold mb-1">{CALENDAR_TYPE_NAMES[calendarType]}</h1>
         <p className="text-lg text-muted-foreground">{currentTitle}</p>
       </div>
-      <CalendarSummaryBar
-        tasks={filteredTasks}
-        weekStart={dateRange.weekStart}
-        weekEnd={dateRange.weekEnd}
-        monthStart={dateRange.monthStart}
-        monthEnd={dateRange.monthEnd}
-      />
       <FC
         ref={calendarRef}
         key="calendar-time"

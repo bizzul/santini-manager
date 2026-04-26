@@ -831,9 +831,24 @@ export function GlobalVoiceAssistant() {
             }
 
             setOpen(nextOpen);
+            window.dispatchEvent(
+                new CustomEvent("voice-assistant-open-change", {
+                    detail: { open: nextOpen },
+                })
+            );
         },
         [isRecording, resetAssistant, stopRecording]
     );
+
+    useEffect(() => {
+        return () => {
+            window.dispatchEvent(
+                new CustomEvent("voice-assistant-open-change", {
+                    detail: { open: false },
+                })
+            );
+        };
+    }, []);
 
     if (!isSiteRoute) {
         return null;
@@ -843,15 +858,16 @@ export function GlobalVoiceAssistant() {
         <Sheet open={open} onOpenChange={handleOpenChange}>
             <Button
                 type="button"
-                className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg"
-                onClick={() => setOpen(true)}
+                className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full shadow-lg focus-visible:ring-4"
+                onClick={() => handleOpenChange(true)}
                 title="Apri assistente vocale"
+                aria-label="Apri assistente vocale"
             >
                 <Mic className="h-5 w-5" />
             </Button>
 
-            <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
-                <SheetHeader>
+            <SheetContent className="w-full overflow-hidden border-slate-700 bg-background/95 sm:max-w-lg">
+                <SheetHeader className="border-b">
                     <SheetTitle className="flex items-center gap-2">
                         <Bot className="h-5 w-5" />
                         Assistente vocale
@@ -864,7 +880,7 @@ export function GlobalVoiceAssistant() {
                     </SheetDescription>
                 </SheetHeader>
 
-                <div className="space-y-4 px-4 pb-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 pt-4">
                     <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="secondary">
                             {settingsLoading
@@ -1216,7 +1232,7 @@ export function GlobalVoiceAssistant() {
                     )}
                 </div>
 
-                <SheetFooter>
+                <SheetFooter className="border-t bg-background/95">
                     <Button
                         type="button"
                         variant="outline"

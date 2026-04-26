@@ -13,16 +13,6 @@ interface ActiveProjectsMapProps {
   domain: string;
 }
 
-function formatTechnician(project: NormalizedProjectLocation): string {
-  if (!project.primaryTechnician) {
-    return "Non assegnato";
-  }
-  if (project.technicianCount <= 1) {
-    return project.primaryTechnician;
-  }
-  return `${project.primaryTechnician} +${project.technicianCount - 1}`;
-}
-
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -31,10 +21,69 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+function isValidHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value.trim());
+}
+
+function hexToRgba(hex: string, alpha: number): string | null {
+  const normalized = hex.trim().replace(/^#/, "");
+  const expanded = normalized.length === 3
+    ? normalized.split("").map((c) => c + c).join("")
+    : normalized;
+  if (expanded.length !== 6) return null;
+  const r = parseInt(expanded.slice(0, 2), 16);
+  const g = parseInt(expanded.slice(2, 4), 16);
+  const b = parseInt(expanded.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function getProjectHref(domain: string, projectId: number): string {
+  return `/sites/${encodeURIComponent(domain)}/projects?edit=${projectId}`;
+}
+
+function formatProjectNumber(project: NormalizedProjectLocation): string {
+  return project.uniqueCode || `#${project.id}`;
+}
+
+function buildProjectTooltipHtml(
+  projects: NormalizedProjectLocation[],
+  domain: string,
+): string {
+  const title =
+    projects.length > 1
+      ? `${projects.length} progetti in questa posizione`
+      : "Progetto";
+
+  const rows = projects
+    .map((project) => {
+      const href = getProjectHref(domain, project.id);
+      const number = escapeHtml(formatProjectNumber(project));
+      const name = escapeHtml(project.name || "Senza nome oggetto");
+      const color = isValidHexColor(project.categoryColor) ? project.categoryColor! : "#38bdf8";
+      return `
+        <a class="dashboard-map-hover-row" href="${href}" data-project-href="${href}">
+          <span class="dashboard-map-hover-dot" style="background:${color};"></span>
+          <span class="dashboard-map-hover-number">${number}</span>
+          <span class="dashboard-map-hover-name">${name}</span>
+        </a>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="dashboard-map-hover-card">
+      <p class="dashboard-map-hover-title">${escapeHtml(title)}</p>
+      <div class="dashboard-map-hover-list">${rows}</div>
+    </div>
+  `;
+}
+
 export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const hoverTooltipRef = useRef<import("leaflet").Tooltip | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
   const geolocatedProjects = useMemo(
@@ -56,6 +105,37 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
     [points],
   );
 
+  const projectGroups = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        lat: number;
+        lng: number;
+        projects: NormalizedProjectLocation[];
+      }
+    >();
+
+    geolocatedProjects.forEach((project) => {
+      const lat = project.coordinates!.lat;
+      const lng = project.coordinates!.lng;
+      const key = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+      const existing = grouped.get(key);
+
+      if (existing) {
+        existing.projects.push(project);
+        return;
+      }
+
+      grouped.set(key, {
+        lat,
+        lng,
+        projects: [project],
+      });
+    });
+
+    return Array.from(grouped.values());
+  }, [geolocatedProjects]);
+
   const applyMarkers = useCallback(async () => {
     const map = mapRef.current;
     const layer = markersLayerRef.current;
@@ -64,39 +144,107 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
     }
 
     const L = await import("leaflet");
+    hoverTooltipRef.current?.remove();
+    hoverTooltipRef.current = null;
     layer.clearLayers();
 
-    const markerIcon = L.divIcon({
-      className: "dashboard-map-pin",
-      html: '<span class="dashboard-map-pin-dot"></span>',
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-      popupAnchor: [0, -10],
-    });
+    const DEFAULT_MARKER_COLOR = "#38bdf8";
+    let activeTooltip: import("leaflet").Tooltip | null = null;
+    let closeTooltipTimer: number | null = null;
+    let tooltipHovered = false;
 
-    geolocatedProjects.forEach((project) => {
-      const name = escapeHtml(project.name || "");
-      const status = escapeHtml(project.status || "");
-      const addr = escapeHtml(project.fullAddress || "Indirizzo non disponibile");
-      const tech = escapeHtml(formatTechnician(project));
+    const clearCloseTimer = () => {
+      if (closeTooltipTimer !== null) {
+        window.clearTimeout(closeTooltipTimer);
+        closeTooltipTimer = null;
+      }
+    };
 
-      const marker = L.marker([project.coordinates!.lat, project.coordinates!.lng], {
+    const closeActiveTooltip = () => {
+      clearCloseTimer();
+      if (tooltipHovered) return;
+      activeTooltip?.remove();
+      if (hoverTooltipRef.current === activeTooltip) {
+        hoverTooltipRef.current = null;
+      }
+      activeTooltip = null;
+    };
+
+    const scheduleTooltipClose = () => {
+      clearCloseTimer();
+      closeTooltipTimer = window.setTimeout(closeActiveTooltip, 180);
+    };
+
+    const openTooltipForGroup = (
+      group: {
+        lat: number;
+        lng: number;
+        projects: NormalizedProjectLocation[];
+      },
+    ) => {
+      clearCloseTimer();
+      tooltipHovered = false;
+      activeTooltip?.remove();
+      activeTooltip = L.tooltip({
+        className: "dashboard-map-hover-tooltip",
+        direction: "top",
+        interactive: true,
+        offset: [0, -14],
+        opacity: 1,
+      })
+        .setLatLng([group.lat, group.lng])
+        .setContent(buildProjectTooltipHtml(group.projects, domain))
+        .openOn(map);
+      hoverTooltipRef.current = activeTooltip;
+
+      window.requestAnimationFrame(() => {
+        const tooltipElement = activeTooltip?.getElement();
+        if (!tooltipElement) return;
+
+        tooltipElement.addEventListener("mouseenter", () => {
+          tooltipHovered = true;
+          clearCloseTimer();
+        });
+        tooltipElement.addEventListener("mouseleave", () => {
+          tooltipHovered = false;
+          scheduleTooltipClose();
+        });
+        tooltipElement.addEventListener("click", (event) => {
+          const target = event.target as HTMLElement | null;
+          const link = target?.closest<HTMLAnchorElement>("a[data-project-href]");
+          if (!link) return;
+
+          event.preventDefault();
+          window.location.href = link.href;
+        });
+      });
+    };
+
+    projectGroups.forEach((group) => {
+      const project = group.projects[0];
+      const color = isValidHexColor(project.categoryColor) ? project.categoryColor! : DEFAULT_MARKER_COLOR;
+      const ringColor = hexToRgba(color, 0.28) || "rgba(14, 165, 233, 0.25)";
+      const groupCount = group.projects.length;
+
+      const markerIcon = L.divIcon({
+        className: "dashboard-map-pin",
+        html: `
+          <span class="dashboard-map-pin-dot" style="background:${color};box-shadow:0 0 0 4px ${ringColor};"></span>
+          ${groupCount > 1 ? `<span class="dashboard-map-pin-count">${groupCount}</span>` : ""}
+        `,
+        iconSize: groupCount > 1 ? [24, 24] : [16, 16],
+        iconAnchor: groupCount > 1 ? [12, 12] : [8, 8],
+      });
+
+      const marker = L.marker([group.lat, group.lng], {
         icon: markerIcon,
       });
-      marker.bindPopup(
-        `
-          <div class="min-w-[190px] space-y-2 text-xs text-slate-200">
-            <div class="space-y-1">
-              <p class="text-sm font-semibold text-white">${name}</p>
-              <p class="text-slate-400">${status}</p>
-            </div>
-            <p class="leading-relaxed text-slate-300">${addr}</p>
-            <p class="text-slate-300"><span class="font-medium text-slate-100">Tecnico:</span> ${tech}</p>
-            <a class="inline-flex items-center rounded-md border border-blue-400/50 bg-blue-500/20 px-2 py-1 text-xs font-medium text-blue-100 transition hover:bg-blue-500/35" href="/sites/${domain}/projects?edit=${project.id}">Apri scheda progetto</a>
-          </div>
-        `,
-        { className: "dashboard-map-popup" },
-      );
+
+      marker.on("mouseover", () => openTooltipForGroup(group));
+      marker.on("mouseout", scheduleTooltipClose);
+      marker.on("click", () => {
+        window.location.href = getProjectHref(domain, project.id);
+      });
       marker.addTo(layer);
     });
 
@@ -106,7 +254,7 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
     } else {
       map.setView(mapCenter, 6, { animate: false });
     }
-  }, [domain, geolocatedProjects, mapCenter, points]);
+  }, [domain, mapCenter, points, projectGroups]);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,6 +314,8 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
         window.removeEventListener("resize", onResize);
       }
       if (mapRef.current) {
+        hoverTooltipRef.current?.remove();
+        hoverTooltipRef.current = null;
         mapRef.current.remove();
         mapRef.current = null;
         markersLayerRef.current = null;
