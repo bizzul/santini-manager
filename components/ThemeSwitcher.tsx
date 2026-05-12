@@ -7,6 +7,7 @@ import { Moon, Sun, SunMoon } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import {
+  SITE_THEME_DEFAULT_MODE,
   SITE_THEME_MODE_STORAGE_KEY,
   SITE_THEME_MODE_VALUES,
   type SiteThemeMode,
@@ -23,7 +24,7 @@ const MODE_META: Record<
 
 export function ThemeSwitcher() {
   const [mounted, setMounted] = useState(false);
-  const [currentMode, setCurrentMode] = useState<SiteThemeMode>("light");
+  const [currentMode, setCurrentMode] = useState<SiteThemeMode>(SITE_THEME_DEFAULT_MODE);
   const { setTheme } = useTheme();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -35,18 +36,26 @@ export function ThemeSwitcher() {
   useEffect(() => {
     if (!mounted) return;
 
+    const applyMode = (mode: SiteThemeMode) => {
+      setCurrentMode(mode);
+      setTheme(mode === "dark" ? "dark" : "light");
+    };
+
     const syncMode = () => {
       const stored = window.localStorage.getItem(SITE_THEME_MODE_STORAGE_KEY);
       if (stored && SITE_THEME_MODE_VALUES.includes(stored as SiteThemeMode)) {
-        setCurrentMode(stored as SiteThemeMode);
+        applyMode(stored as SiteThemeMode);
         return;
       }
 
       const fromDataset = document.documentElement.dataset
         .siteThemeMode as SiteThemeMode | undefined;
       if (fromDataset && SITE_THEME_MODE_VALUES.includes(fromDataset)) {
-        setCurrentMode(fromDataset);
+        applyMode(fromDataset);
+        return;
       }
+
+      applyMode(SITE_THEME_DEFAULT_MODE);
     };
 
     syncMode();
@@ -56,7 +65,7 @@ export function ThemeSwitcher() {
       window.removeEventListener("site-theme-mode-change", syncMode);
       window.removeEventListener("storage", syncMode);
     };
-  }, [mounted]);
+  }, [mounted, setTheme]);
 
   const handleSelectMode = (mode: SiteThemeMode) => {
     window.localStorage.setItem(SITE_THEME_MODE_STORAGE_KEY, mode);

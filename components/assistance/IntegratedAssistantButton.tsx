@@ -3,6 +3,7 @@
 import { MessageCircleMore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
+import { useAssistantVisibility } from "@/hooks/use-assistant-visibility";
 
 type AssistantId = "vera" | "mira" | "aura";
 
@@ -38,9 +39,14 @@ function resolveAssistantFromPathname(pathname?: string | null): AssistantId {
 
 export function IntegratedAssistantButton() {
   const pathname = usePathname();
+  const { visible } = useAssistantVisibility();
   const assistant = resolveAssistantFromPathname(pathname);
   const assistantLabel =
     assistant === "mira" ? "Mira" : assistant === "aura" ? "Aura" : "Vera";
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <Button

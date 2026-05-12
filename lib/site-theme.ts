@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 export const SITE_THEME_SETTING_KEY = "theme_colors";
 export const SITE_THEME_MODE_VALUES = ["light", "dark", "adaptive"] as const;
 export const SITE_THEME_MODE_STORAGE_KEY = "site_theme_mode_override";
+export const SITE_THEME_DEFAULT_MODE = "dark";
 
 export type SiteThemeMode = (typeof SITE_THEME_MODE_VALUES)[number];
 
@@ -85,7 +86,7 @@ export const SITE_THEME_PRESETS: SiteThemePreset[] = [
 ];
 
 export const DEFAULT_SITE_THEME_SETTINGS: SiteThemeSettings = {
-  mode: "dark",
+  mode: SITE_THEME_DEFAULT_MODE,
   light: DEFAULT_SITE_THEME_COLORS_LIGHT,
   dark: DEFAULT_SITE_THEME_COLORS_DARK,
   adaptive: DEFAULT_SITE_THEME_COLORS_ADAPTIVE,

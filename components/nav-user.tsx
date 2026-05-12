@@ -31,6 +31,7 @@ import { UserContext } from "@/lib/auth-utils";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
 import { useSiteId } from "@/hooks/use-site-id";
+import { useAssistantVisibility } from "@/hooks/use-assistant-visibility";
 import { ManagerGuideMascot, useManagerGuide } from "@/components/manager-guide";
 
 export const NavUser = memo(function NavUser({
@@ -44,6 +45,8 @@ export const NavUser = memo(function NavUser({
   const { logout } = useLogout();
   const { siteId } = useSiteId(domain);
   const { openGuide, showOnLogin, setShowOnLogin } = useManagerGuide();
+  const { visible: assistantVisible, setVisible: setAssistantVisible } =
+    useAssistantVisibility();
 
   // Extract user information from the context
   const userData = user.user;
@@ -159,6 +162,12 @@ export const NavUser = memo(function NavUser({
                 onCheckedChange={(checked) => setShowOnLogin(checked === true)}
               >
                 Mostra guida all&apos;accesso
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={assistantVisible}
+                onCheckedChange={(checked) => setAssistantVisible(checked === true)}
+              >
+                Mostra assistente
               </DropdownMenuCheckboxItem>
               {(user.role === "admin" || user.role === "superadmin") && (
                 <DropdownMenuItem asChild>

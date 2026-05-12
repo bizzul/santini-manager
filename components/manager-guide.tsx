@@ -32,7 +32,6 @@ import { cn } from "@/lib/utils";
 
 const GUIDE_PENDING_LOGIN_KEY = "santini-manager-guide-pending-login";
 const GUIDE_STORAGE_PREFIX = "santini-manager-guide";
-const REQUIRED_LOGIN_AUTO_OPENS = 5;
 const DEFAULT_GUIDE_BUTTON_LABEL = "Apri guida";
 
 type GuidePreferences = {
@@ -68,7 +67,7 @@ type ManagerGuideContextValue = {
 };
 
 const defaultPreferences: GuidePreferences = {
-  showOnLogin: true,
+  showOnLogin: false,
   forcedLoginOpens: 0,
 };
 
@@ -236,10 +235,7 @@ function loadPreferences(userId: string): GuidePreferences {
     const parsed = JSON.parse(storedValue) as Partial<GuidePreferences>;
     return {
       showOnLogin: parsed.showOnLogin ?? defaultPreferences.showOnLogin,
-      forcedLoginOpens: Math.min(
-        REQUIRED_LOGIN_AUTO_OPENS,
-        Math.max(0, parsed.forcedLoginOpens ?? defaultPreferences.forcedLoginOpens),
-      ),
+      forcedLoginOpens: 0,
     };
   } catch {
     return defaultPreferences;
@@ -302,24 +298,11 @@ export function ManagerGuideProvider({
 
     window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
 
-    const forcedOpenRequired =
-      preferences.forcedLoginOpens < REQUIRED_LOGIN_AUTO_OPENS;
-
-    if (forcedOpenRequired || preferences.showOnLogin) {
+    if (preferences.showOnLogin) {
       setCurrentStepIndex(0);
       setOpen(true);
     }
-
-    if (forcedOpenRequired) {
-      setPreferences((current) => ({
-        ...current,
-        forcedLoginOpens: Math.min(
-          REQUIRED_LOGIN_AUTO_OPENS,
-          current.forcedLoginOpens + 1,
-        ),
-      }));
-    }
-  }, [preferences.forcedLoginOpens, preferences.showOnLogin, ready, userId]);
+  }, [preferences.showOnLogin, ready, userId]);
 
   const openGuide = useCallback((stepId?: GuideStep["id"]) => {
     if (stepId) {
@@ -340,7 +323,7 @@ export function ManagerGuideProvider({
 
   const remainingRequiredLogins = Math.max(
     0,
-    REQUIRED_LOGIN_AUTO_OPENS - preferences.forcedLoginOpens,
+    preferences.forcedLoginOpens,
   );
 
   const contextValue = useMemo<ManagerGuideContextValue>(
@@ -489,9 +472,7 @@ export function ManagerGuideProvider({
                   Mostra automaticamente la guida all&apos;accesso
                 </Label>
                 <p className="text-xs leading-5 text-muted-foreground">
-                  {remainingRequiredLogins > 0
-                    ? `La guida verrà comunque aperta automaticamente per altri ${remainingRequiredLogins} accessi, poi seguirà questa preferenza.`
-                    : "Da ora in poi l'apertura automatica seguirà questa preferenza."}
+                  Da ora in poi l&apos;apertura automatica seguirà questa preferenza.
                 </p>
               </div>
             </div>
@@ -538,9 +519,9 @@ export function useManagerGuide() {
   if (!context) {
     return {
       openGuide: () => undefined,
-      showOnLogin: true,
+      showOnLogin: false,
       setShowOnLogin: (_value: boolean) => undefined,
-      remainingRequiredLogins: REQUIRED_LOGIN_AUTO_OPENS,
+      remainingRequiredLogins: 0,
     };
   }
 

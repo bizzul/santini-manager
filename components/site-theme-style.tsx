@@ -6,6 +6,7 @@ import {
   buildSiteThemeStyleVars,
   getEstimatedSunlightLevel,
   resolveAdaptiveThemeColors,
+  SITE_THEME_DEFAULT_MODE,
   SITE_THEME_MODE_STORAGE_KEY,
   SITE_THEME_MODE_VALUES,
   type SiteThemeMode,
@@ -26,11 +27,11 @@ function getStoredMode(): SiteThemeMode | null {
 }
 
 export function SiteThemeStyle({ themeSettings }: SiteThemeStyleProps) {
-  const [activeMode, setActiveMode] = useState<SiteThemeMode>(themeSettings.mode);
+  const [activeMode, setActiveMode] = useState<SiteThemeMode>(SITE_THEME_DEFAULT_MODE);
 
   useEffect(() => {
     const syncModeFromStorage = () => {
-      setActiveMode(getStoredMode() ?? themeSettings.mode);
+      setActiveMode(getStoredMode() ?? SITE_THEME_DEFAULT_MODE);
     };
 
     syncModeFromStorage();
@@ -40,7 +41,7 @@ export function SiteThemeStyle({ themeSettings }: SiteThemeStyleProps) {
       window.removeEventListener("site-theme-mode-change", syncModeFromStorage);
       window.removeEventListener("storage", syncModeFromStorage);
     };
-  }, [themeSettings.mode]);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;

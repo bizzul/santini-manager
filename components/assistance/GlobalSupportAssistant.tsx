@@ -6,6 +6,7 @@ import { Loader2, Paperclip, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useSiteId } from "@/hooks/use-site-id";
+import { useAssistantVisibility } from "@/hooks/use-assistant-visibility";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,6 +98,7 @@ function createMessage(
 export function GlobalSupportAssistant() {
   const pathname = usePathname();
   const { userContext, loading } = useUserContext();
+  const { visible: assistantVisible } = useAssistantVisibility();
   const isSiteRoute = Boolean(pathname?.startsWith("/sites/"));
   const [open, setOpen] = useState(false);
   const [activeAssistant, setActiveAssistant] = useState<AssistantId>(
@@ -203,7 +205,13 @@ export function GlobalSupportAssistant() {
     return !isSending && !isTranscribing && (input.trim().length > 0 || !!audioFile);
   }, [input, audioFile, isSending, isTranscribing]);
 
-  if (loading || !userContext || !isSiteRoute) {
+  useEffect(() => {
+    if (!assistantVisible) {
+      setOpen(false);
+    }
+  }, [assistantVisible]);
+
+  if (loading || !userContext || !isSiteRoute || !assistantVisible) {
     return null;
   }
   const requesterUserId = userContext.userId || userContext.user?.id;
