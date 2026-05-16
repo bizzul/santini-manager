@@ -4,6 +4,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import {
   requireServerSiteContext,
   fetchClients,
+  fetchClientRowInsights,
   fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
@@ -30,7 +31,10 @@ export default async function Page({
   const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch data
-  const clients = await fetchClients(siteId);
+  const [clients, rowInsights] = await Promise.all([
+    fetchClients(siteId),
+    fetchClientRowInsights(siteId),
+  ]);
 
   return (
     <PageLayout>
@@ -49,7 +53,7 @@ export default async function Page({
       </PageHeader>
       <PageContent>
         {clients.length > 0 ? (
-          <DataWrapper data={clients} domain={domain} />
+          <DataWrapper data={clients} domain={domain} rowInsights={rowInsights} />
         ) : (
           <div className="w-full text-center flex flex-col justify-center items-center h-80">
             <h1 className="font-bold text-2xl">Nessun cliente registrato</h1>

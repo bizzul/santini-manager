@@ -512,6 +512,54 @@ export interface File {
     updated_at?: string;
 }
 
+export type RowVisualInsightTone =
+    | "neutral"
+    | "active"
+    | "success"
+    | "warning"
+    | "danger";
+
+export interface RowVisualInsightRecentDocument {
+    id: number;
+    name: string;
+    type: string;
+    url?: string | null;
+}
+
+export interface RowVisualInsightBreakdownItem {
+    label: string;
+    count: number;
+    tone?: RowVisualInsightTone;
+}
+
+export interface RowVisualInsight {
+    entityId: number;
+    entityType: "client" | "supplier" | "generic";
+    documents: {
+        total: number;
+        byType: RowVisualInsightBreakdownItem[];
+        recent: RowVisualInsightRecentDocument[];
+    };
+    offers: {
+        open: number;
+        won: number;
+        lost: number;
+        total: number;
+    };
+    projects: {
+        active: number;
+        completed: number;
+        total: number;
+    };
+    agreements: {
+        open: number;
+        defined: number;
+        total: number;
+    };
+    totalValue: number;
+    lastActivity?: string | null;
+}
+
 // Error tracking related types
 export interface ErrorTracking {
     id: number;
@@ -883,4 +931,72 @@ export interface DemoAccessEvent {
     customer_company_snapshot?: string;
     event_metadata?: Record<string, unknown>;
     created_at: string;
+}
+
+// ==========================================
+// DASHBOARD 3D TYPES
+// ==========================================
+
+export type Dashboard3DSceneStatus = "draft" | "published";
+export type Dashboard3DFormat = "b2_h1";
+export type Dashboard3DAssetType = "background_image" | "model_3d" | "primitive";
+export type Dashboard3DAnimationType = "none" | "float" | "rotate" | "pulse";
+
+export interface Dashboard3DVector3 {
+    x: number;
+    y: number;
+    z: number;
+}
+
+export interface Dashboard3DSceneAsset {
+    id: string;
+    type: Dashboard3DAssetType;
+    name: string;
+    url?: string;
+    storagePath?: string;
+    primitive?: "box" | "sphere" | "cylinder";
+    position: Dashboard3DVector3;
+    rotation: Dashboard3DVector3;
+    scale: Dashboard3DVector3;
+    color?: string;
+    opacity?: number;
+    animation?: Dashboard3DAnimationType;
+}
+
+export interface Dashboard3DAnswers {
+    goal: "showroom" | "production" | "sales" | "client_project" | "internal_demo";
+    style: "technical" | "premium" | "showroom" | "minimal" | "industrial";
+    primaryColor: string;
+    backgroundColor: string;
+    accentColor: string;
+    intensity: number;
+}
+
+export interface Dashboard3DSceneConfig {
+    format: Dashboard3DFormat;
+    canvas: {
+        widthUnits: 2;
+        heightUnits: 1;
+        aspectRatio: 2;
+        backgroundColor: string;
+    };
+    camera: {
+        position: Dashboard3DVector3;
+        target: Dashboard3DVector3;
+        zoom: number;
+    };
+    assets: Dashboard3DSceneAsset[];
+}
+
+export interface Dashboard3DScene {
+    id: string;
+    site_id: string;
+    created_by?: string | null;
+    name: string;
+    status: Dashboard3DSceneStatus;
+    format: Dashboard3DFormat;
+    answers: Dashboard3DAnswers;
+    scene_config: Dashboard3DSceneConfig;
+    created_at: string;
+    updated_at: string;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Client } from "@/types/supabase";
+import { Client, type RowVisualInsight } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
@@ -17,6 +17,7 @@ import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
 import { User, Factory } from "lucide-react";
 import { ClientManagerSummaryTooltip } from "./client-manager-summary-tooltip";
+import { RowVisualHub } from "@/components/table/row-visual-hub";
 
 // Extended Client type with lastAction
 export type ClientWithAction = Client & {
@@ -88,11 +89,25 @@ const createClientEditHandler = (domain: string) => {
 };
 
 export const createColumns = (
-  domain: string
+  domain: string,
+  rowInsights: Record<number, RowVisualInsight> = {}
 ): ColumnDef<ClientWithAction>[] => {
   const handleClientEdit = createClientEditHandler(domain);
 
   return [
+    {
+      id: "visualHub",
+      header: () => <div className="h-14 w-14" aria-hidden="true" />,
+      cell: ({ row }) => (
+        <RowVisualHub
+          insight={rowInsights[row.original.id]}
+          label="Apri documenti e accordi cliente"
+          variant="isometric"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       id: "select",
       header: ({ table }) => (

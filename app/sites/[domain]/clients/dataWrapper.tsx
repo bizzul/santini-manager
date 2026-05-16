@@ -5,9 +5,21 @@ import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { useRouter, useSearchParams } from "next/navigation";
 import DialogEdit from "./dialogEdit";
+import type { RowVisualInsight } from "@/types/supabase";
 
-const DataWrapper = ({ data, domain }: { data: any[]; domain: string }) => {
-  const columns = useMemo(() => createColumns(domain), [domain]);
+const DataWrapper = ({
+  data,
+  domain,
+  rowInsights,
+}: {
+  data: any[];
+  domain: string;
+  rowInsights?: Record<number, RowVisualInsight>;
+}) => {
+  const columns = useMemo(
+    () => createColumns(domain, rowInsights ?? {}),
+    [domain, rowInsights]
+  );
   const searchParams = useSearchParams();
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);

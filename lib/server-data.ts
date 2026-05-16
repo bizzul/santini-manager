@@ -11,6 +11,7 @@ import type {
     FactoryDepartmentSeed,
     FactoryTaskPreview,
 } from "@/lib/factory/types";
+import type { RowVisualInsight, RowVisualInsightTone } from "@/types/supabase";
 import { logger } from "@/lib/logger";
 import { cache } from "react";
 import { AVAILABLE_MODULES, ModuleConfig } from "@/lib/module-config";
@@ -214,6 +215,391 @@ export const fetchSuppliers = cache(async (siteId: string) => {
         ...supplier,
         lastAction: actionsBySupplier.get(supplier.id) || null,
     }));
+});
+
+type RowInsightEntityType = RowVisualInsight["entityType"];
+
+type RowInsightTask = {
+    id: number;
+    title?: string | null;
+    name?: string | null;
+    status?: string | null;
+    task_type?: string | null;
+    display_mode?: string | null;
+    archived?: boolean | null;
+    sellPrice?: number | null;
+    parent_task_id?: number | null;
+    percentStatus?: number | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+};
+
+type RowInsightFile = {
+    id: number;
+    name?: string | null;
+    url?: string | null;
+    type?: string | null;
+    taskId?: number | null;
+    created_at?: string | null;
+};
+
+function createEmptyRowInsight(
+    entityId: number,
+    entityType: RowInsightEntityType,
+): RowVisualInsight {
+    return {
+        entityId,
+        entityType,
+        documents: {
+            total: 0,
+            byType: [],
+            recent: [],
+        },
+        offers: {
+            open: 0,
+            won: 0,
+            lost: 0,
+            total: 0,
+        },
+        projects: {
+            active: 0,
+            completed: 0,
+            total: 0,
+        },
+        agreements: {
+            open: 0,
+            defined: 0,
+            total: 0,
+        },
+        totalValue: 0,
+        lastActivity: null,
+    };
+}
+
+function normalizeTaskType(task: RowInsightTask) {
+    return String(task.task_type || "").toUpperCase();
+}
+
+function isOfferTask(task: RowInsightTask) {
+    const taskType = normalizeTaskType(task);
+    return taskType === "OFFERTA" || taskType === "OFFER";
+}
+
+function isInvoiceTask(task: RowInsightTask) {
+    const taskType = normalizeTaskType(task);
+    return taskType === "FATTURA" || taskType === "INVOICE";
+}
+
+function isWonTask(task: RowInsightTask) {
+    const status = String(task.status || "").toLowerCase();
+    return (
+        task.display_mode === "small_green" ||
+        status.includes("vint") ||
+        status.includes("accett") ||
+        status.includes("approv") ||
+        status.includes("confer")
+    );
+}
+
+function isLostTask(task: RowInsightTask) {
+    const status = String(task.status || "").toLowerCase();
+    return (
+        task.display_mode === "small_red" ||
+        status.includes("pers") ||
+        status.includes("rifiut") ||
+        status.includes("scart") ||
+        status.includes("annull") ||
+        status.includes("lost") ||
+        status.includes("reject")
+    );
+}
+
+function isCompletedProject(task: RowInsightTask) {
+    const status = String(task.status || "").toLowerCase();
+    return (
+        Boolean(task.archived) ||
+        (task.percentStatus ?? 0) >= 100 ||
+        status.includes("conclus") ||
+        status.includes("termin") ||
+        status.includes("complet") ||
+        status.includes("done") ||
+        status.includes("closed")
+    );
+}
+
+function inferDocumentType(file: RowInsightFile) {
+    const rawType = String(file.type || "").trim();
+    if (rawType) {
+        if (rawType.includes("pdf")) return "PDF";
+        if (rawType.includes("image")) return "Immagini";
+        if (rawType.includes("sheet") || rawType.includes("excel")) {
+            return "Excel";
+        }
+        if (rawType.includes("word") || rawType.includes("document")) {
+            return "Doc";
+        }
+    }
+
+    const extension = file.name?.split(".").pop()?.toLowerCase();
+    if (extension === "pdf") return "PDF";
+    if (["png", "jpg", "jpeg", "webp", "gif"].includes(extension || "")) {
+        return "Immagini";
+    }
+    if (["xls", "xlsx", "csv"].includes(extension || "")) return "Excel";
+    if (["doc", "docx"].includes(extension || "")) return "Doc";
+    return "Altro";
+}
+
+function toneForDocumentType(label: string): RowVisualInsightTone {
+    if (label === "PDF") return "danger";
+    if (label === "Immagini") return "active";
+    if (label === "Excel") return "success";
+    if (label === "Doc") return "warning";
+    return "neutral";
+}
+
+function updateLastActivity(insight: RowVisualInsight, value?: string | null) {
+    if (!value) return;
+    if (!insight.lastActivity || value > insight.lastActivity) {
+        insight.lastActivity = value;
+    }
+}
+
+function addTaskToInsight(insight: RowVisualInsight, task: RowInsightTask) {
+    insight.totalValue += Number(task.sellPrice || 0);
+    updateLastActivity(insight, task.updated_at || task.created_at);
+
+    if (isOfferTask(task)) {
+        insight.offers.total += 1;
+        if (isWonTask(task)) {
+            insight.offers.won += 1;
+        } else if (isLostTask(task)) {
+            insight.offers.lost += 1;
+        } else {
+            insight.offers.open += 1;
+        }
+        return;
+    }
+
+    if (!isInvoiceTask(task)) {
+        insight.projects.total += 1;
+        if (isCompletedProject(task)) {
+            insight.projects.completed += 1;
+        } else {
+            insight.projects.active += 1;
+        }
+    }
+}
+
+function finalizeInsight(insight: RowVisualInsight) {
+    insight.agreements.open = insight.offers.open;
+    insight.agreements.defined =
+        insight.offers.won + insight.projects.active + insight.projects.completed;
+    insight.agreements.total = insight.agreements.open + insight.agreements.defined;
+    insight.documents.byType.sort((a, b) => b.count - a.count);
+    insight.documents.recent = insight.documents.recent.slice(0, 3);
+}
+
+function addFileToInsight(
+    insight: RowVisualInsight,
+    file: RowInsightFile,
+    documentDates: Map<number, string | null | undefined>,
+) {
+    const type = inferDocumentType(file);
+    const existingType = insight.documents.byType.find((item) => item.label === type);
+
+    insight.documents.total += 1;
+    if (existingType) {
+        existingType.count += 1;
+    } else {
+        insight.documents.byType.push({
+            label: type,
+            count: 1,
+            tone: toneForDocumentType(type),
+        });
+    }
+
+    documentDates.set(file.id, file.created_at);
+    insight.documents.recent.push({
+        id: file.id,
+        name: file.name || `Documento ${file.id}`,
+        type,
+        url: file.url ?? null,
+    });
+    insight.documents.recent.sort((a, b) => {
+        const dateA = documentDates.get(a.id) || "";
+        const dateB = documentDates.get(b.id) || "";
+        return dateB.localeCompare(dateA);
+    });
+    updateLastActivity(insight, file.created_at);
+}
+
+/**
+ * Build lightweight visual summaries for the first table column on clients.
+ */
+export const fetchClientRowInsights = cache(async (siteId: string) => {
+    const supabase = await createClient();
+
+    const { data: clients, error: clientsError } = await supabase
+        .from("Client")
+        .select("id")
+        .eq("site_id", siteId);
+
+    if (clientsError) {
+        log.warn("Error fetching clients for row insights:", clientsError);
+        return {};
+    }
+
+    const clientIds = (clients || []).map((client) => client.id);
+    if (!clientIds.length) return {};
+
+    const insights = new Map<number, RowVisualInsight>();
+    clientIds.forEach((clientId) => {
+        insights.set(clientId, createEmptyRowInsight(clientId, "client"));
+    });
+
+    const { data: tasks, error: tasksError } = await supabase
+        .from("Task")
+        .select(
+            "id,title,name,status,task_type,display_mode,archived,sellPrice,parent_task_id,percentStatus,clientId,created_at,updated_at",
+        )
+        .eq("site_id", siteId)
+        .in("clientId", clientIds);
+
+    if (tasksError) {
+        log.warn("Error fetching client tasks for row insights:", tasksError);
+        return Object.fromEntries(insights);
+    }
+
+    const tasksById = new Map<number, RowInsightTask>();
+    const taskIds: number[] = [];
+
+    (tasks || []).forEach((task: RowInsightTask & { clientId?: number }) => {
+        const clientId = task.clientId;
+        const insight = typeof clientId === "number" ? insights.get(clientId) : null;
+        if (!insight) return;
+
+        tasksById.set(task.id, task);
+        taskIds.push(task.id);
+        addTaskToInsight(insight, task);
+    });
+
+    if (taskIds.length) {
+        const { data: files, error: filesError } = await supabase
+            .from("File")
+            .select("id,name,url,taskId")
+            .in("taskId", taskIds);
+
+        if (filesError) {
+            log.warn("Error fetching client files for row insights:", filesError);
+        } else {
+            const documentDates = new Map<number, string | null | undefined>();
+            (files || []).forEach((file: RowInsightFile) => {
+                const task = file.taskId ? tasksById.get(file.taskId) : null;
+                const clientId = (task as any)?.clientId;
+                const insight =
+                    typeof clientId === "number" ? insights.get(clientId) : null;
+                if (insight) addFileToInsight(insight, file, documentDates);
+            });
+        }
+    }
+
+    insights.forEach(finalizeInsight);
+    return Object.fromEntries(insights);
+});
+
+/**
+ * Build lightweight visual summaries for the first table column on suppliers.
+ */
+export const fetchSupplierRowInsights = cache(async (siteId: string) => {
+    const supabase = createServiceClient();
+
+    const { data: suppliers, error: suppliersError } = await supabase
+        .from("Supplier")
+        .select("id")
+        .eq("site_id", siteId);
+
+    if (suppliersError) {
+        log.warn("Error fetching suppliers for row insights:", suppliersError);
+        return {};
+    }
+
+    const supplierIds = (suppliers || []).map((supplier) => supplier.id);
+    if (!supplierIds.length) return {};
+
+    const insights = new Map<number, RowVisualInsight>();
+    supplierIds.forEach((supplierId) => {
+        insights.set(supplierId, createEmptyRowInsight(supplierId, "supplier"));
+    });
+
+    const { data: taskSuppliers, error: taskSuppliersError } = await supabase
+        .from("TaskSupplier")
+        .select("taskId,supplierId")
+        .in("supplierId", supplierIds);
+
+    if (taskSuppliersError) {
+        log.warn("Error fetching task suppliers for row insights:", taskSuppliersError);
+        return Object.fromEntries(insights);
+    }
+
+    const taskIds = Array.from(
+        new Set((taskSuppliers || []).map((item) => item.taskId).filter(Boolean)),
+    );
+    if (!taskIds.length) {
+        return Object.fromEntries(insights);
+    }
+
+    const { data: tasks, error: tasksError } = await supabase
+        .from("Task")
+        .select(
+            "id,title,name,status,task_type,display_mode,archived,sellPrice,parent_task_id,percentStatus,created_at,updated_at",
+        )
+        .eq("site_id", siteId)
+        .in("id", taskIds);
+
+    if (tasksError) {
+        log.warn("Error fetching supplier tasks for row insights:", tasksError);
+        return Object.fromEntries(insights);
+    }
+
+    const tasksById = new Map<number, RowInsightTask>();
+    (tasks || []).forEach((task: RowInsightTask) => tasksById.set(task.id, task));
+
+    const supplierIdsByTask = new Map<number, number[]>();
+    (taskSuppliers || []).forEach((item) => {
+        const task = tasksById.get(item.taskId);
+        if (!task) return;
+
+        const linkedSupplierIds = supplierIdsByTask.get(item.taskId) || [];
+        linkedSupplierIds.push(item.supplierId);
+        supplierIdsByTask.set(item.taskId, linkedSupplierIds);
+
+        const insight = insights.get(item.supplierId);
+        if (insight) addTaskToInsight(insight, task);
+    });
+
+    const { data: files, error: filesError } = await supabase
+        .from("File")
+        .select("id,name,url,taskId")
+        .in("taskId", Array.from(tasksById.keys()));
+
+    if (filesError) {
+        log.warn("Error fetching supplier files for row insights:", filesError);
+    } else {
+        const documentDates = new Map<number, string | null | undefined>();
+        (files || []).forEach((file: RowInsightFile) => {
+            const linkedSupplierIds = file.taskId
+                ? supplierIdsByTask.get(file.taskId) || []
+                : [];
+            linkedSupplierIds.forEach((supplierId) => {
+                const insight = insights.get(supplierId);
+                if (insight) addFileToInsight(insight, file, documentDates);
+            });
+        });
+    }
+
+    insights.forEach(finalizeInsight);
+    return Object.fromEntries(insights);
 });
 
 /**

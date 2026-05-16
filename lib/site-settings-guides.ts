@@ -69,6 +69,14 @@ export const SITE_SETTINGS_GUIDES = {
       "Puoi inviare una richiesta assistenza specifica con priorita direttamente dal pannello.",
     ],
   },
+  dashboard: {
+    summary:
+      "Configura dashboard attive e domande guidate per l'esperienza personale.",
+    details: [
+      "Qui scegli quali dashboard sono disponibili per lo spazio e quali domande compongono la configurazione iniziale per ogni utente.",
+      "Le prime 40/50 domande sono semplici e standard: servono a identificare bisogni, preferenze visive, workflow e dati prioritari in pochi minuti.",
+    ],
+  },
   commandDeck: {
     summary:
       "Abilita la navigazione immersiva Command Deck per questo spazio.",

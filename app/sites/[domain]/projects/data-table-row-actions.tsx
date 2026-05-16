@@ -56,7 +56,7 @@ export function DataTableRowActions<TData>({
 
   async function handleDelete(row: any) {
     const response = await removeItem(row.id, domain);
-    if (response?.message) {
+    if ("message" in response && response.message) {
       toast({
         description: `Errore! ${response.message}`,
       });

@@ -6,6 +6,7 @@ import {
   fetchSuppliers,
   fetchSupplierCategories,
   fetchSiteVerticalProfile,
+  fetchSupplierRowInsights,
 } from "@/lib/server-data";
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
@@ -31,9 +32,10 @@ export default async function Page({
   const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch data in parallel
-  const [suppliers, categories] = await Promise.all([
+  const [suppliers, categories, rowInsights] = await Promise.all([
     fetchSuppliers(siteId),
     fetchSupplierCategories(siteId),
+    fetchSupplierRowInsights(siteId),
   ]);
 
   return (
@@ -53,7 +55,7 @@ export default async function Page({
       </PageHeader>
       <PageContent>
         {suppliers.length > 0 ? (
-          <DataWrapper data={suppliers} domain={domain} />
+          <DataWrapper data={suppliers} domain={domain} rowInsights={rowInsights} />
         ) : (
           <div className="w-full text-center flex flex-col justify-center items-center h-80">
             <h1 className="font-bold text-2xl">Nessun fornitore registrato!</h1>
