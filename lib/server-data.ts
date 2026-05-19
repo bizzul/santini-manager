@@ -20,6 +20,7 @@ import {
     normalizeSupabaseRelation,
 } from "@/lib/product-category-label";
 import { assertDashboardQuery } from "@/lib/dashboard-query-guard";
+import { syncRegisteredSuppliersIntoInventorySuppliers } from "@/lib/inventory-suppliers";
 
 const log = logger.scope("ServerData");
 
@@ -1688,6 +1689,12 @@ export const getEnabledModuleNames = cache(
  */
 export const fetchInventoryData = cache(async (siteId: string) => {
     const supabase = await createClient();
+
+    try {
+        await syncRegisteredSuppliersIntoInventorySuppliers(siteId);
+    } catch (error) {
+        log.warn("Error syncing inventory suppliers:", error);
+    }
 
     const [
         itemsResult,

@@ -203,3 +203,186 @@ export async function adjustStock(
     return { error: "Errore nell'aggiornamento stock" };
   }
 }
+
+/**
+ * Set the current stock quantity for a variant by writing an adjustment delta.
+ * Current stock is computed from movements, so the table must never update it directly.
+ */
+export async function setStockQuantity(
+  variantId: string,
+  targetQuantity: number,
+) {
+  const userContext = await getUserContext();
+
+  if (!variantId) {
+    return { error: "Variante non trovata" };
+  }
+
+  if (!Number.isFinite(targetQuantity) || targetQuantity < 0) {
+    return { error: "La quantità deve essere un numero maggiore o uguale a 0" };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const { data: variant, error: variantError } = await supabase
+      .from("inventory_item_variants")
+      .select("site_id, unit_id")
+      .eq("id", variantId)
+      .single();
+
+    if (variantError || !variant) {
+      return { error: "Variante non trovata" };
+    }
+
+    const { data: currentStock, error: stockError } = await supabase
+      .from("inventory_stock")
+      .select("quantity")
+      .eq("site_id", variant.site_id)
+      .eq("variant_id", variantId);
+
+    if (stockError) {
+      return { error: stockError.message };
+    }
+
+    const currentQuantity = (currentStock || []).reduce(
+      (sum: number, row: { quantity: number | null }) =>
+        sum + Number(row.quantity || 0),
+      0,
+    );
+    const delta = Number((targetQuantity - currentQuantity).toFixed(6));
+
+    if (delta === 0) {
+      return { success: true };
+    }
+
+    const { error: movementError } = await supabase
+      .from("inventory_stock_movements")
+      .insert({
+        site_id: variant.site_id,
+        variant_id: variantId,
+        warehouse_id: null,
+        movement_type: "adjust",
+        quantity: delta,
+        unit_id: variant.unit_id,
+        reason: "Modifica quantità da tabella inventario",
+        reference_type: "inline_edit",
+      });
+
+    if (movementError) {
+      return { error: movementError.message };
+    }
+
+    if (userContext?.user?.id) {
+      await supabase.from("Action").insert({
+        type: "inventory_stock_quantity_set",
+        user_id: userContext.user.id,
+        data: {
+          variant_id: variantId,
+          previous_quantity: currentQuantity,
+          target_quantity: targetQuantity,
+          delta,
+        },
+      });
+    }
+
+    revalidatePath("/inventory");
+    return { success: true };
+  } catch (e) {
+    logger.error(e);
+    return { error: "Errore nell'aggiornamento quantità" };
+  }
+}
+
+/**
+ * Set an item's supplier by name from the inline inventory table.
+ * If the supplier does not exist for the same site, it is created.
+ */
+export async function setItemSupplierByName(
+  itemId: string,
+  supplierName: string | null,
+) {
+  const userContext = await getUserContext();
+
+  if (!itemId) {
+    return { error: "Articolo non trovato" };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    const { data: item, error: itemError } = await supabase
+      .from("inventory_items")
+      .select("site_id")
+      .eq("id", itemId)
+      .single();
+
+    if (itemError || !item) {
+      return { error: "Articolo non trovato" };
+    }
+
+    const normalizedName = supplierName?.trim() || null;
+    let supplierId: string | null = null;
+
+    if (normalizedName) {
+      const { data: existingSupplier, error: supplierFetchError } =
+        await supabase
+          .from("inventory_suppliers")
+          .select("id")
+          .eq("site_id", item.site_id)
+          .eq("name", normalizedName)
+          .maybeSingle();
+
+      if (supplierFetchError) {
+        return { error: supplierFetchError.message };
+      }
+
+      if (existingSupplier) {
+        supplierId = existingSupplier.id;
+      } else {
+        const { data: newSupplier, error: supplierCreateError } =
+          await supabase
+            .from("inventory_suppliers")
+            .insert({
+              site_id: item.site_id,
+              name: normalizedName,
+            })
+            .select("id")
+            .single();
+
+        if (supplierCreateError) {
+          return { error: supplierCreateError.message };
+        }
+
+        supplierId = newSupplier.id;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from("inventory_items")
+      .update({ supplier_id: supplierId })
+      .eq("id", itemId);
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    if (userContext?.user?.id) {
+      await supabase.from("Action").insert({
+        type: "inventory_supplier_inline_update",
+        user_id: userContext.user.id,
+        data: {
+          item_id: itemId,
+          supplier_id: supplierId,
+          supplier_name: normalizedName,
+        },
+      });
+    }
+
+    revalidatePath("/inventory");
+    return { success: true };
+  } catch (e) {
+    logger.error(e);
+    return { error: "Errore nell'aggiornamento fornitore" };
+  }
+}

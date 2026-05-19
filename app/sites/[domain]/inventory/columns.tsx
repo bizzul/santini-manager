@@ -13,7 +13,15 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { EditableCell } from "@/components/table/editable-cell";
-import { editItem } from "./actions/edit-item.action";
+import {
+  EditableSelectCell,
+  SelectOption,
+} from "@/components/table/editable-select-cell";
+import {
+  editItem,
+  setStockQuantity,
+} from "./actions/edit-item.action";
+import { InventorySupplier } from "@/types/supabase";
 
 // Type for the flattened inventory row (item + variant)
 export type InventoryRow = {
@@ -93,9 +101,39 @@ export type InventoryRow = {
 const handleInventoryEdit = async (
   rowData: InventoryRow,
   field: string,
-  newValue: string | number | boolean | null
+  newValue: string | number | boolean | Date | null
 ): Promise<{ success?: boolean; error?: string }> => {
-  const formData = { [field]: newValue };
+  if (field === "quantity") {
+    if (!rowData.variant_id) {
+      return { error: "Variante non trovata" };
+    }
+
+    if (typeof newValue !== "number" || !Number.isFinite(newValue)) {
+      return { error: "Inserisci una quantità valida" };
+    }
+
+    return setStockQuantity(rowData.variant_id, newValue);
+  }
+
+  const dimensionFields = new Set([
+    "width",
+    "height",
+    "length",
+    "thickness",
+    "diameter",
+  ]);
+
+  if (
+    dimensionFields.has(field) &&
+    typeof newValue === "number" &&
+    newValue < 0
+  ) {
+    return { error: "Le dimensioni devono essere maggiori o uguali a 0" };
+  }
+
+  const valueToSave =
+    field === "supplier_id" && newValue === "__none__" ? null : newValue;
+  const formData = { [field]: valueToSave };
   const itemId = rowData.item_id || rowData.id;
   const variantId = rowData.variant_id;
 
@@ -110,7 +148,34 @@ const handleInventoryEdit = async (
   }
 };
 
-export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
+const EMPTY_SUPPLIER_VALUE = "__none__";
+
+function getCategoryCode(row: InventoryRow) {
+  const attrs = row.attributes || {};
+  const code =
+    row.category?.code ||
+    attrs.category_code ||
+    (typeof row.category?.name === "string"
+      ? row.category.name.slice(0, 3)
+      : null) ||
+    (typeof attrs.category === "string" ? attrs.category.slice(0, 3) : null);
+
+  return code ? String(code).slice(0, 3).toUpperCase() : "-";
+}
+
+export const createColumns = (
+  domain?: string,
+  suppliers: InventorySupplier[] = [],
+): ColumnDef<InventoryRow>[] => {
+  const supplierOptions: SelectOption[] = [
+    { value: EMPTY_SUPPLIER_VALUE, label: "Nessun fornitore" },
+    ...suppliers.map((supplier) => ({
+      value: supplier.id,
+      label: supplier.name,
+    })),
+  ];
+
+  return [
   {
     id: "select",
     header: ({ table }) => (
@@ -153,15 +218,7 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Categoria" />
     ),
-    cell: ({ row }) => {
-      const cat = row.original.category;
-      if (cat) {
-        return cat.code ? `[${cat.code}] ${cat.name}` : cat.name;
-      }
-      // Fallback to attributes
-      const attrs = row.original.attributes || {};
-      return attrs.category || "-";
-    },
+    cell: ({ row }) => getCategoryCode(row.original),
     filterFn: (row, id, value): boolean => {
       const cat = row.original.category;
       if (!value) return true;
@@ -253,10 +310,18 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Fornitore" />
     ),
-    cell: ({ row }) => {
-      const supplier = row.original.supplier;
-      return supplier?.name || "-";
-    },
+    cell: ({ row }) => (
+      <EditableSelectCell
+        value={row.original.supplier_id ?? EMPTY_SUPPLIER_VALUE}
+        displayValue={row.original.supplier?.name}
+        row={row}
+        field="supplier_id"
+        options={supplierOptions}
+        onSave={handleInventoryEdit}
+        placeholder="Nessun fornitore"
+        emptyMessage="Nessun fornitore trovato."
+      />
+    ),
     filterFn: (row, id, value): boolean => {
       const supplier = row.original.supplier;
       if (!value) return true;
@@ -284,40 +349,118 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
     ),
   },
   {
-    accessorKey: "dimensions",
+    accessorKey: "width",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Misure (LxAxP)" />
+      <DataTableColumnHeader column={column} title="Larg." />
     ),
-    cell: ({ row }) => {
-      const { width, height, length, thickness, diameter } = row.original;
-      const parts: string[] = [];
-
-      if (width || height || length) {
-        parts.push(`${width || 0}x${height || 0}x${length || 0}`);
-      }
-      if (thickness) {
-        parts.push(`sp.${thickness}`);
-      }
-      if (diameter) {
-        parts.push(`ø${diameter}`);
-      }
-
-      return parts.length > 0 ? parts.join(" ") : "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.width}
+        row={row}
+        field="width"
+        type="number"
+        min={0}
+        max={9999}
+        step={0.01}
+        onSave={handleInventoryEdit}
+        className="min-w-0 justify-center pr-4 text-center"
+      />
+    ),
+  },
+  {
+    accessorKey: "height",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Alt." />
+    ),
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.height}
+        row={row}
+        field="height"
+        type="number"
+        min={0}
+        max={9999}
+        step={0.01}
+        onSave={handleInventoryEdit}
+        className="min-w-0 justify-center pr-4 text-center"
+      />
+    ),
+  },
+  {
+    accessorKey: "length",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Lung." />
+    ),
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.length}
+        row={row}
+        field="length"
+        type="number"
+        min={0}
+        max={9999}
+        step={0.01}
+        onSave={handleInventoryEdit}
+        className="min-w-0 justify-center pr-4 text-center"
+      />
+    ),
+  },
+  {
+    accessorKey: "thickness",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Sp." />
+    ),
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.thickness}
+        row={row}
+        field="thickness"
+        type="number"
+        min={0}
+        max={9999}
+        step={0.01}
+        onSave={handleInventoryEdit}
+        className="min-w-0 justify-center pr-4 text-center"
+      />
+    ),
+  },
+  {
+    accessorKey: "diameter",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Ø" />
+    ),
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.diameter}
+        row={row}
+        field="diameter"
+        type="number"
+        min={0}
+        max={9999}
+        step={0.01}
+        onSave={handleInventoryEdit}
+        className="min-w-0 justify-center pr-4 text-center"
+      />
+    ),
   },
   {
     accessorKey: "quantity",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Qta." />
     ),
-    cell: ({ row }) => {
-      const qty = row.original.stock_quantity ?? row.original.quantity;
-      const unit = row.original.unit;
-      if (qty != null) {
-        return unit ? `${qty} ${unit.code}` : qty.toString();
-      }
-      return "-";
-    },
+    cell: ({ row }) => (
+      <EditableCell
+        value={row.original.stock_quantity ?? row.original.quantity}
+        row={row}
+        field="quantity"
+        type="number"
+        min={0}
+        step={0.01}
+        onSave={handleInventoryEdit}
+        suffix={row.original.unit?.code}
+        className="min-w-0 justify-center pr-4 text-center"
+      />
+    ),
   },
   {
     accessorKey: "purchase_unit_price",
@@ -333,6 +476,7 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
         onSave={handleInventoryEdit}
         suffix="CHF"
         formatter={(v) => v?.toFixed(2)}
+        className="min-w-0 justify-center pr-4 text-center"
       />
     ),
   },
@@ -387,6 +531,7 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
     cell: ({ row }) => <DataTableRowActions row={row} />,
   },
   {
+    id: "last_modified",
     accessorKey: "lastAction.createdAt",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Modifica" />
@@ -442,6 +587,7 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
     },
   },
   {
+    id: "last_modified_by",
     accessorKey: "lastAction.User",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Da" />
@@ -482,7 +628,8 @@ export const createColumns = (domain?: string): ColumnDef<InventoryRow>[] => [
       );
     },
   },
-];
+  ];
+};
 
 // Legacy export for backward compatibility
 export const columns = createColumns();

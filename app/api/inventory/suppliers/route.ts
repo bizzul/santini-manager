@@ -2,13 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
+import { fetchSyncedInventorySuppliers } from "@/lib/inventory-suppliers";
 
 const log = logger.scope("InventorySuppliers");
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createServiceClient();
-
     // Check for x-site-domain header first (used by client components)
     const siteDomain = req.headers.get("x-site-domain");
     let siteId: string | null = null;
@@ -30,19 +29,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Query new inventory_suppliers table
-    const { data: suppliers, error } = await supabase
-      .from("inventory_suppliers")
-      .select("*")
-      .eq("site_id", siteId)
-      .order("name", { ascending: true });
+    const suppliers = await fetchSyncedInventorySuppliers(siteId);
 
-    if (error) {
-      log.error("Error fetching inventory suppliers:", error);
-      return NextResponse.json([], { status: 200 });
-    }
-
-    return NextResponse.json(suppliers || []);
+    return NextResponse.json(suppliers);
   } catch (err: unknown) {
     log.error("Error in inventory suppliers API:", err);
     return NextResponse.json([], { status: 200 });
