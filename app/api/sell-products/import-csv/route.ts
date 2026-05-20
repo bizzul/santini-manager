@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { getUserContext } from "@/lib/auth-utils";
+import { getUserContext, getUserSites } from "@/lib/auth-utils";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 import {
@@ -140,6 +140,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Site ID richiesto per l'importazione" },
         { status: 400 },
+      );
+    }
+
+    // Defense in depth: getSiteContext() trusts the x-site-id header without
+    // verifying that the caller actually has access to that site. An import
+    // CSV writes en masse into SellProduct, so we MUST validate access before
+    // proceeding, otherwise a stale client cache (or a crafted header) ends
+    // up importing products into the wrong site silently.
+    const accessibleSites = await getUserSites();
+    const hasAccess = accessibleSites.some(
+      (site: { id?: string | number }) => String(site?.id) === String(siteId),
+    );
+    if (!hasAccess) {
+      log.warn("Tentativo di import CSV su sito non accessibile", {
+        userId: userContext.user.id,
+        requestedSiteId: siteId,
+        siteDomain,
+      });
+      return NextResponse.json(
+        { error: "Non hai accesso al sito selezionato per l'importazione" },
+        { status: 403 },
       );
     }
 
