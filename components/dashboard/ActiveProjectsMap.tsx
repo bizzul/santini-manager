@@ -321,7 +321,8 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
         markersLayerRef.current = null;
       }
     };
-  }, [mapCenter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!mapReady) {

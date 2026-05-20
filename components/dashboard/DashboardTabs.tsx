@@ -9,6 +9,7 @@ import { useSiteModules } from "@/hooks/use-site-modules";
 import {
   DEFAULT_SITE_VERTICAL_PROFILE,
   resolveSiteVerticalProfile,
+  type SiteVerticalProfile,
 } from "@/lib/site-verticals";
 import {
   LayoutDashboard,
@@ -22,7 +23,11 @@ import {
   Tag,
 } from "lucide-react";
 
-export default function DashboardTabs() {
+export default function DashboardTabs({
+  initialVerticalProfile,
+}: {
+  initialVerticalProfile?: SiteVerticalProfile;
+}) {
   const pathname = usePathname();
 
   // Extract domain and base path from pathname
@@ -39,6 +44,7 @@ export default function DashboardTabs() {
   const { data: verticalProfile = DEFAULT_SITE_VERTICAL_PROFILE } = useQuery({
     queryKey: ["dashboard-vertical-profile", domain],
     enabled: !!domain,
+    placeholderData: initialVerticalProfile,
     queryFn: async () => {
       const response = await fetch(`/api/sites/${domain}`);
       if (!response.ok) {
@@ -51,7 +57,7 @@ export default function DashboardTabs() {
   });
   const { enabledModules, loading: loadingModules } = useSiteModules(domain || "");
   const showForecastTab = useMemo(() => {
-    if (!domain || loadingModules) return true;
+    if (!domain || loadingModules) return false;
     return enabledModules.some((module) => module.name === "dashboard-forecast");
   }, [domain, loadingModules, enabledModules]);
   const tabs = useMemo(

@@ -72,7 +72,7 @@ export default async function SiteDashboardPage({
 
   return (
     <PageLayout>
-      <DashboardTabs />
+      <DashboardTabs initialVerticalProfile={verticalProfile} />
       <PageHeader>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
@@ -93,7 +93,7 @@ export default async function SiteDashboardPage({
             </div>
             <ActiveProjectsMapCard
               className="h-full"
-              mapHeightClassName="h-[420px] md:h-[860px]"
+              mapHeightClassName="h-[500px] md:h-full"
               domain={domain}
               projects={dashboardData.activeProjectLocations}
             />
