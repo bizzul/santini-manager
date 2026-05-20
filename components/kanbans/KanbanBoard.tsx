@@ -1055,12 +1055,17 @@ function KanbanBoard({
       window.location.reload();
     } catch (error) {
       console.error("Error saving kanban:", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Si è verificato un errore durante il salvataggio del kanban";
       toast({
         variant: "destructive",
         title: "Errore",
-        description:
-          "Si è verificato un errore durante il salvataggio del kanban",
+        description: message,
       });
+      // Re-throw so the modal stays open and user can fix the data
+      throw error;
     }
   };
 
