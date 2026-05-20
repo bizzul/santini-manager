@@ -41,16 +41,32 @@ export async function DELETE(
       }
     }
 
-    const { error: deleteError } = await supabase
+    // Use .select() so we can detect a silent RLS deny (0 rows affected).
+    const { data: deletedRows, error: deleteError } = await supabase
       .from("File")
       .delete()
-      .eq("id", fileId);
+      .eq("id", fileId)
+      .select("id");
 
     if (deleteError) {
       console.error("Database delete error:", deleteError);
       return NextResponse.json(
         { error: deleteError.message },
-        { status: 500 }
+        { status: 500 },
+      );
+    }
+
+    if (!deletedRows || deletedRows.length === 0) {
+      // The row still exists: most likely RLS blocked the delete.
+      console.error("File delete returned 0 rows (possible RLS deny)", {
+        fileId,
+      });
+      return NextResponse.json(
+        {
+          error:
+            "Il file non e stato eliminato (permessi insufficienti o policy RLS).",
+        },
+        { status: 403 },
       );
     }
 

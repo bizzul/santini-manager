@@ -21,7 +21,6 @@ import {
   FileDown,
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
-import { useSiteId } from "@/hooks/use-site-id";
 import {
   Select,
   SelectContent,
@@ -121,9 +120,10 @@ function DialogImportCSV() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Extract domain from pathname (e.g., /sites/santini/products -> santini)
+  // Extract domain from pathname (e.g., /sites/santini/products -> santini).
+  // We pass this domain to the server via x-site-domain so the target site
+  // is always derived from the URL the user is actually viewing.
   const domain = pathname.split("/")[2] || "";
-  const { siteId } = useSiteId(domain);
 
   const previewEntries = useMemo<ImportPreviewEntry[]>(
     () => result?.entries.slice(0, 12) ?? [],
@@ -174,10 +174,10 @@ function DialogImportCSV() {
       return;
     }
 
-    if (!siteId) {
+    if (!domain) {
       toast({
         variant: "destructive",
-        description: "Site non trovato",
+        description: "Sito non identificato dal percorso",
       });
       return;
     }
@@ -193,11 +193,14 @@ function DialogImportCSV() {
       formData.append("mode", mode);
       formData.append("categoryFilter", categoryFilter);
 
+      // Pass the domain (derived from the current pathname) instead of the
+      // client-cached siteId so the server resolves the target site itself
+      // and we cannot import into the wrong site on stale client state.
       const response = await fetch("/api/sell-products/import-csv", {
         method: "POST",
         body: formData,
         headers: {
-          "x-site-id": siteId,
+          "x-site-domain": domain,
         },
       });
 

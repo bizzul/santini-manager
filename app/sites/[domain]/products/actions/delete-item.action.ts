@@ -5,6 +5,28 @@ import { createClient } from "@/utils/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 
+// Postgres error code for foreign_key_violation. When a SellProduct is still
+// referenced by another table (es. Task), the delete fails with this code.
+const FK_VIOLATION_CODE = "23503";
+
+function formatSupabaseDeleteError(
+  error: { code?: string; message?: string; details?: string | null } | null,
+  context: "single" | "batch",
+): string {
+  if (!error) return "Errore durante l'eliminazione";
+
+  if (error.code === FK_VIOLATION_CODE) {
+    return context === "batch"
+      ? "Uno o più prodotti selezionati sono collegati a commesse o documenti esistenti e non possono essere eliminati."
+      : "Il prodotto è collegato a commesse o documenti esistenti e non può essere eliminato.";
+  }
+
+  const detail = error.details || error.message;
+  return detail
+    ? `Errore durante l'eliminazione: ${detail}`
+    : "Errore durante l'eliminazione";
+}
+
 async function removeProduct(id: number, domain?: string): Promise<any> {
   const supabase = await createClient();
   const userContext = await getUserContext();
@@ -42,7 +64,7 @@ async function removeProduct(id: number, domain?: string): Promise<any> {
 
   if (sellProductError) {
     console.error("Error deleting sell product:", sellProductError);
-    throw new Error("Failed to delete sell product");
+    throw new Error(formatSupabaseDeleteError(sellProductError, "single"));
   }
 
   // Create a new Action record to track the user action
@@ -87,7 +109,10 @@ export const removeItem = async (
     return revalidatePath("/products");
   } catch (error) {
     console.error("Error deleting sell product:", error);
-    return { message: "Failed to delete" };
+    const message = error instanceof Error && error.message
+      ? error.message
+      : "Errore durante l'eliminazione";
+    return { message };
   }
 };
 
@@ -141,7 +166,7 @@ export const batchDeleteProducts = async (
       return {
         success: false,
         deleted: 0,
-        message: "Errore durante l'eliminazione",
+        message: formatSupabaseDeleteError(error, "batch"),
       };
     }
 
@@ -168,10 +193,13 @@ export const batchDeleteProducts = async (
     return { success: true, deleted: deletedCount };
   } catch (error) {
     console.error("Error in batch delete:", error);
+    const message = error instanceof Error && error.message
+      ? error.message
+      : "Errore durante l'eliminazione";
     return {
       success: false,
       deleted: 0,
-      message: "Errore durante l'eliminazione",
+      message,
     };
   }
 };

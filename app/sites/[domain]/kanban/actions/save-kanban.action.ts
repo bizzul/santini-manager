@@ -265,7 +265,13 @@ export async function saveKanban(kanban: {
 
         if (updateError) {
           console.error("Error updating column:", updateError);
-          throw new Error(`Failed to update column: ${column.title}`);
+          const detail =
+            (updateError as any)?.message ||
+            (updateError as any)?.code ||
+            "Unknown error";
+          throw new Error(
+            `Failed to update column "${column.title}": ${detail}`,
+          );
         }
 
         return updatedColumn;
@@ -287,7 +293,22 @@ export async function saveKanban(kanban: {
 
         if (createError) {
           console.error("Error creating column:", createError);
-          throw new Error(`Failed to create column: ${column.title}`);
+          console.error("Column insert payload:", {
+            title: column.title,
+            identifier: column.identifier,
+            position: column.position,
+            icon: column.icon,
+            column_type: column.column_type || "normal",
+            is_creation_column: column.is_creation_column || false,
+            kanbanId: kanbanResult.id,
+          });
+          const detail =
+            (createError as any)?.message ||
+            (createError as any)?.code ||
+            "Unknown error";
+          throw new Error(
+            `Failed to create column "${column.title}": ${detail}`,
+          );
         }
 
         return newColumn;

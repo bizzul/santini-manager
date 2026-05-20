@@ -41,20 +41,31 @@ export function GlobalKanbanModal() {
       });
     } catch (error) {
       logger.error("Error saving kanban:", error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Errore sconosciuto";
       toast({
-        title: "Errore",
-        description: "Impossibile creare la kanban",
+        title: "Impossibile creare la kanban",
+        description: message,
         variant: "destructive",
       });
+      // Re-throw so the inner modal keeps itself open and the user can fix the input
+      throw error;
     }
   };
 
-  // Create a kanban object with pre-selected category if provided
-  const preFilledKanban = preSelectedCategoryId
-    ? {
-        category_id: preSelectedCategoryId,
-      }
-    : null;
+  // Use a stable reference (memoized) so the inner modal's reset useEffect
+  // does not refire on every parent render and wipe out the user input.
+  const preFilledKanban = React.useMemo(
+    () =>
+      preSelectedCategoryId
+        ? {
+            category_id: preSelectedCategoryId,
+          }
+        : null,
+    [preSelectedCategoryId]
+  );
 
   return (
     <KanbanManagementModal

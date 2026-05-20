@@ -34,11 +34,11 @@ export function useSiteModules(domain: string) {
     const { data: modules = [], isLoading: loading, error } = useQuery({
         queryKey: ["site-modules", domain],
         queryFn: () => fetchSiteModules(domain),
-        enabled: !!domain, // Only fetch if domain is provided
-        staleTime: 0,
+        enabled: !!domain,
+        staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
-        refetchOnMount: "always",
-        refetchOnWindowFocus: true,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
     });
 
     const enabledModules = useMemo(() => {

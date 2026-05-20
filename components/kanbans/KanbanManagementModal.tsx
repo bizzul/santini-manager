@@ -278,11 +278,9 @@ export default function KanbanManagementModal({
       setOpen(false);
     } catch (error) {
       logger.error("Error saving kanban:", error);
-      toast({
-        variant: "destructive",
-        title: "Errore",
-        description: "Si è verificato un errore durante il salvataggio",
-      });
+      // The parent onSave handler is responsible for showing the user-facing
+      // toast with the specific error message. We keep the dialog open so the
+      // user can correct the input and retry without losing their edits.
     }
   };
 

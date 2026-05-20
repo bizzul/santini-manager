@@ -1,8 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronDown, Maximize2, Minimize2, X } from "lucide-react";
 import type { DashboardProjectLocation } from "@/lib/server-data";
 import { useActiveProjectMap } from "@/hooks/use-active-project-map";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,15 @@ export default function ActiveProjectsMapCard({
   className,
   mapHeightClassName = "h-[420px]",
 }: ActiveProjectsMapCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setIsExpanded(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isExpanded]);
+
   const [statusFilter, setStatusFilter] = useState<ProjectMapStatusFilter>("in_progress");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
@@ -141,7 +150,14 @@ export default function ActiveProjectsMapCard({
     .slice(0, 4);
 
   return (
-    <div className={cn("dashboard-panel p-6 space-y-4", className)}>
+    <div
+      className={cn(
+        isExpanded
+          ? "fixed inset-0 z-[100] flex flex-col gap-4 bg-slate-950 p-4 md:p-6"
+          : "dashboard-panel p-6 space-y-4",
+        !isExpanded && className,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <h3 className="dashboard-panel-title">Mappa</h3>
@@ -149,9 +165,19 @@ export default function ActiveProjectsMapCard({
             Progetti geolocalizzati da coordinate o indirizzo cliente
           </p>
         </div>
-        <span className="inline-flex items-center rounded-full border border-blue-400/40 bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-100">
-          {visibleProjects.length} cantieri visibili
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full border border-blue-400/40 bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-100">
+            {visibleProjects.length} cantieri visibili
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-400 transition hover:border-slate-500 hover:text-slate-100"
+            aria-label={isExpanded ? "Riduci mappa" : "Espandi mappa"}
+          >
+            {isExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
 
       <div className="dashboard-panel-inner flex flex-wrap gap-2 p-2">
@@ -206,7 +232,7 @@ export default function ActiveProjectsMapCard({
             </PopoverTrigger>
             <PopoverContent
               align="start"
-              className="z-50 w-64 border-slate-700 bg-slate-900/95 p-1 text-slate-100 shadow-xl backdrop-blur"
+              className="z-[110] w-64 border-slate-700 bg-slate-900/95 p-1 text-slate-100 shadow-xl backdrop-blur"
             >
               <div className="max-h-72 overflow-y-auto py-1">
                 {categoryOptions.map((option) => {
@@ -261,11 +287,13 @@ export default function ActiveProjectsMapCard({
       <div
         className={cn(
           "relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60",
-          mapHeightClassName,
+          isExpanded ? "flex-1 min-h-0" : mapHeightClassName,
+          !isExpanded && "cursor-pointer",
         )}
+        onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
       >
         <ActiveProjectsMap
-          key={`${statusFilter}:${visibleProjects.map((project) => project.id).join(",")}`}
+          key={domain}
           projects={visibleProjects}
           domain={domain}
         />
@@ -282,6 +310,12 @@ export default function ActiveProjectsMapCard({
                   : "La mappa resta visibile: aggiungi un indirizzo valido al progetto o coordinate al cliente per mostrare i marker."}
               </p>
             </div>
+          </div>
+        )}
+
+        {!isExpanded && (
+          <div className="pointer-events-none absolute right-2 top-2 z-20 rounded-lg border border-slate-700/50 bg-slate-900/80 p-1.5 backdrop-blur-sm">
+            <Maximize2 className="h-3.5 w-3.5 text-slate-300" />
           </div>
         )}
       </div>
