@@ -56,8 +56,10 @@ export function DataTable({
   );
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
-  // Filter state
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  // Filter state — default a solo collaboratori attivi
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
+    { id: "enabled", value: "active" },
+  ]);
   const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
@@ -107,6 +109,24 @@ export function DataTable({
               <SelectItem value="user">Utente</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={
+              (table.getColumn("enabled")?.getFilterValue() as string) ??
+              "active"
+            }
+            onValueChange={(value) =>
+              table.getColumn("enabled")?.setFilterValue(value)
+            }
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Filtra per stato" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Solo attivi</SelectItem>
+              <SelectItem value="disabled">Solo disabilitati</SelectItem>
+              <SelectItem value="all">Tutti gli stati</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
@@ -137,21 +157,25 @@ export function DataTable({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row) => {
+                const isDisabled = !row.original.enabled;
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className={isDisabled ? "opacity-60" : undefined}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell

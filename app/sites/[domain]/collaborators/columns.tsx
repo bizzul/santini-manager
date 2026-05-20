@@ -205,6 +205,13 @@ export const columns: ColumnDef<Collaborator>[] = [
         <Badge variant="destructive">Disabilitato</Badge>
       );
     },
+    filterFn: (row, id, value) => {
+      if (value === "" || value === "all" || value == null) return true;
+      const enabled = Boolean(row.getValue(id));
+      if (value === "active") return enabled;
+      if (value === "disabled") return !enabled;
+      return true;
+    },
   },
   {
     accessorKey: "joined_site_at",

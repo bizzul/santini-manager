@@ -5622,8 +5622,9 @@ export const fetchCollaborators = cache(async (siteId: string) => {
         // Process with auth_id field
         const filteredUsersAlt = usersAlt
             .filter((user) => {
-                // Exclude superadmins and disabled users
-                if (user.role === "superadmin" || !user.enabled) return false;
+                // I disabilitati restano visibili nella tabella collaboratori
+                // (vengono mostrati con un badge dedicato e ordinati in fondo)
+                if (user.role === "superadmin") return false;
 
                 const userId = user.auth_id || "";
                 // Include if: user is a site user OR user is an org admin
@@ -5700,7 +5701,11 @@ export const fetchCollaborators = cache(async (siteId: string) => {
                 };
             })
             .sort((a, b) => {
-                // Sort org admins first, then by family name
+                // Attivi prima, disabilitati in fondo
+                const aEnabled = Boolean(a.enabled);
+                const bEnabled = Boolean(b.enabled);
+                if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
+                // Org admins prima, poi ordine alfabetico per cognome
                 if (a.is_org_admin && !b.is_org_admin) return -1;
                 if (!a.is_org_admin && b.is_org_admin) return 1;
                 const nameA = a.family_name || "";
@@ -5715,8 +5720,9 @@ export const fetchCollaborators = cache(async (siteId: string) => {
     // Process with authId field
     const filteredUsers = users
         .filter((user) => {
-            // Exclude superadmins and disabled users
-            if (user.role === "superadmin" || !user.enabled) return false;
+            // I disabilitati restano visibili nella tabella collaboratori
+            // (vengono mostrati con un badge dedicato e ordinati in fondo)
+            if (user.role === "superadmin") return false;
 
             const userId = user.authId || "";
             // Include if: user is a site user OR user is an org admin
@@ -5788,7 +5794,11 @@ export const fetchCollaborators = cache(async (siteId: string) => {
             };
         })
         .sort((a, b) => {
-            // Sort org admins first, then by family name
+            // Attivi prima, disabilitati in fondo
+            const aEnabled = Boolean(a.enabled);
+            const bEnabled = Boolean(b.enabled);
+            if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
+            // Org admins prima, poi ordine alfabetico per cognome
             if (a.is_org_admin && !b.is_org_admin) return -1;
             if (!a.is_org_admin && b.is_org_admin) return 1;
             const nameA = a.family_name || "";
