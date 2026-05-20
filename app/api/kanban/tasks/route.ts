@@ -6,10 +6,12 @@ import { logger } from "@/lib/logger";
 export const dynamic = "force-dynamic";
 
 const log = logger.scope("KanbanTasks");
+// Note: the underlying column is "endTime" (camelCase) on the canonical schema.
+// We alias it to end_time so the rest of the TS code can keep snake_case access.
 const TIMETRACKING_SELECT_WITH_USER =
-  "task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes";
+  "task_id, user_id, employee_id, use_cnc, end_time:endTime, totalTime, hours, minutes";
 const TIMETRACKING_SELECT_NO_USER =
-  "task_id, employee_id, use_cnc, end_time, totalTime, hours, minutes";
+  "task_id, employee_id, use_cnc, end_time:endTime, totalTime, hours, minutes";
 type TimetrackingEntry = {
   task_id: number;
   user_id?: string | null;

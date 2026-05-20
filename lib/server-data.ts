@@ -1019,9 +1019,13 @@ export const fetchKanbanWithTasks = cache(
         const taskIds = tasks.map((task) => task.id);
 
         const timetrackingPromise = (async () => {
+            // Canonical column on the DB is `endTime` (camelCase); alias to end_time
+            // so downstream consumers can keep using snake_case access.
             let result: any = await supabase
                 .from("Timetracking")
-                .select("task_id, user_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
+                .select(
+                    "task_id, user_id, employee_id, use_cnc, end_time:endTime, totalTime, hours, minutes",
+                )
                 .eq("site_id", siteId)
                 .in("task_id", taskIds);
 
@@ -1035,7 +1039,9 @@ export const fetchKanbanWithTasks = cache(
                 );
                 result = await supabase
                     .from("Timetracking")
-                    .select("task_id, employee_id, use_cnc, end_time, totalTime, hours, minutes")
+                    .select(
+                        "task_id, employee_id, use_cnc, end_time:endTime, totalTime, hours, minutes",
+                    )
                     .eq("site_id", siteId)
                     .in("task_id", taskIds) as typeof result;
             }
