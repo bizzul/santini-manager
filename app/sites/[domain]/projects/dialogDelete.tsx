@@ -35,7 +35,7 @@ function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
     event.preventDefault();
     setPending(true);
     const response = await removeItem(data.id, domain);
-    if (response?.message) {
+    if ("message" in response && response.message) {
       toast({
         description: `Errore! ${response.message}`,
       });

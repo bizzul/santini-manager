@@ -83,14 +83,29 @@ const quickActions: QuickActionItem[] = [
 
 interface QuickActionsButtonProps {
   onActionClick: (action: QuickActionType) => void;
+  onMyDashboardTrigger?: () => void;
 }
 
-export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
+export function QuickActionsButton({
+  onActionClick,
+  onMyDashboardTrigger,
+}: QuickActionsButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [plusClickCount, setPlusClickCount] = useState(0);
 
   const toggleMenu = useCallback(() => {
-    setIsOpen((prev) => !prev);
-  }, []);
+    setPlusClickCount((current) => {
+      const next = current + 1;
+      if (next >= 5) {
+        setIsOpen(false);
+        onMyDashboardTrigger?.();
+        return 0;
+      }
+
+      setIsOpen((prev) => !prev);
+      return next;
+    });
+  }, [onMyDashboardTrigger]);
 
   const handleActionClick = useCallback(
     (action: QuickActionType) => {
@@ -112,6 +127,16 @@ export function QuickActionsButton({ onActionClick }: QuickActionsButtonProps) {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (plusClickCount === 0) return;
+
+    const timeout = window.setTimeout(() => {
+      setPlusClickCount(0);
+    }, 1600);
+
+    return () => window.clearTimeout(timeout);
+  }, [plusClickCount]);
 
   return (
     <div className="relative">

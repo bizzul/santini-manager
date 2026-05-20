@@ -12,6 +12,7 @@ import ActiveProjectsMapCard from "@/components/dashboard/ActiveProjectsMapCard"
 import PipelineChart from "@/components/dashboard/PipelineChart";
 import DepartmentWorkloadChart from "@/components/dashboard/DepartmentWorkloadChart";
 import LatestNotifications from "@/components/dashboard/LatestNotifications";
+import { MagicDashboard3DLauncher } from "@/components/dashboard-3d/MagicDashboard3DLauncher";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export async function generateMetadata({
@@ -100,6 +101,11 @@ export default async function SiteDashboardPage({
           <LatestNotifications siteId={siteContext.siteId} />
         </div>
       </PageContent>
+      <MagicDashboard3DLauncher
+        domain={domain}
+        siteId={siteContext.siteId}
+        userId={userContext.userId || userContext.user.id}
+      />
     </PageLayout>
   );
 }

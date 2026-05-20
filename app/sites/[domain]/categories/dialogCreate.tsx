@@ -17,11 +17,7 @@ function DialogCreate({ domain }: { domain: string }) {
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
       <DialogTrigger asChild>
-        <div className="container flex justify-end pt-12 overflow-hidden pointer-events-none ">
-          <Button className="pointer-events-auto" onClick={() => setOpen(true)}>
-            Aggiungi categoria
-          </Button>
-        </div>
+        <Button onClick={() => setOpen(true)}>Aggiungi categoria</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[40%] max-h-[90%] overflow-scroll">
         <DialogHeader>

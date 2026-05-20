@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   Form,
@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/accordion";
 import { InventoryCategory, InventorySupplier, InventoryUnit } from "@/types/supabase";
 
+const EMPTY_SUPPLIER_VALUE = "__none__";
+
 type Props = {
   handleClose: any;
   data: any; // The row data (flattened item+variant)
@@ -39,6 +41,7 @@ type Props = {
 
 const EditProductForm = ({ handleClose, data }: Props) => {
   const { toast } = useToast();
+  const router = useRouter();
   const pathname = usePathname();
   const domain = pathname.split("/")[2] || "";
 
@@ -159,6 +162,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
       });
     } else {
       handleClose(false);
+      router.refresh();
       toast({
         description: `Elemento ${d.name} aggiornato correttamente!`,
       });
@@ -213,14 +217,21 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                   <FormLabel>Fornitore</FormLabel>
                   <FormControl>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value || undefined}
+                      onValueChange={(value) =>
+                        field.onChange(
+                          value === EMPTY_SUPPLIER_VALUE ? null : value,
+                        )
+                      }
+                      value={field.value ?? EMPTY_SUPPLIER_VALUE}
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleziona fornitore..." />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={EMPTY_SUPPLIER_VALUE}>
+                          Nessun fornitore
+                        </SelectItem>
                         {suppliers.map((sup) => (
                           <SelectItem key={sup.id} value={sup.id}>
                             {sup.name}

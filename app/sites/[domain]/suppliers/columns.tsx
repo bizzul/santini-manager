@@ -5,6 +5,8 @@ import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RowVisualHub } from "@/components/table/row-visual-hub";
+import type { RowVisualInsight } from "@/types/supabase";
 import {
   Tooltip,
   TooltipContent,
@@ -84,11 +86,25 @@ const createSupplierEditHandler = (domain?: string) => {
 };
 
 export const createColumns = (
-  domain?: string
+  domain?: string,
+  rowInsights: Record<number, RowVisualInsight> = {}
 ): ColumnDef<SupplierWithAction>[] => {
   const handleSupplierEdit = createSupplierEditHandler(domain);
 
   return [
+    {
+      id: "visualHub",
+      header: () => <div className="h-14 w-14" aria-hidden="true" />,
+      cell: ({ row }) => (
+        <RowVisualHub
+          insight={rowInsights[row.original.id]}
+          label="Apri documenti e accordi fornitore"
+          variant="isometric"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
     {
       id: "select",
       header: ({ table }) => (

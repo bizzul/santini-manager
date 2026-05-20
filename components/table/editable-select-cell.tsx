@@ -17,6 +17,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 export type SelectOption = {
   value: string | number;
@@ -61,6 +62,7 @@ export function EditableSelectCell<T = any>({
   // Optimistic state: shows the newly selected label immediately after save
   const [optimisticLabel, setOptimisticLabel] = useState<string | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   const options = dynamicOptions ?? staticOptions ?? [];
 
@@ -127,6 +129,8 @@ export function EditableSelectCell<T = any>({
             variant: "destructive",
             description: errorMessage,
           });
+        } else {
+          router.refresh();
         }
       } catch (error: any) {
         setOptimisticLabel(null); // Revert on error
@@ -138,7 +142,7 @@ export function EditableSelectCell<T = any>({
         setIsSaving(false);
       }
     },
-    [value, options, row.original, field, onSave, toast]
+    [value, options, row.original, field, onSave, toast, router]
   );
 
   const isEmpty = value === null || value === undefined;

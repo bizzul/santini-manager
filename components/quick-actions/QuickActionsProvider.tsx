@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuickActionType } from "./QuickActionsButton";
+import { MyDashboardExperienceOverlay } from "@/components/dashboard/MyDashboardExperienceOverlay";
 
 // Import the form components
 import CreateClientForm from "@/app/sites/[domain]/clients/createForm";
@@ -21,6 +22,7 @@ import { logger } from "@/lib/logger";
 
 interface QuickActionsContextType {
   openDialog: (type: QuickActionType) => void;
+  openMyDashboardExperience: () => void;
   closeDialog: () => void;
 }
 
@@ -90,6 +92,8 @@ export function QuickActionsProvider({
   const [activeDialog, setActiveDialog] = useState<QuickActionType | null>(
     null
   );
+  const [isMyDashboardExperienceOpen, setIsMyDashboardExperienceOpen] =
+    useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Data states for forms that require external data
@@ -222,10 +226,13 @@ export function QuickActionsProvider({
     }
   }, []);
 
+  const openMyDashboardExperience = useCallback(() => {
+    setActiveDialog(null);
+    setIsMyDashboardExperienceOpen(true);
+  }, []);
+
   const renderDialogContent = () => {
     if (!activeDialog) return null;
-
-    const config = dialogConfig[activeDialog];
 
     // Loading skeleton
     const LoadingSkeleton = () => (
@@ -294,7 +301,9 @@ export function QuickActionsProvider({
   };
 
   return (
-    <QuickActionsContext.Provider value={{ openDialog, closeDialog }}>
+    <QuickActionsContext.Provider
+      value={{ openDialog, openMyDashboardExperience, closeDialog }}
+    >
       {children}
 
       <Dialog open={!!activeDialog} onOpenChange={() => closeDialog()}>
@@ -314,6 +323,11 @@ export function QuickActionsProvider({
           )}
         </DialogContent>
       </Dialog>
+
+      <MyDashboardExperienceOverlay
+        open={isMyDashboardExperienceOpen}
+        onOpenChange={setIsMyDashboardExperienceOpen}
+      />
     </QuickActionsContext.Provider>
   );
 }

@@ -16,7 +16,7 @@ const CommandDeckScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full w-full items-center justify-center bg-[#05080f] text-xs uppercase tracking-[0.4em] text-slate-400">
+      <div className="flex h-full w-full items-center justify-center bg-page-shadow text-xs uppercase tracking-[0.4em] text-muted-foreground">
         <span className="animate-pulse">Initializing command deck…</span>
       </div>
     ),
@@ -108,7 +108,7 @@ export function CommandDeckView({
     : null;
 
   return (
-    <div className="relative flex h-full w-full overflow-hidden bg-[#04070d] text-slate-100">
+    <div className="relative flex h-full w-full overflow-hidden bg-page-shadow text-foreground">
       <div className="absolute inset-0">
         <CommandDeckScene
           selectedId={selectedId}
@@ -222,20 +222,20 @@ function TopBar({
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-6 p-4 md:p-5">
       <div className="pointer-events-auto flex flex-col">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.45em] text-slate-400">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.45em] text-muted-foreground">
           {siteName} · Command Deck
         </span>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-50 md:text-[22px]">
+        <h1 className="mt-1 text-xl font-semibold tracking-tight text-foreground md:text-[22px]">
           Santini Command Deck
         </h1>
-        <span className="mt-0.5 text-[10px] uppercase tracking-[0.28em] text-slate-500">
+        <span className="mt-0.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
           Immersive home · V2.3
         </span>
       </div>
 
       <div className="pointer-events-auto flex items-center gap-3">
         <div
-          className="hidden items-center gap-2 rounded-full border border-slate-700/60 bg-slate-950/60 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-slate-400 backdrop-blur md:flex"
+          className="hidden items-center gap-2 rounded-full border border-border/60 bg-page-shadow/60 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground backdrop-blur md:flex"
           title="Double-click a node to open directly, or use the Open button"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_8px_#7dd3fc]" />
@@ -260,7 +260,7 @@ function ModeToggle({
   onModeChange: (next: CommandDeckMode) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-full border border-slate-600/70 bg-slate-900/80 p-1 shadow-lg shadow-black/40 backdrop-blur">
+    <div className="flex items-center gap-1 rounded-full border border-border/70 bg-surface-strong/80 p-1 shadow-lg shadow-black/40 backdrop-blur">
       <ModeToggleButton
         active={mode === "galaxy"}
         onClick={() => onModeChange("galaxy")}
@@ -290,13 +290,13 @@ function ModeToggleButton({
       onClick={onClick}
       className={[
         "relative rounded-full px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.24em] transition-colors",
-        active ? "text-slate-950" : "text-slate-300 hover:text-slate-100",
+        active ? "text-background" : "text-foreground/80 hover:text-foreground",
       ].join(" ")}
     >
       {active && (
         <motion.span
           layoutId="mode-pill"
-          className="absolute inset-0 rounded-full bg-slate-100"
+          className="absolute inset-0 rounded-full bg-foreground"
           transition={{ type: "spring", stiffness: 420, damping: 32 }}
         />
       )}
@@ -329,28 +329,28 @@ function WelcomePanel({
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="pointer-events-auto absolute bottom-5 left-4 z-20 w-[240px] rounded-xl border border-slate-700/60 bg-slate-950/75 p-3 shadow-xl shadow-black/50 backdrop-blur-md md:left-5"
+      className="pointer-events-auto absolute bottom-5 left-4 z-20 w-[240px] rounded-xl border border-border/60 bg-page-shadow/75 p-3 shadow-xl shadow-black/50 backdrop-blur-md md:left-5"
     >
       <div className="flex items-center gap-2.5">
         <MiniAvatar name={commanderName} avatarUrl={commanderAvatarUrl} />
         <div className="min-w-0">
-          <div className="truncate text-[12px] font-semibold text-slate-100">
+          <div className="truncate text-[12px] font-semibold text-foreground">
             Welcome, {firstName}
           </div>
-          <div className="truncate text-[9px] uppercase tracking-[0.25em] text-slate-500">
+          <div className="truncate text-[9px] uppercase tracking-[0.25em] text-muted-foreground">
             {commanderRole || "Operator"} · {siteName}
           </div>
         </div>
       </div>
 
-      <p className="mt-3 text-[10px] leading-relaxed text-slate-400">
+      <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
         Click a node to focus, double-click to open the module directly.
       </p>
 
       <button
         type="button"
         onClick={onRecenter}
-        className="mt-3 w-full rounded-md border border-slate-700/80 bg-slate-900/70 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-200 transition hover:border-sky-500/70 hover:text-sky-200"
+        className="mt-3 w-full rounded-md border border-border/80 bg-surface-strong/70 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-foreground transition hover:border-sky-500/70 hover:text-sky-200"
       >
         Re-center home
       </button>
@@ -406,7 +406,7 @@ function MiniAvatar({
           {getInitials(name)}
         </span>
       )}
-      <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-slate-950 bg-emerald-400" />
+      <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-background bg-emerald-400" />
     </div>
   );
 }
@@ -445,7 +445,7 @@ function SelectedModulePanel({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 24 }}
       transition={{ duration: 0.32, ease: "easeOut" }}
-      className="pointer-events-auto absolute right-4 top-20 z-20 w-[320px] overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-950/85 shadow-2xl shadow-black/50 backdrop-blur-md md:right-6 md:top-24 md:w-[340px]"
+      className="pointer-events-auto absolute right-4 top-20 z-20 w-[320px] overflow-hidden rounded-2xl border border-border/70 bg-page-shadow/85 shadow-2xl shadow-black/50 backdrop-blur-md md:right-6 md:top-24 md:w-[340px]"
     >
       <div
         className="h-1 w-full"
@@ -463,24 +463,24 @@ function SelectedModulePanel({
               boxShadow: `0 0 14px ${node.color}`,
             }}
           />
-          <span className="text-[10px] uppercase tracking-[0.32em] text-slate-400">
+          <span className="text-[10px] uppercase tracking-[0.32em] text-muted-foreground">
             Selected module
           </span>
         </div>
 
-        <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-50">
+        <h2 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
           {node.label}
         </h2>
-        <div className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+        <div className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
           {node.subtitle}
         </div>
 
-        <p className="mt-3 text-[12px] leading-relaxed text-slate-300">
+        <p className="mt-3 text-[12px] leading-relaxed text-foreground/80">
           {node.description}
         </p>
 
         {orbit && (
-          <div className="mt-3 flex items-center justify-between rounded-md border border-slate-800/70 bg-slate-900/50 px-2.5 py-1.5">
+          <div className="mt-3 flex items-center justify-between rounded-md border border-border/70 bg-surface-strong/50 px-2.5 py-1.5">
             <div className="flex items-center gap-2">
               <span
                 className="h-1.5 w-1.5 rounded-full"
@@ -489,7 +489,7 @@ function SelectedModulePanel({
                   boxShadow: `0 0 8px ${node.color}99`,
                 }}
               />
-              <span className="text-[11px] text-slate-300">
+              <span className="text-[11px] text-foreground/80">
                 {orbit.truncated
                   ? `${orbit.items.length} di ${orbit.total}`
                   : orbit.total}{" "}
@@ -519,10 +519,10 @@ function SelectedModulePanel({
 
         <div className="mt-4">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
               Live signals
             </span>
-            <span className="text-[9px] uppercase tracking-[0.3em] text-slate-600">
+            <span className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
               demo
             </span>
           </div>
@@ -550,7 +550,7 @@ function SelectedModulePanel({
           <button
             type="button"
             onClick={mode === "focus" ? onBackToGalaxy : onEnterFocus}
-            className="rounded-lg border border-slate-700/80 bg-slate-900/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200 transition hover:border-slate-500 hover:text-white"
+            className="rounded-lg border border-border/80 bg-surface-strong/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-foreground transition hover:border-border hover:text-foreground"
           >
             {mode === "focus" ? "Back to home" : "Focus this module"}
           </button>
@@ -586,9 +586,9 @@ function PrimaryCta({
   const base =
     "group relative flex items-center justify-between rounded-lg px-3 py-2.5 text-[12px] font-semibold uppercase tracking-[0.22em] transition";
   const enabledClass =
-    "border bg-slate-950 text-slate-50 hover:bg-slate-900";
+    "border bg-page-shadow text-foreground hover:bg-surface-strong";
   const disabledClass =
-    "cursor-not-allowed border border-dashed border-slate-700/80 bg-slate-900/40 text-slate-400";
+    "cursor-not-allowed border border-dashed border-border/80 bg-surface-strong/40 text-muted-foreground";
 
   const style = enabled
     ? {
@@ -662,17 +662,17 @@ function SignalRow({
         ? "bg-rose-400"
         : tone === "warning"
           ? "bg-amber-300"
-          : "bg-slate-400";
+          : "bg-muted-foreground";
   return (
     <div
-      className="flex items-center justify-between rounded-md border border-slate-800/70 bg-slate-900/50 px-2.5 py-1.5"
+      className="flex items-center justify-between rounded-md border border-border/70 bg-surface-strong/50 px-2.5 py-1.5"
       style={{ boxShadow: `inset 0 0 0 1px ${accent}0d` }}
     >
       <div className="flex items-center gap-2">
         <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-        <span className="text-[11px] text-slate-300">{label}</span>
+        <span className="text-[11px] text-foreground/80">{label}</span>
       </div>
-      <span className="text-[13px] font-semibold text-slate-100">{value}</span>
+      <span className="text-[13px] font-semibold text-foreground">{value}</span>
     </div>
   );
 }

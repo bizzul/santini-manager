@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export interface KanbanCategory {
   id: number;
@@ -230,10 +231,19 @@ async function Page({
   const data = await getData(siteId);
 
   return (
-    <div className="container w-full mx-auto relative ">
-      {/* Tasks are already filtered server-side for production kanbans, use "all" to avoid double filtering */}
-      <CalendarComponent tasks={data as TaskWithKanban[]} calendarType="all" domain={domain} />
-    </div>
+    <PageLayout>
+      <PageHeader
+        title="Calendario produzione"
+        subtitle="Pianificazione e scadenze delle commesse in produzione"
+      />
+      <PageContent>
+        <CalendarComponent
+          tasks={data as TaskWithKanban[]}
+          calendarType="all"
+          domain={domain}
+        />
+      </PageContent>
+    </PageLayout>
   );
 }
 

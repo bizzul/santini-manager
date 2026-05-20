@@ -44,18 +44,14 @@ async function Page({ params }: { params: Promise<{ id: number; domain: string }
 
   if (data.error) {
     return (
-      <div className="flex justify-center w-screen h-screen flex-col items-center align-middle  text-slate-200 bg-[#1A2027]">
-        <h1 className="font-bold text-3xl text-center">
+      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-2 bg-page-shadow px-6 text-center text-foreground">
+        <h1 className="text-3xl font-bold">
           Nessun prodotto con questo ID: {id}
         </h1>
       </div>
     );
   }
-  return (
-    <>
-      <MobilePage data={data} />
-    </>
-  );
+  return <MobilePage data={data} />;
 }
 
 export default Page;

@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { Trash2, Loader2, Search, X } from "lucide-react";
@@ -43,6 +43,96 @@ import {
 } from "@/components/ui/alert-dialog";
 import { InventoryCategory } from "@/types/supabase";
 
+type InventoryTableViewMode = "compact" | "extended";
+
+const COMPACT_COLUMN_IDS = new Set([
+  "subcategory",
+  "name",
+  "color",
+  "supplier",
+  "width",
+  "height",
+  "length",
+  "thickness",
+  "diameter",
+  "quantity",
+  "purchase_unit_price",
+  "total_price",
+]);
+
+const COMPACT_DIMENSION_COLUMN_IDS = new Set([
+  "width",
+  "height",
+  "length",
+  "thickness",
+  "diameter",
+]);
+
+function getColumnVisibility(
+  columns: ColumnDef<any, any>[],
+  mode: InventoryTableViewMode,
+): Record<string, boolean> {
+  if (mode === "extended") {
+    return {};
+  }
+
+  return Object.fromEntries(
+    columns
+      .map((column) => {
+        const columnId =
+          column.id ||
+          ("accessorKey" in column && typeof column.accessorKey === "string"
+            ? column.accessorKey
+            : undefined);
+        return columnId ? [columnId, COMPACT_COLUMN_IDS.has(columnId)] : null;
+      })
+      .filter(Boolean) as Array<[string, boolean]>,
+  );
+}
+
+function getColumnCellClassName(
+  columnId: string,
+  mode: InventoryTableViewMode,
+) {
+  if (mode !== "compact") {
+    return "h-9 px-2 py-1.5 text-center align-middle [&>div]:justify-center [&_button]:h-7 [&_button]:px-2 [&_span]:text-center";
+  }
+
+  if (COMPACT_DIMENSION_COLUMN_IDS.has(columnId)) {
+    return "h-9 w-[4rem] max-w-[4rem] overflow-hidden px-1 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+  }
+
+  switch (columnId) {
+    case "subcategory":
+      return "h-9 w-[7.5rem] max-w-[7.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    case "name":
+      return "h-9 min-w-[10rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    case "color":
+      return "h-9 w-[5.5rem] max-w-[5.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    case "supplier":
+      return "h-9 w-[9rem] max-w-[9rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    case "quantity":
+      return "h-9 w-[5.5rem] max-w-[5.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    case "purchase_unit_price":
+      return "h-9 w-[6.5rem] max-w-[6.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    case "total_price":
+      return "h-9 w-[6.5rem] max-w-[6.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+    default:
+      return "h-9 px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+  }
+}
+
+function getCategoryFilterLabel(category: InventoryCategory) {
+  const label = category.code || category.name?.slice(0, 3) || "";
+  return label.slice(0, 3).toUpperCase();
+}
+
+function normalizeFilterValue(value: unknown) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -58,7 +148,13 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   // Filter state
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] =
+    useState<Record<string, boolean>>(() =>
+      getColumnVisibility(columns, "compact"),
+    );
   const [globalFilter, setGlobalFilter] = useState("");
+  const [viewMode, setViewMode] =
+    useState<InventoryTableViewMode>("compact");
   // Row selection state
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   // Delete dialog state
@@ -71,6 +167,10 @@ export function DataTable<TData, TValue>({
   const { toast } = useToast();
   const router = useRouter();
 
+  useEffect(() => {
+    setColumnVisibility(getColumnVisibility(columns, viewMode));
+  }, [columns, viewMode]);
+
   // Filter data by selected categories
   const filteredData = useMemo(() => {
     if (allCategoriesSelected) {
@@ -79,11 +179,39 @@ export function DataTable<TData, TValue>({
     if (selectedCategories.length === 0) {
       return [];
     }
+
+    const selectedCategoryRecords = categories.filter((category) =>
+      selectedCategories.includes(category.id),
+    );
+    const selectedCategoryIds = new Set(selectedCategories);
+    const selectedCategoryCodes = new Set(
+      selectedCategoryRecords
+        .map((category) => normalizeFilterValue(category.code))
+        .filter(Boolean),
+    );
+    const selectedCategoryNames = new Set(
+      selectedCategoryRecords
+        .map((category) => normalizeFilterValue(category.name))
+        .filter(Boolean),
+    );
+
     return data.filter((row: any) => {
-      const categoryId = row.category?.id || row.category_id;
-      return categoryId && selectedCategories.includes(categoryId);
+      const attrs = row.attributes || {};
+      const rowCategoryId = row.category?.id || row.category_id;
+      const rowCategoryCode = normalizeFilterValue(
+        row.category?.code || row.category_code || attrs.category_code,
+      );
+      const rowCategoryName = normalizeFilterValue(
+        row.category?.name || row.category || attrs.category,
+      );
+
+      return (
+        (rowCategoryId && selectedCategoryIds.has(rowCategoryId)) ||
+        (rowCategoryCode && selectedCategoryCodes.has(rowCategoryCode)) ||
+        (rowCategoryName && selectedCategoryNames.has(rowCategoryName))
+      );
     });
-  }, [data, selectedCategories, allCategoriesSelected]);
+  }, [data, categories, selectedCategories, allCategoriesSelected]);
 
   const table = useReactTable({
     data: filteredData,
@@ -93,12 +221,14 @@ export function DataTable<TData, TValue>({
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     state: {
       sorting,
       columnFilters,
+      columnVisibility,
       globalFilter,
       rowSelection,
     },
@@ -181,12 +311,12 @@ export function DataTable<TData, TValue>({
   return (
     <>
       {/* Filter and Search Bar - Contained in rounded border */}
-      <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
+      <div className="rounded-lg border bg-card p-3 mb-3 shadow-sm">
         {/* Category Filter Row */}
         {categories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-4 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-3">
             <span className="text-sm font-medium">Categoria:</span>
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="all-categories"
@@ -217,13 +347,9 @@ export function DataTable<TData, TValue>({
                     <Label
                       htmlFor={`category-${category.id}`}
                       className="text-sm font-normal cursor-pointer flex items-center gap-2"
+                      title={category.name}
                     >
-                      {category.code && (
-                        <span className="text-muted-foreground">
-                          [{category.code}]
-                        </span>
-                      )}
-                      {category.name}
+                      {getCategoryFilterLabel(category)}
                     </Label>
                   </div>
                 );
@@ -233,7 +359,7 @@ export function DataTable<TData, TValue>({
         )}
 
         {/* Search Row with Clear Button and Bulk Delete */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <DebouncedInput
@@ -254,6 +380,26 @@ export function DataTable<TData, TValue>({
               Cancella filtri
             </Button>
           )}
+          <div className="ml-auto flex items-center rounded-md border bg-background p-0.5">
+            <Button
+              type="button"
+              variant={viewMode === "compact" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => setViewMode("compact")}
+            >
+              Compatta
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === "extended" ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => setViewMode("extended")}
+            >
+              Estesa
+            </Button>
+          </div>
           {selectedCount > 0 && (
             <Button
               variant="destructive"
@@ -268,15 +414,33 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Table Container - Contained in rounded border */}
-      <div className="rounded-lg border bg-card shadow-sm overflow-y-visible">
-        <div className="overflow-x-auto">
-          <Table>
+      <div className="w-full min-w-0 rounded-lg border bg-card shadow-sm overflow-y-visible">
+        <div
+          className={
+            viewMode === "compact"
+              ? "w-full overflow-x-hidden"
+              : "w-full overflow-x-auto"
+          }
+        >
+          <Table
+            className={
+              viewMode === "compact"
+                ? "w-full table-fixed text-xs"
+                : "w-full text-xs"
+            }
+          >
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id}>
+                      <TableHead
+                        key={header.id}
+                        className={getColumnCellClassName(
+                          header.column.id,
+                          viewMode,
+                        )}
+                      >
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -297,7 +461,13 @@ export function DataTable<TData, TValue>({
                     data-state={row.getIsSelected() && "selected"}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        className={getColumnCellClassName(
+                          cell.column.id,
+                          viewMode,
+                        )}
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()

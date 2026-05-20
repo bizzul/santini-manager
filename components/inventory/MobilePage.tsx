@@ -1,7 +1,14 @@
 "use client";
 import React, { useState } from "react";
-import { useToast } from "../ui/use-toast";
+import { Minus, Plus } from "lucide-react";
 import { Product } from "@/types/supabase";
+
+import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MobileWorkflowLayout } from "@/components/layout/mobile-workflow-layout";
+import { ErrorState } from "@/components/layout/error-state";
+
 function MobilePage({ data }: { data: Product }) {
   const [tempQuantity, setTempQuantity] = useState(Number(data.quantity));
   const [loading, setLoading] = useState(false);
@@ -9,31 +16,23 @@ function MobilePage({ data }: { data: Product }) {
   const [quantity, setQuantity] = useState(data.quantity);
   const { toast } = useToast();
 
-  const decreaseQty = (quantity: number) => {
-    setTempQuantity((prevQty) => {
-      if (prevQty - quantity < 0) return 0;
-      return prevQty - quantity;
-    });
+  const decreaseQty = (delta: number) => {
+    setTempQuantity((prev) => (prev - delta < 0 ? 0 : prev - delta));
   };
 
-  const increaseQty = (quantity: number) => {
-    setTempQuantity((prevQty) => {
-      return prevQty + quantity;
-    });
+  const increaseQty = (delta: number) => {
+    setTempQuantity((prev) => prev + delta);
   };
 
-  const handleChangeInput = (e: any) => {
+  const handleChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
-    setTempQuantity(value);
+    setTempQuantity(Number.isNaN(value) ? 0 : value);
   };
 
   const updateQuantity = async (newQuantity: number) => {
     try {
-      // Ensure newQuantity is valid; return early if not
       if (!newQuantity) {
-        toast({
-          description: `Imposta una quantita corretta.`,
-        });
+        toast({ description: "Imposta una quantita corretta." });
         return;
       }
 
@@ -43,121 +42,136 @@ function MobilePage({ data }: { data: Product }) {
         `/api/inventory/uniqueId/${data.inventoryId}`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json", // Simplified headers
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(tempQuantity.toString()),
         }
       );
 
       const result = await response.json();
-      // Error handling based on the response
       if (result.error) {
         setError(result.message);
-        toast({
-          description: `Errore: ${result.error.code}`,
-        });
+        toast({ description: `Errore: ${result.error.code}` });
       } else {
-        toast({
-          description: `Prodotto aggiornato correttamente!`,
-        });
-        setQuantity(newQuantity); // Update state with the new quantity
+        toast({ description: "Prodotto aggiornato correttamente!" });
+        setQuantity(newQuantity);
       }
-    } catch (error) {
+    } catch (err) {
       setError("Failed to update the quantity.");
-      toast({
-        description: "Errore nella richiesta di aggiornamento.",
-      });
-      console.error("Error updating quantity:", error);
+      toast({ description: "Errore nella richiesta di aggiornamento." });
+      console.error("Error updating quantity:", err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex justify-center w-screen h-screen flex-col items-center  text-slate-200  ">
+    <MobileWorkflowLayout
+      title="Modifica quantita"
+      subtitle={data.name || "Prodotto selezionato"}
+      footer={
+        <div className="flex justify-end">
+          <Button
+            size="lg"
+            onClick={() => updateQuantity(tempQuantity)}
+            disabled={loading}
+          >
+            Conferma
+          </Button>
+        </div>
+      }
+    >
       {error && (
-        <div className="bg-red-500 py-8 px-4 w-full text-center font-bold text-xl ">
-          <h1>{error}</h1>
-          <p className="text-sm">(aggiorna la pagina per riprovare)</p>
-        </div>
-      )}
-      {loading && (
-        <div className="absolute top-0 left-0 w-screen h-screen bg-black/50"></div>
-      )}
-      <h1 className="text-3xl font-bold  my-8">Modifica quantita</h1>
-      <h2 className="text-bold text-xl mb-4">Prodotto selezionato</h2>
-      <p className="font-extrabold text-2xl text-center">{data.name}</p>
-      <p>
-        {data.width}x{data.height}x{data.length}
-      </p>
-      <h3 className="text-bold mb-8">{data.description}</h3>
-      <h3 className="text-light text-lg">Tipo: {data.type}</h3>
-      <h3 className="text-light mb-8">{data.supplier}</h3>
-      <h3>Quantita attuale in magazzino</h3>
-      <h2 className="font-bold text-3xl mb-8">
-        {quantity} {data.unit}
-      </h2>
-      <h3>Nuova quantita</h3>
-      <div className="mx-24 w-/12 flex justify-center py-4">
-        <input
-          value={tempQuantity}
-          className="border border-white text-3xl font-bold bg-transparent text-center w-2/3"
-          type="number"
-          onChange={handleChangeInput}
+        <ErrorState
+          variant="block"
+          title="Errore"
+          description={
+            <>
+              {error}
+              <p className="mt-1 text-xs opacity-80">
+                (aggiorna la pagina per riprovare)
+              </p>
+            </>
+          }
+          className="mb-4"
         />
+      )}
+
+      <div className="space-y-6">
+        <section className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+          <p className="text-2xl font-extrabold">{data.name}</p>
+          <p className="text-sm text-muted-foreground">
+            {data.width}x{data.height}x{data.length}
+          </p>
+          <p className="mt-3 text-sm text-foreground">{data.description}</p>
+          <div className="mt-3 grid gap-1 text-sm">
+            <p>
+              <span className="text-muted-foreground">Tipo:</span> {data.type}
+            </p>
+            <p className="text-muted-foreground">{data.supplier}</p>
+          </div>
+        </section>
+
+        <section className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Quantita attuale in magazzino
+          </p>
+          <p className="text-3xl font-bold">
+            {quantity} <span className="text-base font-normal">{data.unit}</span>
+          </p>
+        </section>
+
+        <section className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
+          <p className="mb-2 text-sm text-muted-foreground">Nuova quantita</p>
+          <Input
+            value={tempQuantity}
+            type="number"
+            onChange={handleChangeInput}
+            className="text-center text-3xl font-bold h-14"
+          />
+          <div className="mt-4 grid gap-3">
+            <div className="grid grid-cols-3 gap-3">
+              <Button
+                variant="destructive"
+                size="lg"
+                onClick={() => decreaseQty(10)}
+              >
+                -10
+              </Button>
+              <Button
+                variant="destructive"
+                size="lg"
+                onClick={() => decreaseQty(5)}
+              >
+                -5
+              </Button>
+              <Button
+                variant="destructive"
+                size="lg"
+                onClick={() => decreaseQty(1)}
+                aria-label="Diminuisci di 1"
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <Button size="lg" onClick={() => increaseQty(1)} aria-label="Aumenta di 1">
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button size="lg" onClick={() => increaseQty(5)}>
+                +5
+              </Button>
+              <Button size="lg" onClick={() => increaseQty(10)}>
+                +10
+              </Button>
+            </div>
+          </div>
+        </section>
       </div>
-      <div className="flex flex-col gap-10 w-full px-4">
-        <div className="flex flex-row gap-10 w-full">
-          <button
-            className="w-full px-5 py-4 m-1 bg-red-600 hover:bg-white hover:text-black transition-colors duration-100 font-bold"
-            onClick={() => decreaseQty(10)}
-          >
-            -10
-          </button>
-          <button
-            className="w-full px-5 py-4 m-1 bg-red-600 hover:bg-white hover:text-black transition-colors duration-100 font-bold"
-            onClick={() => decreaseQty(5)}
-          >
-            -5
-          </button>
-          <button
-            className="w-full px-5 py-4 m-1 bg-red-600 hover:bg-white hover:text-black transition-colors duration-100 font-bold"
-            onClick={() => decreaseQty(1)}
-          >
-            -
-          </button>
-        </div>
-        <div className="flex flex-row gap-10 w-full">
-          <button
-            className="w-full px-5 py-4 m-1 bg-green-600 hover:bg-white hover:text-black transition-colors duration-100 font-bold"
-            onClick={() => increaseQty(1)}
-          >
-            +
-          </button>
-          <button
-            className="w-full px-5 py-4 m-1 bg-green-600 hover:bg-white hover:text-black transition-colors duration-100 font-bold"
-            onClick={() => increaseQty(5)}
-          >
-            +5
-          </button>
-          <button
-            className="w-full px-5 py-4 m-1 bg-green-600 hover:bg-white hover:text-black transition-colors duration-100 font-bold"
-            onClick={() => increaseQty(10)}
-          >
-            +10
-          </button>
-        </div>
-      </div>
-      <div className="flex justify-center align-middle items-center py-8">
-        <button
-          className=" border border-white  p-4"
-          onClick={() => updateQuantity(tempQuantity)}
-        >
-          CONFERMA
-        </button>
-      </div>
-    </div>
+
+      {loading && (
+        <div className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-sm" />
+      )}
+    </MobileWorkflowLayout>
   );
 }
 

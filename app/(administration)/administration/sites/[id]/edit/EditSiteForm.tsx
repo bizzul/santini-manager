@@ -35,6 +35,7 @@ import {
   Users2,
   UserCheck,
   Camera,
+  LayoutDashboard,
 } from "lucide-react";
 import { toast } from "sonner";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
@@ -42,6 +43,7 @@ import AiSettingsModal from "@/components/site-settings/AiSettingsModal";
 import SiteThemeSettingsModal from "@/components/site-settings/SiteThemeSettingsModal";
 import SiteSupportAndSubscriptionModal from "@/components/site-settings/SiteSupportAndSubscriptionModal";
 import { SiteCommandDeckModal } from "@/components/site-settings/SiteCommandDeckModal";
+import SiteDashboardSettingsModal from "@/components/site-settings/SiteDashboardSettingsModal";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
 import { logger } from "@/lib/logger";
 import type { SiteThemeSettings } from "@/lib/site-theme";
@@ -912,6 +914,24 @@ export default function EditSiteForm({
                       className="border-emerald-300/35 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25"
                     >
                       Apri assistenza e abbonamento
+                    </Button>
+                  }
+                />
+              }
+              dashboardAction={
+                <SiteDashboardSettingsModal
+                  siteId={site.id}
+                  siteName={site.name || site.subdomain}
+                  users={activeSelectedUsers}
+                  canConfigure={userRole === "superadmin"}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="border-violet-300/35 bg-violet-500/15 text-violet-100 hover:bg-violet-500/25"
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Configura dashboard
                     </Button>
                   }
                 />

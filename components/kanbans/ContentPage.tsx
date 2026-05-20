@@ -22,7 +22,7 @@ function ContentPage({
   domain: string;
 }) {
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
+    <div className="flex h-full w-full flex-col overflow-hidden">
       <KanbanBoard
         name={kanName}
         clients={clients}

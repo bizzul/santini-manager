@@ -52,11 +52,13 @@ export const editInventoryItemSchema = z.object({
     z.string().uuid().nullable().optional(),
   ),
   purchase_unit_price: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
   sell_unit_price: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
   image_url: z.preprocess(
@@ -82,23 +84,28 @@ export const editInventoryItemSchema = z.object({
     z.string().nullable().optional(),
   ),
   width: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
   height: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
   length: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
   thickness: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
   diameter: z.preprocess(
-    (val) => (val === "" || val === undefined ? null : Number(val)),
+    (val) =>
+      val === "" || val === undefined || val === null ? null : Number(val),
     z.number().nullable().optional(),
   ),
 

@@ -718,11 +718,12 @@ export default function Card({
       ? "bg-red-50/70 dark:bg-red-950/30"
       : "bg-slate-50 dark:bg-slate-900/70";
 
-  // Dimensioni fisse per garantire allineamento e densita' coerente nelle colonne.
-  // Altezze pensate per far entrare tutti i campi attivi nelle versioni small ed estesa.
+  // Altezze minime (non fisse) per garantire allineamento iniziale ma consentire
+  // alla card di crescere quando i testi cliente/oggetto vanno a capo, cosi
+  // nessun campo viene troncato.
   const cardSizeClass = isSmall
-    ? "h-[170px]"
-    : "h-[300px]";
+    ? "min-h-[180px]"
+    : "min-h-[300px]";
 
   return (
     <ContextMenu>
@@ -754,7 +755,7 @@ export default function Card({
           {!isSmall ? (
             /* ==================== CARD NORMAL (ESPANSA) ==================== */
             <div className="relative flex h-full flex-col text-slate-800 dark:text-slate-100">
-              <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-3 pt-3 pb-5 overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col gap-[3px] px-3 pt-3 pb-5">
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
                   {isFieldVisible("projectCode") ? (
@@ -820,7 +821,7 @@ export default function Card({
                 )}
 
                 {isFieldVisible("image") && (
-                  <div className="relative mb-2 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                  <div className="relative mb-1 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
                     {showCoverSourceBadge && (
                       <span className="absolute right-2 top-2 z-10 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                         {cardImage.source}
@@ -841,41 +842,48 @@ export default function Card({
                   </div>
                 )}
 
+                {/* Riga 2: Nome cliente (riga dedicata, wrap fino a 2 righe) */}
                 {isFieldVisible("client") && (
                   <button
                     type="button"
                     onClick={handleOpenClientSheet}
-                    className="mb-1 inline-flex min-h-8 max-w-full items-center rounded-md px-1 text-left text-base font-semibold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
+                    className="mb-0.5 inline-flex w-full min-h-8 max-w-full items-start rounded-md px-1 text-left text-base font-semibold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
                     title="Apri scheda cliente"
                     aria-label={`Apri scheda cliente ${getClientName()}`}
                   >
-                    <span className="truncate">{getClientName()}</span>
+                    <span className="line-clamp-2 break-words leading-snug">
+                      {getClientName()}
+                    </span>
                   </button>
                 )}
 
-                {(isFieldVisible("location") || isFieldVisible("objectName")) && (
-                  <div className="mb-2 flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400">
-                    {isFieldVisible("location") && data.luogo && (
-                      <>
-                        <MapPin className="h-3 w-3" />
-                        <span>{data.luogo}</span>
-                        {isFieldVisible("objectName") && <span className="mx-1">·</span>}
-                      </>
-                    )}
-                    {isFieldVisible("objectName") && (
-                      <span className="truncate">{data.name || "-"}</span>
-                    )}
+                {/* Riga 3: Nome oggetto (riga dedicata, wrap fino a 2 righe) */}
+                {isFieldVisible("objectName") && data.name && (
+                  <div className="mb-0.5 line-clamp-2 break-words px-1 text-sm leading-snug text-slate-600 dark:text-slate-400">
+                    {data.name}
                   </div>
                 )}
 
-                {(isFieldVisible("pieces") || isFieldVisible("value")) && (
-                  <div className="mb-2 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                {/* Riga 4: Luogo · Pezzi · Valore */}
+                {(isFieldVisible("location") || isFieldVisible("pieces") || isFieldVisible("value")) && (
+                  <div className="mb-1 flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                    {isFieldVisible("location") && data.luogo && (
+                      <div className="flex min-w-0 items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{data.luogo}</span>
+                      </div>
+                    )}
+                    {isFieldVisible("location") &&
+                      data.luogo &&
+                      (isFieldVisible("pieces") || isFieldVisible("value")) && (
+                        <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+                      )}
                     {isFieldVisible("pieces") && (
                       <div className="text-center">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">
                           Pezzi
                         </span>
-                        <span className="font-bold text-sm">
+                        <span className="text-sm font-bold">
                           {getPiecesDisplay()}
                         </span>
                       </div>
@@ -885,10 +893,10 @@ export default function Card({
                     )}
                     {isFieldVisible("value") && (
                       <div className="text-center">
-                        <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                        <span className="block text-xs text-slate-500 dark:text-slate-400">
                           Valore
                         </span>
-                        <span className="font-bold text-sm">
+                        <span className="text-sm font-bold">
                           {((data.sellPrice || 0) / 1000).toFixed(1)}K
                         </span>
                       </div>
@@ -897,7 +905,7 @@ export default function Card({
                 )}
 
                 {isFieldVisible("notes") && data.other && (
-                  <div className="mb-2 line-clamp-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
+                  <div className="mb-1 line-clamp-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
                     {data.other}
                   </div>
                 )}
@@ -905,8 +913,8 @@ export default function Card({
                 {isFieldVisible("suppliers") &&
                   taskSuppliers &&
                   taskSuppliers.length > 0 && (
-                    <div className="mb-2">
-                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+                    <div className="mb-1">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5 block">
                         Fornitori
                       </span>
                       <div className="flex flex-wrap gap-1">
@@ -951,7 +959,7 @@ export default function Card({
                   )}
 
                 {showActivity && (
-                  <div className="mb-2 rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/50">
+                  <div className="mb-1 rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5 dark:border-slate-700 dark:bg-slate-800/50">
                     <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
                       <span className="inline-flex items-center gap-1">
                         <span className="h-2.5 w-2.5 rounded-full bg-sky-500" />
@@ -1047,7 +1055,7 @@ export default function Card({
           ) : (
             /* ==================== CARD SMALL (COMPRESSA) ==================== */
             <div className="relative flex h-full flex-col text-slate-800 dark:text-slate-100">
-              <div className="flex min-h-0 flex-1 flex-col gap-1.5 px-3 pt-3 pb-4 overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col gap-[3px] px-3 pt-3 pb-4">
                 {/* Riga 1: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
@@ -1085,7 +1093,7 @@ export default function Card({
                   showCategoryColors &&
                   (productCategory || productDisplayName) && (
                     <div
-                      className="mb-1.5 inline-flex max-w-full items-center gap-1 truncate rounded-md px-2 py-1 text-xs font-semibold"
+                      className="mb-[3px] inline-flex max-w-full items-center gap-1 truncate rounded-md px-2 py-1 text-xs font-semibold"
                       style={{
                         backgroundColor: `${categoryColors.color}15`,
                         color: categoryColors.textColor,
@@ -1096,7 +1104,7 @@ export default function Card({
                 )}
 
                 {isFieldVisible("image") && (
-                  <div className="relative mb-1.5 rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
+                  <div className="relative mb-[3px] rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
                     {showCoverSourceBadge && (
                       <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
                         {cardImage.source}
@@ -1117,34 +1125,30 @@ export default function Card({
                   </div>
                 )}
 
-                {(isFieldVisible("client") || isFieldVisible("objectName")) && (
-                  <div className="mb-1 flex min-w-0 items-center text-sm text-slate-700 dark:text-slate-300">
-                    {isFieldVisible("client") && (
-                      <button
-                        type="button"
-                        onClick={handleOpenClientSheet}
-                        className="inline-flex min-h-8 min-w-0 items-center rounded-md px-1 text-left font-semibold transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-slate-800"
-                        title="Apri scheda cliente"
-                        aria-label={`Apri scheda cliente ${getClientName()}`}
-                      >
-                        <span className="truncate">{getClientName()}</span>
-                      </button>
-                    )}
-                    {isFieldVisible("objectName") && data.name && (
-                      <>
-                        {isFieldVisible("client") && (
-                          <span className="mx-1 text-slate-400">·</span>
-                        )}
-                        <span className="text-slate-500 dark:text-slate-400">
-                          {data.name}
-                        </span>
-                      </>
-                    )}
+                {/* Riga 2: Nome cliente (riga dedicata, wrap fino a 2 righe) */}
+                {isFieldVisible("client") && (
+                  <button
+                    type="button"
+                    onClick={handleOpenClientSheet}
+                    className="inline-flex w-full min-h-8 items-start rounded-md px-1 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-200 dark:hover:bg-slate-800"
+                    title="Apri scheda cliente"
+                    aria-label={`Apri scheda cliente ${getClientName()}`}
+                  >
+                    <span className="line-clamp-2 break-words leading-snug">
+                      {getClientName()}
+                    </span>
+                  </button>
+                )}
+
+                {/* Riga 3: Nome oggetto (riga dedicata, wrap fino a 2 righe) */}
+                {isFieldVisible("objectName") && data.name && (
+                  <div className="mb-0.5 line-clamp-2 break-words px-1 text-sm leading-snug text-slate-500 dark:text-slate-400">
+                    {data.name}
                   </div>
                 )}
 
                 {(isFieldVisible("location") || isFieldVisible("pieces") || isFieldVisible("value")) && (
-                  <div className="mb-1.5 flex items-center gap-1.5 text-xs">
+                  <div className="mb-[3px] flex items-center gap-1.5 text-xs">
                     {isFieldVisible("location") && data.luogo && (
                       <>
                         <MapPin className="h-3 w-3 text-slate-500" />
@@ -1173,7 +1177,7 @@ export default function Card({
                 )}
 
                 {showActivity && (
-                  <div className="mb-1 flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                  <div className="mb-0.5 flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300">
                     <span className="inline-flex items-center gap-1">
                       <span className="h-2 w-2 rounded-full bg-sky-500" />
                       {workedCollaboratorsCount}
@@ -1240,7 +1244,7 @@ export default function Card({
                 )}
 
                 {isFieldVisible("notes") && data.other && (
-                  <div className="mb-1 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="mb-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
                     {data.other}
                   </div>
                 )}

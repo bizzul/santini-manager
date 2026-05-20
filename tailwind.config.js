@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: ["class", "class"],
+  darkMode: "class",
   content: [
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
@@ -81,6 +81,17 @@ module.exports = {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        page: {
+          DEFAULT: "hsl(var(--page))",
+          soft: "hsl(var(--page-soft))",
+          glow: "hsl(var(--page-glow))",
+          shadow: "hsl(var(--page-shadow))",
+        },
+        surface: {
+          DEFAULT: "hsl(var(--card))",
+          strong: "hsl(var(--sidebar-card-strong))",
+          muted: "hsl(var(--muted))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -88,10 +99,6 @@ module.exports = {
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
           foreground: "hsl(var(--secondary-foreground))",
-        },
-        error: {
-          DEFAULT: "hsl(var(--error))",
-          foreground: "hsl(var(--error-foreground))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -114,7 +121,7 @@ module.exports = {
           foreground: "hsl(var(--card-foreground))",
         },
         sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
+          DEFAULT: "hsl(var(--sidebar))",
           foreground: "hsl(var(--sidebar-foreground))",
           primary: "hsl(var(--sidebar-primary))",
           "primary-foreground": "hsl(var(--sidebar-primary-foreground))",

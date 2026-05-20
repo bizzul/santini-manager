@@ -1,0 +1,146 @@
+---
+description: Standard layout, tokens and primitives for every page of the Santini manager.
+globs:
+  - "app/**/*.tsx"
+  - "components/**/*.tsx"
+alwaysApply: false
+---
+
+# Standardizzazione UI del Manager
+
+Tutte le pagine sotto `app/sites/[domain]/**` (e d'ora in poi qualsiasi
+nuova route del manager) devono rispettare il design system descritto qui.
+La sorgente unica di stile sono i token CSS in `app/globals.css` e le
+utility Tailwind mappate in `tailwind.config.js`.
+
+## 1. Layout primitives obbligatori
+
+Scegliere UNO dei tre shell in base all'archetipo della pagina:
+
+- **`PageLayout` + `PageHeader` + `PageContent`** in
+  [`components/page-layout.tsx`](components/page-layout.tsx) per pagine
+  list/CRUD (clienti, prodotti, calendari, kanban, ...). Variante
+  `PageContent variant="narrow"` per form/wizard centrati.
+- **`DetailSheetLayout`** in
+  [`components/layout/detail-sheet-layout.tsx`](components/layout/detail-sheet-layout.tsx)
+  per pagine di dettaglio record (`products/[id]`, `progetti/[id]`).
+- **`MobileWorkflowLayout`** in
+  [`components/layout/mobile-workflow-layout.tsx`](components/layout/mobile-workflow-layout.tsx)
+  per i workflow da piano di fabbrica (boxing/edit, qualityControl/edit,
+  inventory/edit/[id]).
+
+Esempio canonico:
+
+```tsx
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+
+return (
+  <PageLayout>
+    <PageHeader
+      title="Clienti"
+      subtitle="Elenco completo dei clienti del sito"
+      actions={<DialogCreate />}
+    />
+    <PageContent>
+      {data.length > 0 ? (
+        <DataWrapper data={data} />
+      ) : (
+        <EmptyState
+          icon={<Users className="h-6 w-6" />}
+          title="Nessun cliente registrato"
+          description="Premi 'Aggiungi cliente' per crearne uno."
+        />
+      )}
+    </PageContent>
+  </PageLayout>
+);
+```
+
+## 2. Componenti di stato standard
+
+Per qualsiasi pagina:
+
+- **Empty state**: `<EmptyState ... />` in `components/layout/empty-state.tsx`.
+  Mai un `<h1 className="text-2xl font-bold">` centrato.
+- **Loading state**: `<LoadingState variant="..." />` in
+  `components/layout/loading-state.tsx`. Variants: `table | form | sheet | list`.
+- **Error state**: `<ErrorState ... />` in `components/layout/error-state.tsx`
+  (`variant="inline"` per banner di form, `variant="block"` per placeholder a
+  tutta sezione).
+
+## 3. Tipografia
+
+Usare i componenti in `components/ui/typography.tsx`:
+
+- `<PageTitle>` per il titolo principale (gia incluso automaticamente in
+  `PageHeader title={...}` quando passi una stringa).
+- `<PageSubtitle>` per il sottotitolo.
+- `<SectionTitle>` / `<SectionSubtitle>` per le sezioni interne.
+
+NON ripetere `text-2xl font-bold` o `text-sm text-muted-foreground` a mano.
+
+## 4. Token di colore (vietato fuori da questa lista)
+
+Usare SOLO queste utility Tailwind nelle pagine:
+
+- Superfici: `bg-page`, `bg-page-soft`, `bg-page-shadow`, `bg-card`,
+  `bg-surface`, `bg-surface-strong`, `bg-muted`, `bg-popover`,
+  `bg-primary`, `bg-secondary`, `bg-accent`, `bg-destructive`.
+- Testo: `text-foreground`, `text-muted-foreground`, `text-primary`,
+  `text-primary-foreground`, `text-card-foreground`,
+  `text-destructive`, `text-destructive-foreground`,
+  `text-background`.
+- Bordi/ring: `border-border`, `border-input`, `ring-ring`,
+  `border-destructive`.
+- Tinte semantiche (solo per stati di feedback): `bg-emerald-*`,
+  `bg-amber-*`, `bg-red-*`, `bg-green-*` quando rappresentano
+  esplicitamente success/warning/danger.
+
+VIETATO nei className delle pagine:
+
+- `bg-white`, `bg-black`, `text-white`, `text-black`.
+- Qualsiasi `bg-slate-*`, `bg-gray-*`, `bg-zinc-*`, `bg-neutral-*`,
+  `bg-stone-*` (e relative variant `dark:` / `hover:`).
+- Qualsiasi `text-slate-*`, `text-gray-*`, ecc.
+- Qualsiasi `border-slate-*`, `border-gray-*`, ecc.
+- Hex letterali (`bg-[#1A2027]`, `border-[#05080f]`, ...). Per i colori
+  derivati da dati (es. categoria, kanban) usare `style={{ color: ... }}`
+  inline, mai nei className.
+
+Eccezioni documentate e gia gestite:
+
+- `components/dashboard/**` puo usare le utility `dashboard-panel*` di
+  `app/globals.css`, gia ricondotte a token (`bg-card/60`, `border-border/70`).
+- `components/command-deck/**` mantiene l'estetica immersiva ma usa solo i
+  token (`bg-page-shadow`, `bg-surface-strong/X`, `border-border/X`).
+
+## 5. Pulsanti, tabelle e form
+
+- Pulsanti: SEMPRE `import { Button } from "@/components/ui/button"`. Mai
+  `<button>` raw nelle pagine.
+- Tabelle dati: `<Table>` da `@/components/ui/table` dentro un wrapper
+  `rounded-lg border bg-card shadow-sm` (pattern in
+  `app/sites/[domain]/inventory/table.tsx`).
+- Form: `Form` / `FormField` / `FormItem` da `@/components/ui/form` con
+  validazione `zod` (esempio in `app/sites/[domain]/inventory/editForm.tsx`).
+
+## 6. Dialog "create" dentro PageHeader
+
+I trigger dei dialog di creazione vanno passati direttamente come
+`actions` del `PageHeader`. Vietato l'hack `<div className="container flex
+justify-end pt-12">` come wrapper del trigger.
+
+```tsx
+// Corretto:
+<PageHeader title="Categorie" actions={<DialogCreate />} />
+```
+
+## 7. Audit rapido
+
+```bash
+rg -n "bg-white|bg-black|bg-slate-|bg-gray-|text-slate-|text-gray-|dark:bg-slate-|bg-\\[#" app/ components/
+```
+
+Se appaiono nuove occorrenze fuori da `components/dashboard/**` o
+`components/command-deck/**`, riportare ai token prima di committare.

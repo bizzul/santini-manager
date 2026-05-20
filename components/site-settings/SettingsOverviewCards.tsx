@@ -6,6 +6,7 @@ import {
   Factory,
   Headset,
   Layers,
+  LayoutDashboard,
   Orbit,
   Package,
   Palette,
@@ -49,6 +50,7 @@ interface SettingsOverviewCardsProps {
   aiAction: React.ReactNode;
   themeAction: React.ReactNode;
   supportAction: React.ReactNode;
+  dashboardAction: React.ReactNode;
   /** Trigger for the 3D Desk View (Command Deck) per-site toggle modal. */
   commandDeckAction: React.ReactNode;
   /** Current persisted state of the Command Deck flag, used for the badge. */
@@ -67,6 +69,7 @@ export default function SettingsOverviewCards({
   aiAction,
   themeAction,
   supportAction,
+  dashboardAction,
   commandDeckAction,
   commandDeckEnabled,
 }: SettingsOverviewCardsProps) {
@@ -153,6 +156,17 @@ export default function SettingsOverviewCards({
       badge: "Supporto immediato",
       action: supportAction,
       className: "border-emerald-300/25 bg-emerald-500/10",
+    },
+    {
+      key: "dashboard",
+      title: "Dashboard",
+      description:
+        "Scegli dashboard attive e sequenze domande per My 1° Dashboard.",
+      guideKey: "dashboard",
+      icon: LayoutDashboard,
+      badge: "Dashboard e onboarding",
+      action: dashboardAction,
+      className: "border-violet-300/25 bg-violet-500/10",
     },
     {
       key: "commandDeck",

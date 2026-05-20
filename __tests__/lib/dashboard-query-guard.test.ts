@@ -24,7 +24,7 @@ describe("lib/dashboard-query-guard", () => {
     });
 
     it("matches every configured Postgres fatal code", () => {
-      for (const code of FATAL_DASHBOARD_ERROR_CODES) {
+      for (const code of Array.from(FATAL_DASHBOARD_ERROR_CODES)) {
         expect(isFatalDashboardError(code)).toBe(true);
       }
     });

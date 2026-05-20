@@ -5,11 +5,16 @@ import { QuickActionsButton, QuickActionType } from "./QuickActionsButton";
 import { useQuickActions } from "./QuickActionsProvider";
 
 export function QuickActions() {
-  const { openDialog } = useQuickActions();
+  const { openDialog, openMyDashboardExperience } = useQuickActions();
 
   const handleActionClick = (action: QuickActionType) => {
     openDialog(action);
   };
 
-  return <QuickActionsButton onActionClick={handleActionClick} />;
+  return (
+    <QuickActionsButton
+      onActionClick={handleActionClick}
+      onMyDashboardTrigger={openMyDashboardExperience}
+    />
+  );
 }

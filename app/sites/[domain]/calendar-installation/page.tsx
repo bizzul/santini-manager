@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export interface KanbanCategory {
   id: number;
@@ -135,9 +136,19 @@ async function Page({
   const data = await getData(siteId);
 
   return (
-    <div className="container w-full mx-auto relative">
-      <CalendarComponent tasks={data as TaskWithKanban[]} calendarType="installation" domain={domain} />
-    </div>
+    <PageLayout>
+      <PageHeader
+        title="Calendario installazioni"
+        subtitle="Pianificazione delle date di installazione"
+      />
+      <PageContent>
+        <CalendarComponent
+          tasks={data as TaskWithKanban[]}
+          calendarType="installation"
+          domain={domain}
+        />
+      </PageContent>
+    </PageLayout>
   );
 }
 

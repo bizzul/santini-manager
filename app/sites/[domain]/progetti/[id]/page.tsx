@@ -12,8 +12,8 @@ import { buildCollaboratorTimeSummaries } from "@/lib/project-consuntivo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DetailSheetLayout } from "@/components/layout/detail-sheet-layout";
 import {
-  ArrowLeft,
   CheckCircle2,
   CircleDashed,
   ClipboardList,
@@ -86,7 +86,7 @@ function getControlStatusMeta(status?: string | null): {
       return {
         label: "Da iniziare",
         className:
-          "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+          "bg-muted text-muted-foreground border-border",
       };
   }
 }
@@ -379,9 +379,9 @@ export default async function Page({
   const canBuildExtendedReport =
     hasCollaboratorData && hasSupplierData && hasMaterialData && hasDocumentsData;
   const metricPanelClass =
-    "rounded-xl border border-border/80 bg-card/95 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/80";
+    "rounded-xl border bg-card/95 p-4 shadow-sm";
   const subtlePanelClass =
-    "rounded-xl border border-border bg-background/90 p-4 dark:border-slate-700 dark:bg-slate-800/50";
+    "rounded-xl border bg-muted/40 p-4";
   const showInfoSections =
     Boolean(contactPhone || clientAddress) || Boolean(data.other) || taskSuppliers.length > 0;
 
@@ -394,48 +394,36 @@ export default async function Page({
   const backLabel = kanbanIdentifier ? "Torna al kanban" : "Torna ai progetti";
 
   return (
-    <div className="min-h-screen bg-transparent">
-      <div className="container max-w-6xl mx-auto py-6 px-4">
-        {/* Back link */}
-        <div className="mb-6">
-          <Link
-            href={backHref}
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {backLabel}
-          </Link>
-        </div>
-
-        {/* Main project card – kanban style */}
-        <div
-          className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-md dark:border-slate-700 dark:bg-slate-900"
-          style={{
-            borderLeftWidth: "6px",
-            borderLeftStyle: "solid",
-            borderLeftColor: borderColor,
-          }}
-        >
-          <div className="absolute left-0 right-0 top-0 h-1 bg-slate-200/80 dark:bg-slate-700/80">
+    <DetailSheetLayout backHref={backHref} backLabel={backLabel}>
+      {/* Main project card – kanban style (decorated card kept as-is for its unique progress overlay) */}
+      <div
+        className="relative overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-md"
+        style={{
+          borderLeftWidth: "6px",
+          borderLeftStyle: "solid",
+          borderLeftColor: borderColor,
+        }}
+      >
+          <div className="absolute left-0 right-0 top-0 z-10 h-1 bg-muted">
             <div
               style={{ width: `${percentStatus}%` }}
-              className="h-full bg-green-500 transition-all duration-300"
+              className="h-full bg-emerald-500 transition-all duration-300"
             />
           </div>
-          <div className="absolute right-4 top-1.5 z-10 text-xs font-semibold text-slate-200">
+          <div className="absolute right-4 top-1.5 z-10 rounded-full bg-foreground/80 px-2 py-0.5 text-xs font-semibold text-background">
             {percentStatus}%
           </div>
           <div className="p-5 lg:p-6 space-y-5">
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_320px]">
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-4 dark:border-slate-700">
+                <div className="flex flex-wrap items-center gap-2 border-b pb-4">
                   <Badge
                     variant={data.archived ? "secondary" : "default"}
                     className="text-xs"
                   >
                     {data.archived ? "Archiviato" : "Attivo"}
                   </Badge>
-                  <span className="text-sm font-semibold tracking-wide text-slate-500 dark:text-slate-400">
+                  <span className="text-sm font-semibold tracking-wide text-muted-foreground">
                     #{data.unique_code}
                   </span>
                   {showCategoryColors && (categoryName || productName) && (
@@ -475,36 +463,36 @@ export default async function Page({
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className={`${metricPanelClass} sm:col-span-2`}>
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Dati progetto
                     </p>
                     <div className="mt-2 space-y-2">
                       <div>
-                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                           Cliente
                         </p>
-                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                        <p className="text-base font-semibold text-foreground">
                           {clientName}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[11px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                           Commessa / oggetto
                         </p>
-                        <p className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                        <p className="text-base font-semibold text-foreground">
                           {data.name || data.title || "-"}
                         </p>
                       </div>
                       {data.luogo && (
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <MapPin className="h-4 w-4 shrink-0" />
                           <span>{data.luogo}</span>
                         </div>
                       )}
                     </div>
                   </div>
-                  <div className="rounded-xl border border-border/80 bg-card/95 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900/80">
-                    <div className="h-[148px] overflow-hidden rounded-lg border border-border/70 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60">
+                  <div className="rounded-xl border bg-card/95 p-3 shadow-sm">
+                    <div className="h-[148px] overflow-hidden rounded-lg border bg-muted/40">
                       {projectImageUrl ? (
                         <img
                           src={projectImageUrl}
@@ -512,7 +500,7 @@ export default async function Page({
                           className="h-full w-full object-cover object-center"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs text-slate-500 dark:text-slate-400">
+                        <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
                           Nessuna immagine progetto caricata
                         </div>
                       )}
@@ -522,14 +510,14 @@ export default async function Page({
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className={metricPanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <span className="block text-xs uppercase tracking-wide text-muted-foreground">
                       Pezzi
                     </span>
-                    <span className="mt-2 block text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    <span className="mt-2 block text-2xl font-bold text-foreground">
                       {piecesDisplay}
                     </span>
                     {projectProductLabels.length > 0 && (
-                      <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                         {projectProductLabels.slice(0, 3).join(" · ")}
                         {projectProductLabels.length > 3
                           ? ` +${projectProductLabels.length - 3}`
@@ -538,18 +526,18 @@ export default async function Page({
                     )}
                   </div>
                   <div className={metricPanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <span className="block text-xs uppercase tracking-wide text-muted-foreground">
                       Valore
                     </span>
-                    <span className="mt-2 block text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    <span className="mt-2 block text-2xl font-bold text-foreground">
                       {formatCompactCurrency(data.sellPrice)}
                     </span>
                   </div>
                   <div className={metricPanelClass}>
-                    <span className="block text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <span className="block text-xs uppercase tracking-wide text-muted-foreground">
                       Fase
                     </span>
-                    <span className="mt-2 block text-base font-semibold text-slate-900 dark:text-slate-100">
+                    <span className="mt-2 block text-base font-semibold text-foreground">
                       {data.column?.title || "-"}
                     </span>
                   </div>
@@ -588,32 +576,32 @@ export default async function Page({
                 }
               />
 
-              <div className="rounded-2xl border border-border bg-background/90 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="rounded-2xl border bg-muted/40 p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <ClipboardList className="h-4 w-4 text-slate-400" />
-                  <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Riassunto opere
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="rounded-lg border border-border/80 bg-card/95 px-3 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="rounded-lg border bg-card/95 px-3 py-3 text-center shadow-sm">
+                    <p className="text-[11px] text-muted-foreground">
                       Richieste
                     </p>
-                    <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    <p className="mt-1 text-2xl font-bold text-foreground">
                       {requestedWorks}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border/80 bg-card/95 px-3 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="rounded-lg border bg-card/95 px-3 py-3 text-center shadow-sm">
+                    <p className="text-[11px] text-muted-foreground">
                       Effettuate
                     </p>
                     <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
                       {completedWorks}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-border/80 bg-card/95 px-3 py-3 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="rounded-lg border bg-card/95 px-3 py-3 text-center shadow-sm">
+                    <p className="text-[11px] text-muted-foreground">
                       Mancanti
                     </p>
                     <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
@@ -622,15 +610,15 @@ export default async function Page({
                   </div>
                 </div>
                 <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between rounded-lg border border-border/80 bg-card/95 px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-                    <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center justify-between rounded-lg border bg-card/95 px-3 py-2 text-sm shadow-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
                       <CheckCircle2 className="h-4 w-4 text-green-500" />
                       QC completati
                     </span>
                     <span className="font-semibold">{completedWorks}</span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border/80 bg-card/95 px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-                    <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center justify-between rounded-lg border bg-card/95 px-3 py-2 text-sm shadow-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
                       <CircleDashed className="h-4 w-4 text-amber-500" />
                       QC parziali / da fare
                     </span>
@@ -638,9 +626,9 @@ export default async function Page({
                       {partialWorks} / {Math.max(requestedWorks - completedWorks - partialWorks, 0)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between rounded-lg border border-border/80 bg-card/95 px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900/70">
-                    <span className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-                      <PackageCheck className="h-4 w-4 text-slate-400" />
+                  <div className="flex items-center justify-between rounded-lg border bg-card/95 px-3 py-2 text-sm shadow-sm">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <PackageCheck className="h-4 w-4 text-muted-foreground" />
                       Imballaggio
                     </span>
                     <span
@@ -652,11 +640,11 @@ export default async function Page({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border bg-background/90 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="rounded-2xl border bg-muted/40 p-4">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-slate-400" />
-                    <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Report progetto
                     </span>
                   </div>
@@ -664,8 +652,8 @@ export default async function Page({
                 </div>
 
                 {!canBuildExtendedReport ? (
-                  <div className="space-y-2 rounded-lg border border-dashed border-slate-300 p-3 text-sm dark:border-slate-700">
-                    <p className="text-slate-600 dark:text-slate-300">
+                  <div className="space-y-2 rounded-lg border border-dashed p-3 text-sm">
+                    <p className="text-muted-foreground">
                       Alcuni dati necessari non sono ancora presenti per un report progetto completo
                       (offerta, immagini, costi e performance reparti/collaboratori).
                     </p>
@@ -685,7 +673,7 @@ export default async function Page({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                  <p className="text-sm text-muted-foreground">
                     Dati completi disponibili: puoi scaricare il report progetto con sintesi
                     economica e consuntivo.
                   </p>
@@ -699,7 +687,7 @@ export default async function Page({
                   {!hasCollaboratorData && (
                     <div className={subtlePanelClass}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Ore collaboratori mancanti
                         </span>
                         <div className="flex gap-2">
@@ -723,7 +711,7 @@ export default async function Page({
                   {!hasMaterialData && (
                     <div className={subtlePanelClass}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Costi materiale mancanti
                         </span>
                         <div className="flex gap-2">
@@ -747,15 +735,15 @@ export default async function Page({
                   {(contactPhone || clientAddress) && (
                     <div className={subtlePanelClass}>
                       <div className="flex items-center gap-2 mb-3">
-                        <Phone className="h-4 w-4 text-slate-400" />
-                        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Contatti e indirizzo
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-4">
                         {contactPhone && (
                           <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-slate-400" />
+                            <Phone className="h-4 w-4 text-muted-foreground" />
                             <a
                               href={`tel:${contactPhone}`}
                               className="text-primary hover:underline"
@@ -766,7 +754,7 @@ export default async function Page({
                         )}
                         {clientAddress && (
                           <div className="flex items-center gap-2 text-sm">
-                            <MapPin className="h-4 w-4 text-slate-400" />
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(clientAddress)}`}
                               target="_blank"
@@ -784,12 +772,12 @@ export default async function Page({
                   {data.other && (
                     <div className={subtlePanelClass}>
                       <div className="flex items-center gap-2 mb-2">
-                        <StickyNote className="h-4 w-4 text-slate-400" />
-                        <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <StickyNote className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                           Note operative
                         </span>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap text-slate-700 dark:text-slate-300">
+                      <p className="text-sm whitespace-pre-wrap text-foreground">
                         {data.other}
                       </p>
                     </div>
@@ -799,8 +787,8 @@ export default async function Page({
                 {taskSuppliers.length > 0 ? (
                   <div className={subtlePanelClass}>
                     <div className="flex items-center gap-2 mb-3">
-                      <Truck className="h-4 w-4 text-slate-400" />
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Fornitori collegati
                       </span>
                     </div>
@@ -825,7 +813,7 @@ export default async function Page({
                                 ? "bg-green-50 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800"
                                 : isLate
                                   ? "bg-red-50 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800"
-                                  : "bg-white/90 text-slate-700 border-slate-200 dark:bg-slate-900/70 dark:text-slate-300 dark:border-slate-700"
+                                  : "bg-card text-foreground border-border"
                             }`}
                           >
                             <span className="font-medium">
@@ -852,7 +840,7 @@ export default async function Page({
                 ) : (
                   <div className={subtlePanelClass}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         Fornitori non collegati
                       </span>
                       <div className="flex gap-2">
@@ -887,8 +875,8 @@ export default async function Page({
           </CardHeader>
           <CardContent>
             {!hasDocumentsData && (
-              <div className="mb-4 rounded-lg border border-dashed border-slate-300 p-3 text-sm dark:border-slate-700">
-                <p className="mb-2 text-slate-600 dark:text-slate-300">
+              <div className="mb-4 rounded-lg border border-dashed p-3 text-sm">
+                <p className="mb-2 text-muted-foreground">
                   Nessun documento collegato al progetto.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -914,8 +902,6 @@ export default async function Page({
             />
           </CardContent>
         </Card>
-
-      </div>
-    </div>
+    </DetailSheetLayout>
   );
 }

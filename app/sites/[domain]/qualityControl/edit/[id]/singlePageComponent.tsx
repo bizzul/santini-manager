@@ -1,38 +1,30 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { MobileWorkflowLayout } from "@/components/layout/mobile-workflow-layout";
 
 function SinglePageComponent({ data, user }: { data: any; user: any }) {
   const router = useRouter();
   const { toast } = useToast();
 
-  // This will hold the checked state of each item
   const [checkedState, setCheckedState] = useState(new Map<number, boolean>());
 
-  // Initialize the checked state based on passed data
   useEffect(() => {
-    const newState = new Map();
-
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore: legacy typing constraint
-    data.items.forEach((item) => {
-      newState.set(item.id, item.checked); // Assuming 'item.checked' is a boolean
+    const newState = new Map<number, boolean>();
+    data.items.forEach((item: any) => {
+      newState.set(item.id, item.checked);
     });
     setCheckedState(newState);
-
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore: legacy typing constraint
   }, [data.items]);
 
-  // Handle checkbox change
   const handleCheckboxChange = (itemId: number, checked: boolean) => {
     setCheckedState(new Map(checkedState.set(itemId, checked)));
   };
 
-  // Save data to the database
   async function saveAllData() {
     const payload = Array.from(checkedState, ([id, checked]) => ({
       id,
@@ -45,63 +37,61 @@ function SinglePageComponent({ data, user }: { data: any; user: any }) {
 
     const response = await fetch(`/api/qcItems/${data.id}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json", // Indicate that you're sending a JSON body
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
     const responseData = await response.json();
 
     if (response.ok) {
-      toast({
-        description: `Aggiornato con successo!`,
-      });
+      toast({ description: "Aggiornato con successo!" });
       router.push("/qualityControl/edit");
     } else {
-      toast({
-        description: `Errore nel salvare, ${responseData}`,
-      });
+      toast({ description: `Errore nel salvare, ${responseData}` });
     }
   }
 
   return (
-    <div className="flex justify-center w-auto h-auto flex-col items-center  ">
-      <div className="py-4 md:w-1/2 w-full md:px-0 px-10">
-        <p className="mt-4">
-          
-          <span className="text-2xl"> {data?.task.unique_code} </span> -{" "}
-          <span className="text-md font-light">
-            
-            {data?.task.sellProduct?.name}{" "}
-          </span>
-          -
-          {data?.task.client?.businessName}
-          <span> - Pos.{data.position_nr}</span>
-        </p>
-        <p>Verificare e cliccare la casella solo se la dicitura è corretta</p>
-      </div>
-
-      <div>
-        <ul className="space-y-4 py-2">
-          
-          {data.items.map((item: any) => (
-            <li
-              key={item.id}
-              className={`py-2 flex items-center justify-start gap-10`}
-            >
-              <Checkbox
-                checked={!!checkedState.get(item.id)}
-                onCheckedChange={() =>
-                  handleCheckboxChange(item.id, !checkedState.get(item.id))
-                }
-              />
-              <span className="text-left">{item.name}</span>
-            </li>
-          ))}
-        </ul>
-        <Button onClick={saveAllData}>Salva ed esci</Button>
-      </div>
-    </div>
+    <MobileWorkflowLayout
+      title={
+        <span>
+          <span className="text-2xl font-semibold">{data?.task.unique_code}</span>
+          {data?.task.sellProduct?.name && (
+            <span className="ml-2 text-base font-normal text-muted-foreground">
+              {data?.task.sellProduct?.name}
+            </span>
+          )}
+        </span>
+      }
+      subtitle={
+        <span className="text-sm text-muted-foreground">
+          {data?.task.client?.businessName} · Pos.{data.position_nr} · Verificare e
+          cliccare la casella solo se la dicitura e corretta
+        </span>
+      }
+      back={{ href: "/qualityControl/edit" }}
+      footer={
+        <div className="flex justify-end">
+          <Button onClick={saveAllData}>Salva ed esci</Button>
+        </div>
+      }
+    >
+      <ul className="space-y-2">
+        {data.items.map((item: any) => (
+          <li
+            key={item.id}
+            className="flex items-center gap-4 rounded-lg border bg-card p-3"
+          >
+            <Checkbox
+              checked={!!checkedState.get(item.id)}
+              onCheckedChange={() =>
+                handleCheckboxChange(item.id, !checkedState.get(item.id))
+              }
+            />
+            <span className="text-left text-foreground">{item.name}</span>
+          </li>
+        ))}
+      </ul>
+    </MobileWorkflowLayout>
   );
 }
 
