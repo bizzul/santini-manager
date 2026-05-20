@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getServerSiteContext } from "@/lib/server-data";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { LoadingState } from "@/components/layout/loading-state";
 import OfferCreateClient from "./OfferCreateClient";
 
 export default async function OfferCreatePage({
@@ -101,25 +103,25 @@ export default async function OfferCreatePage({
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        }
-      >
-        <OfferCreateClient
-          domain={domain}
-          siteId={siteId}
-          kanbanId={targetKanbanId}
-          kanbanIdentifier={targetKanbanIdentifier}
-          clients={clients || []}
-          products={products || []}
-          draftTask={draftTask}
-          targetColumnId={targetColumn ? parseInt(targetColumn) : null}
-        />
-      </Suspense>
-    </div>
+    <PageLayout>
+      <PageHeader
+        title={draftId ? "Completa offerta" : "Crea nuova offerta"}
+        subtitle="Procedura guidata per creare o completare un'offerta"
+      />
+      <PageContent variant="narrow">
+        <Suspense fallback={<LoadingState variant="form" rows={6} />}>
+          <OfferCreateClient
+            domain={domain}
+            siteId={siteId}
+            kanbanId={targetKanbanId}
+            kanbanIdentifier={targetKanbanIdentifier}
+            clients={clients || []}
+            products={products || []}
+            draftTask={draftTask}
+            targetColumnId={targetColumn ? parseInt(targetColumn) : null}
+          />
+        </Suspense>
+      </PageContent>
+    </PageLayout>
   );
 }

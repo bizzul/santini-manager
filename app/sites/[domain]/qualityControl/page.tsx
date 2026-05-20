@@ -1,8 +1,12 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
+
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext, fetchReportsData } from "@/lib/server-data";
 import GridReports from "@/components/reports/GridReports";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
 
 export default async function Page({
   params,
@@ -11,33 +15,37 @@ export default async function Page({
 }) {
   const { domain } = await params;
 
-  // Authentication
   const userContext = await getUserContext();
   if (!userContext?.user) {
     return redirect("/login");
   }
 
-  // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
-
-  // Fetch data
   const data = await fetchReportsData(siteId);
 
   return (
-    <div className="container">
-      {data.qualityControl.length > 0 ? (
-        <GridReports
-          suppliers={data.suppliers}
-          imb={[]}
-          qc={data.qualityControl}
-          task={data.tasks}
-          domain={domain}
-        />
-      ) : (
-        <div className="w-full h-full text-center">
-          <h1 className="font-bold text-2xl">Nessun quality control creato!</h1>
-        </div>
-      )}
-    </div>
+    <PageLayout>
+      <PageHeader
+        title="Quality control"
+        subtitle="Controlli qualita registrati per le commesse"
+      />
+      <PageContent>
+        {data.qualityControl.length > 0 ? (
+          <GridReports
+            suppliers={data.suppliers}
+            imb={[]}
+            qc={data.qualityControl}
+            task={data.tasks}
+            domain={domain}
+          />
+        ) : (
+          <EmptyState
+            icon={<ShieldCheck className="h-6 w-6" />}
+            title="Nessun quality control creato"
+            description="I controlli qualita compariranno qui non appena saranno completati."
+          />
+        )}
+      </PageContent>
+    </PageLayout>
   );
 }

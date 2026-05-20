@@ -1,8 +1,12 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import { PackageCheck } from "lucide-react";
+
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext } from "@/lib/server-data";
 import { createClient } from "@/utils/supabase/server";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
 import SellProductWrapper from "./sellProductWrapper";
 
 async function getPackingControl(siteId: string) {
@@ -31,27 +35,31 @@ export default async function Page({
 }) {
   const { domain } = await params;
 
-  // Authentication
   const userContext = await getUserContext();
   if (!userContext?.user) {
     return redirect("/login");
   }
 
-  // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
-
-  // Fetch data
   const data = await getPackingControl(siteId);
 
   return (
-    <div className="container">
-      {data.length > 0 ? (
-        <SellProductWrapper data={data} />
-      ) : (
-        <div className="w-full h-full text-center">
-          <h1 className="font-bold text-2xl">Nessun packing control creato!</h1>
-        </div>
-      )}
-    </div>
+    <PageLayout>
+      <PageHeader
+        title="Packing control"
+        subtitle="Verifica e tracciamento degli imballaggi"
+      />
+      <PageContent>
+        {data.length > 0 ? (
+          <SellProductWrapper data={data} />
+        ) : (
+          <EmptyState
+            icon={<PackageCheck className="h-6 w-6" />}
+            title="Nessun packing control creato"
+            description="I controlli di imballaggio creati dalle commesse compariranno qui."
+          />
+        )}
+      </PageContent>
+    </PageLayout>
   );
 }

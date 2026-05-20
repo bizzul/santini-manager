@@ -1,10 +1,12 @@
 import React from "react";
 import { redirect } from "next/navigation";
+
 import { getUserContext } from "@/lib/auth-utils";
 import {
   requireServerSiteContext,
   fetchTimetrackingData,
 } from "@/lib/server-data";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 import DataWrapper from "./dataWrapper";
 
 export default async function Page({
@@ -14,21 +16,14 @@ export default async function Page({
 }) {
   const { domain } = await params;
 
-  // Authentication
   const userContext = await getUserContext();
   if (!userContext?.user) {
     return redirect("/login");
   }
 
-  // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
-
-  // Fetch timetracking data
   const data = await fetchTimetrackingData(siteId);
 
-  // Filter timetracking entries based on user role
-  // Prefer DB role, but fall back to auth app_metadata role for superadmin/admin users
-  // that might not be aligned yet in the User table.
   const metadataRoleRaw = userContext.user?.app_metadata?.role;
   const metadataRole =
     typeof metadataRoleRaw === "string"
@@ -40,8 +35,6 @@ export default async function Page({
       ? metadataRole
       : userContext.role;
   const isRegularUser = effectiveRole === "user";
-  // userContext.user.id is the auth UUID, but employee_id references User.id (integer)
-  // We need to find the current user's User table record to get the integer ID
   const currentUserRecord = data.users.find(
     (u: any) => u.authId === userContext.user.id
   );
@@ -52,17 +45,27 @@ export default async function Page({
     : data.timetrackings;
 
   return (
-    <div className="container">
-      <DataWrapper
-        data={filteredTimetrackings}
-        users={data.users}
-        roles={data.roles}
-        tasks={data.tasks}
-        domain={domain}
-        internalActivities={data.internalActivities}
-        mode={isRegularUser ? "personal" : "admin"}
-        currentUserId={userContext.user.id}
+    <PageLayout>
+      <PageHeader
+        title={isRegularUser ? "Le mie ore" : "Ore lavorate"}
+        subtitle={
+          isRegularUser
+            ? "Registra e consulta le tue ore lavorate"
+            : "Consultazione e gestione delle ore del team"
+        }
       />
-    </div>
+      <PageContent>
+        <DataWrapper
+          data={filteredTimetrackings}
+          users={data.users}
+          roles={data.roles}
+          tasks={data.tasks}
+          domain={domain}
+          internalActivities={data.internalActivities}
+          mode={isRegularUser ? "personal" : "admin"}
+          currentUserId={userContext.user.id}
+        />
+      </PageContent>
+    </PageLayout>
   );
 }

@@ -1,35 +1,30 @@
 "use client";
-import React, { useState } from "react";
-import { QualityControl, User } from "@/types/supabase";
-import { useToast } from "../ui/use-toast";
+import React from "react";
+import { useRouter } from "next/navigation";
+import { ShieldCheck } from "lucide-react";
+import { QualityControl } from "@/types/supabase";
 
+import { MobileWorkflowLayout } from "@/components/layout/mobile-workflow-layout";
+import { EmptyState } from "@/components/layout/empty-state";
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-} from "../ui/card";
-
-import { useRouter } from "next/navigation";
+} from "@/components/ui/card";
 
 export const statusText = (status: string) => {
-  let statusText;
   switch (status) {
     case "NOT_DONE":
-      statusText = "Non completato";
-      break;
+      return "Non completato";
     case "PARTIALLY_DONE":
-      statusText = "Parzialmente completato";
-      break;
+      return "Parzialmente completato";
     case "DONE":
-      statusText = "Completato";
-      break;
+      return "Completato";
     default:
-      statusText = "Unknown Status"; // Fallback for unrecognized status
+      return "Stato sconosciuto";
   }
-  return statusText;
 };
 
 const TaskCard = ({
@@ -39,30 +34,35 @@ const TaskCard = ({
   quality: any;
   onClick: any;
 }) => {
+  const statusColor =
+    quality.passed === "NOT_DONE"
+      ? "text-destructive"
+      : quality.passed === "PARTIALLY_DONE"
+        ? "text-amber-500"
+        : quality.passed === "DONE"
+          ? "text-emerald-500"
+          : "text-muted-foreground";
+
   return (
     <Card
       onClick={() => onClick(quality)}
-      className="hover:bg-tremor-background-emphasis pointer-events-auto select-none w-64 h-32"
+      role="button"
+      tabIndex={0}
+      className="h-32 w-64 cursor-pointer select-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <CardHeader>
         <CardTitle>
-          
           {quality.task?.unique_code} -{" "}
           <span className="text-sm">POS.{quality.position_nr}</span>
         </CardTitle>
         <CardDescription>
           <span className="text-sm font-light">
-            
-            {quality.task?.sellProduct?.name}{" "}
+            {quality.task?.sellProduct?.name}
           </span>
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div
-          className={`${quality.passed === "NOT_DONE" && "text-red-500"} ${
-            quality.passed === "PARTIALLY_DONE" && "text-amber-500"
-          } ${quality.passed === "DONE" && "text-green-500"}`}
-        >
+        <div className={statusColor}>
           {statusText(quality.passed || "PENDING")}
         </div>
       </CardContent>
@@ -72,12 +72,11 @@ const TaskCard = ({
 
 function MobilePage({
   data,
-  session,
 }: {
   data: {
     quality: QualityControl[];
   };
-  session: any;
+  session?: any;
 }) {
   const router = useRouter();
 
@@ -86,15 +85,18 @@ function MobilePage({
   };
 
   return (
-    <div>
-      <div className="flex justify-center w-auto h-auto flex-col items-center text-slate-200 ">
-        <div className="py-4 md:w-1/2 w-full md:px-0 px-10">
-          <p className="mt-4 text-xl font-bold text-gray-200">
-            Quality Control
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-4 justify-center">
+    <MobileWorkflowLayout
+      title="Quality control"
+      subtitle="Seleziona un controllo qualita da completare"
+    >
+      {data.quality.length === 0 ? (
+        <EmptyState
+          icon={<ShieldCheck className="h-6 w-6" />}
+          title="Nessun controllo qualita da effettuare"
+          description="Quando saranno disponibili nuovi controlli compariranno qui."
+        />
+      ) : (
+        <div className="flex flex-wrap justify-center gap-4">
           {data.quality.map((quality) => (
             <TaskCard
               key={quality.id}
@@ -103,8 +105,8 @@ function MobilePage({
             />
           ))}
         </div>
-      </div>
-    </div>
+      )}
+    </MobileWorkflowLayout>
   );
 }
 

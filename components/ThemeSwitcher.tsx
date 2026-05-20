@@ -38,7 +38,13 @@ export function ThemeSwitcher() {
 
     const applyMode = (mode: SiteThemeMode) => {
       setCurrentMode(mode);
-      setTheme(mode === "dark" ? "dark" : "light");
+      if (mode === "dark") {
+        setTheme("dark");
+      } else if (mode === "light") {
+        setTheme("light");
+      } else {
+        setTheme("system");
+      }
     };
 
     const syncMode = () => {
@@ -70,7 +76,13 @@ export function ThemeSwitcher() {
   const handleSelectMode = (mode: SiteThemeMode) => {
     window.localStorage.setItem(SITE_THEME_MODE_STORAGE_KEY, mode);
     setCurrentMode(mode);
-    setTheme(mode === "dark" ? "dark" : "light");
+    if (mode === "dark") {
+      setTheme("dark");
+    } else if (mode === "light") {
+      setTheme("light");
+    } else {
+      setTheme("system");
+    }
     window.dispatchEvent(new Event("site-theme-mode-change"));
   };
 

@@ -148,7 +148,7 @@ export function UserNode({
               {name || "Commander"}
             </div>
             {subtitle && (
-              <div className="mt-1 text-[9px] tracking-[0.28em] uppercase text-slate-400">
+              <div className="mt-1 text-[9px] tracking-[0.28em] uppercase text-muted-foreground">
                 {subtitle}
               </div>
             )}

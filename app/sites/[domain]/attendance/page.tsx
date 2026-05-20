@@ -1,10 +1,12 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import { CalendarCheck } from "lucide-react";
+
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
 import { AttendanceGrid } from "@/components/attendance/AttendanceGrid";
-import { CalendarCheck } from "lucide-react";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 export default async function AttendancePage({
     params,
@@ -26,24 +28,27 @@ export default async function AttendancePage({
     const isAdmin = isAdminOrSuperadmin(userContext.role);
 
     return (
-        <div className="container py-6 space-y-6">
-            <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-primary/10 rounded-xl">
-                    <CalendarCheck className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                    <h1 className="text-2xl font-bold">Presenze</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Registro presenze, ferie e assenze
-                    </p>
-                </div>
-            </div>
-
-            <AttendanceGrid
-                domain={domain}
-                isAdmin={isAdmin}
-                currentUserId={userContext.user.id}
+        <PageLayout>
+            <PageHeader
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-primary/10 rounded-xl">
+                            <CalendarCheck className="h-6 w-6 text-primary" />
+                        </div>
+                        <span className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                            Presenze
+                        </span>
+                    </div>
+                }
+                subtitle="Registro presenze, ferie e assenze"
             />
-        </div>
+            <PageContent>
+                <AttendanceGrid
+                    domain={domain}
+                    isAdmin={isAdmin}
+                    currentUserId={userContext.user.id}
+                />
+            </PageContent>
+        </PageLayout>
     );
 }

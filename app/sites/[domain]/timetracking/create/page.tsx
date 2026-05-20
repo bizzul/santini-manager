@@ -1,15 +1,17 @@
 import React from "react";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Clock, ArrowLeft } from "lucide-react";
+
 import { createClient } from "@/utils/server";
 import CreatePage, {
   InternalActivity,
 } from "@/components/timeTracking/create-page";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
-import { Clock, ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
+import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
 // Define types to match what CreatePage expects
 interface Roles {
@@ -314,54 +316,57 @@ async function Page({ params }: { params: Promise<{ domain: string }> }) {
     .slice(0, 2);
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-background border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/sites/${domain}/timetracking`}
-              className="p-2 hover:bg-background/80 rounded-xl transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-            </Link>
-            <div className="flex items-center gap-3 flex-1">
-              <div className="p-2.5 bg-primary/10 rounded-xl">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">
-                  Ciao {userProfile?.name || user?.email?.split("@")[0]}
-                </p>
-                <h1 className="text-xl md:text-2xl font-bold">
-                  Registra ore
-                </h1>
-              </div>
+    <PageLayout>
+      <PageHeader
+        className="bg-gradient-to-br from-primary/10 via-primary/5 to-page"
+        breadcrumbs={
+          <Link
+            href={`/sites/${domain}/timetracking`}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Torna alle ore
+          </Link>
+        }
+        title={
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-primary/10 p-2.5">
+              <Clock className="h-6 w-6 text-primary" />
             </div>
-            {/* User Avatar */}
-            <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-lg">
-              <AvatarImage
-                src={userProfile?.picture || undefined}
-                alt={displayName}
-              />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="flex flex-col">
+              <p className="text-xs text-muted-foreground">
+                Ciao {userProfile?.name || user?.email?.split("@")[0]}
+              </p>
+              <span className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+                Registra ore
+              </span>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <CreatePage
-        data={data}
-        session={session}
-        internalActivities={data.internalActivities}
-        allUserEntries={data.allUserEntries}
-        domain={domain}
-        siteId={siteId}
-        isAttendanceModuleEnabled={isAttendanceModuleEnabled}
+        }
+        actions={
+          <Avatar className="h-12 w-12 border-2 border-primary/20 shadow-lg">
+            <AvatarImage
+              src={userProfile?.picture || undefined}
+              alt={displayName}
+            />
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+        }
       />
-    </div>
+      <PageContent>
+        <CreatePage
+          data={data}
+          session={session}
+          internalActivities={data.internalActivities}
+          allUserEntries={data.allUserEntries}
+          domain={domain}
+          siteId={siteId}
+          isAttendanceModuleEnabled={isAttendanceModuleEnabled}
+        />
+      </PageContent>
+    </PageLayout>
   );
 }
 

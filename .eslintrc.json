@@ -14,5 +14,43 @@
         "varsIgnorePattern": "^_"
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "app/**/*.tsx",
+        "components/**/*.tsx"
+      ],
+      "excludedFiles": [
+        "components/dashboard/**/*.tsx",
+        "components/command-deck/**/*.tsx",
+        "components/kanbans/**/*.tsx",
+        "components/calendar/**/*.tsx",
+        "components/app-sidebar.tsx",
+        "components/ui/sidebar.tsx",
+        "components/site-topbar.tsx",
+        "components/ThemeSwitcher.tsx",
+        "app/page.tsx",
+        "app/(auth)/**/*.tsx",
+        "app/(administration)/**/*.tsx"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "warn",
+          {
+            "selector": "Literal[value=/(?:^|\\s|:)(?:bg|text|border|ring|fill|stroke|divide|placeholder|caret|accent|outline|decoration|shadow)-(?:slate|gray|zinc|neutral|stone)-\\d/]",
+            "message": "UI rule: usare i token semantici (bg-card, text-foreground, border-border) invece di slate/gray/zinc/neutral/stone. Vedi .cursor/rules/ui-standardization.mdc"
+          },
+          {
+            "selector": "Literal[value=/(?:^|\\s|:)(?:bg|text|border)-(?:white|black)(?:\\s|\\u002F|$)/]",
+            "message": "UI rule: usare i token (bg-card, text-foreground, ecc.) invece di bg-white/bg-black/text-white/text-black. Vedi .cursor/rules/ui-standardization.mdc"
+          },
+          {
+            "selector": "Literal[value=/(?:^|\\s)(?:bg|text|border)-\\[#[0-9a-fA-F]{3,8}\\]/]",
+            "message": "UI rule: vietati hex letterali in className. Usare i token o `style={{ color: ... }}` per colori derivati da dati. Vedi .cursor/rules/ui-standardization.mdc"
+          }
+        ]
+      }
+    }
+  ]
 }

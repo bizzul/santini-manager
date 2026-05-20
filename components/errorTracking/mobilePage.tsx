@@ -177,16 +177,13 @@ function MobilePage({
   logger.debug(errors);
 
   return (
-    <div className="container max-w-2xl mx-auto px-4 py-6">
+    <div className="mx-auto w-full max-w-2xl">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold">
-          Segnalazione Errori - Step {step} di 3
-        </h2>
-        <p className="mt-2 text-muted-foreground">
-          Compila il form per segnalare un errore
+        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Step {step} di 3
         </p>
         {error && (
-          <div className="mt-4 p-4 rounded-md bg-destructive/15 text-destructive flex items-center">
+          <div className="mt-4 flex items-center rounded-md bg-destructive/15 p-4 text-destructive">
             <FontAwesomeIcon icon={faWarning} className="mr-2" />
             {error}
           </div>
@@ -486,7 +483,7 @@ function MobilePage({
       )}
 
       {loading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm">
           <div className="bg-background p-4 rounded-lg">
             <p>Invio in corso...</p>
           </div>

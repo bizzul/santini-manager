@@ -1,21 +1,12 @@
 "use client";
 import React, { useState } from "react";
-import { useToast } from "../ui/use-toast";
-
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-
 import { useRouter } from "next/navigation";
+import { PackageCheck } from "lucide-react";
 
-// Define types based on Supabase schema
+import { MobileWorkflowLayout } from "@/components/layout/mobile-workflow-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+
 interface PackingControl {
   id: number;
   passed: string;
@@ -28,21 +19,16 @@ interface PackingControl {
 }
 
 export const statusText = (status: string) => {
-  let statusText;
   switch (status) {
     case "NOT_DONE":
-      statusText = "Non completato";
-      break;
+      return "Non completato";
     case "PARTIALLY_DONE":
-      statusText = "Parzialmente completato";
-      break;
+      return "Parzialmente completato";
     case "DONE":
-      statusText = "Completato";
-      break;
+      return "Completato";
     default:
-      statusText = "Unknown Status"; // Fallback for unrecognized status
+      return "Stato sconosciuto";
   }
-  return statusText;
 };
 
 const TaskCard = ({
@@ -52,43 +38,46 @@ const TaskCard = ({
   packing: PackingControl;
   onClick: (packing: PackingControl) => void;
 }) => {
+  const statusColor =
+    packing.passed === "NOT_DONE"
+      ? "text-destructive"
+      : packing.passed === "PARTIALLY_DONE"
+        ? "text-amber-500"
+        : packing.passed === "DONE"
+          ? "text-emerald-500"
+          : "text-muted-foreground";
+
   return (
     <Card
       onClick={() => onClick(packing)}
-      className="hover:bg-tremor-background-emphasis pointer-events-auto select-none w-64 h-32"
+      role="button"
+      tabIndex={0}
+      className="h-32 w-64 cursor-pointer select-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <CardHeader>
         <CardTitle>{packing.task?.unique_code}</CardTitle>
         <CardDescription>
           <span className="text-sm font-light">
-            {packing.task?.sellProduct?.name}{" "}
+            {packing.task?.sellProduct?.name}
           </span>
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div
-          className={`${packing.passed === "NOT_DONE" && "text-red-500"} ${
-            packing.passed === "PARTIALLY_DONE" && "text-amber-500"
-          } ${packing.passed === "DONE" && "text-green-500"}`}
-        >
-          {statusText(packing.passed)}
-        </div>
+        <div className={statusColor}>{statusText(packing.passed)}</div>
       </CardContent>
     </Card>
   );
 };
 
 function MobilePage({
-  session,
   data,
 }: {
-  session: any;
+  session?: any;
   data: {
     packing: PackingControl[];
   };
 }) {
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+  const [loading] = useState(false);
   const router = useRouter();
 
   const handlePackingClick = (packing: PackingControl) => {
@@ -96,15 +85,18 @@ function MobilePage({
   };
 
   return (
-    <div>
-      <div className="flex justify-center w-auto h-auto flex-col items-center text-slate-200 ">
-        <div className="py-4 md:w-1/2 w-full md:px-0 px-10">
-          <p className="mt-4 text-xl font-bold text-gray-200">
-            Check imballaggio
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-4 justify-center">
+    <MobileWorkflowLayout
+      title="Check imballaggio"
+      subtitle="Seleziona un packing control da verificare"
+    >
+      {data.packing.length === 0 ? (
+        <EmptyState
+          icon={<PackageCheck className="h-6 w-6" />}
+          title="Nessun packing control da verificare"
+          description="Quando saranno disponibili nuove richieste compariranno qui."
+        />
+      ) : (
+        <div className="flex flex-wrap justify-center gap-4">
           {data.packing.map((packing) => (
             <TaskCard
               key={packing.id}
@@ -113,12 +105,12 @@ function MobilePage({
             />
           ))}
         </div>
+      )}
 
-        {loading && (
-          <div className="absolute top-0 left-0 w-screen h-screen bg-black/50"></div>
-        )}
-      </div>
-    </div>
+      {loading && (
+        <div className="fixed inset-0 z-50 bg-foreground/40 backdrop-blur-sm" />
+      )}
+    </MobileWorkflowLayout>
   );
 }
 

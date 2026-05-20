@@ -123,12 +123,12 @@ export default function OfferCreateClient({
 
   if (!kanbanId) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold mb-4">
+      <div className="rounded-lg border border-dashed bg-card/50 p-12 text-center">
+        <h2 className="text-xl font-semibold mb-2">
           Nessuna Kanban Offerte configurata
         </h2>
-        <p className="text-muted-foreground">
-          Per creare offerte, è necessario prima configurare una kanban con il flag
+        <p className="text-sm text-muted-foreground">
+          Per creare offerte, e necessario prima configurare una kanban con il flag
           &quot;Kanban Offerte&quot; attivo.
         </p>
       </div>
@@ -136,37 +136,26 @@ export default function OfferCreateClient({
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-center gap-3 mb-8">
-        <h1 className="text-2xl font-bold text-center">
-          {isCompletingDraft
-            ? "Completa Offerta"
-            : (verticalProfile?.pageCopy.offerCreateTitle || "Crea Nuova Offerta")}
-        </h1>
-        {isCompletingDraft && (
+    <div className="space-y-6">
+      {isCompletingDraft && draftTask && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4">
           <Badge className="bg-amber-500 hover:bg-amber-600">
             <FileEdit className="h-3 w-3 mr-1" />
-            Da bozza: {draftTask?.unique_code}
+            Da bozza: {draftTask.unique_code}
           </Badge>
-        )}
-      </div>
-      
-      {/* Draft info banner */}
-      {isCompletingDraft && draftTask && (
-        <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <p className="text-sm text-amber-700 dark:text-amber-300">
+          <p className="flex-1 text-sm text-foreground">
             Stai completando la bozza <strong>{draftTask.unique_code}</strong>.
-            {draftTask.clientId && " Cliente e prodotti sono già pre-selezionati."}
+            {draftTask.clientId && " Cliente e prodotti sono gia pre-selezionati."}
           </p>
         </div>
       )}
 
       {!isCompletingDraft && verticalProfile?.pageCopy.offerCreateSubtitle && (
-        <p className="mb-6 text-center text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {verticalProfile.pageCopy.offerCreateSubtitle}
         </p>
       )}
-      
+
       <OfferWizard
         kanbanId={kanbanId}
         onComplete={handleComplete}

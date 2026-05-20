@@ -1,28 +1,26 @@
 "use client";
 import { PackingControl, PackingItem } from "@/types/supabase";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
+import { MobileWorkflowLayout } from "@/components/layout/mobile-workflow-layout";
 
 const ItemCard = ({
   item,
@@ -33,15 +31,18 @@ const ItemCard = ({
   selected: any;
   isComplete: boolean;
 }) => {
-  const cardClass = isComplete ? "bg-green-300 text-black" : "";
-
   return (
     <Card
       onClick={() => selected(item)}
-      className={`hover:bg-tremor-background-emphasis pointer-events-auto select-none transition-all duration-500 w-64 h-32 ${cardClass}`}
+      role="button"
+      tabIndex={0}
+      className={`h-32 w-64 cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        isComplete
+          ? "border-emerald-500/60 bg-emerald-500/10"
+          : "hover:bg-accent hover:text-accent-foreground"
+      }`}
     >
       <CardHeader>
-        
         <CardTitle>{item.name}</CardTitle>
         <CardDescription>{!isComplete && "INSERIRE I DATI"}</CardDescription>
       </CardHeader>
@@ -60,32 +61,27 @@ function SinglePageComponent({
   const [itemValues, setItemValues] = useState<Map<number, any>>(new Map());
   const [item, setItem] = useState<PackingItem>();
   const [open, setOpen] = useState(false);
-  const [numero, setCoprisogliaNumero] = useState(""); // temporary state for input
+  const [numero, setCoprisogliaNumero] = useState("");
   const [pacchi, setNumeroPacchi] = useState("");
   const router = useRouter();
   const { toast } = useToast();
+
   useEffect(() => {
     const initialValues = new Map();
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore: legacy typing constraint
-    data.items.forEach((item: PackingItem) => {
-      // Assuming item has properties 'numero' and 'pacchi' for existing data
-      initialValues.set(item.id, {
-        id: item.id,
-        numero: item.number,
-        pacchi: item.package_quantity,
+    data.items.forEach((packingItem: PackingItem) => {
+      initialValues.set(packingItem.id, {
+        id: packingItem.id,
+        numero: packingItem.number,
+        pacchi: packingItem.package_quantity,
       });
     });
     setItemValues(initialValues);
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore: legacy typing constraint
   }, [data.items]);
 
-  function handleClick(item: PackingItem) {
-    setItem(item);
+  function handleClick(packingItem: PackingItem) {
+    setItem(packingItem);
     setOpen(true);
-    // Check if we have values for this item and set them, or reset to default
-    const existingValues = itemValues.get(item.id);
+    const existingValues = itemValues.get(packingItem.id);
     if (existingValues) {
       setCoprisogliaNumero(existingValues.numero);
       setNumeroPacchi(existingValues.pacchi);
@@ -97,7 +93,6 @@ function SinglePageComponent({
 
   function saveData() {
     if (item) {
-      // Update the item values state with new values associated with the item's ID
       const updatedValues = new Map(itemValues);
       updatedValues.set(item.id, {
         id: item.id,
@@ -105,112 +100,100 @@ function SinglePageComponent({
         pacchi: Number(pacchi),
       });
       setItemValues(updatedValues);
-      setOpen(false); // Close dialog after saving
+      setOpen(false);
     }
   }
 
   function isItemComplete(itemId: number) {
     const itemData = itemValues.get(itemId);
-    return itemData && itemData.numero !== null && itemData.pacchi !== null; // check if fields are set
+    return itemData && itemData.numero !== null && itemData.pacchi !== null;
   }
 
   async function saveAllData() {
-    // Logic for POST request using all values from itemValues
-    // Logic for POST request using all values from itemValues
     const payload = Array.from(itemValues.values());
-
-    // Construct a request body that includes both the user and the payload
     const requestBody = {
-      user: user.sub, // Include the user's identifier (assuming user.sub is correct)
-      items: payload, // Include the payload as an array of items
+      user: user.sub,
+      items: payload,
     };
 
     const response = await fetch(`/api/packingItems/${data.id}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json", // Indicate that you're sending a JSON body
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
     });
     const responseData = await response.json();
     if (response.ok) {
-      toast({
-        description: `Aggiornato con successo!`,
-      });
+      toast({ description: "Aggiornato con successo!" });
       router.push("/boxing/edit");
     } else {
-      toast({
-        description: `Errore nel salvare, ${responseData}`,
-      });
+      toast({ description: `Errore nel salvare, ${responseData}` });
     }
-    // Convert the Map to an array of values
-    // const valuesArray = Array.from(itemValues.values());
-    // console.log("Processed item values:", valuesArray);
-    // Here you would typically send valuesArray to your backend or elsewhere
   }
 
   return (
-    <div className="flex justify-center w-auto h-auto flex-col items-center  ">
-      <div className="py-4 md:w-1/2 w-full md:px-0 px-10">
-        <p className="mt-4">
-          
-          <span className="text-2xl"> {(data as any)?.task?.unique_code} </span> -{" "}
-          <span className="text-md font-light">
-            
-            {(data as any)?.task?.sellProduct?.name}{" "}
+    <MobileWorkflowLayout
+      title={
+        <span>
+          <span className="text-2xl font-semibold">
+            {(data as any)?.task?.unique_code}
           </span>
-          -
-          {(data as any)?.task?.client?.businessName}
-        </p>
-        <p>Aggiungi i valori dei pacchi</p>
-      </div>
-
-      <div className="flex flex-wrap gap-4 justify-center">
-        
-        {data!.items.map((item: PackingItem) => (
+          {(data as any)?.task?.sellProduct?.name && (
+            <span className="ml-2 text-base font-normal text-muted-foreground">
+              {(data as any)?.task?.sellProduct?.name}
+            </span>
+          )}
+        </span>
+      }
+      subtitle={
+        <span className="text-sm text-muted-foreground">
+          {(data as any)?.task?.client?.businessName} · Aggiungi i valori dei pacchi
+        </span>
+      }
+      back={{ href: "/boxing/edit" }}
+      footer={
+        <div className="flex justify-end">
+          <Button onClick={saveAllData}>Salva ed esci</Button>
+        </div>
+      }
+    >
+      <div className="flex flex-wrap justify-center gap-4">
+        {data!.items.map((packingItem: PackingItem) => (
           <ItemCard
-            key={item.id}
-            item={item}
+            key={packingItem.id}
+            item={packingItem}
             selected={handleClick}
-            isComplete={isItemComplete(item.id)}
+            isComplete={isItemComplete(packingItem.id)}
           />
         ))}
-      </div>
-      <div className="pt-12">
-        <Button onClick={saveAllData}>Salva ed esci</Button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{item?.name}</DialogTitle>
-            {/* <DialogDescription>
-             
-            </DialogDescription> */}
           </DialogHeader>
-          <div>
+          <div className="space-y-2">
             <Label>{item?.name}</Label>
             <Input
               value={numero}
               onChange={(e) => setCoprisogliaNumero(e.target.value)}
             />
           </div>
-          <div>
+          <div className="space-y-2">
             {item?.name === "Guarnizione esterna" ? (
               <Label>Metri</Label>
             ) : (
               <Label>Numero pacchi</Label>
             )}
-
             <Input
               value={pacchi}
               onChange={(e) => setNumeroPacchi(e.target.value)}
             />
           </div>
-          <Button onClick={() => saveData()}>Salva</Button>
+          <Button onClick={saveData}>Salva</Button>
         </DialogContent>
       </Dialog>
-    </div>
+    </MobileWorkflowLayout>
   );
 }
 
