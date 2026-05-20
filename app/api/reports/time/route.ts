@@ -364,7 +364,32 @@ export const POST = async (req: NextRequest) => {
       siteId = context.siteId;
     }
 
-    // Fetch timetracking data with proper relations (filter by site_id only)
+    // For regular users, resolve their internal User.id BEFORE querying
+    // Timetracking, so we can push the employee_id filter into the database
+    // query (otherwise we hit PostgREST's default row cap of 1000 and lose
+    // the oldest entries in the requested period).
+    let regularUserInternalId: number | null = null;
+    if (isRegularUser) {
+      const { data: regularUserRow } = await supabase
+        .from("User")
+        .select("id")
+        .eq("authId", userContext.user.id)
+        .single();
+
+      if (!regularUserRow) {
+        return NextResponse.json(
+          { error: "Utente non trovato" },
+          { status: 404 },
+        );
+      }
+
+      regularUserInternalId = Number(regularUserRow.id);
+    }
+
+    // Fetch timetracking data with proper relations. We apply date/site/user
+    // filters at the database layer so we don't rely on PostgREST returning
+    // the full table (default limit is 1000 rows, which previously cut off
+    // the oldest months when the dataset was large).
     let query = supabase
       .from("Timetracking")
       .select(`
@@ -373,47 +398,33 @@ export const POST = async (req: NextRequest) => {
         user:employee_id(id, given_name, family_name, email),
         roles:_RolesToTimetracking(role:Roles(id, name))
       `)
+      .gte("created_at", from.toISOString())
+      .lte("created_at", to.toISOString())
       .order("created_at", { ascending: false });
 
     if (siteId) {
       query = query.eq("site_id", siteId);
     }
 
+    if (isRegularUser && regularUserInternalId !== null) {
+      query = query.eq("employee_id", regularUserInternalId);
+    } else if (!isRegularUser && selectedUserIds.length > 0) {
+      query = query.in("employee_id", selectedUserIds);
+    }
+
     const { data: timeTrackingsData, error: timeTrackingError } = await query;
 
     if (timeTrackingError) throw timeTrackingError;
 
-    // Filter by user role (site already filtered in query)
-    let filteredTimetrackings = (timeTrackingsData || []).filter((t: any) => {
+    // Defensive in-memory filter: keeps the previous semantics for regular
+    // users (entries must have a resolvable user) and is a safety net in case
+    // a row slips through the DB filters.
+    const filteredTimetrackings = (timeTrackingsData || []).filter((t: any) => {
       if (isRegularUser) {
         return t.user?.id && t.employee_id;
       }
       return true;
     });
-
-    // For regular users, filter to only their entries
-    if (isRegularUser) {
-      // Get the user's internal ID from the User table
-      const { data: userData } = await supabase
-        .from("User")
-        .select("id")
-        .eq("authId", userContext.user.id)
-        .single();
-
-      if (userData) {
-        filteredTimetrackings = filteredTimetrackings.filter(
-          (t: any) => t.employee_id === userData.id,
-        );
-      } else {
-        filteredTimetrackings = [];
-      }
-    }
-
-    if (!isRegularUser && selectedUserIds.length > 0) {
-      filteredTimetrackings = filteredTimetrackings.filter((tracking: any) =>
-        selectedUserIds.includes(Number(tracking.employee_id)),
-      );
-    }
 
     // Get users for the report (only enabled users)
     let userQuery = supabase.from("User").select("*").eq("enabled", true);
