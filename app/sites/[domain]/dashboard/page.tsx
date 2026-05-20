@@ -86,17 +86,14 @@ export default async function SiteDashboardPage({
       <PageContent>
         <div className="space-y-6">
           <KPICards data={dashboardData} />
+          <ActiveProjectsMapCard
+            mapHeightClassName="h-[500px]"
+            domain={domain}
+            projects={dashboardData.activeProjectLocations}
+          />
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-4">
-              <PipelineChart data={dashboardData} />
-              <DepartmentWorkloadChart data={dashboardData} />
-            </div>
-            <ActiveProjectsMapCard
-              className="h-full"
-              mapHeightClassName="h-[500px] md:h-full"
-              domain={domain}
-              projects={dashboardData.activeProjectLocations}
-            />
+            <PipelineChart data={dashboardData} />
+            <DepartmentWorkloadChart data={dashboardData} />
           </div>
           <LatestNotifications siteId={siteContext.siteId} />
         </div>
