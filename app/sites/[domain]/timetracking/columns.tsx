@@ -668,7 +668,15 @@ export const createColumns = (
       ),
     },
     {
-      accessorKey: "data",
+      id: "data",
+      accessorFn: (row) => {
+        const value = row.created_at as string | Date | null | undefined;
+        if (!value) return null;
+        const parsed = value instanceof Date ? value : new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      },
+      sortingFn: "datetime",
+      sortUndefined: "last",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Data" />
       ),
