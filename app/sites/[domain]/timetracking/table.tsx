@@ -50,6 +50,36 @@ interface InternalActivity {
   label: string;
 }
 
+const DEFAULT_AVATAR_COLOR = "#6366f1";
+
+function buildUserInitials(user: any): string {
+  const stored = (user?.initials || "").toString().trim();
+  if (stored) return stored.slice(0, 2).toUpperCase();
+
+  const fromGiven = (user?.given_name || "").trim().charAt(0);
+  const fromFamily = (user?.family_name || "").trim().charAt(0);
+  const composed = `${fromGiven}${fromFamily}`.toUpperCase();
+  if (composed) return composed;
+
+  const fallback = (user?.email || "?").trim().charAt(0).toUpperCase();
+  return fallback || "?";
+}
+
+function UserInitialBadge({ user }: { user: any }) {
+  const color = (user?.color as string | undefined) || DEFAULT_AVATAR_COLOR;
+  const initials = buildUserInitials(user);
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+      style={{ backgroundColor: color }}
+    >
+      {initials}
+    </span>
+  );
+}
+
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -190,16 +220,35 @@ export function DataTable<TData, TValue>({
   //   }
   // }, [table.getState().columnFilters[0]?.id]);
 
-  const uniqueUsers = Array.from(
-    new Set(
-      data.map((item) => {
-        const user = (item as { user?: { family_name?: string; given_name?: string } }).user;
-        return user
-          ? `${user.family_name ?? ""} ${user.given_name ?? ""}`.trim() || "Unknown User"
-          : "Unknown User";
-      })
-    )
-  );
+  const uniqueUserOptions = (() => {
+    const seen = new Map<string, { label: string; user: any | null }>();
+
+    data.forEach((item) => {
+      const user = (item as { user?: any }).user;
+      const label = user
+        ? `${user.family_name ?? ""} ${user.given_name ?? ""}`.trim() ||
+          "Unknown User"
+        : "Unknown User";
+
+      if (!seen.has(label)) {
+        const matchedUser =
+          user
+            ? users.find(
+                (candidate: any) =>
+                  candidate.id === user.id ||
+                  (candidate.family_name === user.family_name &&
+                    candidate.given_name === user.given_name)
+              ) || user
+            : null;
+
+        seen.set(label, { label, user: matchedUser });
+      }
+    });
+
+    return Array.from(seen.values()).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+  })();
 
   const selectedCount = Object.keys(rowSelection).filter(
     (key) => rowSelection[key]
@@ -232,13 +281,26 @@ export function DataTable<TData, TValue>({
             <SelectItem value="all" aria-label="Mostra tutti gli utenti">
               Tutti
             </SelectItem>
-            {uniqueUsers.map((userName) => (
+            {uniqueUserOptions.map(({ label, user }) => (
               <SelectItem
-                key={userName}
-                value={userName}
-                aria-label={`Filtra per ${userName}`}
+                key={label}
+                value={label}
+                aria-label={`Filtra per ${label}`}
               >
-                {userName}
+                <span className="flex items-center gap-2">
+                  {user ? (
+                    <UserInitialBadge user={user} />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                      style={{ backgroundColor: DEFAULT_AVATAR_COLOR }}
+                    >
+                      ?
+                    </span>
+                  )}
+                  <span>{label}</span>
+                </span>
               </SelectItem>
             ))}
           </SelectContent>
@@ -615,7 +677,12 @@ function QuickCreateTimetrackingRow({
                 <SelectContent>
                   {users.map((user) => (
                     <SelectItem key={user.id} value={String(user.id)}>
-                      {(user.given_name || "") + " " + (user.family_name || "")}
+                      <span className="flex items-center gap-2">
+                        <UserInitialBadge user={user} />
+                        <span>
+                          {(user.given_name || "") + " " + (user.family_name || "")}
+                        </span>
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
