@@ -68,7 +68,7 @@ const DataWrapper = ({
   );
   
   return (
-    <div className="container mx-auto ">
+    <div className="w-full">
       <Tabs
         value={activeView}
         onValueChange={(value) => setActiveView(value as "week" | "month" | "table")}

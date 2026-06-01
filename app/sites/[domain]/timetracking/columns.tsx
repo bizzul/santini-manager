@@ -28,7 +28,13 @@ import {
 } from "@/components/ui/select";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getProjectLabel } from "@/lib/project-label";
+import { cn } from "@/lib/utils";
 
 interface InternalActivity {
   id: string;
@@ -62,6 +68,35 @@ type TimetrackingRow = Timetracking & {
   lunch_offsite?: boolean;
   lunch_location?: string | null;
 };
+
+const DEFAULT_AVATAR_COLOR = "#6366f1";
+
+function buildUserInitialsFromRow(user: any): string {
+  const stored = (user?.initials || "").toString().trim();
+  if (stored) return stored.slice(0, 2).toUpperCase();
+
+  const fromGiven = (user?.given_name || "").trim().charAt(0);
+  const fromFamily = (user?.family_name || "").trim().charAt(0);
+  const composed = `${fromGiven}${fromFamily}`.toUpperCase();
+  if (composed) return composed;
+
+  return (user?.email || "?").trim().charAt(0).toUpperCase() || "?";
+}
+
+function UserBadge({ user }: { user: any }) {
+  const color = (user?.color as string | undefined) || DEFAULT_AVATAR_COLOR;
+  const initials = buildUserInitialsFromRow(user);
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+      style={{ backgroundColor: color }}
+    >
+      {initials}
+    </span>
+  );
+}
 
 type TimetrackingTaskOption = Task & {
   unique_code?: string | null;
@@ -146,7 +181,7 @@ const saveScrollPositions = (
 };
 
 function formatTrackedTime(hours?: number | null, minutes?: number | null): string {
-  return `${hours || 0} h ${minutes || 0} m`;
+  return `${hours || 0}h ${minutes || 0}m`;
 }
 
 const saveActionButtonClassName =
@@ -225,7 +260,11 @@ function TimetrackingHoursCell({
   };
 
   if (!editable) {
-    return <span>{formatTrackedTime(effectiveHours, effectiveMinutes)}</span>;
+    return (
+      <span className="whitespace-nowrap">
+        {formatTrackedTime(effectiveHours, effectiveMinutes)}
+      </span>
+    );
   }
 
   if (isEditing) {
@@ -280,7 +319,9 @@ function TimetrackingHoursCell({
       onClick={() => setIsEditing(true)}
       title="Clicca per modificare le ore"
     >
-      <span>{formatTrackedTime(effectiveHours, effectiveMinutes)}</span>
+      <span className="whitespace-nowrap">
+        {formatTrackedTime(effectiveHours, effectiveMinutes)}
+      </span>
       <Pencil className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
     </button>
   );
@@ -409,6 +450,65 @@ function TimetrackingProjectCell({
   );
 }
 
+function DescriptionCell({
+  rowData,
+  editable,
+  onSave,
+}: {
+  rowData: TimetrackingRow;
+  editable: boolean;
+  onSave: (
+    rowData: TimetrackingRow,
+    field: string,
+    newValue: string | number | boolean | null
+  ) => Promise<{ success?: boolean; error?: string }>;
+}) {
+  const description = (rowData.description ?? "").toString();
+
+  // Override the EditableCell internal `truncate` so the description span
+  // wraps onto up to three lines instead of being clipped to a single one.
+  // The `[&>span]:!whitespace-normal` removes the `nowrap` from the
+  // underlying span, while `[&>span]:!line-clamp-3` caps it at three
+  // visible lines with an ellipsis, and `flex items-start` keeps the
+  // pencil icon aligned to the top corner instead of pushed mid-line.
+  const editableNode = (
+    <EditableCell
+      value={rowData.description}
+      row={{ original: rowData }}
+      field="description"
+      type="text"
+      onSave={onSave}
+      editable={editable}
+      activateOnSingleClick={editable}
+      placeholder="-"
+      className={cn(
+        "w-full min-w-0 items-start py-1",
+        "[&>span]:min-w-0 [&>span]:flex-1 [&>span]:!whitespace-normal",
+        "[&>span]:!overflow-hidden [&>span]:!line-clamp-3 [&>span]:break-words"
+      )}
+    />
+  );
+
+  if (!description.trim()) {
+    return <div className="min-w-0">{editableNode}</div>;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="block w-full min-w-0">{editableNode}</div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        align="start"
+        className="max-w-md whitespace-pre-line text-left leading-snug"
+      >
+        {description}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function renderProjectValue(task: TimetrackingRow["task"] | TimetrackingTaskOption | null) {
   if (!task) {
     return <span className="text-muted-foreground">-</span>;
@@ -443,6 +543,10 @@ export const createColumns = (
 
   const selectionColumn: ColumnDef<TimetrackingRow> = {
       id: "select",
+      meta: {
+        headClassName: "w-[32px] px-1",
+        cellClassName: "w-[32px] px-1",
+      },
       header: ({ table }) => (
         <div
           onClick={(e) => {
@@ -524,12 +628,22 @@ export const createColumns = (
       filterFn: "includesString",
       enableColumnFilter: true,
       enableGlobalFilter: true,
+      meta: {
+        headClassName: "w-[200px] px-2",
+        cellClassName: "w-[200px] px-2 overflow-hidden",
+      },
       cell: ({ row }) => {
         const { user } = row.original;
-        if (user) {
-          return `${user.family_name} ${user.given_name}`;
-        }
-        return "Unknown User";
+        const label = user
+          ? `${user.family_name ?? ""} ${user.given_name ?? ""}`.trim() ||
+            "Unknown User"
+          : "Unknown User";
+        return (
+          <span className="flex min-w-0 items-center gap-2">
+            <UserBadge user={user} />
+            <span className="truncate">{label}</span>
+          </span>
+        );
       },
     },
     {
@@ -537,6 +651,10 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Ruolo" />
       ),
+      meta: {
+        headClassName: "w-[100px] px-2",
+        cellClassName: "w-[100px] px-2 overflow-hidden",
+      },
       cell: ({ row }) => {
         const { roles, internal_activity } = row.original;
         if (internal_activity) {
@@ -564,6 +682,10 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Ore" />
       ),
+      meta: {
+        headClassName: "w-[88px] px-2",
+        cellClassName: "w-[88px] px-2 whitespace-nowrap",
+      },
       cell: ({ row }) => (
         <TimetrackingHoursCell
           rowData={row.original}
@@ -573,32 +695,20 @@ export const createColumns = (
       ),
     },
     {
-      accessorKey: "totalTime",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Totale" />
-      ),
-      cell: ({ row }) => {
-        const { totalTime } = row.original;
-        if (!totalTime) return "0 ore e 0 minuti";
-
-        const hours = Math.floor(totalTime);
-        const minutes = Math.round((totalTime - hours) * 60);
-
-        return `${hours} ore e ${minutes} minuti`;
-      },
-    },
-    {
       accessorKey: "use_cnc",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="CNC" />
       ),
+      meta: {
+        headClassName: "w-[44px] px-1 text-center",
+        cellClassName: "w-[44px] px-1 text-center",
+      },
       cell: ({ row }) => {
         const { use_cnc } = row.original;
         if (use_cnc) {
-          return <CheckSquare />;
-        } else {
-          return <XIcon />;
+          return <CheckSquare className="mx-auto h-4 w-4" />;
         }
+        return <XIcon className="mx-auto h-4 w-4 text-muted-foreground" />;
       },
     },
     {
@@ -606,6 +716,10 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Progetto" />
       ),
+      meta: {
+        headClassName: "w-[140px] px-2",
+        cellClassName: "w-[140px] px-2 overflow-hidden",
+      },
       cell: ({ row }) => (
         <TimetrackingProjectCell
           rowData={row.original}
@@ -620,6 +734,10 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Luogo" />
       ),
+      meta: {
+        headClassName: "w-[120px] px-2",
+        cellClassName: "w-[120px] px-2",
+      },
       cell: ({ row }) => (
         <EditableCell
           value={row.original.lunch_location}
@@ -636,8 +754,12 @@ export const createColumns = (
     {
       accessorKey: "lunch_offsite",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Pranzo fuori" />
+        <DataTableColumnHeader column={column} title="Pranzo" />
       ),
+      meta: {
+        headClassName: "w-[60px] px-1 text-center",
+        cellClassName: "w-[60px] px-1 text-center",
+      },
       cell: ({ row }) => (
         <EditableCell
           value={row.original.lunch_offsite}
@@ -647,6 +769,7 @@ export const createColumns = (
           onSave={handleTimetrackingEdit}
           editable={editable}
           activateOnSingleClick={editable}
+          className="!justify-center"
         />
       ),
     },
@@ -655,15 +778,15 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Descrizione" />
       ),
+      meta: {
+        headClassName: "w-[280px] px-2",
+        cellClassName: "w-[280px] px-2 overflow-hidden align-top",
+      },
       cell: ({ row }) => (
-        <EditableCell
-          value={row.original.description}
-          row={row}
-          field="description"
-          type="text"
-          onSave={handleTimetrackingEdit}
+        <DescriptionCell
+          rowData={row.original}
           editable={editable}
-          activateOnSingleClick={editable}
+          onSave={handleTimetrackingEdit}
         />
       ),
     },
@@ -680,6 +803,10 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Data" />
       ),
+      meta: {
+        headClassName: "w-[110px] px-2",
+        cellClassName: "w-[110px] px-2",
+      },
       cell: ({ row }) => (
         <EditableCell
           value={row.original.created_at}
@@ -691,7 +818,7 @@ export const createColumns = (
           activateOnSingleClick={editable}
           formatter={(value) => DateManager.formatEUDate(String(value))}
           placeholder="N/A"
-          className="min-w-[96px]"
+          className="min-w-0 [&>span]:min-w-0 [&>span]:flex-1"
         />
       ),
     },
@@ -707,6 +834,10 @@ export const createColumns = (
     {
       id: "actions",
       header: "Azioni",
+      meta: {
+        headClassName: "w-[64px] px-2",
+        cellClassName: "w-[64px] px-2",
+      },
       cell: ({ row }) => <DataTableRowActions row={row} />,
     },
   ];

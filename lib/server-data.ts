@@ -1468,7 +1468,7 @@ export async function fetchTimetracking(siteId: string) {
             .select(`
                 *,
                 task:task_id(*, site_id, Client:clientId(businessName, individualFirstName, individualLastName)),
-                user:employee_id(id, authId, given_name, family_name, email, picture),
+                user:employee_id(id, authId, given_name, family_name, email, picture, color, initials),
                 roles:_RolesToTimetracking(role:Roles(id, name))
             `)
             .eq("site_id", siteId)
