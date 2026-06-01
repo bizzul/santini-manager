@@ -275,8 +275,10 @@ export async function getSiteUsers(siteId: string) {
         return [];
     }
 
-    // Get user IDs from user_sites
-    const userIds = siteUsersData.map((row: any) => row.user_id);
+    // Get unique user IDs from user_sites (defensive dedup against legacy duplicates)
+    const userIds = Array.from(
+        new Set(siteUsersData.map((row: any) => row.user_id)),
+    );
 
     // Get user roles from user_organizations table (organization-level roles)
     const { data: userOrgData, error: userOrgError } = await supabase
@@ -314,15 +316,13 @@ export async function getSiteUsers(siteId: string) {
         }
     }
 
-    // Return the combined data
-    const result = siteUsersData.map((row: any) => {
-        const user = userData.find((u: any) => u.authId === row.user_id);
-        const userRole = userRolesData.find((r: any) =>
-            r.authId === row.user_id
-        );
+    // Return the combined data (one row per unique user_id)
+    const result = userIds.map((userId: string) => {
+        const user = userData.find((u: any) => u.authId === userId);
+        const userRole = userRolesData.find((r: any) => r.authId === userId);
 
         return {
-            id: row.user_id,
+            id: userId,
             email: user?.email,
             role: userRole?.role || "user", // Role from User table
             userData: user || null,
@@ -375,12 +375,15 @@ export async function updateSiteWithUsers(siteId: string, formData: FormData) {
         };
     }
 
-    // Update user_sites: delete old, insert new
+    // Update user_sites: delete old, insert new (deduped per (user_id, site_id))
     await supabase.from("user_sites").delete().eq("site_id", siteId);
-    if (users && users.length > 0) {
-        const userRows = users.map((userId) => ({
+    const uniqueUserIds = Array.from(
+        new Set(users.map((userId) => userId.trim()).filter(Boolean)),
+    );
+    if (uniqueUserIds.length > 0) {
+        const userRows = uniqueUserIds.map((userId) => ({
             site_id: siteId,
-            user_id: userId.trim(),
+            user_id: userId,
         }));
         const { error: userError } = await supabase.from("user_sites")
             .insert(

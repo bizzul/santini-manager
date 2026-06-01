@@ -139,8 +139,9 @@ export const MultiSelect = React.forwardRef<
     },
     ref
   ) => {
-    const [selectedValues, setSelectedValues] =
-      React.useState<string[]>(defaultValue);
+    const [selectedValues, setSelectedValues] = React.useState<string[]>(() =>
+      Array.from(new Set(defaultValue))
+    );
     const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
     const [isAnimating, setIsAnimating] = React.useState(false);
 
@@ -160,7 +161,7 @@ export const MultiSelect = React.forwardRef<
     const toggleOption = (option: string) => {
       const newSelectedValues = selectedValues.includes(option)
         ? selectedValues.filter((value) => value !== option)
-        : [...selectedValues, option];
+        : Array.from(new Set([...selectedValues, option]));
       setSelectedValues(newSelectedValues);
       onValueChange(newSelectedValues);
     };
@@ -184,7 +185,9 @@ export const MultiSelect = React.forwardRef<
       if (selectedValues.length === options.length) {
         handleClear();
       } else {
-        const allValues = options.map((option) => option.value);
+        const allValues = Array.from(
+          new Set(options.map((option) => option.value))
+        );
         setSelectedValues(allValues);
         onValueChange(allValues);
       }
@@ -316,6 +319,7 @@ export const MultiSelect = React.forwardRef<
                   return (
                     <CommandItem
                       key={option.value}
+                      value={option.value}
                       onSelect={() => toggleOption(option.value)}
                       className="cursor-pointer"
                     >

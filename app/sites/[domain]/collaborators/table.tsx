@@ -56,9 +56,9 @@ export function DataTable({
   );
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
-  // Filter state — default a solo collaboratori attivi
+  // Filter state — default mostra tutti gli stati (inclusi inviti pendenti)
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
-    { id: "enabled", value: "active" },
+    { id: "enabled", value: "all" },
   ]);
   const [globalFilter, setGlobalFilter] = useState("");
 
@@ -112,7 +112,7 @@ export function DataTable({
           <Select
             value={
               (table.getColumn("enabled")?.getFilterValue() as string) ??
-              "active"
+              "all"
             }
             onValueChange={(value) =>
               table.getColumn("enabled")?.setFilterValue(value)
