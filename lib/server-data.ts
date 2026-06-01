@@ -1443,28 +1443,54 @@ export const fetchRoles = cache(async (siteId: string) => {
 
 /**
  * Fetch timetracking data with relations
- * Filters by site_id only (no cache)
+ * Filters by site_id only (no cache).
+ *
+ * NOTE: PostgREST applies a default row cap (typically 1000) to every
+ * SELECT. Because this query is sorted by `created_at DESC`, the cap was
+ * silently dropping the oldest rows once a site accumulated more than 1000
+ * timetracking entries — which is what was hiding entries older than the
+ * most recent ~1000 records on the UI. We page through the table with
+ * explicit `.range()` calls to make sure we return the full history.
  */
 export async function fetchTimetracking(siteId: string) {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
-        .from("Timetracking")
-        .select(`
-            *,
-            task:task_id(*, site_id, Client:clientId(businessName, individualFirstName, individualLastName)),
-            user:employee_id(id, authId, given_name, family_name, email, picture),
-            roles:_RolesToTimetracking(role:Roles(id, name))
-        `)
-        .eq("site_id", siteId)
-        .order("created_at", { ascending: false });
+    const PAGE_SIZE = 1000;
+    const allRows: any[] = [];
+    let page = 0;
 
-    if (error) {
-        log.error("Error fetching timetracking:", error);
-        return [];
+    while (true) {
+        const from = page * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        const { data, error } = await supabase
+            .from("Timetracking")
+            .select(`
+                *,
+                task:task_id(*, site_id, Client:clientId(businessName, individualFirstName, individualLastName)),
+                user:employee_id(id, authId, given_name, family_name, email, picture),
+                roles:_RolesToTimetracking(role:Roles(id, name))
+            `)
+            .eq("site_id", siteId)
+            .order("created_at", { ascending: false })
+            .range(from, to);
+
+        if (error) {
+            log.error("Error fetching timetracking:", error);
+            return allRows;
+        }
+
+        const batch = data || [];
+        allRows.push(...batch);
+
+        if (batch.length < PAGE_SIZE) {
+            break;
+        }
+
+        page += 1;
     }
 
-    return data || [];
+    return allRows;
 }
 
 /**
