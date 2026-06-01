@@ -265,10 +265,16 @@ export async function saveKanban(kanban: {
 
         if (updateError) {
           console.error("Error updating column:", updateError);
+          const code = (updateError as any)?.code;
           const detail =
             (updateError as any)?.message ||
-            (updateError as any)?.code ||
+            code ||
             "Unknown error";
+          if (code === "23505") {
+            throw new Error(
+              `Identificatore colonna duplicato per "${column.title}" (${column.identifier}). Ogni colonna del kanban deve avere un identificatore unico.`,
+            );
+          }
           throw new Error(
             `Failed to update column "${column.title}": ${detail}`,
           );
@@ -302,10 +308,21 @@ export async function saveKanban(kanban: {
             is_creation_column: column.is_creation_column || false,
             kanbanId: kanbanResult.id,
           });
+          const code = (createError as any)?.code;
           const detail =
             (createError as any)?.message ||
-            (createError as any)?.code ||
+            code ||
             "Unknown error";
+          if (code === "23505") {
+            throw new Error(
+              `Identificatore colonna duplicato per "${column.title}" (${column.identifier}). Ogni colonna del kanban deve avere un identificatore unico.`,
+            );
+          }
+          if (code === "23514") {
+            throw new Error(
+              `Tipo colonna non valido per "${column.title}" (${column.column_type}). Valori ammessi: normal, won, lost, production, invoicing.`,
+            );
+          }
           throw new Error(
             `Failed to create column "${column.title}": ${detail}`,
           );

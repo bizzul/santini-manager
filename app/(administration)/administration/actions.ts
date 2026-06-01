@@ -1123,14 +1123,17 @@ export async function getUsers() {
     const userContext = await getUserContext();
 
     if (userContext?.canAccessAllOrganizations) {
-        // Superadmin can see all users
-        const { data, error } = await supabase.auth.admin.listUsers();
-        if (error) throw new Error(error.message);
+        // Superadmin can see all users (paginate to bypass default 50-user limit)
+        const allAuthUsers = await fetchAllAuthUsers(supabase);
+        // Defensive dedup of auth users by id.
+        const uniqueAuthUsers = Array.from(
+            new Map(allAuthUsers.map((u: any) => [u.id, u])).values(),
+        );
         // Fetch user profiles from User table
         const { data: profiles } = await supabase.from("User").select(
             "authId, given_name, family_name, role, enabled, picture, assistance_level",
         );
-        return data.users.map((user: any) => {
+        return uniqueAuthUsers.map((user: any) => {
             const profile = profiles?.find((p: any) => p.authId === user.id);
             return {
                 id: user.id,
@@ -1164,12 +1167,15 @@ export async function getUsers() {
 
         const userIds = orgUserOrgs.map((uo: any) => uo.user_id);
 
-        // Get all users from auth (we'll filter them)
-        const { data, error } = await supabase.auth.admin.listUsers();
-        if (error) throw new Error(error.message);
+        // Get all users from auth (paginate, then filter them)
+        const allAuthUsers = await fetchAllAuthUsers(supabase);
 
+        // Defensive dedup by id before filtering by org membership.
+        const uniqueAuthUsers = Array.from(
+            new Map(allAuthUsers.map((u: any) => [u.id, u])).values(),
+        );
         // Filter users to only those in the user's organizations
-        const orgUsers = data.users.filter((user: any) =>
+        const orgUsers = uniqueAuthUsers.filter((user: any) =>
             userIds.includes(user.id)
         );
 
@@ -1203,15 +1209,17 @@ export async function getAllUsers() {
         throw new Error("Unauthorized: Only superadmins can access all users");
     }
 
-    const { data, error } = await supabase.auth.admin.listUsers();
-    if (error) throw new Error(error.message);
+    const allAuthUsers = await fetchAllAuthUsers(supabase);
+    const uniqueAuthUsers = Array.from(
+        new Map(allAuthUsers.map((u: any) => [u.id, u])).values(),
+    );
 
     // Fetch user profiles from User table
     const { data: profiles } = await supabase.from("User").select(
         "authId, given_name, family_name, role, enabled, assistance_level",
     );
 
-    return data.users.map((user: any) => {
+    return uniqueAuthUsers.map((user: any) => {
         const profile = profiles?.find((p: any) => p.authId === user.id);
         return {
             id: user.id,
@@ -1223,6 +1231,29 @@ export async function getAllUsers() {
             assistance_level: profile?.assistance_level || "basic_tutorial",
         };
     });
+}
+
+// Helper: paginate auth.admin.listUsers() to retrieve ALL auth users.
+// The default page size is 50, which silently truncates results for instances
+// with more users and causes "missing user" symptoms in dropdowns.
+async function fetchAllAuthUsers(supabase: any): Promise<any[]> {
+    const perPage = 1000;
+    const all: any[] = [];
+    let page = 1;
+    // Safety cap to avoid runaway loops in case of API contract changes.
+    const MAX_PAGES = 100;
+    while (page <= MAX_PAGES) {
+        const { data, error } = await supabase.auth.admin.listUsers({
+            page,
+            perPage,
+        });
+        if (error) throw new Error(error.message);
+        const batch = data?.users ?? [];
+        all.push(...batch);
+        if (batch.length < perPage) break;
+        page += 1;
+    }
+    return all;
 }
 
 // Invite a new user to an organization

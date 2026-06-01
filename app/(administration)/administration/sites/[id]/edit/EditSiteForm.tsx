@@ -56,7 +56,9 @@ const ROLE_LABELS: Record<string, string> = {
 
 function getUserDisplayName(user: any) {
   const fullName = `${user?.given_name || ""} ${user?.family_name || ""}`.trim();
-  return fullName || user?.email || `Utente ${String(user?.id || "").slice(0, 8)}`;
+  const email = user?.email || "";
+  if (fullName && email) return `${fullName} (${email})`;
+  return fullName || email || `Utente ${String(user?.id || "").slice(0, 8)}`;
 }
 
 function getUserInitials(user: any) {
@@ -127,7 +129,7 @@ export default function EditSiteForm({
     subdomain: site.subdomain || "",
     description: site.description || "",
     organization_id: site.organization_id || "",
-    users: siteUsers.map((u: any) => u.id) || [],
+    users: Array.from(new Set(siteUsers.map((u: any) => u.id))) as string[],
   });
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -149,6 +151,11 @@ export default function EditSiteForm({
   const usersById = useMemo(
     () => new Map(users.map((user: any) => [user.id, user])),
     [users]
+  );
+
+  const uniqueUsers = useMemo(
+    () => Array.from(usersById.values()),
+    [usersById]
   );
 
   const selectedUsers = useMemo(
@@ -174,14 +181,20 @@ export default function EditSiteForm({
     [activeSelectedUsers]
   );
 
-  const userOptions = useMemo(
-    () =>
-      users.map((user: any) => ({
-        value: user.id,
-        label: getUserDisplayName(user),
-      })),
-    [users]
-  );
+  const userOptions = useMemo(() => {
+    const baseOptions = uniqueUsers.map((user: any) => ({
+      value: user.id,
+      label: getUserDisplayName(user),
+    }));
+    const knownIds = new Set(baseOptions.map((opt) => opt.value));
+    const orphanOptions = form.users
+      .filter((id: string) => !knownIds.has(id))
+      .map((id: string) => ({
+        value: id,
+        label: `Utente sconosciuto (${id.slice(0, 8)}...)`,
+      }));
+    return [...baseOptions, ...orphanOptions];
+  }, [uniqueUsers, form.users]);
 
   const activeUserCards = useMemo(
     () =>
@@ -215,7 +228,10 @@ export default function EditSiteForm({
   }, [site.id, userRole]);
 
   function handleUsersChange(selected: string[]) {
-    setForm((current) => ({ ...current, users: selected }));
+    setForm((current) => ({
+      ...current,
+      users: Array.from(new Set(selected)),
+    }));
   }
 
   const handleImageChange = useCallback(

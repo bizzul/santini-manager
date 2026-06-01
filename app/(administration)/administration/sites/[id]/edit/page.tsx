@@ -39,7 +39,7 @@ export default async function EditSitePage({
   const site = await getSiteById(id);
   const siteUsers = await getSiteUsers(id);
   const organizations = await getOrganizations();
-  const users = (await getUsers()).filter((u: any) => u.role !== "admin");
+  const users = await getUsers();
   const supabase = await createClient();
 
   const [

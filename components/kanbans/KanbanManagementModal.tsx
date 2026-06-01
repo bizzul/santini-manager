@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Copy } from "lucide-react";
 import {
@@ -77,6 +77,33 @@ const generateIdentifier = (title: string): string => {
     .replace(/\s+/g, "_") // Replace spaces with underscores
     .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
     .substring(0, 50); // Limit length
+};
+
+// Ensure a column identifier is unique within the current columns array.
+// If `candidate` collides with another row, append `_2`, `_3`, ... until free.
+// This is critical because KanbanColumn has a UNIQUE (kanbanId, identifier)
+// constraint: trying to save a duplicate makes the server action throw, and in
+// production Next.js masks the message as a generic "Server Components render"
+// error. Avoiding duplicates client-side keeps the UX clear.
+const ensureUniqueIdentifier = (
+  candidate: string,
+  columns: Column[],
+  indexToSkip: number
+): string => {
+  if (!candidate) return candidate;
+  const taken = new Set(
+    columns
+      .map((col, i) => (i === indexToSkip ? null : col.identifier))
+      .filter((value): value is string => Boolean(value))
+  );
+  if (!taken.has(candidate)) return candidate;
+  let suffix = 2;
+  let next = `${candidate}_${suffix}`;
+  while (taken.has(next)) {
+    suffix += 1;
+    next = `${candidate}_${suffix}`;
+  }
+  return next;
 };
 
 export default function KanbanManagementModal({
@@ -229,6 +256,26 @@ export default function KanbanManagementModal({
     }
   }, [identifier, mode]);
 
+  // Detect column identifiers that appear on more than one row. We use this
+  // to block the save (the DB has a UNIQUE (kanbanId, identifier) constraint
+  // and the server action would otherwise throw a generic error in production)
+  // and to highlight the offending inputs inline.
+  const duplicateIdentifiers = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const col of columns) {
+      const id = (col.identifier || "").trim();
+      if (!id) continue;
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+    const dups = new Set<string>();
+    counts.forEach((count, id) => {
+      if (count > 1) dups.add(id);
+    });
+    return dups;
+  }, [columns]);
+
+  const hasDuplicateIdentifiers = duplicateIdentifiers.size > 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !identifier) {
@@ -236,6 +283,16 @@ export default function KanbanManagementModal({
         variant: "destructive",
         title: "Errore",
         description: "Tutti i campi sono obbligatori",
+      });
+      return;
+    }
+
+    if (hasDuplicateIdentifiers) {
+      toast({
+        variant: "destructive",
+        title: "Identificatori colonna duplicati",
+        description:
+          "Ogni colonna del kanban deve avere un identificatore unico. Modifica i titoli o gli identificatori evidenziati e riprova.",
       });
       return;
     }
@@ -387,9 +444,14 @@ export default function KanbanManagementModal({
       const col = updated[index] as Column & { id?: number };
       const isNewColumn = !col.id || col.id <= 0;
       if (field === "title" && identifier && (mode === "create" || isNewColumn)) {
-        updated[index].identifier = value
+        const baseIdentifier = value
           ? `${generateIdentifier(value)}_${identifier}`
           : col.identifier || "";
+        updated[index].identifier = ensureUniqueIdentifier(
+          baseIdentifier,
+          updated,
+          index
+        );
       }
 
       return updated;
@@ -801,10 +863,20 @@ export default function KanbanManagementModal({
                     onChange={(e) =>
                       handleColumnChange(index, "identifier", e.target.value)
                     }
-                    className="flex-1"
-                    disabled={mode === "edit"}
+                    className={`flex-1 ${
+                      duplicateIdentifiers.has((column.identifier || "").trim())
+                        ? "border-destructive focus-visible:ring-destructive"
+                        : ""
+                    }`}
+                    disabled={mode === "edit" && !!(column as any).id}
                     placeholder="identificatore"
-                    title={mode === "edit" ? "L'identificatore non può essere modificato dopo la creazione" : undefined}
+                    title={
+                      duplicateIdentifiers.has((column.identifier || "").trim())
+                        ? "Identificatore già usato da un'altra colonna"
+                        : mode === "edit"
+                        ? "L'identificatore non può essere modificato dopo la creazione"
+                        : undefined
+                    }
                   />
                   <IconSelector
                     value={column.icon}
@@ -878,19 +950,22 @@ export default function KanbanManagementModal({
               <Button
                 type="button"
                 onClick={() =>
-                  setColumns((prev) => [
-                    ...prev,
-                    {
-                      title: "",
-                      identifier: identifier
-                        ? `${generateIdentifier("nuova")}_${identifier}_${Date.now()}`
-                        : `col_${Date.now()}`,
-                      position: prev.length + 1,
-                      icon: "Check",
-                      column_type: "normal",
-                      is_creation_column: false,
-                    },
-                  ])
+                  setColumns((prev) => {
+                    const base = identifier
+                      ? `${generateIdentifier("nuova")}_${identifier}_${Date.now()}`
+                      : `col_${Date.now()}`;
+                    return [
+                      ...prev,
+                      {
+                        title: "",
+                        identifier: ensureUniqueIdentifier(base, prev, -1),
+                        position: prev.length + 1,
+                        icon: "Check",
+                        column_type: "normal",
+                        is_creation_column: false,
+                      },
+                    ];
+                  })
                 }
                 variant="outline"
                 size="sm"
@@ -902,38 +977,47 @@ export default function KanbanManagementModal({
           </div>
           </div>
           <DialogFooter className="border-t bg-background px-6 py-4 dark:bg-muted">
-            <div className="flex justify-between w-full items-center gap-2">
-              <div className="flex gap-2">
-                {mode === "edit" && kanban?.id && (
-                  <>
-                    <Button
-                      variant="outline"
-                      type="button"
-                      onClick={handleDuplicate}
-                      disabled={isDuplicating}
-                      title="Duplica Kanban"
-                    >
-                      {isDuplicating ? (
-                        <span className="text-xs">...</span>
-                      ) : (
-                        <Copy className="h-4 w-4 mr-2" />
-                      )}
-                      Duplica
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      type="button"
-                      onClick={handleDeleteClick}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Elimina
-                    </Button>
-                  </>
-                )}
+            <div className="flex w-full flex-col gap-3">
+              {hasDuplicateIdentifiers && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  Alcune colonne hanno lo stesso identificatore. Cambia il
+                  titolo o l&apos;identificatore delle colonne evidenziate
+                  prima di salvare.
+                </div>
+              )}
+              <div className="flex w-full items-center justify-between gap-2">
+                <div className="flex gap-2">
+                  {mode === "edit" && kanban?.id && (
+                    <>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={handleDuplicate}
+                        disabled={isDuplicating}
+                        title="Duplica Kanban"
+                      >
+                        {isDuplicating ? (
+                          <span className="text-xs">...</span>
+                        ) : (
+                          <Copy className="h-4 w-4 mr-2" />
+                        )}
+                        Duplica
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        type="button"
+                        onClick={handleDeleteClick}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Elimina
+                      </Button>
+                    </>
+                  )}
+                </div>
+                <Button type="submit" disabled={hasDuplicateIdentifiers}>
+                  {mode === "create" ? "Crea" : "Salva Modifiche"}
+                </Button>
               </div>
-              <Button type="submit">
-                {mode === "create" ? "Crea" : "Salva Modifiche"}
-              </Button>
             </div>
           </DialogFooter>
         </form>

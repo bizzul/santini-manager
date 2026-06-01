@@ -7,6 +7,7 @@ import {
     useState,
     type ChangeEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -144,6 +145,7 @@ export function AddCollaboratorDialog(
     { siteId, domain }: AddCollaboratorDialogProps,
 ) {
     const { toast } = useToast();
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<"existing" | "invite">(
         "existing",
@@ -279,6 +281,7 @@ export function AddCollaboratorDialog(
                 });
                 setIsOpen(false);
                 resetAll();
+                router.refresh();
             } else {
                 toast({
                     title: "Errore",
@@ -338,6 +341,7 @@ export function AddCollaboratorDialog(
                 });
                 setIsOpen(false);
                 resetAll();
+                router.refresh();
             } else {
                 toast({
                     title: "Errore",
