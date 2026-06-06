@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { toPostgrestIlikePattern } from "@/lib/documenti/safe-supabase-ilike";
 
 export interface ClienteMatch {
   id: number;
@@ -40,9 +41,9 @@ export async function cercaCliente(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const pattern = `%${trimmed}%`;
+  const pattern = toPostgrestIlikePattern(trimmed);
 
-  const { data: clients } = await supabase
+  const { data: clients, error } = await supabase
     .from("Client")
     .select(
       "id, clientType, businessName, individualFirstName, individualLastName, address, city, zipCode",
@@ -52,6 +53,11 @@ export async function cercaCliente(
       `businessName.ilike.${pattern},individualFirstName.ilike.${pattern},individualLastName.ilike.${pattern}`,
     )
     .limit(10);
+
+  if (error) {
+    console.warn("[DocumentiSearch] cercaCliente:", error.message);
+    return [];
+  }
 
   if (!clients?.length) return [];
 
@@ -64,6 +70,36 @@ export async function cercaCliente(
   }));
 }
 
+export async function cercaClienteById(
+  supabase: SupabaseClient,
+  siteId: string,
+  clientId: number,
+): Promise<ClienteMatch | null> {
+  const { data: client, error } = await supabase
+    .from("Client")
+    .select(
+      "id, clientType, businessName, individualFirstName, individualLastName, address, city, zipCode",
+    )
+    .eq("site_id", siteId)
+    .eq("id", clientId)
+    .maybeSingle();
+
+  if (error || !client) {
+    if (error) {
+      console.warn("[DocumentiSearch] cercaClienteById:", error.message);
+    }
+    return null;
+  }
+
+  return {
+    id: client.id,
+    nome: getClientDisplayName(client),
+    via: client.address ?? null,
+    cap: client.zipCode != null ? String(client.zipCode) : null,
+    citta: client.city ?? null,
+  };
+}
+
 export async function cercaArticolo(
   supabase: SupabaseClient,
   siteId: string,
@@ -72,10 +108,10 @@ export async function cercaArticolo(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const pattern = `%${trimmed}%`;
+  const pattern = toPostgrestIlikePattern(trimmed);
   const results: ArticoloMatch[] = [];
 
-  const { data: sellProducts } = await supabase
+  const { data: sellProducts, error: sellError } = await supabase
     .from("SellProduct")
     .select("id, name, description, internal_code")
     .eq("site_id", siteId)
@@ -83,6 +119,10 @@ export async function cercaArticolo(
       `name.ilike.${pattern},description.ilike.${pattern},internal_code.ilike.${pattern}`,
     )
     .limit(5);
+
+  if (sellError) {
+    console.warn("[DocumentiSearch] cercaArticolo SellProduct:", sellError.message);
+  }
 
   for (const p of sellProducts ?? []) {
     results.push({
@@ -94,12 +134,19 @@ export async function cercaArticolo(
     });
   }
 
-  const { data: inventoryItems } = await supabase
+  const { data: inventoryItems, error: inventoryError } = await supabase
     .from("inventory_items")
     .select("id, name, description")
     .eq("site_id", siteId)
     .or(`name.ilike.${pattern},description.ilike.${pattern}`)
     .limit(5);
+
+  if (inventoryError) {
+    console.warn(
+      "[DocumentiSearch] cercaArticolo inventory:",
+      inventoryError.message,
+    );
+  }
 
   for (const item of inventoryItems ?? []) {
     results.push({

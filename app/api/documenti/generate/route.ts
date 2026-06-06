@@ -32,6 +32,11 @@ import {
 import { validateAiApiKeyForProvider } from "@/lib/ai/validate-api-key";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { isCommercialType } from "@/lib/documenti/document-types";
+import {
+  buildErrorsFromMappedAiError,
+  buildGenerateErrorResponse,
+  zodIssuesToErrors,
+} from "@/lib/documenti/format-generate-errors";
 import { prefetchDocumentToolResults } from "@/lib/documenti/prefetch-tool-results";
 import { formatLocalDate } from "@/lib/utils";
 
@@ -71,8 +76,14 @@ export async function POST(request: NextRequest) {
     const parsed = GenerateDocumentRequestSchema.safeParse(body);
 
     if (!parsed.success) {
+      const validationErrors = zodIssuesToErrors(parsed.error.errors);
       return NextResponse.json(
-        { error: "Validazione fallita", details: parsed.error.errors },
+        buildGenerateErrorResponse(
+          "Validazione fallita",
+          "I dati inviati dal form non sono validi",
+          validationErrors,
+          { details: parsed.error.errors },
+        ),
         { status: 400 },
       );
     }
@@ -86,10 +97,11 @@ export async function POST(request: NextRequest) {
 
     if (!aiConfig) {
       return NextResponse.json(
-        {
-          error: "API key AI non configurata",
-          message: DOCUMENT_AI_CONFIG_MISSING_MESSAGE,
-        },
+        buildGenerateErrorResponse(
+          "API key AI non configurata",
+          DOCUMENT_AI_CONFIG_MISSING_MESSAGE,
+          [DOCUMENT_AI_CONFIG_MISSING_MESSAGE],
+        ),
         { status: 400 },
       );
     }
@@ -109,12 +121,15 @@ export async function POST(request: NextRequest) {
     );
     if (!keyValidation.valid) {
       return NextResponse.json(
-        {
-          error: "Configurazione AI non coerente",
-          message: keyValidation.message,
-          provider: aiConfig.provider,
-          model: aiConfig.model,
-        },
+        buildGenerateErrorResponse(
+          "Configurazione AI non coerente",
+          keyValidation.message ?? "Chiave API non valida per il provider",
+          [
+            keyValidation.message ?? "Chiave API non valida per il provider",
+            `Provider configurato: ${aiConfig.provider}`,
+            `Modello configurato: ${normalizedModel}`,
+          ],
+        ),
         { status: 400 },
       );
     }
@@ -128,7 +143,7 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildGenerateUserPrompt(input, today);
 
     if (isCommercialType(input.tipoDocumento)) {
-      const { clientesFound, articoliFound } =
+      const { clientesFound, articoliFound, warnings } =
         await prefetchDocumentToolResults(supabase, siteId, input);
 
       const toolSummary = JSON.stringify(
@@ -144,7 +159,11 @@ export async function POST(request: NextRequest) {
         model,
         schema: AIDocumentoSchema,
         system: systemPrompt,
-        prompt: `${userPrompt}\n\nRisultati ricerche database:\n${toolSummary}`,
+        prompt: `${userPrompt}\n\nRisultati ricerche database:\n${toolSummary}${
+          warnings.length
+            ? `\n\nAvvisi ricerche:\n${warnings.join("\n")}`
+            : ""
+        }`,
       });
 
       documento.tipoDocumento = input.tipoDocumento;
@@ -206,14 +225,13 @@ export async function POST(request: NextRequest) {
     }
 
     const mapped = mapAiProviderError(error);
+    const errors = buildErrorsFromMappedAiError(mapped);
     return NextResponse.json(
-      {
-        error: mapped.error,
-        message: mapped.message,
+      buildGenerateErrorResponse(mapped.error, mapped.message, errors, {
         providerErrorType: mapped.providerErrorType,
         providerMessage: mapped.providerMessage,
         statusCode: mapped.statusCode,
-      },
+      }),
       { status: mapped.status },
     );
   }

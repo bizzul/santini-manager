@@ -3,6 +3,7 @@ import type { GenerateDocumentRequest } from "@/validation/documenti/extracted-d
 import {
   cercaArticolo,
   cercaCliente,
+  cercaClienteById,
   type ArticoloMatch,
   type ClienteMatch,
 } from "@/lib/documenti/search-tools";
@@ -27,12 +28,11 @@ function buildArticleSearchQueries(input: GenerateDocumentRequest): string[] {
     }
   }
 
-  return [...queries].slice(0, MAX_ARTICLE_QUERIES);
+  return Array.from(queries).slice(0, MAX_ARTICLE_QUERIES);
 }
 
 /**
  * Esegue le ricerche cliente/articolo lato server senza un round-trip AI con tool use.
- * Riduce la latenza rispetto a generateText + tools.
  */
 export async function prefetchDocumentToolResults(
   supabase: SupabaseClient,
@@ -41,14 +41,39 @@ export async function prefetchDocumentToolResults(
 ): Promise<{
   clientesFound: Map<string, ClienteMatch[]>;
   articoliFound: Map<string, ArticoloMatch[]>;
+  warnings: string[];
 }> {
   const clientesFound = new Map<string, ClienteMatch[]>();
   const articoliFound = new Map<string, ArticoloMatch[]>();
+  const warnings: string[] = [];
 
   const clientQuery = input.destinatario.ragioneSociale.trim();
-  if (clientQuery) {
+
+  if (
+    input.destinatario.entityId &&
+    input.destinatario.tipo === "cliente"
+  ) {
+    const client = await cercaClienteById(
+      supabase,
+      siteId,
+      input.destinatario.entityId,
+    );
+    if (client) {
+      const key = clientQuery || client.nome;
+      clientesFound.set(key, [client]);
+    } else {
+      warnings.push(
+        `Cliente selezionato (ID ${input.destinatario.entityId}) non trovato nel database.`,
+      );
+    }
+  } else if (clientQuery) {
     const clientResults = await cercaCliente(supabase, siteId, clientQuery);
     clientesFound.set(clientQuery, clientResults);
+    if (clientResults.length === 0) {
+      warnings.push(
+        `Nessun cliente trovato per "${clientQuery}"; il destinatario sarà trattato come nuovo.`,
+      );
+    }
   }
 
   const articleQueries = buildArticleSearchQueries(input);
@@ -59,5 +84,5 @@ export async function prefetchDocumentToolResults(
     }),
   );
 
-  return { clientesFound, articoliFound };
+  return { clientesFound, articoliFound, warnings };
 }

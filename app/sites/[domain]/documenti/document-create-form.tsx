@@ -25,6 +25,12 @@ import type {
   DocumentoArricchito,
   TipoDocumento,
 } from "@/validation/documenti/extracted-document";
+import { GenerateErrorsAlert } from "@/components/documenti/generate-errors-alert";
+import {
+  errorsFromFetchFailure,
+  errorsFromGenerateApiPayload,
+  type GenerateApiErrorPayload,
+} from "@/lib/documenti/parse-generate-api-response";
 import { createClient } from "@/utils/supabase/client";
 import { Loader2, Paperclip, X } from "lucide-react";
 
@@ -155,6 +161,17 @@ export function DocumentCreateForm({
   );
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateErrors, setGenerateErrors] = useState<string[]>([]);
+
+  const showGenerateErrors = (errors: string[]) => {
+    const list = errors.length > 0 ? errors : ["Errore sconosciuto durante la generazione"];
+    setGenerateErrors(list);
+    toast({
+      variant: "destructive",
+      title: `Generazione fallita (${list.length} ${list.length === 1 ? "errore" : "errori"})`,
+      description: list[0],
+    });
+  };
 
   const typeConfig = useMemo(
     () => DOCUMENT_TYPES.find((t) => t.id === tipoDocumento),
@@ -315,6 +332,7 @@ export function DocumentCreateForm({
     };
 
     setIsGenerating(true);
+    setGenerateErrors([]);
     try {
       const response = await fetch("/api/documenti/generate", {
         method: "POST",
@@ -340,64 +358,49 @@ export function DocumentCreateForm({
         }),
       });
 
-      let result: {
-        error?: string;
-        message?: string;
-        providerErrorType?: string;
+      const responseText = await response.text();
+      let result: GenerateApiErrorPayload & {
         documento?: DocumentoArricchito;
       } = {};
 
       try {
-        result = await response.json();
+        result = responseText
+          ? (JSON.parse(responseText) as GenerateApiErrorPayload & {
+              documento?: DocumentoArricchito;
+            })
+          : {};
       } catch {
-        toast({
-          variant: "destructive",
-          description:
-            response.status === 504 || response.status === 408
-              ? "La generazione ha superato il tempo massimo. Riprova con un testo più breve."
-              : `Risposta non valida dal server (HTTP ${response.status}). Riprova tra poco.`,
-        });
+        showGenerateErrors(
+          errorsFromFetchFailure(
+            new Error("Risposta server non JSON"),
+            response.status,
+            responseText,
+          ),
+        );
         return;
       }
 
       if (!response.ok) {
-        const detail = [
-          result.message,
-          result.providerErrorType
-            ? `(${result.providerErrorType})`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" ");
-        toast({
-          variant: "destructive",
-          description: detail || result.error || "Errore nella generazione",
-        });
+        showGenerateErrors(
+          errorsFromGenerateApiPayload(result, response.status),
+        );
         return;
       }
 
       if (!result.documento) {
-        toast({
-          variant: "destructive",
-          description: "Il server non ha restituito un documento valido",
-        });
+        showGenerateErrors([
+          "Il server ha risposto con successo ma senza documento generato.",
+          ...(result.errors ?? []),
+        ]);
         return;
       }
 
+      setGenerateErrors([]);
       const taskId =
         selectedOfferId && showOfferPicker ? Number(selectedOfferId) : null;
       onGenerated(result.documento, testo.trim(), taskId);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Errore sconosciuto";
-      toast({
-        variant: "destructive",
-        description:
-          message.includes("Failed to fetch") ||
-          message.includes("NetworkError")
-            ? "Connessione interrotta durante la generazione. Verifica la rete e riprova."
-            : `Errore durante la generazione: ${message}`,
-      });
+      showGenerateErrors(errorsFromFetchFailure(error));
     } finally {
       setIsGenerating(false);
     }
@@ -622,6 +625,8 @@ export function DocumentCreateForm({
           </ul>
         ) : null}
       </div>
+
+      <GenerateErrorsAlert errors={generateErrors} />
 
       <div className="flex gap-3">
         <Button type="button" variant="outline" onClick={onCancel}>
