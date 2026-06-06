@@ -4,7 +4,10 @@ import { requireServerSiteContext } from "@/lib/server-data";
 import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { fetchSiteDocumenti } from "@/lib/documenti/fetch-site-documenti";
-import { DocumentiPageClient } from "./documenti-page-client";
+import {
+  DocumentiPageClient,
+  type DocumentoListItem,
+} from "./documenti-page-client";
 
 export default async function Page({
   params,
@@ -80,7 +83,7 @@ export default async function Page({
       domain={domain}
       siteId={siteId}
       template={template}
-      documenti={documentiResult}
+      documenti={documentiResult as DocumentoListItem[]}
       clients={clientsResult.data ?? []}
       suppliers={suppliersResult.data ?? []}
       offers={offers}

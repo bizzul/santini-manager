@@ -453,7 +453,9 @@ export default function AiSettingsModal({
                                             placeholder={
                                                 settings?.hasWhisperApiKey
                                                     ? `Configurata (${settings.whisperApiKeyMasked})`
-                                                    : "Usa API key AI se non specificata"
+                                                    : aiProvider === "openai"
+                                                      ? "Usa API key OpenAI se non specificata"
+                                                      : "Richiesta con provider AI Anthropic"
                                             }
                                         />
                                         <Button
@@ -481,6 +483,11 @@ export default function AiSettingsModal({
                                         </Button>
                                     )}
                                 </div>
+                                <p className="text-xs text-muted-foreground">
+                                    {aiProvider === "openai"
+                                        ? "Se non specificata, viene usata la API key OpenAI del provider AI."
+                                        : "Con provider AI Anthropic serve una API key OpenAI dedicata per la trascrizione Whisper."}
+                                </p>
                             </div>
                         )}
 

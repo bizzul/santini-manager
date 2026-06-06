@@ -18,9 +18,14 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type {
+  DestinatarioInput,
   DocumentoArricchito,
   TipoDocumento,
 } from "@/validation/documenti/extracted-document";
+import {
+  consumeVoiceDocumentPrefill,
+  type VoiceDocumentPrefill,
+} from "@/lib/voice-document-prefill";
 import type { DocumentTemplate } from "@/lib/documenti/template-types";
 import { DocumentReviewForm } from "./document-review-form";
 import {
@@ -49,6 +54,7 @@ import { isCommercialType } from "@/lib/documenti/document-types";
 
 interface RigaDb {
   descrizione: string;
+  descrizione_estesa: string | null;
   misure: string | null;
   unita: string;
   quantita: number;
@@ -107,6 +113,7 @@ type Step = "list" | "create" | "review" | "view";
 function dbToDocumentoArricchito(doc: DocumentoListItem): DocumentoArricchito {
   const righe = (doc.righe_documento ?? []).map((r) => ({
     descrizione: r.descrizione,
+    descrizioneEstesa: r.descrizione_estesa ?? null,
     misure: r.misure,
     unita: r.unita as DocumentoArricchito["righe"][0]["unita"],
     quantita: Number(r.quantita),
@@ -176,10 +183,25 @@ export function DocumentiPageClient({
     useState<DocumentoListItem | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [documentiList, setDocumentiList] = useState(documenti);
+  const [voicePrefill, setVoicePrefill] =
+    useState<VoiceDocumentPrefill | null>(null);
 
   useEffect(() => {
     setDocumentiList(documenti);
   }, [documenti]);
+
+  useEffect(() => {
+    const prefill = consumeVoiceDocumentPrefill();
+    if (!prefill) return;
+
+    setVoicePrefill(prefill);
+    setStep("create");
+    toast({
+      description:
+        prefill.summary ||
+        "Generatore documenti precompilato dal comando vocale. Rivedi i dati e premi Genera.",
+    });
+  }, [toast]);
 
   const refreshDocumenti = useCallback(async () => {
     try {
@@ -346,8 +368,23 @@ export function DocumentiPageClient({
             clients={clients}
             suppliers={suppliers}
             offers={offers}
+            initialValues={
+              voicePrefill
+                ? {
+                    tipoDocumento: voicePrefill.tipoDocumento,
+                    destinatario: voicePrefill.destinatario as
+                      | DestinatarioInput
+                      | undefined,
+                    oggetto: voicePrefill.oggetto,
+                    testo: voicePrefill.testo,
+                  }
+                : undefined
+            }
             onGenerated={handleGenerated}
-            onCancel={() => setStep("list")}
+            onCancel={() => {
+              setVoicePrefill(null);
+              setStep("list");
+            }}
           />
         </PageContent>
       </PageLayout>

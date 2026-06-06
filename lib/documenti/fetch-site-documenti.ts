@@ -4,22 +4,24 @@ const RIGHE_SELECT_BASE = `
     descrizione, misure, unita, quantita, prezzo_unitario, sconto,
     is_trasporto, articolo_id, art, totale_riga`;
 
-export const DOCUMENTI_LIST_SELECT = `
+const OPTIONAL_RIGA_COLUMNS = ["immagine_url", "descrizione_estesa"] as const;
+
+const DOC_SELECT_HEAD = `
   id, tipo_documento, numero, oggetto, status, totale_chf, created_at,
   destinatario, corpo_testo, pdf_url, condizioni_pagamento, termine_fornitura,
-  note, cliente_id, task_id, allegati,
-  righe_documento (${RIGHE_SELECT_BASE}, immagine_url)
-`;
+  note, cliente_id, task_id, allegati,`;
 
-const DOCUMENTI_LIST_SELECT_LEGACY = `
-  id, tipo_documento, numero, oggetto, status, totale_chf, created_at,
-  destinatario, corpo_testo, pdf_url, condizioni_pagamento, termine_fornitura,
-  note, cliente_id, task_id, allegati,
-  righe_documento (${RIGHE_SELECT_BASE})
+function buildSelect(optionalColumns: readonly string[]): string {
+  const righeColumns = [RIGHE_SELECT_BASE, ...optionalColumns].join(", ");
+  return `${DOC_SELECT_HEAD}
+  righe_documento (${righeColumns})
 `;
+}
 
-function isMissingImmagineUrlColumn(message: string): boolean {
-  return message.includes("immagine_url");
+export const DOCUMENTI_LIST_SELECT = buildSelect(OPTIONAL_RIGA_COLUMNS);
+
+function missingOptionalColumn(message: string): string | null {
+  return OPTIONAL_RIGA_COLUMNS.find((col) => message.includes(col)) ?? null;
 }
 
 export async function fetchSiteDocumenti(
@@ -27,35 +29,39 @@ export async function fetchSiteDocumenti(
   siteId: string,
   limit = 100,
 ) {
-  const { data, error } = await supabase
-    .from("documenti")
-    .select(DOCUMENTI_LIST_SELECT)
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  let activeColumns: string[] = [...OPTIONAL_RIGA_COLUMNS];
 
-  if (error && isMissingImmagineUrlColumn(error.message)) {
-    const legacy = await supabase
+  for (let i = 0; i <= OPTIONAL_RIGA_COLUMNS.length; i += 1) {
+    const { data, error } = await supabase
       .from("documenti")
-      .select(DOCUMENTI_LIST_SELECT_LEGACY)
+      .select(buildSelect(activeColumns))
       .eq("site_id", siteId)
       .order("created_at", { ascending: false })
       .limit(limit);
-    if (legacy.error) {
-      throw new Error(legacy.error.message);
+
+    if (!error) {
+      const rows = (data ?? []) as unknown as Record<string, unknown>[];
+      return rows.map((doc) => ({
+        ...doc,
+        righe_documento: ((doc.righe_documento ?? []) as Record<
+          string,
+          unknown
+        >[]).map((riga) => {
+          const normalized = { ...riga };
+          for (const col of OPTIONAL_RIGA_COLUMNS) {
+            if (!(col in normalized)) normalized[col] = null;
+          }
+          return normalized;
+        }),
+      }));
     }
-    return (legacy.data ?? []).map((doc) => ({
-      ...doc,
-      righe_documento: (doc.righe_documento ?? []).map((riga) => ({
-        ...riga,
-        immagine_url: null,
-      })),
-    }));
+
+    const missing = missingOptionalColumn(error.message);
+    if (!missing) {
+      throw new Error(error.message);
+    }
+    activeColumns = activeColumns.filter((col) => col !== missing);
   }
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data ?? [];
+  return [];
 }

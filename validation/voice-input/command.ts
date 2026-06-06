@@ -3,6 +3,7 @@ import {
     SUPPORTED_VOICE_COMMAND_INTENTS,
     VOICE_COMMAND_INTENTS,
 } from "@/lib/voice-command-config";
+import { TipoDocumentoEnum } from "@/validation/documenti/extracted-document";
 
 export const VoiceCommandIntentSchema = z.enum(VOICE_COMMAND_INTENTS);
 
@@ -70,6 +71,10 @@ export const VoiceCommandExtractionSchema = z.object({
         lossReason: z
             .enum(["price", "delivery_time", "site_on_hold", "other"])
             .nullable(),
+        tipoDocumento: TipoDocumentoEnum.nullable(),
+        oggetto: NullableString,
+        testoDocumento: NullableString,
+        destinatarioTipo: z.enum(["cliente", "fornitore", "manuale"]).nullable(),
     }),
 });
 

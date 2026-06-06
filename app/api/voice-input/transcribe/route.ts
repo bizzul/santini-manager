@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { getSiteAiConfig } from "@/lib/ai/get-site-ai-config";
+import { resolveSttConfigForSite } from "@/lib/ai/resolve-stt-config";
+import {
+    createServerSttProvider,
+    WHISPER_SAFE_MAX_FILE_BYTES,
+} from "@/lib/speech/server";
+import { mapSttProviderError } from "@/lib/speech/server/map-stt-error";
 
 /**
- * Server-side transcription endpoint using Whisper API
- * This keeps the API key secure on the server
+ * Server-side transcription endpoint.
+ * Audio -> text via configured STT provider (Whisper by default).
+ * API keys are never exposed to the browser.
  */
 export async function POST(request: NextRequest) {
     try {
         const supabase = await createClient();
 
-        // Check authentication
         const {
             data: { user },
         } = await supabase.auth.getUser();
@@ -18,7 +23,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Get form data with audio file
         const formData = await request.formData();
         const audioFile = formData.get("audio") as File | null;
         const siteId = formData.get("siteId") as string | null;
@@ -27,79 +31,75 @@ export async function POST(request: NextRequest) {
         if (!audioFile) {
             return NextResponse.json(
                 { error: "Audio file is required" },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
         if (!siteId) {
             return NextResponse.json(
                 { error: "Site ID is required" },
-                { status: 400 }
+                { status: 400 },
             );
         }
 
-        // Get AI configuration for this site
-        const aiConfig = await getSiteAiConfig(siteId);
-
-        // Use whisper API key if available, otherwise fall back to AI API key (for OpenAI)
-        const whisperApiKey = aiConfig.whisperApiKey || aiConfig.apiKey;
-
-        if (!whisperApiKey) {
+        if (audioFile.size > WHISPER_SAFE_MAX_FILE_BYTES) {
             return NextResponse.json(
                 {
-                    error: "API key non configurata",
+                    error: "File audio troppo grande",
                     message:
-                        "Per utilizzare Whisper, configura la tua API key OpenAI in Impostazioni > AI & Voice",
+                        "Il file supera il limite di 25 MB di Whisper. Registra un audio piu' breve o comprimi il file.",
                 },
-                { status: 400 }
+                { status: 413 },
             );
         }
 
-        // Forward the audio to OpenAI Whisper API
-        const whisperFormData = new FormData();
-        whisperFormData.append("file", audioFile, "audio.webm");
-        whisperFormData.append("model", "whisper-1");
-        whisperFormData.append("language", language);
-
-        const response = await fetch(
-            "https://api.openai.com/v1/audio/transcriptions",
-            {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${whisperApiKey}`,
+        const sttResult = await resolveSttConfigForSite(siteId);
+        if (!sttResult.ok) {
+            return NextResponse.json(
+                {
+                    error: sttResult.error.error,
+                    message: sttResult.error.message,
                 },
-                body: whisperFormData,
-            }
+                { status: sttResult.error.status },
+            );
+        }
+
+        const { config } = sttResult;
+        const provider = createServerSttProvider(
+            config.sttProvider,
+            config.apiKey,
         );
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            console.error("Whisper API error:", error);
-            
-            if (response.status === 401) {
-                return NextResponse.json(
-                    { error: "API key non valida" },
-                    { status: 401 }
-                );
-            }
-            
+        const { text } = await provider.transcribe(audioFile, {
+            language,
+            filename: audioFile.name || "audio.webm",
+        });
+
+        if (!text) {
             return NextResponse.json(
-                { error: error.error?.message || "Errore durante la trascrizione" },
-                { status: response.status }
+                {
+                    error: "Trascrizione vuota",
+                    message:
+                        "Non e' stato possibile estrarre testo dall'audio. Riprova parlando piu' chiaramente.",
+                },
+                { status: 422 },
             );
         }
-
-        const data = await response.json();
 
         return NextResponse.json({
             success: true,
-            transcript: data.text,
+            transcript: text,
         });
     } catch (error) {
         console.error("Error in transcription endpoint:", error);
+
+        const mapped = mapSttProviderError(error);
         return NextResponse.json(
-            { error: "Errore durante la trascrizione" },
-            { status: 500 }
+            {
+                error: mapped.error,
+                message: mapped.message,
+            },
+            { status: mapped.status },
         );
     }
 }

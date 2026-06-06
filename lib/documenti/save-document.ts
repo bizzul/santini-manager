@@ -137,12 +137,15 @@ export async function saveDocumento(
   }
 
   if (isCommercial && righeConTotali.length > 0) {
+    const OPTIONAL_RIGA_COLUMNS = ["immagine_url", "descrizione_estesa"] as const;
+
     const righePayload = righeConTotali.map((riga, index) => ({
       documento_id: savedRow.id,
       site_id: siteId,
       posizione: index + 1,
       art: riga.art,
       descrizione: riga.descrizione,
+      descrizione_estesa: riga.descrizioneEstesa ?? null,
       misure: riga.misure,
       unita: riga.unita,
       quantita: riga.quantita,
@@ -158,19 +161,28 @@ export async function saveDocumento(
       immagine_url: riga.immagineUrl ?? null,
     }));
 
-    let { error: righeError } = await supabase
-      .from("righe_documento")
-      .insert(righePayload);
+    let righeError: { message: string } | null = null;
+    let attempt: Record<string, unknown>[] = righePayload;
+    const droppedColumns = new Set<string>();
 
-    if (
-      righeError?.message.includes("immagine_url")
-    ) {
-      const legacyPayload = righePayload.map(
-        ({ immagine_url: _immagineUrl, ...riga }) => riga,
-      );
-      ({ error: righeError } = await supabase
+    for (let i = 0; i <= OPTIONAL_RIGA_COLUMNS.length; i += 1) {
+      const { error } = await supabase
         .from("righe_documento")
-        .insert(legacyPayload));
+        .insert(attempt);
+      righeError = error;
+      if (!error) break;
+
+      const missing = OPTIONAL_RIGA_COLUMNS.find(
+        (col) => error.message.includes(col) && !droppedColumns.has(col),
+      );
+      if (!missing) break;
+
+      droppedColumns.add(missing);
+      attempt = attempt.map((row) => {
+        const next = { ...row };
+        delete next[missing];
+        return next;
+      });
     }
 
     if (righeError) {

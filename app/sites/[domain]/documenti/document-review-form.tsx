@@ -29,7 +29,7 @@ import {
   type DocumentTemplate,
 } from "@/lib/documenti/template-types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import {
   calcolaTotaleRiga,
   calcolaTotaliDocumento,
@@ -78,16 +78,87 @@ export function DocumentReviewForm({
   const { toast } = useToast();
   const router = useRouter();
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(
+    null,
+  );
 
   const form = useForm<DocumentoArricchito>({
     resolver: zodResolver(DocumentoArricchitoSchema),
     defaultValues: initialDocumento,
   });
 
-  const { fields } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "righe",
   });
+
+  const addRiga = () => {
+    append({
+      descrizione: "",
+      descrizioneEstesa: null,
+      misure: null,
+      unita: "Pz.",
+      quantita: 1,
+      prezzoUnitario: 0,
+      sconto: showDiscount ? null : null,
+      isTrasporto: false,
+      articoloId: null,
+      isNuovo: true,
+      immagineUrl: null,
+    });
+  };
+
+  const uploadRigaImage = async (index: number, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({
+        variant: "destructive",
+        description: "Il file deve essere un'immagine (JPEG, PNG, WebP)",
+      });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        description: "Immagine troppo grande (max 5 MB)",
+      });
+      return;
+    }
+
+    setUploadingImageIndex(index);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(
+        `/api/sites/${domain}/documenti/riga-image`,
+        {
+          method: "POST",
+          headers: { "x-site-domain": domain },
+          body: formData,
+        },
+      );
+
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Caricamento fallito");
+      }
+
+      form.setValue(`righe.${index}.immagineUrl`, data.url, {
+        shouldDirty: true,
+      });
+      toast({ description: "Immagine caricata" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Errore nel caricamento dell'immagine",
+      });
+    } finally {
+      setUploadingImageIndex(null);
+    }
+  };
 
   const watched = form.watch();
   const isLetter = isLetterType(watched.tipoDocumento);
@@ -445,7 +516,19 @@ export function DocumentReviewForm({
                         <span className="flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
                           {index + 1}
                         </span>
-                        <MatchBadge isNuovo={riga?.isNuovo ?? true} />
+                        <div className="flex items-center gap-1.5">
+                          <MatchBadge isNuovo={riga?.isNuovo ?? true} />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                            onClick={() => remove(index)}
+                            aria-label={`Rimuovi riga ${index + 1}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
 
                       {(riga?.articoliSuggeriti?.length ?? 0) > 0 ? (
@@ -477,14 +560,60 @@ export function DocumentReviewForm({
                       ) : null}
 
                       <div className="flex gap-2">
-                        {riga?.immagineUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={riga.immagineUrl}
-                            alt=""
-                            className="h-12 w-12 shrink-0 rounded border object-cover"
-                          />
-                        ) : null}
+                        <div className="shrink-0">
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Immagine
+                          </p>
+                          {riga?.immagineUrl ? (
+                            <div className="group relative h-14 w-14">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={riga.immagineUrl}
+                                alt=""
+                                className="h-14 w-14 rounded border object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  form.setValue(
+                                    `righe.${index}.immagineUrl`,
+                                    null,
+                                    { shouldDirty: true },
+                                  )
+                                }
+                                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                                aria-label="Rimuovi immagine"
+                              >
+                                <X className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label
+                              className="flex h-14 w-14 cursor-pointer flex-col items-center justify-center gap-0.5 rounded border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                              title="Carica immagine (opzionale)"
+                            >
+                              {uploadingImageIndex === index ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <ImagePlus className="h-4 w-4" />
+                              )}
+                              <span className="text-[8px] leading-none">
+                                Carica
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={uploadingImageIndex === index}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) uploadRigaImage(index, file);
+                                  e.target.value = "";
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
                         <FormField
                           control={form.control}
                           name={`righe.${index}.descrizione`}
@@ -504,6 +633,30 @@ export function DocumentReviewForm({
                           )}
                         />
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name={`righe.${index}.descrizioneEstesa`}
+                        render={({ field: f }) => (
+                          <FormItem className="space-y-0.5">
+                            <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              Descrizione completa (opzionale)
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                rows={3}
+                                placeholder="Testo descrittivo esteso, dettagli, note tecniche…"
+                                className="min-h-[4rem] resize-y py-1.5 text-sm leading-snug"
+                                {...f}
+                                value={f.value ?? ""}
+                                onChange={(e) =>
+                                  f.onChange(e.target.value || null)
+                                }
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
 
                       <div
                         className={`grid gap-x-2 gap-y-1 ${
@@ -614,6 +767,16 @@ export function DocumentReviewForm({
                     </div>
                   );
                 })}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-dashed"
+                  onClick={addRiga}
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Aggiungi riga
+                </Button>
               </div>
 
               <FormField

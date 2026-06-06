@@ -129,6 +129,11 @@ export const ArticoloSuggeritoSchema = z.object({
 });
 
 export const RigaArricchitaSchema = AIRigaSchema.extend({
+  descrizioneEstesa: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Descrizione completa/estesa in testo libero, opzionale"),
   articoloId: z.union([z.string(), z.number()]).nullable(),
   articoloSource: z.enum(["sell_product", "inventory", "none"]).optional(),
   isNuovo: z.boolean(),

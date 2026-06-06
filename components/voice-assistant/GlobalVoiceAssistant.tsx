@@ -37,6 +37,10 @@ import {
     getVoiceCommandScreenContext,
 } from "@/lib/voice-command-config";
 import { splitVoiceCommandTranscript } from "@/lib/voice-command-transcript";
+import {
+    saveVoiceDocumentPrefill,
+    type VoiceDocumentPrefill,
+} from "@/lib/voice-document-prefill";
 
 type SpeechProvider = "web-speech" | "whisper";
 
@@ -57,6 +61,7 @@ type CommandIntent =
     | "create_offer"
     | "create_client"
     | "create_product"
+    | "create_document"
     | "schedule_task"
     | "log_time"
     | "move_card"
@@ -76,6 +81,7 @@ interface SingleCommandResult {
     preview?: Record<string, unknown>;
     clarification?: CommandClarification | null;
     operation?: CommandOperation | null;
+    prefill?: VoiceDocumentPrefill | null;
 }
 
 interface PlannedCommand extends SingleCommandResult {
@@ -109,10 +115,24 @@ function formatPreviewValue(value: unknown) {
     return String(value);
 }
 
+function isCommandExecutable(command: PlannedCommand): boolean {
+    if (command.operation && command.status === "ready") {
+        return true;
+    }
+
+    return (
+        command.intent === "create_document" && Boolean(command.prefill)
+    );
+}
+
 function createExecutionMessage(
     result: SingleCommandResult,
     payload: Record<string, any> | null
 ) {
+    if (result.intent === "create_document") {
+        return "Generatore documenti aperto con i dati precompilati. Rivedi e premi Genera per confermare.";
+    }
+
     if (result.intent === "create_client") {
         const clientName =
             payload?.data?.businessName ||
@@ -185,7 +205,7 @@ function formatIntentLabel(intent: CommandIntent) {
 
 function buildClarificationState(commands: PlannedCommand[]) {
     const firstBlockedCommand = commands.find(
-        (command) => command.status !== "ready" || !command.operation
+        (command) => !isCommandExecutable(command)
     );
 
     if (!firstBlockedCommand?.clarification) {
@@ -201,25 +221,22 @@ function buildClarificationState(commands: PlannedCommand[]) {
 }
 
 function buildAnalysisResult(commands: PlannedCommand[]): CommandAnalysisResult {
-    const readyCount = commands.filter(
-        (command) => command.status === "ready" && command.operation
-    ).length;
+    const readyCount = commands.filter(isCommandExecutable).length;
     const blockedCount = commands.length - readyCount;
     const hasMultipleCommands = commands.length > 1;
 
     if (!hasMultipleCommands && commands[0]) {
         const singleCommand = commands[0];
+        const executable = isCommandExecutable(singleCommand);
 
         return {
-            status:
-                singleCommand.status === "ready" && singleCommand.operation
-                    ? "ready"
-                    : "needs_clarification",
+            status: executable ? "ready" : "needs_clarification",
             summary: singleCommand.summary,
-            message:
-                singleCommand.status === "ready" && singleCommand.operation
-                    ? "Analisi completata. Controlla il riepilogo e conferma manualmente l'esecuzione."
-                    : singleCommand.message,
+            message: executable
+                ? singleCommand.intent === "create_document"
+                    ? "Analisi completata. Conferma per aprire il generatore documenti precompilato."
+                    : "Analisi completata. Controlla il riepilogo e conferma manualmente l'esecuzione."
+                : singleCommand.message,
             commands,
             readyCount,
             blockedCount,
@@ -483,9 +500,7 @@ export function GlobalVoiceAssistant() {
     const isSupported = useWhisper ? true : webIsSupported;
     const speechError = useWhisper ? whisperError : webSpeechError?.message || null;
     const commandsReadyToExecute =
-        commandResult?.commands.filter(
-            (command) => command.status === "ready" && command.operation
-        ) || [];
+        commandResult?.commands.filter(isCommandExecutable) || [];
     const canExecuteCommands =
         commandsReadyToExecute.length > 0 &&
         commandResult?.blockedCount === 0 &&
@@ -701,9 +716,7 @@ export function GlobalVoiceAssistant() {
             return;
         }
 
-        const commandsToExecute = commandResult.commands.filter(
-            (command) => command.status === "ready" && command.operation
-        );
+        const commandsToExecute = commandResult.commands.filter(isCommandExecutable);
 
         if (commandsToExecute.length === 0) {
             toast({
@@ -733,6 +746,28 @@ export function GlobalVoiceAssistant() {
                         message: "Esecuzione in corso...",
                     },
                 }));
+
+                if (
+                    command.intent === "create_document" &&
+                    command.prefill &&
+                    !command.operation
+                ) {
+                    saveVoiceDocumentPrefill(command.prefill);
+                    if (domain) {
+                        router.push(`/sites/${domain}/documenti`);
+                    }
+
+                    successCount += 1;
+
+                    setCommandExecutionStates((previous) => ({
+                        ...previous,
+                        [command.id]: {
+                            status: "success",
+                            message: createExecutionMessage(command, null),
+                        },
+                    }));
+                    continue;
+                }
 
                 const executeResponse = await fetch(command.operation!.endpoint, {
                     method: command.operation!.method,
@@ -818,7 +853,7 @@ export function GlobalVoiceAssistant() {
             setIsRunningCommand(false);
             setRunMode(null);
         }
-    }, [commandResult, router, siteId, toast]);
+    }, [commandResult, domain, router, siteId, toast]);
 
     const handleOpenChange = useCallback(
         (nextOpen: boolean) => {

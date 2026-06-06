@@ -207,6 +207,11 @@ export function DocumentPreview({
                         ) : null}
                         <div className="min-w-0">
                           <p className="leading-snug">{riga.descrizione}</p>
+                          {riga.descrizioneEstesa ? (
+                            <p className="mt-0.5 whitespace-pre-wrap text-xs leading-snug text-neutral-700">
+                              {riga.descrizioneEstesa}
+                            </p>
+                          ) : null}
                           {riga.misure ? (
                             <p className="mt-0.5 text-xs text-neutral-600">
                               Misure: {riga.misure}

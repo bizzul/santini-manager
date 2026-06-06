@@ -83,6 +83,7 @@ Puoi riconoscere solo questi intenti:
 - create_offer
 - create_client
 - create_product
+- create_document
 - schedule_task
 - log_time
 - move_card
@@ -98,6 +99,7 @@ Regole:
    - products -> preferisci create_product
    - calendar / calendar-installation / calendar-service -> preferisci schedule_task
    - timetracking -> preferisci log_time
+   - documenti -> preferisci create_document
    - kanban / projects / offerte -> preferisci create_project, create_offer, move_card
 6. Rispetta sempre gli intenti consentiti della schermata corrente.
 7. Se la trascrizione usa "sposta progetto", "sposta offerta" o "sposta lavoro", interpretala come move_card.
@@ -114,30 +116,38 @@ Regole:
    - productType
    - notes come descrizione se presente
    - priceList true se viene citato listino prezzi
-11. Per schedule_task estrai:
+11. Per create_document estrai:
+   - tipoDocumento: OFFERTA, CONFERMA, FATTURA, PREVENTIVO, LETTERA_UFFICIALE, RISPOSTA_COMUNICAZIONE, SOLLECITO_PAGAMENTO o COMUNICAZIONE_GENERICA
+   - clientName come destinatario
+   - destinatarioTipo: cliente, fornitore o manuale
+   - oggetto
+   - testoDocumento: il contenuto descrittivo dettato (articoli, prezzi, condizioni, corpo lettera)
+   - notes per dettagli aggiuntivi
+12. Per schedule_task estrai:
    - taskCode o cardTitle
    - deliveryDate
    - startTime e endTime in formato HH:mm se presenti
    - team: 1 o 2 se citata la squadra
    - notes
-12. Per log_time estrai:
+13. Per log_time estrai:
    - activityType: project o internal
    - taskCode o cardTitle se project
    - internalActivity se internal
    - roleName se citato il reparto
    - hours e minutes
    - notes
-13. Per move_card estrai:
+14. Per move_card estrai:
    - taskCode o cardTitle
    - targetColumnName
    - lossReason se serve
    - notes
-14. Mantieni null per i campi assenti.
-15. needsClarification deve essere sempre presente come boolean.
-16. Dentro data restituisci sempre TUTTI i campi previsti dallo schema; se un valore manca usa null.
+15. Mantieni null per i campi assenti.
+16. needsClarification deve essere sempre presente come boolean.
+17. Dentro data restituisci sempre TUTTI i campi previsti dallo schema; se un valore manca usa null.
 
 Esempi:
 - "crea offerta per Rossi serramenti a Lugano da 4500 franchi" -> create_offer
+- "crea offerta per cliente Rossi con infissi in alluminio da 12000 franchi" -> create_document
 - "crea cliente Bianchi SA via Roma 1 Lugano 6900 svizzera" -> create_client
 - "aggiungi prodotto armadio categoria cucine" -> create_product
 - "programma la card 26-044 il 15 aprile alle 08:00" -> schedule_task
@@ -980,6 +990,97 @@ Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
                           method: "POST",
                           body: operationBody,
                       },
+            });
+        }
+
+        if (command.intent === "create_document") {
+            const testoDocumento =
+                command.data.testoDocumento ||
+                command.data.notes ||
+                transcript.trim();
+
+            if (!testoDocumento) {
+                return buildClarificationResponse({
+                    intent: command.intent,
+                    summary: command.summary,
+                    message:
+                        "Per creare un documento mi serve almeno il contenuto descrittivo.",
+                    question:
+                        "Descrivi il documento: tipo, destinatario, articoli, prezzi o contenuto della lettera.",
+                    missingFields: ["testoDocumento"],
+                    examples: [
+                        "Crea offerta per Rossi con infissi in alluminio da 12000 franchi",
+                        "Lettera ufficiale al comune di Lugano per richiesta permesso",
+                    ],
+                });
+            }
+
+            const clientResult = resolveClient(command.data.clientName);
+            if (clientResult.ambiguous) {
+                return buildClarificationResponse({
+                    intent: command.intent,
+                    summary: command.summary,
+                    message:
+                        "Ho trovato piu' clienti simili. Specifica meglio il destinatario.",
+                    question: "Qual e' il destinatario esatto del documento?",
+                    missingFields: ["clientName"],
+                });
+            }
+
+            const tipoDocumento = command.data.tipoDocumento || "OFFERTA";
+            const destinatarioTipo =
+                command.data.destinatarioTipo ||
+                (clientResult.match ? "cliente" : "manuale");
+            const ragioneSociale = clientResult.match
+                ? getClientDisplayName(clientResult.match)
+                : command.data.clientName || "";
+
+            const prefill = {
+                tipoDocumento,
+                destinatario: {
+                    tipo: destinatarioTipo,
+                    entityId: clientResult.match?.id ?? null,
+                    ragioneSociale,
+                },
+                oggetto: command.data.oggetto || "",
+                testo: testoDocumento,
+                summary: command.summary,
+            };
+
+            const missingDestinatario = !ragioneSociale.trim();
+
+            return buildResponse({
+                status:
+                    command.needsClarification || missingDestinatario
+                        ? "needs_clarification"
+                        : "ready",
+                intent: command.intent,
+                summary: command.summary,
+                preview: {
+                    tipoDocumento,
+                    destinatario: ragioneSociale || "Da specificare",
+                    oggetto: command.data.oggetto || null,
+                    testo: testoDocumento.slice(0, 120),
+                },
+                message:
+                    command.needsClarification || missingDestinatario
+                        ? "Il comando e' stato capito. Completa i campi mancanti nel generatore documenti."
+                        : "Apriro' il generatore documenti precompilato. Rivedi i dati e premi Genera per confermare.",
+                clarification:
+                    command.needsClarification || missingDestinatario
+                        ? buildClarification(
+                              "Specifica il destinatario del documento o altri dettagli mancanti.",
+                              missingDestinatario
+                                  ? ["clientName", "oggetto"]
+                                  : ["oggetto"],
+                              [
+                                  "Per il cliente Rossi serramenti",
+                                  "Oggetto: Offerta infissi alluminio",
+                              ],
+                          )
+                        : null,
+                prefill,
+                operation: null,
             });
         }
 

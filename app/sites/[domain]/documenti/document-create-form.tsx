@@ -33,6 +33,7 @@ import {
 } from "@/lib/documenti/parse-generate-api-response";
 import { createClient } from "@/utils/supabase/client";
 import { Loader2, Paperclip, X } from "lucide-react";
+import { VoiceDictationButton } from "@/components/voice-input/VoiceDictationButton";
 
 export interface ClienteOption {
   id: number;
@@ -569,7 +570,19 @@ export function DocumentCreateForm({
       </div>
 
       <div>
-        <Label className="mb-2 block">Testo descrittivo</Label>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <Label>Testo descrittivo</Label>
+          <VoiceDictationButton
+            siteId={siteId}
+            domain={domain}
+            title="Dettatura testo documento"
+            description="Parla per dettare il testo descrittivo. Potrai rivederlo prima di inserirlo nel campo."
+            buttonTitle="Dettatura vocale"
+            onTranscript={(text) =>
+              setTesto((prev) => (prev ? `${prev} ${text}` : text))
+            }
+          />
+        </div>
         <Textarea
           rows={10}
           placeholder={
