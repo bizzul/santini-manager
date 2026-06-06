@@ -66,7 +66,7 @@ stato persistito (localStorage) o differenze di configurazione.
 
 ### `site_ai_settings` (tabella Supabase, non env)
 - **Campi rilevanti:** `ai_provider` (`anthropic` | `openai`), `ai_model`
-  (es. `claude-3-5-sonnet-latest`, `gpt-4o-mini`), `ai_api_key`.
+  (es. `claude-sonnet-4-6`, `gpt-4o-mini`), `ai_api_key`.
 - **Dove si imposta:** Impostazioni sito > AI & Voice.
 - **Dove si legge:** `lib/ai/resolve-ai-config.ts`, usato da
   `/api/documenti/generate` e voice input.

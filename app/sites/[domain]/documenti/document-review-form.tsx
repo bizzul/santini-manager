@@ -48,6 +48,7 @@ interface DocumentReviewFormProps {
   template: DocumentTemplate;
   sourceText: string;
   documentoId?: string | null;
+  taskId?: number | null;
   onBack: () => void;
   onSaved?: () => void;
 }
@@ -58,6 +59,7 @@ export function DocumentReviewForm({
   template,
   sourceText,
   documentoId,
+  taskId,
   onBack,
   onSaved,
 }: DocumentReviewFormProps) {
@@ -110,6 +112,7 @@ export function DocumentReviewForm({
           ...values,
           sourceText,
           documentoId: documentoId ?? undefined,
+          taskId: taskId ?? undefined,
         }),
       });
 

@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { cache } from "react";
 import type { AiProvider } from "@/lib/ai/get-site-ai-config";
+import { ANTHROPIC_DEFAULT_MODEL } from "@/lib/ai/anthropic-models";
 import {
   DOCUMENT_AI_CONFIG_MISSING_MESSAGE,
   resolveDocumentAiFromSettings,
@@ -16,7 +17,7 @@ export interface AiRuntimeConfig {
 }
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
-  anthropic: "claude-3-5-sonnet-latest",
+  anthropic: ANTHROPIC_DEFAULT_MODEL,
   openai: "gpt-4o-mini",
   google: "gemini-1.5-flash",
 };

@@ -20,14 +20,14 @@ export default async function Page({
   const { siteId } = await requireServerSiteContext(domain);
   const supabase = await createClient();
 
-  const [template, documentiResult, clientsResult, suppliersResult] =
+  const [template, documentiResult, clientsResult, suppliersResult, offersResult] =
     await Promise.all([
       getSiteDocumentTemplate(siteId),
       fetchDocumenti(supabase, siteId),
       supabase
         .from("Client")
         .select(
-          "id, businessName, firstName, lastName, address, city, zipCode, email",
+          "id, businessName, individualFirstName, individualLastName, individualTitle, address, city, zipCode, email, contactPeople",
         )
         .eq("site_id", siteId)
         .order("businessName", { ascending: true }),
@@ -36,7 +36,39 @@ export default async function Page({
         .select("id, name, address, cap, location, email, contact")
         .eq("site_id", siteId)
         .order("name", { ascending: true }),
+      supabase
+        .from("Task")
+        .select(
+          "id, unique_code, name, clientId, clients:clientId(id, businessName, individualFirstName, individualLastName)",
+        )
+        .eq("site_id", siteId)
+        .eq("task_type", "OFFERTA")
+        .eq("archived", false)
+        .order("created_at", { ascending: false }),
     ]);
+
+  const offers = (offersResult.data ?? []).map((offer) => {
+    const client = offer.clients as {
+      id?: number;
+      businessName?: string | null;
+      individualFirstName?: string | null;
+      individualLastName?: string | null;
+    } | null;
+    const clientName = client
+      ? client.businessName?.trim() ||
+        `${client.individualFirstName ?? ""} ${client.individualLastName ?? ""}`.trim() ||
+        null
+      : null;
+
+    return {
+      id: offer.id as number,
+      unique_code: offer.unique_code as string,
+      name: offer.name as string,
+      clientId: offer.clientId as number | null,
+      clientName,
+      label: `${offer.unique_code}${clientName ? ` - ${clientName}` : ""}`,
+    };
+  });
 
   return (
     <DocumentiPageClient
@@ -46,6 +78,7 @@ export default async function Page({
       documenti={documentiResult}
       clients={clientsResult.data ?? []}
       suppliers={suppliersResult.data ?? []}
+      offers={offers}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,12 +31,28 @@ import { Loader2, Paperclip, X } from "lucide-react";
 export interface ClienteOption {
   id: number;
   businessName: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
+  individualFirstName?: string | null;
+  individualLastName?: string | null;
+  individualTitle?: string | null;
   address?: string | null;
   city?: string | null;
   zipCode?: number | null;
   email?: string | null;
+  contactPeople?: Array<{
+    name?: string | null;
+    role?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }> | null;
+}
+
+export interface OffertaOption {
+  id: number;
+  unique_code: string;
+  name: string;
+  clientId: number | null;
+  clientName: string | null;
+  label: string;
 }
 
 export interface FornitoreOption {
@@ -54,14 +70,20 @@ interface DocumentCreateFormProps {
   siteId: string;
   clients: ClienteOption[];
   suppliers: FornitoreOption[];
+  offers?: OffertaOption[];
   initialValues?: {
     tipoDocumento?: TipoDocumento;
     destinatario?: DestinatarioInput;
     oggetto?: string;
     testo?: string;
     allegati?: Allegato[];
+    taskId?: number | null;
   };
-  onGenerated: (documento: DocumentoArricchito, sourceText: string) => void;
+  onGenerated: (
+    documento: DocumentoArricchito,
+    sourceText: string,
+    taskId?: number | null,
+  ) => void;
   onCancel: () => void;
 }
 
@@ -70,9 +92,27 @@ type DestinatarioMode = "cliente" | "fornitore" | "manuale";
 function clientDisplayName(c: ClienteOption): string {
   return (
     c.businessName?.trim() ||
-    [c.firstName, c.lastName].filter(Boolean).join(" ") ||
+    [c.individualFirstName, c.individualLastName].filter(Boolean).join(" ") ||
     `Cliente #${c.id}`
   );
+}
+
+function clientAca(c: ClienteOption): string {
+  const contact = c.contactPeople?.[0];
+  if (contact?.name?.trim()) {
+    return contact.role?.trim()
+      ? `${contact.name.trim()} (${contact.role.trim()})`
+      : contact.name.trim();
+  }
+  const person = [c.individualFirstName, c.individualLastName]
+    .filter(Boolean)
+    .join(" ");
+  if (person) {
+    return c.individualTitle?.trim()
+      ? `${c.individualTitle.trim()} ${person}`
+      : person;
+  }
+  return "";
 }
 
 export function DocumentCreateForm({
@@ -80,6 +120,7 @@ export function DocumentCreateForm({
   siteId,
   clients,
   suppliers,
+  offers = [],
   initialValues,
   onGenerated,
   onCancel,
@@ -89,7 +130,7 @@ export function DocumentCreateForm({
     initialValues?.tipoDocumento ?? "OFFERTA",
   );
   const [destMode, setDestMode] = useState<DestinatarioMode>(
-    initialValues?.destinatario?.tipo ?? "manuale",
+    initialValues?.destinatario?.tipo ?? "cliente",
   );
   const [selectedEntityId, setSelectedEntityId] = useState<string>(
     initialValues?.destinatario?.entityId != null
@@ -104,6 +145,9 @@ export function DocumentCreateForm({
   const [cap, setCap] = useState(initialValues?.destinatario?.cap ?? "");
   const [citta, setCitta] = useState(initialValues?.destinatario?.citta ?? "");
   const [email, setEmail] = useState(initialValues?.destinatario?.email ?? "");
+  const [selectedOfferId, setSelectedOfferId] = useState<string>(
+    initialValues?.taskId != null ? String(initialValues.taskId) : "",
+  );
   const [oggetto, setOggetto] = useState(initialValues?.oggetto ?? "");
   const [testo, setTesto] = useState(initialValues?.testo ?? "");
   const [allegati, setAllegati] = useState<Allegato[]>(
@@ -117,15 +161,19 @@ export function DocumentCreateForm({
     [tipoDocumento],
   );
 
-  const applyCliente = (id: string) => {
-    const client = clients.find((c) => c.id === Number(id));
-    if (!client) return;
-    setRagioneSociale(clientDisplayName(client));
-    setVia(client.address ?? "");
-    setCap(client.zipCode != null ? String(client.zipCode) : "");
-    setCitta(client.city ?? "");
-    setEmail(client.email ?? "");
-  };
+  const applyCliente = useCallback(
+    (id: string) => {
+      const client = clients.find((c) => c.id === Number(id));
+      if (!client) return;
+      setRagioneSociale(clientDisplayName(client));
+      setAca(clientAca(client));
+      setVia(client.address ?? "");
+      setCap(client.zipCode != null ? String(client.zipCode) : "");
+      setCitta(client.city ?? "");
+      setEmail(client.email ?? "");
+    },
+    [clients],
+  );
 
   const applyFornitore = (id: string) => {
     const supplier = suppliers.find((s) => s.id === Number(id));
@@ -146,15 +194,47 @@ export function DocumentCreateForm({
 
   const handleDestModeChange = (mode: DestinatarioMode) => {
     setDestMode(mode);
-    setSelectedEntityId("");
-    if (mode === "manuale") return;
+    if (mode === "manuale") {
+      setSelectedEntityId("");
+      return;
+    }
     if (mode === "cliente" && clients.length > 0) {
       handleEntityChange(String(clients[0].id));
+      return;
     }
     if (mode === "fornitore" && suppliers.length > 0) {
       handleEntityChange(String(suppliers[0].id));
     }
   };
+
+  const showOfferPicker =
+    tipoDocumento === "OFFERTA" || tipoDocumento === "PREVENTIVO";
+
+  const handleOfferChange = (offerId: string) => {
+    setSelectedOfferId(offerId);
+    const offer = offers.find((o) => o.id === Number(offerId));
+    if (!offer) return;
+
+    const subject =
+      offer.name?.trim() && offer.name !== offer.unique_code
+        ? `Offerta N°: ${offer.unique_code} - ${offer.name}`
+        : `Offerta N°: ${offer.unique_code}`;
+    setOggetto(subject);
+
+    if (offer.clientId) {
+      setDestMode("cliente");
+      handleEntityChange(String(offer.clientId));
+    }
+  };
+
+  useEffect(() => {
+    if (destMode !== "cliente" || selectedEntityId || clients.length === 0) {
+      return;
+    }
+    const id = String(clients[0].id);
+    setSelectedEntityId(id);
+    applyCliente(id);
+  }, [destMode, selectedEntityId, clients, applyCliente]);
 
   const uploadAttachment = useCallback(
     async (file: File) => {
@@ -248,20 +328,39 @@ export function DocumentCreateForm({
           oggetto: oggetto.trim(),
           testo: testo.trim(),
           allegati,
+          taskId:
+            selectedOfferId && showOfferPicker
+              ? Number(selectedOfferId)
+              : null,
+          offertaCodice:
+            selectedOfferId && showOfferPicker
+              ? offers.find((o) => o.id === Number(selectedOfferId))
+                  ?.unique_code ?? null
+              : null,
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
+        const detail = [
+          result.message,
+          result.providerErrorType
+            ? `(${result.providerErrorType})`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" ");
         toast({
           variant: "destructive",
-          description: result.message ?? result.error ?? "Errore nella generazione",
+          description: detail || result.error || "Errore nella generazione",
         });
         return;
       }
 
-      onGenerated(result.documento, testo.trim());
+      const taskId =
+        selectedOfferId && showOfferPicker ? Number(selectedOfferId) : null;
+      onGenerated(result.documento, testo.trim(), taskId);
     } catch {
       toast({
         variant: "destructive",
@@ -317,7 +416,10 @@ export function DocumentCreateForm({
         </Select>
 
         {destMode === "cliente" ? (
-          <Select value={selectedEntityId} onValueChange={handleEntityChange}>
+          <Select
+            value={selectedEntityId || undefined}
+            onValueChange={handleEntityChange}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Seleziona cliente" />
             </SelectTrigger>
@@ -332,7 +434,10 @@ export function DocumentCreateForm({
         ) : null}
 
         {destMode === "fornitore" ? (
-          <Select value={selectedEntityId} onValueChange={handleEntityChange}>
+          <Select
+            value={selectedEntityId || undefined}
+            onValueChange={handleEntityChange}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Seleziona fornitore" />
             </SelectTrigger>
@@ -380,6 +485,31 @@ export function DocumentCreateForm({
           </div>
         </div>
       </div>
+
+      {showOfferPicker && offers.length > 0 ? (
+        <div>
+          <Label className="mb-2 block">Offerta collegata</Label>
+          <Select
+            value={selectedOfferId || undefined}
+            onValueChange={handleOfferChange}
+          >
+            <SelectTrigger className="w-full max-w-md">
+              <SelectValue placeholder="Seleziona offerta esistente (opzionale)" />
+            </SelectTrigger>
+            <SelectContent>
+              {offers.map((o) => (
+                <SelectItem key={o.id} value={String(o.id)}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Collega il documento a un&apos;offerta del database: compila
+            automaticamente oggetto e cliente.
+          </p>
+        </div>
+      ) : null}
 
       <div>
         <Label className="mb-2 block">Oggetto</Label>

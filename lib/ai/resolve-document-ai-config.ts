@@ -1,3 +1,4 @@
+import { ANTHROPIC_DEFAULT_MODEL } from "@/lib/ai/anthropic-models";
 import type { AiProvider } from "@/lib/ai/get-site-ai-config";
 import type { AiRuntimeConfig } from "@/lib/ai/resolve-ai-config";
 
@@ -5,7 +6,7 @@ export const DOCUMENT_AI_CONFIG_MISSING_MESSAGE =
   "Configura la chiave API in Impostazioni > AI & Voice > Crea documenti";
 
 const DEFAULT_MODELS: Record<AiProvider, string> = {
-  anthropic: "claude-3-5-sonnet-latest",
+  anthropic: ANTHROPIC_DEFAULT_MODEL,
   openai: "gpt-4o-mini",
   google: "gemini-1.5-flash",
 };

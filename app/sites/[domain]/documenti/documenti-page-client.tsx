@@ -27,6 +27,7 @@ import {
   DocumentCreateForm,
   type ClienteOption,
   type FornitoreOption,
+  type OffertaOption,
 } from "./document-create-form";
 import {
   Table,
@@ -97,6 +98,7 @@ interface DocumentiPageClientProps {
   documenti: DocumentoListItem[];
   clients: ClienteOption[];
   suppliers: FornitoreOption[];
+  offers: OffertaOption[];
 }
 
 type Step = "list" | "create" | "review" | "view";
@@ -157,10 +159,12 @@ export function DocumentiPageClient({
   documenti,
   clients,
   suppliers,
+  offers,
 }: DocumentiPageClientProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>("list");
   const [sourceText, setSourceText] = useState("");
+  const [linkedTaskId, setLinkedTaskId] = useState<number | null>(null);
   const [documentoGenerato, setDocumentoGenerato] =
     useState<DocumentoArricchito | null>(null);
   const [editingDocumentoId, setEditingDocumentoId] = useState<string | null>(
@@ -173,9 +177,11 @@ export function DocumentiPageClient({
   const handleGenerated = (
     documento: DocumentoArricchito,
     testo: string,
+    taskId?: number | null,
   ) => {
     setDocumentoGenerato(documento);
     setSourceText(testo);
+    setLinkedTaskId(taskId ?? null);
     setEditingDocumentoId(null);
     setStep("review");
   };
@@ -251,15 +257,18 @@ export function DocumentiPageClient({
             template={template}
             sourceText={sourceText}
             documentoId={editingDocumentoId}
+            taskId={linkedTaskId}
             onBack={() => {
               setStep(editingDocumentoId ? "list" : "create");
               setDocumentoGenerato(null);
               setEditingDocumentoId(null);
+              setLinkedTaskId(null);
             }}
             onSaved={() => {
               setStep("list");
               setDocumentoGenerato(null);
               setEditingDocumentoId(null);
+              setLinkedTaskId(null);
             }}
           />
         </PageContent>
@@ -313,6 +322,7 @@ export function DocumentiPageClient({
             siteId={siteId}
             clients={clients}
             suppliers={suppliers}
+            offers={offers}
             onGenerated={handleGenerated}
             onCancel={() => setStep("list")}
           />

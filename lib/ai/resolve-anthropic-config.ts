@@ -1,3 +1,4 @@
+import { ANTHROPIC_DEFAULT_MODEL } from "@/lib/ai/anthropic-models";
 import { createClient } from "@/utils/supabase/server";
 import { cache } from "react";
 
@@ -7,7 +8,7 @@ export interface AnthropicRuntimeConfig {
   source: "database" | "environment";
 }
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-3-5-sonnet-latest";
+const DEFAULT_ANTHROPIC_MODEL = ANTHROPIC_DEFAULT_MODEL;
 
 /**
  * Risolve la configurazione Anthropic per un site con priorita':

@@ -66,9 +66,9 @@ const AI_MODELS: Record<string, Array<{ value: string; label: string }>> = {
         { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
     ],
     anthropic: [
-        { value: "claude-3-5-sonnet-latest", label: "Claude 3.5 Sonnet (consigliato)" },
-        { value: "claude-3-5-haiku-latest", label: "Claude 3.5 Haiku (veloce)" },
-        { value: "claude-3-opus-latest", label: "Claude 3 Opus (potente)" },
+        { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6 (consigliato)" },
+        { value: "claude-haiku-4-5-20251001", label: "Claude Haiku 4.5 (veloce)" },
+        { value: "claude-opus-4-6", label: "Claude Opus 4.6 (potente)" },
     ],
 };
 

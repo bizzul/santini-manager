@@ -1,5 +1,24 @@
 import { z } from "zod";
 import { DOCUMENT_TYPE_IDS } from "@/lib/documenti/document-types";
+import { parseAiNumber } from "@/lib/documenti/parse-ai-number";
+
+const aiNumber = z.preprocess((value) => {
+  const parsed = parseAiNumber(value);
+  return parsed ?? value;
+}, z.number());
+
+const aiNullableNumber = z.preprocess((value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = parseAiNumber(value);
+  return parsed ?? value;
+}, z.number().nullable());
+
+const aiBoolean = z.preprocess((value) => {
+  if (typeof value === "boolean") return value;
+  if (value === 1 || value === "1" || value === "true") return true;
+  if (value === 0 || value === "0" || value === "false") return false;
+  return value;
+}, z.boolean());
 
 export const TipoDocumentoEnum = z.enum(DOCUMENT_TYPE_IDS);
 export type TipoDocumento = z.infer<typeof TipoDocumentoEnum>;
@@ -48,15 +67,14 @@ export const AIRigaSchema = z.object({
     .nullable()
     .describe("Testo 'Misure: ...' se presente, altrimenti null"),
   unita: UnitaEnum.describe("Unita' di misura: m1, Pz., ecc."),
-  quantita: z.number().describe("Quantita' (Q)"),
-  prezzoUnitario: z.number().describe("Prezzo unitario, senza CHF"),
-  sconto: z
-    .number()
-    .nullable()
-    .describe("Sconto % di riga; null per FATTURA o se assente"),
-  isTrasporto: z
-    .boolean()
-    .describe("true se e' la riga trasporto (TR-01)"),
+  quantita: aiNumber.describe("Quantita' (Q), numero JSON"),
+  prezzoUnitario: aiNumber.describe(
+    "Prezzo unitario numerico, senza CHF ne simboli",
+  ),
+  sconto: aiNullableNumber.describe(
+    "Sconto % di riga come numero; null per FATTURA o se assente",
+  ),
+  isTrasporto: aiBoolean.describe("true se e' la riga trasporto (TR-01)"),
 });
 
 export type AIRiga = z.infer<typeof AIRigaSchema>;
@@ -144,6 +162,8 @@ export const GenerateDocumentRequestSchema = z.object({
   oggetto: z.string().min(1, "Oggetto obbligatorio"),
   testo: z.string().min(1, "Il testo descrittivo e' obbligatorio"),
   allegati: z.array(AllegatoSchema).optional().default([]),
+  taskId: z.number().nullable().optional(),
+  offertaCodice: z.string().nullable().optional(),
 });
 
 export type GenerateDocumentRequest = z.infer<

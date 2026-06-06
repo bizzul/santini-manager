@@ -27,13 +27,25 @@ import {
   resolveAiConfigForDocuments,
 } from "@/lib/ai/resolve-ai-config";
 import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
-import { createModelFromAiConfig } from "@/lib/documenti/get-document-ai-model";
+import {
+  createModelFromAiConfig,
+  normalizeAiModelId,
+} from "@/lib/documenti/get-document-ai-model";
 import { mapAiProviderError } from "@/lib/ai/map-ai-errors";
+import {
+  logDocumentAiConfig,
+  logDocumentAiError,
+} from "@/lib/ai/log-ai-config";
+import { validateAiApiKeyForProvider } from "@/lib/ai/validate-api-key";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { isCommercialType } from "@/lib/documenti/document-types";
 import { formatLocalDate } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
+  let resolvedAiConfig: Awaited<
+    ReturnType<typeof resolveAiConfigForDocuments>
+  > = null;
+
   try {
     const supabase = await createClient();
 
@@ -74,12 +86,38 @@ export async function POST(request: NextRequest) {
       resolveAiConfigForDocuments(siteId),
       getSiteDocumentTemplate(siteId),
     ]);
+    resolvedAiConfig = aiConfig;
 
     if (!aiConfig) {
       return NextResponse.json(
         {
           error: "API key AI non configurata",
           message: DOCUMENT_AI_CONFIG_MISSING_MESSAGE,
+        },
+        { status: 400 },
+      );
+    }
+
+    const normalizedModel = normalizeAiModelId(
+      aiConfig.model,
+      aiConfig.provider,
+    );
+    logDocumentAiConfig(
+      { ...aiConfig, model: normalizedModel },
+      `tipo=${input.tipoDocumento}`,
+    );
+
+    const keyValidation = validateAiApiKeyForProvider(
+      aiConfig.provider,
+      aiConfig.apiKey,
+    );
+    if (!keyValidation.valid) {
+      return NextResponse.json(
+        {
+          error: "Configurazione AI non coerente",
+          message: keyValidation.message,
+          provider: aiConfig.provider,
+          model: aiConfig.model,
         },
         { status: 400 },
       );
@@ -192,10 +230,21 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, documento: enriched });
   } catch (error) {
-    console.error("Error generating document:", error);
+    if (resolvedAiConfig) {
+      logDocumentAiError(error, resolvedAiConfig);
+    } else {
+      console.error("[DocumentiGenerate] Error generating document:", error);
+    }
+
     const mapped = mapAiProviderError(error);
     return NextResponse.json(
-      { error: mapped.error, message: mapped.message },
+      {
+        error: mapped.error,
+        message: mapped.message,
+        providerErrorType: mapped.providerErrorType,
+        providerMessage: mapped.providerMessage,
+        statusCode: mapped.statusCode,
+      },
       { status: mapped.status },
     );
   }

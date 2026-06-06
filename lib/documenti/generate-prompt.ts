@@ -11,7 +11,8 @@ REGOLE FONDAMENTALI:
 3. NON generare il numero documento (assegnato dal sistema al salvataggio).
 4. NON estrarre mittente, coordinate bancarie o IBAN (vengono dal template aziendale).
 5. Per documenti commerciali: usa cerca_cliente e cerca_articolo prima di decidere se entita' e' nuova.
-6. Per documenti letter: genera corpoTesto in prosa formale con paragrafi separati da \\n\\n.`;
+6. Per documenti letter: genera corpoTesto in prosa formale con paragrafi separati da \\n\\n.
+7. Nei documenti commerciali, quantita, prezzoUnitario e sconto devono essere numeri JSON (es. 12.5), mai stringhe con CHF o testo.`;
 
 export function buildGenerateSystemPrompt(
   tipoDocumento: string,
@@ -43,9 +44,13 @@ export function buildGenerateUserPrompt(
       ? `\nAllegati forniti dall'utente: ${input.allegati.map((a) => a.name).join(", ")}`
       : "";
 
+  const offertaInfo = input.offertaCodice
+    ? `\nOfferta collegata nel gestionale: ${input.offertaCodice}`
+    : "";
+
   return `Data odierna: ${today}
 
-Tipo documento: ${input.tipoDocumento}
+Tipo documento: ${input.tipoDocumento}${offertaInfo}
 Destinatario: ${dest.ragioneSociale}${dest.aca ? ` (a.c.a ${dest.aca})` : ""}
 ${[dest.via, dest.cap, dest.citta].filter(Boolean).join(", ") || ""}
 
