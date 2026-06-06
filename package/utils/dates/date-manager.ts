@@ -5,39 +5,51 @@ const TZ = process.env.NEXT_PUBLIC_TIMEZONE
   : "Europe/Zurich";
 
 export class DateManager {
-  static format = (date: string | Date, format: string) => {
-    let d: Date;
+  /**
+   * Parse the supported date inputs into a Date object.
+   * Returns an (invalid) Date that callers must validate; never throws.
+   */
+  private static toDate(date: string | Date | null | undefined): Date {
+    if (date instanceof Date) {
+      return date;
+    }
     if (typeof date === "string") {
       // Parse date-only strings (YYYY-MM-DD) as local dates to avoid UTC shift
       if (!date.includes("T")) {
         const [year, month, day] = date.split("-").map(Number);
-        d = new Date(year, month - 1, day);
-      } else {
-        d = new Date(date);
+        return new Date(year, month - 1, day);
       }
-    } else {
-      d = date;
+      return new Date(date);
     }
+    // null/undefined/other -> invalid date
+    return new Date(NaN);
+  }
 
+  private static isValid(d: Date): boolean {
+    return d instanceof Date && !Number.isNaN(d.getTime());
+  }
+
+  static format = (
+    date: string | Date | null | undefined,
+    format: string,
+  ) => {
+    const d = DateManager.toDate(date);
+    // Guard against invalid dates: a single malformed value must not crash the
+    // whole render tree (e.g. one bad card breaking an entire Kanban board).
+    if (!DateManager.isValid(d)) {
+      return "";
+    }
     return formatInTimeZone(d, TZ, format);
   };
 
-  static formatEUDate(date: string | Date) {
+  static formatEUDate(date: string | Date | null | undefined) {
     return this.format(date, "dd.MM.yy");
   }
 
-  static getWeekNumber(dateStr: string | Date) {
-    let date: Date;
-    if (typeof dateStr === "string") {
-      // Parse date-only strings (YYYY-MM-DD) as local dates to avoid UTC shift
-      if (!dateStr.includes("T")) {
-        const [year, month, day] = dateStr.split("-").map(Number);
-        date = new Date(year, month - 1, day);
-      } else {
-        date = new Date(dateStr);
-      }
-    } else {
-      date = new Date(dateStr);
+  static getWeekNumber(dateStr: string | Date | null | undefined): number | "" {
+    const date = DateManager.toDate(dateStr);
+    if (!DateManager.isValid(date)) {
+      return "";
     }
     const oneJan = new Date(date.getFullYear(), 0, 1);
     const diff = date.getTime() - oneJan.getTime();
