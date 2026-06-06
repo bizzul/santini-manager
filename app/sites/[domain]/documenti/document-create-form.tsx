@@ -340,7 +340,25 @@ export function DocumentCreateForm({
         }),
       });
 
-      const result = await response.json();
+      let result: {
+        error?: string;
+        message?: string;
+        providerErrorType?: string;
+        documento?: DocumentoArricchito;
+      } = {};
+
+      try {
+        result = await response.json();
+      } catch {
+        toast({
+          variant: "destructive",
+          description:
+            response.status === 504 || response.status === 408
+              ? "La generazione ha superato il tempo massimo. Riprova con un testo più breve."
+              : `Risposta non valida dal server (HTTP ${response.status}). Riprova tra poco.`,
+        });
+        return;
+      }
 
       if (!response.ok) {
         const detail = [
@@ -358,13 +376,27 @@ export function DocumentCreateForm({
         return;
       }
 
+      if (!result.documento) {
+        toast({
+          variant: "destructive",
+          description: "Il server non ha restituito un documento valido",
+        });
+        return;
+      }
+
       const taskId =
         selectedOfferId && showOfferPicker ? Number(selectedOfferId) : null;
       onGenerated(result.documento, testo.trim(), taskId);
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Errore sconosciuto";
       toast({
         variant: "destructive",
-        description: "Errore di rete durante la generazione",
+        description:
+          message.includes("Failed to fetch") ||
+          message.includes("NetworkError")
+            ? "Connessione interrotta durante la generazione. Verifica la rete e riprova."
+            : `Errore durante la generazione: ${message}`,
       });
     } finally {
       setIsGenerating(false);

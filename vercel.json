@@ -32,6 +32,9 @@
     },
     "app/api/**/*.ts": {
       "maxDuration": 30
+    },
+    "app/api/documenti/generate/route.ts": {
+      "maxDuration": 60
     }
   }
 }

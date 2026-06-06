@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateObject, generateText, stepCountIs, tool } from "ai";
-import { z } from "zod";
+import { generateObject } from "ai";
 import { createClient } from "@/utils/supabase/server";
 import {
   AIDocumentoSchema,
@@ -11,12 +10,6 @@ import {
   buildGenerateSystemPrompt,
   buildGenerateUserPrompt,
 } from "@/lib/documenti/generate-prompt";
-import {
-  cercaArticolo,
-  cercaCliente,
-  type ArticoloMatch,
-  type ClienteMatch,
-} from "@/lib/documenti/search-tools";
 import {
   enrichCommercialDocumento,
   enrichLetterDocumento,
@@ -39,7 +32,10 @@ import {
 import { validateAiApiKeyForProvider } from "@/lib/ai/validate-api-key";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { isCommercialType } from "@/lib/documenti/document-types";
+import { prefetchDocumentToolResults } from "@/lib/documenti/prefetch-tool-results";
 import { formatLocalDate } from "@/lib/utils";
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   let resolvedAiConfig: Awaited<
@@ -132,35 +128,8 @@ export async function POST(request: NextRequest) {
     const userPrompt = buildGenerateUserPrompt(input, today);
 
     if (isCommercialType(input.tipoDocumento)) {
-      const clientesFound = new Map<string, ClienteMatch[]>();
-      const articoliFound = new Map<string, ArticoloMatch[]>();
-
-      await generateText({
-        model,
-        system: systemPrompt,
-        prompt: userPrompt,
-        tools: {
-          cerca_cliente: tool({
-            description: "Cerca clienti esistenti nel database",
-            inputSchema: z.object({ query: z.string() }),
-            execute: async ({ query }) => {
-              const results = await cercaCliente(supabase, siteId!, query);
-              clientesFound.set(query, results);
-              return { trovati: results.length, risultati: results };
-            },
-          }),
-          cerca_articolo: tool({
-            description: "Cerca articoli nel listino o inventario",
-            inputSchema: z.object({ query: z.string() }),
-            execute: async ({ query }) => {
-              const results = await cercaArticolo(supabase, siteId!, query);
-              articoliFound.set(query, results);
-              return { trovati: results.length, risultati: results };
-            },
-          }),
-        },
-        stopWhen: stepCountIs(10),
-      });
+      const { clientesFound, articoliFound } =
+        await prefetchDocumentToolResults(supabase, siteId, input);
 
       const toolSummary = JSON.stringify(
         {

@@ -28,7 +28,7 @@ describe("generate-prompt", () => {
     const prompt = buildGenerateSystemPrompt("OFFERTA");
     expect(prompt).toContain("Offerta");
     expect(prompt).toContain("NON calcolare mai");
-    expect(prompt).toContain("cerca_cliente");
+    expect(prompt).toContain("ricerche database");
   });
 
   it("includes prose instructions for letter documents", () => {

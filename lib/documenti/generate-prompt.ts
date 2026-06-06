@@ -10,7 +10,7 @@ REGOLE FONDAMENTALI:
 2. NON calcolare mai: totale riga, Tot. Netto, IVA 8.1%, Totale CHF.
 3. NON generare il numero documento (assegnato dal sistema al salvataggio).
 4. NON estrarre mittente, coordinate bancarie o IBAN (vengono dal template aziendale).
-5. Per documenti commerciali: usa cerca_cliente e cerca_articolo prima di decidere se entita' e' nuova.
+5. Per documenti commerciali: usa i risultati ricerche database forniti nel prompt per collegare cliente e articoli esistenti.
 6. Per documenti letter: genera corpoTesto in prosa formale con paragrafi separati da \\n\\n.
 7. Nei documenti commerciali, quantita, prezzoUnitario e sconto devono essere numeri JSON (es. 12.5), mai stringhe con CHF o testo.`;
 
