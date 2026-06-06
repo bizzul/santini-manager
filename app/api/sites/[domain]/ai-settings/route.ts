@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
+import { maskApiKey } from "@/lib/ai/mask-api-key";
+import { validateAiApiKeyForProvider } from "@/lib/ai/validate-api-key";
 
 export async function GET(
     request: NextRequest,
@@ -33,6 +35,10 @@ export async function GET(
                 speechProvider: "web-speech",
                 hasAiApiKey: false,
                 hasWhisperApiKey: false,
+                documentiAiProvider: null,
+                documentiAiModel: null,
+                hasDocumentiAiApiKey: false,
+                documentiAiApiKeyMasked: null,
             });
         }
 
@@ -47,12 +53,17 @@ export async function GET(
             speechProvider: settings.speech_provider || "web-speech",
             hasAiApiKey: !!settings.ai_api_key,
             hasWhisperApiKey: !!settings.whisper_api_key,
-            // Show masked version of API keys (last 4 chars)
             aiApiKeyMasked: settings.ai_api_key
-                ? `...${settings.ai_api_key.slice(-4)}`
+                ? maskApiKey(settings.ai_api_key)
                 : null,
             whisperApiKeyMasked: settings.whisper_api_key
-                ? `...${settings.whisper_api_key.slice(-4)}`
+                ? maskApiKey(settings.whisper_api_key)
+                : null,
+            documentiAiProvider: settings.documenti_ai_provider || null,
+            documentiAiModel: settings.documenti_ai_model || null,
+            hasDocumentiAiApiKey: !!settings.documenti_ai_api_key,
+            documentiAiApiKeyMasked: settings.documenti_ai_api_key
+                ? maskApiKey(settings.documenti_ai_api_key)
                 : null,
         });
     } catch (error) {
@@ -129,6 +140,9 @@ export async function PUT(
             speechProvider,
             aiApiKey,
             whisperApiKey,
+            documentiAiProvider,
+            documentiAiModel,
+            documentiAiApiKey,
         } = body;
 
         // Prepare update data
@@ -145,12 +159,62 @@ export async function PUT(
         if (speechProvider !== undefined) {
             updateData.speech_provider = speechProvider;
         }
-        // Only update API keys if a new value is provided (not empty string)
+        const provider = aiProvider ?? "openai";
+
         if (aiApiKey && aiApiKey.trim() !== "") {
+            const keyValidation = validateAiApiKeyForProvider(
+                provider,
+                aiApiKey,
+            );
+            if (!keyValidation.valid) {
+                return NextResponse.json(
+                    { error: keyValidation.message },
+                    { status: 400 },
+                );
+            }
             updateData.ai_api_key = aiApiKey.trim();
         }
+
         if (whisperApiKey && whisperApiKey.trim() !== "") {
+            const whisperValidation = validateAiApiKeyForProvider(
+                "openai",
+                whisperApiKey,
+            );
+            if (!whisperValidation.valid) {
+                return NextResponse.json(
+                    { error: whisperValidation.message },
+                    { status: 400 },
+                );
+            }
             updateData.whisper_api_key = whisperApiKey.trim();
+        }
+
+        if (documentiAiProvider !== undefined) {
+            updateData.documenti_ai_provider =
+                documentiAiProvider === "" || documentiAiProvider === null
+                    ? null
+                    : documentiAiProvider;
+        }
+        if (documentiAiModel !== undefined) {
+            updateData.documenti_ai_model =
+                documentiAiModel === "" || documentiAiModel === null
+                    ? null
+                    : documentiAiModel;
+        }
+        if (documentiAiApiKey && documentiAiApiKey.trim() !== "") {
+            const docProvider =
+                documentiAiProvider || aiProvider || "openai";
+            const docKeyValidation = validateAiApiKeyForProvider(
+                docProvider,
+                documentiAiApiKey,
+            );
+            if (!docKeyValidation.valid) {
+                return NextResponse.json(
+                    { error: docKeyValidation.message },
+                    { status: 400 },
+                );
+            }
+            updateData.documenti_ai_api_key = documentiAiApiKey.trim();
         }
 
         // Upsert settings
@@ -239,6 +303,11 @@ export async function DELETE(
             await supabase
                 .from("site_ai_settings")
                 .update({ ai_api_key: null })
+                .eq("site_id", response.data.id);
+        } else if (keyType === "documenti") {
+            await supabase
+                .from("site_ai_settings")
+                .update({ documenti_ai_api_key: null })
                 .eq("site_id", response.data.id);
         } else if (keyType === "whisper") {
             await supabase

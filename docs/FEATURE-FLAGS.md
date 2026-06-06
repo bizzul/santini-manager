@@ -62,6 +62,26 @@ stato persistito (localStorage) o differenze di configurazione.
 > subdomain (`/copia/i`) o su allowlist `NEXT_PUBLIC_COMMAND_DECK_DOMAINS`.
 > Entrambe sono state sostituite dal flag per-sito a partire dalla 2.5.
 
+## Configurazione AI per-site (generatore documenti)
+
+### `site_ai_settings` (tabella Supabase, non env)
+- **Campi rilevanti:** `ai_provider` (`anthropic` | `openai`), `ai_model`
+  (es. `claude-3-5-sonnet-latest`, `gpt-4o-mini`), `ai_api_key`.
+- **Dove si imposta:** Impostazioni sito > AI & Voice.
+- **Dove si legge:** `lib/ai/resolve-ai-config.ts`, usato da
+  `/api/documenti/generate` e voice input.
+- **Fallback env (server-only):** `ANTHROPIC_API_KEY` o `OPENAI_API_KEY`
+  in base al provider selezionato. Vedi `docs/VERCEL_ENVIRONMENT_SETUP.md`.
+
+### Endpoint documenti
+- `POST /api/documenti/generate` — generazione strutturata da form (commercial:
+  tool use clienti/articoli; letter: prosa).
+- `POST /api/documenti` — salvataggio documento con numerazione e totali calcolati
+  server-side.
+- `GET /api/documenti/[id]/pdf` — PDF su carta intestata (bucket `documents`).
+- `GET/PUT /api/sites/[domain]/document-template` — branding carta intestata.
+- UI: `/sites/{domain}/documenti` — form guidato + review + lista con azioni.
+
 ## Flag internazionalizzazione
 
 ### `NEXT_PUBLIC_TIMEZONE`

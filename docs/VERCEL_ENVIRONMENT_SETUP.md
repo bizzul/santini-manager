@@ -25,7 +25,21 @@ COOKIE_NAME=reactive-app:session
 NODE_ENV=production
 ```
 
-### 3. Domain Configuration
+### 3. AI / Document extraction (server-only)
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+```
+
+- **`ANTHROPIC_API_KEY`**: fallback piattaforma per il generatore documenti
+  (`/api/documenti/generate`) quando il provider e' `anthropic`. Ogni site puo'
+  sovrascrivere con chiave propria in `site_ai_settings` (Impostazioni > AI & Voice).
+- **`OPENAI_API_KEY`**: fallback per generazione documenti (provider `openai`), voice
+  input e assistant.
+- **Mai** committare queste chiavi nel repository. Configurare solo su Vercel
+  (Production, Preview, Development) o in `.env.local` locale.
+
+### 4. Domain Configuration
 ```bash
 NEXT_PUBLIC_ROOT_DOMAIN=your-actual-domain.vercel.app
 NEXT_PUBLIC_URL=https://your-actual-domain.vercel.app

@@ -358,6 +358,13 @@ const getMenuItems = (
       moduleName: "projects",
     },
     {
+      label: "Documenti",
+      icon: "faBriefcase",
+      href: `${basePath}/documenti`,
+      alert: false,
+      moduleName: "projects",
+    },
+    {
       label: "Categorie",
       icon: "faListUl",
       alert: false,

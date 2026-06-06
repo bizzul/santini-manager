@@ -48,6 +48,10 @@ interface AiSettings {
     hasWhisperApiKey: boolean;
     aiApiKeyMasked: string | null;
     whisperApiKeyMasked: string | null;
+    documentiAiProvider: string | null;
+    documentiAiModel: string | null;
+    hasDocumentiAiApiKey: boolean;
+    documentiAiApiKeyMasked: string | null;
 }
 
 const AI_PROVIDERS = [
@@ -84,6 +88,8 @@ export default function AiSettingsModal({
     const [settings, setSettings] = useState<AiSettings | null>(null);
     const [showApiKey, setShowApiKey] = useState(false);
     const [showWhisperKey, setShowWhisperKey] = useState(false);
+    const [isReplacingApiKey, setIsReplacingApiKey] = useState(false);
+    const [showMaskedApiKey, setShowMaskedApiKey] = useState(false);
 
     // Form state
     const [aiProvider, setAiProvider] = useState("openai");
@@ -91,6 +97,12 @@ export default function AiSettingsModal({
     const [speechProvider, setSpeechProvider] = useState("web-speech");
     const [aiApiKey, setAiApiKey] = useState("");
     const [whisperApiKey, setWhisperApiKey] = useState("");
+    const [documentiAiProvider, setDocumentiAiProvider] = useState("");
+    const [documentiAiModel, setDocumentiAiModel] = useState("");
+    const [documentiAiApiKey, setDocumentiAiApiKey] = useState("");
+    const [showDocumentiApiKey, setShowDocumentiApiKey] = useState(false);
+    const [isReplacingDocumentiApiKey, setIsReplacingDocumentiApiKey] = useState(false);
+    const [showMaskedDocumentiApiKey, setShowMaskedDocumentiApiKey] = useState(false);
 
     // Load settings when modal opens
     useEffect(() => {
@@ -110,6 +122,13 @@ export default function AiSettingsModal({
                 setAiProvider(data.aiProvider || "openai");
                 setAiModel(data.aiModel || "gpt-4o-mini");
                 setSpeechProvider(data.speechProvider || "web-speech");
+                setIsReplacingApiKey(false);
+                setShowMaskedApiKey(false);
+                setDocumentiAiProvider(data.documentiAiProvider || "");
+                setDocumentiAiModel(data.documentiAiModel || "");
+                setIsReplacingDocumentiApiKey(false);
+                setShowMaskedDocumentiApiKey(false);
+                setDocumentiAiApiKey("");
             }
         } catch (error) {
             console.error("Error loading AI settings:", error);
@@ -135,6 +154,15 @@ export default function AiSettingsModal({
             if (whisperApiKey) {
                 body.whisperApiKey = whisperApiKey;
             }
+            if (documentiAiProvider) {
+                body.documentiAiProvider = documentiAiProvider;
+            }
+            if (documentiAiModel) {
+                body.documentiAiModel = documentiAiModel;
+            }
+            if (documentiAiApiKey) {
+                body.documentiAiApiKey = documentiAiApiKey;
+            }
 
             const response = await fetch(`/api/sites/${subdomain}/ai-settings`, {
                 method: "PUT",
@@ -147,7 +175,9 @@ export default function AiSettingsModal({
                 // Clear the input fields after saving
                 setAiApiKey("");
                 setWhisperApiKey("");
-                // Reload settings to show updated masked keys
+                setDocumentiAiApiKey("");
+                setIsReplacingApiKey(false);
+                setIsReplacingDocumentiApiKey(false);
                 await loadSettings();
             } else {
                 const error = await response.json();
@@ -163,7 +193,7 @@ export default function AiSettingsModal({
         }
     };
 
-    const handleDeleteKey = async (keyType: "ai" | "whisper") => {
+    const handleDeleteKey = async (keyType: "ai" | "whisper" | "documenti") => {
         try {
             const response = await fetch(
                 `/api/sites/${subdomain}/ai-settings?keyType=${keyType}`,
@@ -172,7 +202,13 @@ export default function AiSettingsModal({
 
             if (response.ok) {
                 toast.success(
-                    `API key ${keyType === "ai" ? "AI" : "Whisper"} eliminata`
+                    `API key ${
+                        keyType === "ai"
+                            ? "AI"
+                            : keyType === "documenti"
+                              ? "Documenti"
+                              : "Whisper"
+                    } eliminata`
                 );
                 await loadSettings();
             } else {
@@ -194,7 +230,19 @@ export default function AiSettingsModal({
     };
 
     const availableModels = AI_MODELS[aiProvider] || [];
+    const documentiProviderEffective =
+        documentiAiProvider || aiProvider || "openai";
+    const availableDocumentiModels =
+        AI_MODELS[documentiProviderEffective] || [];
     const voiceContexts = useMemo(() => getVoiceCommandScreenContexts(), []);
+
+    const handleDocumentiProviderChange = (provider: string) => {
+        setDocumentiAiProvider(provider);
+        const models = AI_MODELS[provider];
+        if (models?.length) {
+            setDocumentiAiModel(models[0].value);
+        }
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -250,47 +298,122 @@ export default function AiSettingsModal({
                         {/* AI API Key */}
                         <div className="space-y-2">
                             <Label>API Key {aiProvider === "openai" ? "OpenAI" : "Anthropic"}</Label>
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <Input
-                                        type={showApiKey ? "text" : "password"}
-                                        value={aiApiKey}
-                                        onChange={(e) => setAiApiKey(e.target.value)}
-                                        placeholder={
-                                            settings?.hasAiApiKey
-                                                ? `Configurata (${settings.aiApiKeyMasked})`
-                                                : "Inserisci API key"
-                                        }
-                                    />
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                                        onClick={() => setShowApiKey(!showApiKey)}
-                                    >
-                                        {showApiKey ? (
-                                            <EyeOff className="h-4 w-4" />
-                                        ) : (
-                                            <Eye className="h-4 w-4" />
-                                        )}
-                                    </Button>
+
+                            {settings?.hasAiApiKey && !isReplacingApiKey ? (
+                                <div className="space-y-2">
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Input
+                                                readOnly
+                                                type="text"
+                                                value={
+                                                    showMaskedApiKey
+                                                        ? settings.aiApiKeyMasked ?? "••••••••"
+                                                        : "••••••••••••••••••••"
+                                                }
+                                                className="font-mono text-sm"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                                onClick={() =>
+                                                    setShowMaskedApiKey(!showMaskedApiKey)
+                                                }
+                                                title={
+                                                    showMaskedApiKey
+                                                        ? "Nascondi chiave"
+                                                        : "Mostra chiave mascherata"
+                                                }
+                                            >
+                                                {showMaskedApiKey ? (
+                                                    <EyeOff className="h-4 w-4" />
+                                                ) : (
+                                                    <Eye className="h-4 w-4" />
+                                                )}
+                                            </Button>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsReplacingApiKey(true);
+                                                setAiApiKey("");
+                                            }}
+                                        >
+                                            Sostituisci
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="icon"
+                                            onClick={() => handleDeleteKey("ai")}
+                                            title="Elimina chiave"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3 text-green-500" />
+                                        API key salvata sul server (mai esposta al browser)
+                                    </p>
                                 </div>
-                                {settings?.hasAiApiKey && (
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="icon"
-                                        onClick={() => handleDeleteKey("ai")}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                )}
-                            </div>
-                            {settings?.hasAiApiKey && (
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                    <CheckCircle className="h-3 w-3 text-green-500" />
-                                    API key configurata
+                            ) : (
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Input
+                                            type={showApiKey ? "text" : "password"}
+                                            value={aiApiKey}
+                                            onChange={(e) => setAiApiKey(e.target.value)}
+                                            placeholder={
+                                                aiProvider === "anthropic"
+                                                    ? "sk-ant-..."
+                                                    : "sk-..."
+                                            }
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                            onClick={() => setShowApiKey(!showApiKey)}
+                                        >
+                                            {showApiKey ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                    {isReplacingApiKey && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => {
+                                                setIsReplacingApiKey(false);
+                                                setAiApiKey("");
+                                            }}
+                                        >
+                                            Annulla
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                            {(isReplacingApiKey || !settings?.hasAiApiKey) && (
+                                <p className="text-xs text-muted-foreground">
+                                    {aiProvider === "anthropic" ? (
+                                        <>
+                                            La chiave deve iniziare con{" "}
+                                            <code>sk-ant-</code>. Usata per generazione
+                                            documenti e funzioni AI.
+                                        </>
+                                    ) : (
+                                        <>
+                                            La chiave deve iniziare con <code>sk-</code>.
+                                            Usata per generazione documenti e funzioni AI.
+                                        </>
+                                    )}
                                 </p>
                             )}
                         </div>
@@ -366,11 +489,183 @@ export default function AiSettingsModal({
                             <Alert>
                                 <AlertCircle className="h-4 w-4" />
                                 <AlertDescription>
-                                    Per utilizzare le funzionalità AI (come l&apos;input vocale),
-                                    è necessario configurare una API key.
+                                    Per utilizzare le funzionalità AI (generazione documenti,
+                                    input vocale, ecc.) configura una API key{" "}
+                                    {aiProvider === "anthropic" ? "Anthropic" : "OpenAI"}.
                                 </AlertDescription>
                             </Alert>
                         )}
+
+                        <div className="space-y-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+                            <div>
+                                <h3 className="text-sm font-semibold">Crea documenti</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    Provider e API key dedicati al generatore documenti.
+                                    Se lasci vuoto, usa la config AI globale sopra.
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Provider AI documenti</Label>
+                                <Select
+                                    value={documentiAiProvider || "__global__"}
+                                    onValueChange={(v) =>
+                                        handleDocumentiProviderChange(
+                                            v === "__global__" ? "" : v,
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Usa provider globale" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__global__">
+                                            Usa provider globale ({aiProvider})
+                                        </SelectItem>
+                                        {AI_PROVIDERS.map((p) => (
+                                            <SelectItem key={p.value} value={p.value}>
+                                                {p.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Modello AI documenti</Label>
+                                <Select
+                                    value={documentiAiModel || "__global__"}
+                                    onValueChange={(v) =>
+                                        setDocumentiAiModel(v === "__global__" ? "" : v)
+                                    }
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Usa modello globale" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__global__">
+                                            Usa modello globale ({aiModel})
+                                        </SelectItem>
+                                        {availableDocumentiModels.map((m) => (
+                                            <SelectItem key={m.value} value={m.value}>
+                                                {m.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>API Key documenti (opzionale)</Label>
+                                {settings?.hasDocumentiAiApiKey &&
+                                !isReplacingDocumentiApiKey ? (
+                                    <div className="space-y-2">
+                                        <div className="flex gap-2">
+                                            <Input
+                                                type="text"
+                                                readOnly
+                                                value={
+                                                    showMaskedDocumentiApiKey
+                                                        ? settings.documentiAiApiKeyMasked ?? ""
+                                                        : "••••••••••••••••"
+                                                }
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() =>
+                                                    setShowMaskedDocumentiApiKey(
+                                                        !showMaskedDocumentiApiKey,
+                                                    )
+                                                }
+                                            >
+                                                {showMaskedDocumentiApiKey ? (
+                                                    <EyeOff className="h-4 w-4" />
+                                                ) : (
+                                                    <Eye className="h-4 w-4" />
+                                                )}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    setIsReplacingDocumentiApiKey(true)
+                                                }
+                                            >
+                                                Sostituisci
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                onClick={() => handleDeleteKey("documenti")}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <Input
+                                                type={
+                                                    showDocumentiApiKey ? "text" : "password"
+                                                }
+                                                value={documentiAiApiKey}
+                                                onChange={(e) =>
+                                                    setDocumentiAiApiKey(e.target.value)
+                                                }
+                                                placeholder={
+                                                    documentiProviderEffective === "anthropic"
+                                                        ? "sk-ant-..."
+                                                        : "sk-..."
+                                                }
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                                onClick={() =>
+                                                    setShowDocumentiApiKey(!showDocumentiApiKey)
+                                                }
+                                            >
+                                                {showDocumentiApiKey ? (
+                                                    <EyeOff className="h-4 w-4" />
+                                                ) : (
+                                                    <Eye className="h-4 w-4" />
+                                                )}
+                                            </Button>
+                                        </div>
+                                        {isReplacingDocumentiApiKey && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setIsReplacingDocumentiApiKey(false);
+                                                    setDocumentiAiApiKey("");
+                                                }}
+                                            >
+                                                Annulla
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                                {(isReplacingDocumentiApiKey ||
+                                    !settings?.hasDocumentiAiApiKey) && (
+                                    <p className="text-xs text-muted-foreground">
+                                        {documentiProviderEffective === "anthropic" ? (
+                                            <>
+                                                La chiave deve iniziare con{" "}
+                                                <code>sk-ant-</code>.
+                                            </>
+                                        ) : (
+                                            <>
+                                                La chiave deve iniziare con <code>sk-</code>.
+                                            </>
+                                        )}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
 
                         <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-4">
                             <div>

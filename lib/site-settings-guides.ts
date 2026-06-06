@@ -106,6 +106,11 @@ export const VOICE_INTENT_REQUIREMENTS: Record<string, string[]> = {
     "nome prodotto",
     "categoria prodotto",
   ],
+  create_document: [
+    "tipo documento (offerta, fattura, lettera, ecc.)",
+    "destinatario e oggetto",
+    "contenuto o righe articolo da includere",
+  ],
   schedule_task: [
     "progetto o card di riferimento",
     "data e orario",

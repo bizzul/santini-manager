@@ -3,6 +3,7 @@ export const VOICE_COMMAND_INTENTS = [
     "create_offer",
     "create_client",
     "create_product",
+    "create_document",
     "schedule_task",
     "log_time",
     "move_card",
@@ -16,6 +17,7 @@ export const SUPPORTED_VOICE_COMMAND_INTENTS = [
     "create_offer",
     "create_client",
     "create_product",
+    "create_document",
     "schedule_task",
     "log_time",
     "move_card",
@@ -29,6 +31,7 @@ export type VoiceCommandScreenKey =
     | "kanban"
     | "offerte"
     | "offer-create"
+    | "documenti"
     | "clients"
     | "products"
     | "calendar"
@@ -86,6 +89,7 @@ export const VOICE_COMMAND_INTENT_LABELS: Record<
     create_offer: "creare offerta",
     create_client: "aggiungere cliente",
     create_product: "aggiungere prodotto",
+    create_document: "creare documento",
     schedule_task: "pianificare task",
     log_time: "registrare ore",
     move_card: "spostare progetto",
@@ -161,6 +165,19 @@ export const VOICE_COMMAND_SCREEN_CONTEXTS: Record<
         examples: [
             "Aggiungi cliente Bianchi SA in via Roma 1 Lugano 6900 Svizzera",
             "Aggiungi prodotto armadio categoria cucine",
+        ],
+    },
+    documenti: {
+        key: "documenti",
+        label: "Crea documenti",
+        module: "documenti",
+        description:
+            "Nel generatore documenti puoi creare offerte, fatture, lettere e comunicazioni con l'AI.",
+        allowedIntents: ["create_document", "create_client"],
+        examples: [
+            "Crea offerta per cliente Rossi con infissi in alluminio da 12000 franchi",
+            "Genera lettera ufficiale di sollecito pagamento per Bianchi SA",
+            "Prepara fattura per fornitura cucina con tre righe articolo",
         ],
     },
     clients: {
@@ -331,6 +348,24 @@ const VOICE_COMMAND_KEYWORD_RULES: Record<
             },
         ],
     },
+    create_document: {
+        intent: "create_document",
+        requiredGroups: [
+            CREATE_ACTION_GROUP,
+            {
+                id: "entity",
+                label: "parola documento",
+                keywords: [
+                    "documento",
+                    "offerta",
+                    "fattura",
+                    "lettera",
+                    "preventivo",
+                    "comunicazione",
+                ],
+            },
+        ],
+    },
     schedule_task: {
         intent: "schedule_task",
         requiredGroups: [
@@ -424,6 +459,10 @@ export function getVoiceCommandScreenContext(pathname?: string | null) {
 
     if (pathname.includes("/offerte/create")) {
         return VOICE_COMMAND_SCREEN_CONTEXTS["offer-create"];
+    }
+
+    if (pathname.includes("/documenti")) {
+        return VOICE_COMMAND_SCREEN_CONTEXTS.documenti;
     }
 
     if (pathname.includes("/clients")) {

@@ -1,0 +1,479 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { LoadingState } from "@/components/layout/loading-state";
+import { DOCUMENT_TYPES } from "@/lib/documenti/document-types";
+import {
+  validateDocumentAttachment,
+  DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES,
+} from "@/lib/documenti/attachment-validation";
+import type {
+  Allegato,
+  DestinatarioInput,
+  DocumentoArricchito,
+  TipoDocumento,
+} from "@/validation/documenti/extracted-document";
+import { createClient } from "@/utils/supabase/client";
+import { Loader2, Paperclip, X } from "lucide-react";
+
+export interface ClienteOption {
+  id: number;
+  businessName: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  address?: string | null;
+  city?: string | null;
+  zipCode?: number | null;
+  email?: string | null;
+}
+
+export interface FornitoreOption {
+  id: number;
+  name: string;
+  address?: string | null;
+  cap?: number | null;
+  location?: string | null;
+  email?: string | null;
+  contact?: string | null;
+}
+
+interface DocumentCreateFormProps {
+  domain: string;
+  siteId: string;
+  clients: ClienteOption[];
+  suppliers: FornitoreOption[];
+  initialValues?: {
+    tipoDocumento?: TipoDocumento;
+    destinatario?: DestinatarioInput;
+    oggetto?: string;
+    testo?: string;
+    allegati?: Allegato[];
+  };
+  onGenerated: (documento: DocumentoArricchito, sourceText: string) => void;
+  onCancel: () => void;
+}
+
+type DestinatarioMode = "cliente" | "fornitore" | "manuale";
+
+function clientDisplayName(c: ClienteOption): string {
+  return (
+    c.businessName?.trim() ||
+    [c.firstName, c.lastName].filter(Boolean).join(" ") ||
+    `Cliente #${c.id}`
+  );
+}
+
+export function DocumentCreateForm({
+  domain,
+  siteId,
+  clients,
+  suppliers,
+  initialValues,
+  onGenerated,
+  onCancel,
+}: DocumentCreateFormProps) {
+  const { toast } = useToast();
+  const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>(
+    initialValues?.tipoDocumento ?? "OFFERTA",
+  );
+  const [destMode, setDestMode] = useState<DestinatarioMode>(
+    initialValues?.destinatario?.tipo ?? "manuale",
+  );
+  const [selectedEntityId, setSelectedEntityId] = useState<string>(
+    initialValues?.destinatario?.entityId != null
+      ? String(initialValues.destinatario.entityId)
+      : "",
+  );
+  const [ragioneSociale, setRagioneSociale] = useState(
+    initialValues?.destinatario?.ragioneSociale ?? "",
+  );
+  const [aca, setAca] = useState(initialValues?.destinatario?.aca ?? "");
+  const [via, setVia] = useState(initialValues?.destinatario?.via ?? "");
+  const [cap, setCap] = useState(initialValues?.destinatario?.cap ?? "");
+  const [citta, setCitta] = useState(initialValues?.destinatario?.citta ?? "");
+  const [email, setEmail] = useState(initialValues?.destinatario?.email ?? "");
+  const [oggetto, setOggetto] = useState(initialValues?.oggetto ?? "");
+  const [testo, setTesto] = useState(initialValues?.testo ?? "");
+  const [allegati, setAllegati] = useState<Allegato[]>(
+    initialValues?.allegati ?? [],
+  );
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const typeConfig = useMemo(
+    () => DOCUMENT_TYPES.find((t) => t.id === tipoDocumento),
+    [tipoDocumento],
+  );
+
+  const applyCliente = (id: string) => {
+    const client = clients.find((c) => c.id === Number(id));
+    if (!client) return;
+    setRagioneSociale(clientDisplayName(client));
+    setVia(client.address ?? "");
+    setCap(client.zipCode != null ? String(client.zipCode) : "");
+    setCitta(client.city ?? "");
+    setEmail(client.email ?? "");
+  };
+
+  const applyFornitore = (id: string) => {
+    const supplier = suppliers.find((s) => s.id === Number(id));
+    if (!supplier) return;
+    setRagioneSociale(supplier.name);
+    setAca(supplier.contact ?? "");
+    setVia(supplier.address ?? "");
+    setCap(supplier.cap != null ? String(supplier.cap) : "");
+    setCitta(supplier.location ?? "");
+    setEmail(supplier.email ?? "");
+  };
+
+  const handleEntityChange = (id: string) => {
+    setSelectedEntityId(id);
+    if (destMode === "cliente") applyCliente(id);
+    if (destMode === "fornitore") applyFornitore(id);
+  };
+
+  const handleDestModeChange = (mode: DestinatarioMode) => {
+    setDestMode(mode);
+    setSelectedEntityId("");
+    if (mode === "manuale") return;
+    if (mode === "cliente" && clients.length > 0) {
+      handleEntityChange(String(clients[0].id));
+    }
+    if (mode === "fornitore" && suppliers.length > 0) {
+      handleEntityChange(String(suppliers[0].id));
+    }
+  };
+
+  const uploadAttachment = useCallback(
+    async (file: File) => {
+      const validation = validateDocumentAttachment({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+      if (!validation.valid) {
+        toast({ variant: "destructive", description: validation.message });
+        return;
+      }
+
+      setIsUploading(true);
+      try {
+        const supabase = createClient();
+        const ext = file.name.split(".").pop();
+        const safeName = file.name
+          .replace(/\.[^/.]+$/, "")
+          .replace(/[^a-zA-Z0-9-_]/g, "_")
+          .substring(0, 50);
+        const fileName = `${safeName}-${Date.now()}.${ext}`;
+        const filePath = `${siteId}/documenti/temp/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("documents")
+          .upload(filePath, file, { upsert: false });
+
+        if (uploadError) throw uploadError;
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("documents").getPublicUrl(filePath);
+
+        setAllegati((prev) => [
+          ...prev,
+          {
+            name: file.name,
+            url: publicUrl,
+            storagePath: filePath,
+            size: file.size,
+            mimeType: file.type,
+          },
+        ]);
+      } catch {
+        toast({
+          variant: "destructive",
+          description: "Errore nel caricamento dell'allegato",
+        });
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [siteId, toast],
+  );
+
+  const handleGenerate = async () => {
+    if (!oggetto.trim() || !testo.trim() || !ragioneSociale.trim()) {
+      toast({
+        variant: "destructive",
+        description: "Compila tipo, destinatario, oggetto e testo descrittivo",
+      });
+      return;
+    }
+
+    const destinatario: DestinatarioInput = {
+      tipo: destMode,
+      entityId:
+        destMode !== "manuale" && selectedEntityId
+          ? Number(selectedEntityId)
+          : null,
+      ragioneSociale: ragioneSociale.trim(),
+      aca: aca.trim() || null,
+      via: via.trim() || null,
+      cap: cap.trim() || null,
+      citta: citta.trim() || null,
+      email: email.trim() || null,
+    };
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/documenti/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-site-domain": domain,
+        },
+        body: JSON.stringify({
+          tipoDocumento,
+          destinatario,
+          oggetto: oggetto.trim(),
+          testo: testo.trim(),
+          allegati,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          description: result.message ?? result.error ?? "Errore nella generazione",
+        });
+        return;
+      }
+
+      onGenerated(result.documento, testo.trim());
+    } catch {
+      toast({
+        variant: "destructive",
+        description: "Errore di rete durante la generazione",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Label className="mb-2 block">Tipo documento</Label>
+        <Select
+          value={tipoDocumento}
+          onValueChange={(v) => setTipoDocumento(v as TipoDocumento)}
+        >
+          <SelectTrigger className="w-full max-w-md">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DOCUMENT_TYPES.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {typeConfig ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            {typeConfig.category === "commercial"
+              ? "Documento commerciale con righe articolo e totali"
+              : "Lettera in prosa senza tabella articoli"}
+          </p>
+        ) : null}
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <Label>Destinatario</Label>
+        <Select
+          value={destMode}
+          onValueChange={(v) => handleDestModeChange(v as DestinatarioMode)}
+        >
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cliente">Cliente anagrafica</SelectItem>
+            <SelectItem value="fornitore">Fornitore anagrafica</SelectItem>
+            <SelectItem value="manuale">Inserimento manuale</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {destMode === "cliente" ? (
+          <Select value={selectedEntityId} onValueChange={handleEntityChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona cliente" />
+            </SelectTrigger>
+            <SelectContent>
+              {clients.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {clientDisplayName(c)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+
+        {destMode === "fornitore" ? (
+          <Select value={selectedEntityId} onValueChange={handleEntityChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleziona fornitore" />
+            </SelectTrigger>
+            <SelectContent>
+              {suppliers.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label>Ragione sociale / Nome</Label>
+            <Input
+              value={ragioneSociale}
+              onChange={(e) => setRagioneSociale(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label>a.c.a / Riferimento</Label>
+            <Input value={aca} onChange={(e) => setAca(e.target.value)} />
+          </div>
+          <div>
+            <Label>Email</Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Via</Label>
+            <Input value={via} onChange={(e) => setVia(e.target.value)} />
+          </div>
+          <div>
+            <Label>CAP</Label>
+            <Input value={cap} onChange={(e) => setCap(e.target.value)} />
+          </div>
+          <div>
+            <Label>Città</Label>
+            <Input value={citta} onChange={(e) => setCitta(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Oggetto</Label>
+        <Input
+          placeholder="Breve oggetto del documento"
+          value={oggetto}
+          onChange={(e) => setOggetto(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <Label className="mb-2 block">Testo descrittivo</Label>
+        <Textarea
+          rows={10}
+          placeholder={
+            typeConfig?.hasLineItems
+              ? "Descrivi articoli, quantità, prezzi, condizioni di pagamento, termini di fornitura..."
+              : "Descrivi il contenuto della lettera: contesto, tono, punti da trattare, riferimenti..."
+          }
+          value={testo}
+          onChange={(e) => setTesto(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Allegati (opzionale)</Label>
+        <p className="text-xs text-muted-foreground">
+          Max {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB. PDF, Word,
+          Excel, testo o immagini.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isUploading}
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept =
+                ".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp";
+              input.onchange = () => {
+                const file = input.files?.[0];
+                if (file) void uploadAttachment(file);
+              };
+              input.click();
+            }}
+          >
+            {isUploading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Paperclip className="mr-2 h-4 w-4" />
+            )}
+            Aggiungi allegato
+          </Button>
+        </div>
+        {allegati.length > 0 ? (
+          <ul className="space-y-1">
+            {allegati.map((a, i) => (
+              <li
+                key={a.storagePath}
+                className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+              >
+                <span className="truncate">{a.name}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() =>
+                    setAllegati((prev) => prev.filter((_, idx) => idx !== i))
+                  }
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+
+      <div className="flex gap-3">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Annulla
+        </Button>
+        <Button
+          onClick={handleGenerate}
+          disabled={isGenerating || isUploading}
+        >
+          {isGenerating ? "Generazione in corso..." : "Genera documento"}
+        </Button>
+      </div>
+
+      {isGenerating ? <LoadingState variant="form" /> : null}
+    </div>
+  );
+}

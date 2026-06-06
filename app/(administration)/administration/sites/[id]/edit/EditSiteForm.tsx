@@ -31,6 +31,7 @@ import {
   Layers,
   Package,
   Bot,
+  FileText,
   Factory,
   Users2,
   UserCheck,
@@ -40,6 +41,7 @@ import {
 import { toast } from "sonner";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
 import AiSettingsModal from "@/components/site-settings/AiSettingsModal";
+import DocumentTemplateModal from "@/components/site-settings/DocumentTemplateModal";
 import SiteThemeSettingsModal from "@/components/site-settings/SiteThemeSettingsModal";
 import SiteSupportAndSubscriptionModal from "@/components/site-settings/SiteSupportAndSubscriptionModal";
 import { SiteCommandDeckModal } from "@/components/site-settings/SiteCommandDeckModal";
@@ -875,6 +877,22 @@ export default function EditSiteForm({
                     >
                       <Users2 className="h-4 w-4 mr-2" />
                       Gestisci HR
+                    </Button>
+                  }
+                />
+              }
+              documentTemplateAction={
+                <DocumentTemplateModal
+                  subdomain={site.subdomain}
+                  siteId={site.id}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="border-white/30 text-white hover:bg-white/10"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Carta intestata
                     </Button>
                   }
                 />

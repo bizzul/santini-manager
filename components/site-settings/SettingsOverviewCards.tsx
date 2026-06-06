@@ -4,6 +4,7 @@ import {
   Bot,
   Box,
   Factory,
+  FileText,
   Headset,
   Layers,
   LayoutDashboard,
@@ -48,6 +49,7 @@ interface SettingsOverviewCardsProps {
   inventoryAction: React.ReactNode;
   hrAction: React.ReactNode;
   aiAction: React.ReactNode;
+  documentTemplateAction: React.ReactNode;
   themeAction: React.ReactNode;
   supportAction: React.ReactNode;
   dashboardAction: React.ReactNode;
@@ -67,6 +69,7 @@ export default function SettingsOverviewCards({
   inventoryAction,
   hrAction,
   aiAction,
+  documentTemplateAction,
   themeAction,
   supportAction,
   dashboardAction,
@@ -178,6 +181,16 @@ export default function SettingsOverviewCards({
       badge: commandDeckEnabled ? "Attiva" : "Disattiva",
       action: commandDeckAction,
       className: "border-sky-300/25 bg-sky-500/10",
+    },
+    {
+      key: "documentTemplate",
+      title: "Carta intestata documenti",
+      description:
+        "Mittente, banca, IVA e condizioni predefinite per PDF e anteprima.",
+      guideKey: "ai",
+      icon: FileText,
+      badge: "Branding PDF",
+      action: documentTemplateAction,
     },
     {
       key: "ai",

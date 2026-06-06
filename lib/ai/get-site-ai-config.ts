@@ -29,7 +29,10 @@ export const getSiteAiConfig = cache(
         // Default configuration with env fallbacks
         const defaultConfig: SiteAiConfig = {
             provider: "openai",
-            apiKey: process.env.OPENAI_API_KEY || null,
+            apiKey:
+                process.env.OPENAI_API_KEY ||
+                process.env.ANTHROPIC_API_KEY ||
+                null,
             model: "gpt-4o-mini",
             speechProvider: "web-speech",
             whisperApiKey: null,
