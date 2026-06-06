@@ -41,9 +41,34 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TableColGroup } from "@/components/table/table-colgroup";
+import {
+  getInventoryArticlesCellClassName,
+  getInventoryArticlesHeadClassName,
+  getVisiblePresetColumns,
+  type TableLayoutPreset,
+} from "@/lib/table-layout-presets";
 import { InventoryCategory } from "@/types/supabase";
 
 type InventoryTableViewMode = "compact" | "extended";
+type EmbeddedColumnPreset = "categoryDrilldown";
+
+const CATEGORY_DRILLDOWN_COLUMN_IDS = new Set([
+  "internal_code",
+  "subcategory",
+  "name",
+  "color",
+  "supplier",
+  "width",
+  "height",
+  "length",
+  "thickness",
+  "diameter",
+  "quantity",
+  "purchase_unit_price",
+  "total_price",
+  "actions",
+]);
 
 const COMPACT_COLUMN_IDS = new Set([
   "subcategory",
@@ -60,13 +85,31 @@ const COMPACT_COLUMN_IDS = new Set([
   "total_price",
 ]);
 
-const COMPACT_DIMENSION_COLUMN_IDS = new Set([
-  "width",
-  "height",
-  "length",
-  "thickness",
-  "diameter",
-]);
+function getColumnId(column: ColumnDef<any, any>): string | undefined {
+  return (
+    column.id ||
+    ("accessorKey" in column && typeof column.accessorKey === "string"
+      ? column.accessorKey
+      : undefined)
+  );
+}
+
+function getEmbeddedColumnVisibility(
+  columns: ColumnDef<any, any>[],
+  preset: EmbeddedColumnPreset,
+): Record<string, boolean> {
+  const allowedIds =
+    preset === "categoryDrilldown" ? CATEGORY_DRILLDOWN_COLUMN_IDS : new Set();
+
+  return Object.fromEntries(
+    columns
+      .map((column) => {
+        const columnId = getColumnId(column);
+        return columnId ? [columnId, allowedIds.has(columnId)] : null;
+      })
+      .filter(Boolean) as Array<[string, boolean]>,
+  );
+}
 
 function getColumnVisibility(
   columns: ColumnDef<any, any>[],
@@ -79,47 +122,68 @@ function getColumnVisibility(
   return Object.fromEntries(
     columns
       .map((column) => {
-        const columnId =
-          column.id ||
-          ("accessorKey" in column && typeof column.accessorKey === "string"
-            ? column.accessorKey
-            : undefined);
+        const columnId = getColumnId(column);
         return columnId ? [columnId, COMPACT_COLUMN_IDS.has(columnId)] : null;
       })
       .filter(Boolean) as Array<[string, boolean]>,
   );
 }
 
+function getDenseLayoutOptions(
+  mode: InventoryTableViewMode,
+  embeddedColumnPreset?: EmbeddedColumnPreset,
+) {
+  const isDrilldown = embeddedColumnPreset === "categoryDrilldown";
+  return {
+    isDrilldown,
+    includeSubcategory: mode === "compact" && !isDrilldown,
+  };
+}
+
+function usesDenseTableLayout(
+  mode: InventoryTableViewMode,
+  embeddedColumnPreset?: EmbeddedColumnPreset,
+) {
+  return mode === "compact" || embeddedColumnPreset === "categoryDrilldown";
+}
+
 function getColumnCellClassName(
   columnId: string,
   mode: InventoryTableViewMode,
+  embeddedColumnPreset?: EmbeddedColumnPreset,
 ) {
-  if (mode !== "compact") {
-    return "h-9 px-2 py-1.5 text-center align-middle [&>div]:justify-center [&_button]:h-7 [&_button]:px-2 [&_span]:text-center";
+  if (usesDenseTableLayout(mode, embeddedColumnPreset)) {
+    return getInventoryArticlesCellClassName(
+      columnId,
+      getDenseLayoutOptions(mode, embeddedColumnPreset),
+    );
   }
 
-  if (COMPACT_DIMENSION_COLUMN_IDS.has(columnId)) {
-    return "h-9 w-[4rem] max-w-[4rem] overflow-hidden px-1 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
+  return "h-9 px-2 py-1.5 text-center align-middle [&>div]:justify-center [&_button]:h-7 [&_button]:px-2 [&_span]:text-center";
+}
+
+function getColumnHeadClassName(
+  columnId: string,
+  mode: InventoryTableViewMode,
+  embeddedColumnPreset?: EmbeddedColumnPreset,
+) {
+  if (usesDenseTableLayout(mode, embeddedColumnPreset)) {
+    return getInventoryArticlesHeadClassName(
+      columnId,
+      getDenseLayoutOptions(mode, embeddedColumnPreset),
+    );
   }
 
-  switch (columnId) {
-    case "subcategory":
-      return "h-9 w-[7.5rem] max-w-[7.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    case "name":
-      return "h-9 min-w-[10rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    case "color":
-      return "h-9 w-[5.5rem] max-w-[5.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    case "supplier":
-      return "h-9 w-[9rem] max-w-[9rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    case "quantity":
-      return "h-9 w-[5.5rem] max-w-[5.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    case "purchase_unit_price":
-      return "h-9 w-[6.5rem] max-w-[6.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    case "total_price":
-      return "h-9 w-[6.5rem] max-w-[6.5rem] overflow-hidden px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-    default:
-      return "h-9 px-1.5 py-1.5 text-center align-middle [&>div]:justify-center [&_[data-editable=true]]:justify-center [&_button]:h-7 [&_button]:-ml-1 [&_button]:px-1 [&_span]:truncate [&_span]:text-center";
-  }
+  return "h-9 px-2 py-1.5 text-center align-middle";
+}
+
+function getInventoryPresetName(
+  mode: InventoryTableViewMode,
+  embeddedColumnPreset?: EmbeddedColumnPreset,
+): TableLayoutPreset {
+  const isDrilldown = embeddedColumnPreset === "categoryDrilldown";
+  if (isDrilldown) return "inventoryArticlesDrilldown";
+  return mode === "compact" ? "inventoryArticlesCompact" : "inventoryArticlesDense";
 }
 
 function getCategoryFilterLabel(category: InventoryCategory) {
@@ -137,12 +201,18 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   categories?: InventoryCategory[];
+  embeddedMode?: boolean;
+  embeddedColumnPreset?: EmbeddedColumnPreset;
+  onBack?: () => void;
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   categories = [],
+  embeddedMode = false,
+  embeddedColumnPreset,
+  onBack,
 }: DataTableProps<TData, TValue>) {
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -150,7 +220,9 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] =
     useState<Record<string, boolean>>(() =>
-      getColumnVisibility(columns, "compact"),
+      embeddedColumnPreset
+        ? getEmbeddedColumnVisibility(columns, embeddedColumnPreset)
+        : getColumnVisibility(columns, "compact"),
     );
   const [globalFilter, setGlobalFilter] = useState("");
   const [viewMode, setViewMode] =
@@ -168,8 +240,14 @@ export function DataTable<TData, TValue>({
   const router = useRouter();
 
   useEffect(() => {
+    if (embeddedColumnPreset) {
+      setColumnVisibility(
+        getEmbeddedColumnVisibility(columns, embeddedColumnPreset),
+      );
+      return;
+    }
     setColumnVisibility(getColumnVisibility(columns, viewMode));
-  }, [columns, viewMode]);
+  }, [columns, viewMode, embeddedColumnPreset]);
 
   // Filter data by selected categories
   const filteredData = useMemo(() => {
@@ -235,6 +313,19 @@ export function DataTable<TData, TValue>({
     enableGlobalFilter: true,
     enableRowSelection: true,
   });
+
+  const denseLayout = usesDenseTableLayout(viewMode, embeddedColumnPreset);
+  const visibleDenseColumns = useMemo(
+    () =>
+      getVisiblePresetColumns(
+        table
+          .getVisibleLeafColumns()
+          .map((column) => column.id)
+          .filter(Boolean),
+        getInventoryPresetName(viewMode, embeddedColumnPreset),
+      ),
+    [table, viewMode, embeddedColumnPreset, columnVisibility],
+  );
 
   const handleCategoryToggle = (categoryId: string) => {
     setAllCategoriesSelected(false);
@@ -313,7 +404,7 @@ export function DataTable<TData, TValue>({
       {/* Filter and Search Bar - Contained in rounded border */}
       <div className="rounded-lg border bg-card p-3 mb-3 shadow-sm">
         {/* Category Filter Row */}
-        {categories.length > 0 && (
+        {!embeddedMode && categories.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <span className="text-sm font-medium">Categoria:</span>
             <div className="flex flex-wrap items-center gap-3">
@@ -380,27 +471,29 @@ export function DataTable<TData, TValue>({
               Cancella filtri
             </Button>
           )}
-          <div className="ml-auto flex items-center rounded-md border bg-background p-0.5">
-            <Button
-              type="button"
-              variant={viewMode === "compact" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => setViewMode("compact")}
-            >
-              Compatta
-            </Button>
-            <Button
-              type="button"
-              variant={viewMode === "extended" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => setViewMode("extended")}
-            >
-              Estesa
-            </Button>
-          </div>
-          {selectedCount > 0 && (
+          {!embeddedMode && (
+            <div className="ml-auto flex items-center rounded-md border bg-background p-0.5">
+              <Button
+                type="button"
+                variant={viewMode === "compact" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setViewMode("compact")}
+              >
+                Compatta
+              </Button>
+              <Button
+                type="button"
+                variant={viewMode === "extended" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => setViewMode("extended")}
+              >
+                Estesa
+              </Button>
+            </div>
+          )}
+          {!embeddedMode && selectedCount > 0 && (
             <Button
               variant="destructive"
               size="sm"
@@ -417,18 +510,21 @@ export function DataTable<TData, TValue>({
       <div className="w-full min-w-0 rounded-lg border bg-card shadow-sm overflow-y-visible">
         <div
           className={
-            viewMode === "compact"
-              ? "w-full overflow-x-hidden"
+            denseLayout
+              ? "w-full overflow-x-auto"
               : "w-full overflow-x-auto"
           }
         >
           <Table
             className={
-              viewMode === "compact"
-                ? "w-full table-fixed text-xs"
+              denseLayout
+                ? "w-max max-w-full table-fixed text-xs"
                 : "w-full text-xs"
             }
           >
+            {denseLayout && visibleDenseColumns.length > 0 ? (
+              <TableColGroup columns={visibleDenseColumns} />
+            ) : null}
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -436,9 +532,10 @@ export function DataTable<TData, TValue>({
                     return (
                       <TableHead
                         key={header.id}
-                        className={getColumnCellClassName(
+                        className={getColumnHeadClassName(
                           header.column.id,
                           viewMode,
+                          embeddedColumnPreset,
                         )}
                       >
                         {header.isPlaceholder
@@ -466,6 +563,7 @@ export function DataTable<TData, TValue>({
                         className={getColumnCellClassName(
                           cell.column.id,
                           viewMode,
+                          embeddedColumnPreset,
                         )}
                       >
                         {flexRender(
@@ -491,8 +589,7 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
       <div className="pt-4">
-        {/* Pagination controls */}
-        <DataTablePagination table={table} />
+        <DataTablePagination table={table} trailingAction={onBack} />
       </div>
 
       {/* Bulk Delete Confirmation Dialog */}

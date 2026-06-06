@@ -1,79 +1,30 @@
 "use client";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { Download, Loader2 } from "lucide-react";
+import { ChevronDown, Download, Loader2 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useSiteId } from "@/hooks/use-site-id";
-import { formatLocalDate } from "@/lib/utils";
-
-// CSV columns for export
-// ID is included to allow updating existing records on re-import
-const CSV_COLUMNS = [
-  { key: "id", header: "ID" },
-  { key: "internal_code", header: "COD_INT" },
-  { key: "category.name", header: "CATEGORIA" },
-  { key: "subcategory", header: "SOTTOCATEGORIA" },
-  { key: "tipo", header: "TIPO" },
-  { key: "name", header: "NOME_PRODOTTO" },
-  { key: "description", header: "DESCRIZIONE" },
-  { key: "price_list", header: "LISTINO_PREZZI" },
-  { key: "image_url", header: "URL_IMMAGINE" },
-  { key: "doc_url", header: "URL_DOC" },
-  { key: "active", header: "ATTIVO" },
-];
-
-// Helper to get nested property value (e.g., "category.name")
-function getNestedValue(obj: any, path: string): any {
-  return path.split(".").reduce((current, key) => current?.[key], obj);
-}
-
-function getCsvValue(product: any, key: string) {
-  if (key === "subcategory") {
-    return product?.subcategory || product?.type || "";
-  }
-
-  if (key === "tipo") {
-    return product?.tipo || product?.product_type || "";
-  }
-
-  return getNestedValue(product, key);
-}
-
-function escapeCSVValue(value: any): string {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  // Convert booleans to SI/NO
-  if (typeof value === "boolean") {
-    return value ? "SI" : "NO";
-  }
-
-  const stringValue = String(value);
-
-  // Escape values with commas, quotes, or newlines
-  if (
-    stringValue.includes(",") ||
-    stringValue.includes('"') ||
-    stringValue.includes("\n")
-  ) {
-    return `"${stringValue.replace(/"/g, '""')}"`;
-  }
-
-  return stringValue;
-}
+import {
+  exportSellProductsCsv,
+  exportSellProductsHierarchicalCsv,
+} from "@/lib/sell-product-csv-export";
 
 function ButtonExportCSV() {
   const [isLoading, setLoading] = useState(false);
   const { toast } = useToast();
   const pathname = usePathname();
 
-  // Extract domain from pathname
   const domain = pathname.split("/")[2] || "";
   const { siteId, loading: siteLoading } = useSiteId(domain);
 
-  const handleExport = async () => {
+  const handleExport = async (mode: "flat" | "hierarchical") => {
     if (!siteId) {
       toast({
         variant: "destructive",
@@ -85,60 +36,15 @@ function ButtonExportCSV() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/sell-products", {
-        method: "GET",
-        headers: {
-          "x-site-id": siteId,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Errore nel recupero dei dati");
-      }
-
-      const products = await response.json();
-
-      if (!products || products.length === 0) {
-        toast({
-          variant: "destructive",
-          description: "Nessun prodotto da esportare",
-        });
-        return;
-      }
-
-      // Create header row
-      const headers = CSV_COLUMNS.map((col) => col.header);
-
-      // Create data rows
-      const rows = products.map((product: any) => {
-        return CSV_COLUMNS.map((col) =>
-          escapeCSVValue(getCsvValue(product, col.key))
-        );
-      });
-
-      // Create CSV content
-      const csvContent = [
-        headers.join(","),
-        ...rows.map((row: string[]) => row.join(",")),
-      ].join("\n");
-
-      // Create and trigger download
-      const blob = new Blob(["\ufeff" + csvContent], {
-        type: "text/csv;charset=utf-8;",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `prodotti_export_${formatLocalDate(new Date())}.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const { rowCount } =
+        mode === "hierarchical"
+          ? await exportSellProductsHierarchicalCsv({ siteId })
+          : await exportSellProductsCsv({ siteId });
 
       toast({
-        description: `Esportati ${products.length} prodotti con successo!`,
+        description: `Esportati ${rowCount} prodotti con successo!`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Errore esportazione prodotti CSV", {
         siteId,
         domain,
@@ -146,7 +52,10 @@ function ButtonExportCSV() {
       });
       toast({
         variant: "destructive",
-        description: error.message || "Errore durante l'esportazione",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Errore durante l'esportazione",
       });
     } finally {
       setLoading(false);
@@ -154,23 +63,35 @@ function ButtonExportCSV() {
   };
 
   return (
-    <Button
-      variant="outline"
-      onClick={handleExport}
-      disabled={isLoading || siteLoading || !siteId}
-    >
-      {isLoading ? (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Esportazione...
-        </>
-      ) : (
-        <>
-          <Download className="mr-2 h-4 w-4" />
-          Esporta CSV
-        </>
-      )}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          disabled={isLoading || siteLoading || !siteId}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Esportazione...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Esporta CSV
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => handleExport("flat")}>
+          Elenco prodotti (formato import)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleExport("hierarchical")}>
+          Riepilogo per categoria e sottocategoria
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

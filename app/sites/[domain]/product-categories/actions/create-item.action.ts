@@ -2,7 +2,7 @@
 
 import { SellProductCategory } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/sellProductCategory/create";
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
@@ -41,10 +41,25 @@ export async function createItem(
   }
 
   try {
-    const insertData: any = {
+    const serviceSupabase = createServiceClient();
+
+    let nextSortOrder = 0;
+    if (siteId) {
+      const { data: lastCategory } = await serviceSupabase
+        .from("sellproduct_categories")
+        .select("sort_order")
+        .eq("site_id", siteId)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      nextSortOrder = (lastCategory?.sort_order ?? -1) + 1;
+    }
+
+    const insertData: Record<string, unknown> = {
       name: props.name,
       description: props.description || null,
       color: props.color || "#3B82F6",
+      sort_order: nextSortOrder,
     };
 
     if (siteId) {
@@ -79,7 +94,9 @@ export async function createItem(
       }
     }
 
-    revalidatePath("/product-categories");
+    if (domain) {
+      revalidatePath(`/sites/${domain}/product-categories`);
+    }
     return { success: true, data };
   } catch (error: any) {
     console.error("Error creating sell product category:", error);

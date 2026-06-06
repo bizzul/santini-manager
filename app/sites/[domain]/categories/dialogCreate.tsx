@@ -12,7 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import CreateForm from "./createForm";
 
-function DialogCreate({ domain }: { domain: string }) {
+function DialogCreate({
+  domain,
+  canManageImages = false,
+}: {
+  domain: string;
+  canManageImages?: boolean;
+}) {
   const [isOpen, setOpen] = useState(false);
   return (
     <Dialog open={isOpen} onOpenChange={() => setOpen(!isOpen)}>
@@ -24,7 +30,11 @@ function DialogCreate({ domain }: { domain: string }) {
           <DialogTitle>Crea categoria</DialogTitle>
           <DialogDescription>Crea una nuova categoria</DialogDescription>
         </DialogHeader>
-        <CreateForm domain={domain} handleClose={() => setOpen(false)} />
+        <CreateForm
+          domain={domain}
+          canManageImages={canManageImages}
+          handleClose={() => setOpen(false)}
+        />
       </DialogContent>
     </Dialog>
   );

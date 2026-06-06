@@ -17,15 +17,23 @@ import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/sellProductCategory/create";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { SellCategoryImageUpload } from "@/components/sell-categories/sell-category-image-upload";
 
 const CreateForm = ({
   handleClose,
   domain,
+  canManageImages = false,
 }: {
-  handleClose: any;
+  handleClose: () => void;
   domain: string;
+  canManageImages?: boolean;
 }) => {
   const { toast } = useToast();
+  const router = useRouter();
+  const [createdCategoryId, setCreatedCategoryId] = React.useState<number | null>(
+    null,
+  );
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -40,11 +48,16 @@ const CreateForm = ({
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
     try {
       const result = await createItem(d, domain);
-      if (result?.success) {
-        handleClose(false);
+      if (result?.success && result?.data?.id) {
+        setCreatedCategoryId(result.data.id);
         toast({
           description: `Categoria ${d.name} creata correttamente!`,
         });
+        router.refresh();
+        return;
+      } else if (result?.success) {
+        handleClose();
+        router.refresh();
       } else if (result?.error) {
         toast({
           variant: "destructive",
@@ -126,12 +139,26 @@ const CreateForm = ({
           )}
         />
 
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting && (
-            <span className="spinner-border spinner-border-sm mr-1"></span>
+        {createdCategoryId && canManageImages && (
+          <SellCategoryImageUpload
+            domain={domain}
+            categoryId={createdCategoryId}
+            onUploadComplete={() => router.refresh()}
+            onRemove={() => router.refresh()}
+          />
+        )}
+
+        <div className="flex gap-2">
+          {!createdCategoryId ? (
+            <Button type="submit" disabled={isSubmitting}>
+              Salva
+            </Button>
+          ) : (
+            <Button type="button" onClick={handleClose}>
+              Chiudi
+            </Button>
           )}
-          Salva
-        </Button>
+        </div>
       </form>
     </Form>
   );

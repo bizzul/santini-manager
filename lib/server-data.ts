@@ -22,6 +22,30 @@ import {
 } from "@/lib/product-category-label";
 import { assertDashboardQuery } from "@/lib/dashboard-query-guard";
 import { syncRegisteredSuppliersIntoInventorySuppliers } from "@/lib/inventory-suppliers";
+import {
+    aggregateCategoryCards,
+    aggregateSubcategoryCards,
+    countMergedSubcategories,
+    mergeSubcategoryRecords,
+} from "@/lib/category-aggregation";
+import {
+    INVENTORY_CATEGORIES_VIEW_MODE_KEY,
+    type CategoryCardData,
+    type CategoryViewMode,
+    type SubcategoryCardData,
+} from "@/types/category-cards";
+import {
+    aggregateSellCategoryCards,
+    aggregateSellSubcategoryCards,
+    countMergedSellSubcategories,
+    mergeSellSubcategoryRecords,
+} from "@/lib/sell-product-category-aggregation";
+import {
+    SELL_PRODUCT_CATEGORIES_VIEW_MODE_KEY,
+    type SellCategoryCardData,
+    type SellCategoryViewMode,
+    type SellSubcategoryCardData,
+} from "@/types/sell-product-category-cards";
 
 const log = logger.scope("ServerData");
 
@@ -176,6 +200,7 @@ export const fetchSuppliers = cache(async (siteId: string) => {
         .from("Supplier")
         .select("*, supplier_category:supplier_category_id(id, name, code)")
         .eq("site_id", siteId)
+        .order("name", { ascending: true })
         .order("name", { ascending: true });
 
     if (error) {
@@ -613,6 +638,7 @@ export const fetchCategories = cache(async (siteId: string) => {
         .from("Product_category")
         .select("*")
         .eq("site_id", siteId)
+        .order("name", { ascending: true })
         .order("name", { ascending: true });
 
     if (error) {
@@ -631,6 +657,7 @@ export const fetchSupplierCategories = cache(async (siteId: string) => {
         .from("Supplier_category")
         .select("*")
         .eq("site_id", siteId)
+        .order("name", { ascending: true })
         .order("name", { ascending: true });
 
     if (error) {
@@ -690,11 +717,22 @@ export const fetchManufacturerCategories = cache(async (siteId: string) => {
  */
 export const fetchSellProductCategories = cache(async (siteId: string) => {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    let { data, error } = await supabase
         .from("sellproduct_categories")
         .select("*")
         .eq("site_id", siteId)
+        .order("sort_order", { ascending: true })
         .order("name", { ascending: true });
+
+    if (error?.code === "42703") {
+        const fallback = await supabase
+            .from("sellproduct_categories")
+            .select("*")
+            .eq("site_id", siteId)
+            .order("name", { ascending: true });
+        data = fallback.data;
+        error = fallback.error;
+    }
 
     if (error) {
         log.error("Error fetching sell product categories:", error);
@@ -880,6 +918,7 @@ export const fetchInventoryCategories = cache(async (siteId: string) => {
         .from("inventory_categories")
         .select("*")
         .eq("site_id", siteId)
+        .order("sort_order", { ascending: true })
         .order("name", { ascending: true });
 
     if (error) {
@@ -1755,6 +1794,7 @@ export const fetchInventoryData = cache(async (siteId: string) => {
             .from("inventory_categories")
             .select("*")
             .eq("site_id", siteId)
+            .order("sort_order", { ascending: true })
             .order("name", { ascending: true }),
         supabase
             .from("inventory_suppliers")
@@ -1893,6 +1933,193 @@ export const fetchInventoryData = cache(async (siteId: string) => {
         warehouses: warehousesResult.data || [],
     };
 });
+
+/**
+ * Fetch inventory category cards with aggregated stock metrics.
+ */
+export const fetchInventoryCategoryCards = cache(
+    async (siteId: string): Promise<CategoryCardData[]> => {
+        const [{ categories, inventory }, subcategoryImages] = await Promise.all([
+            fetchInventoryData(siteId),
+            fetchInventorySubcategoryImages(siteId),
+        ]);
+        const cards = aggregateCategoryCards(categories, inventory);
+        const imagesByCategory = new Map<string, typeof subcategoryImages>();
+
+        for (const image of subcategoryImages) {
+            const current = imagesByCategory.get(image.category_id) ?? [];
+            current.push(image);
+            imagesByCategory.set(image.category_id, current);
+        }
+
+        return cards.map((card) => ({
+            ...card,
+            subcategoryCount: countMergedSubcategories(
+                card.id,
+                inventory,
+                imagesByCategory.get(card.id) ?? [],
+            ),
+        }));
+    },
+);
+
+/**
+ * Fetch subcategory cards for a given inventory category.
+ */
+export const fetchInventorySubcategoryImages = cache(
+    async (siteId: string, categoryId?: string) => {
+        const supabase = await createClient();
+        let query = supabase
+            .from("inventory_subcategory_images")
+            .select(
+                "category_id, subcategory_key, subcategory_name, image_url, description, sort_order",
+            )
+            .eq("site_id", siteId)
+            .order("sort_order", { ascending: true })
+            .order("subcategory_name", { ascending: true });
+
+        if (categoryId) {
+            query = query.eq("category_id", categoryId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            log.warn("Error fetching subcategory images:", error);
+            return [];
+        }
+
+        return data || [];
+    },
+);
+
+export const fetchInventorySubcategoryCards = cache(
+    async (
+        siteId: string,
+        categoryId: string,
+    ): Promise<SubcategoryCardData[]> => {
+        const [{ inventory }, images] = await Promise.all([
+            fetchInventoryData(siteId),
+            fetchInventorySubcategoryImages(siteId, categoryId),
+        ]);
+        const cards = aggregateSubcategoryCards(categoryId, inventory);
+        return mergeSubcategoryRecords(cards, images);
+    },
+);
+
+/**
+ * Fetch persisted view mode for inventory categories page.
+ */
+export const fetchInventoryCategoryViewMode = cache(
+    async (siteId: string): Promise<CategoryViewMode> => {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("site_settings")
+            .select("setting_value")
+            .eq("site_id", siteId)
+            .eq("setting_key", INVENTORY_CATEGORIES_VIEW_MODE_KEY)
+            .maybeSingle();
+
+        if (error) {
+            log.warn("Error fetching inventory category view mode:", error);
+            return "table";
+        }
+
+        const value = data?.setting_value;
+        return value === "grid" ? "grid" : "table";
+    },
+);
+
+/**
+ * Fetch sell product category cards with aggregated metrics.
+ */
+export const fetchSellProductCategoryCards = cache(
+    async (siteId: string): Promise<SellCategoryCardData[]> => {
+        const [categories, products, subcategoryImages] = await Promise.all([
+            fetchSellProductCategories(siteId),
+            fetchSellProducts(siteId),
+            fetchSellProductSubcategoryImages(siteId),
+        ]);
+        const cards = aggregateSellCategoryCards(categories, products);
+        const imagesByCategory = new Map<number, typeof subcategoryImages>();
+
+        for (const image of subcategoryImages) {
+            const current = imagesByCategory.get(image.category_id) ?? [];
+            current.push(image);
+            imagesByCategory.set(image.category_id, current);
+        }
+
+        return cards.map((card) => ({
+            ...card,
+            subcategoryCount: countMergedSellSubcategories(
+                card.id,
+                products,
+                imagesByCategory.get(card.id) ?? [],
+            ),
+        }));
+    },
+);
+
+export const fetchSellProductSubcategoryImages = cache(
+    async (siteId: string, categoryId?: number) => {
+        const supabase = await createClient();
+        let query = supabase
+            .from("sellproduct_subcategory_images")
+            .select(
+                "category_id, subcategory_key, subcategory_name, image_url, description, sort_order",
+            )
+            .eq("site_id", siteId)
+            .order("sort_order", { ascending: true })
+            .order("subcategory_name", { ascending: true });
+
+        if (categoryId) {
+            query = query.eq("category_id", categoryId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+            log.warn("Error fetching sell subcategory images:", error);
+            return [];
+        }
+
+        return data || [];
+    },
+);
+
+export const fetchSellProductSubcategoryCards = cache(
+    async (
+        siteId: string,
+        categoryId: number,
+    ): Promise<SellSubcategoryCardData[]> => {
+        const [products, images] = await Promise.all([
+            fetchSellProducts(siteId),
+            fetchSellProductSubcategoryImages(siteId, categoryId),
+        ]);
+        const cards = aggregateSellSubcategoryCards(categoryId, products);
+        return mergeSellSubcategoryRecords(cards, images);
+    },
+);
+
+export const fetchSellProductCategoryViewMode = cache(
+    async (siteId: string): Promise<SellCategoryViewMode> => {
+        const supabase = await createClient();
+        const { data, error } = await supabase
+            .from("site_settings")
+            .select("setting_value")
+            .eq("site_id", siteId)
+            .eq("setting_key", SELL_PRODUCT_CATEGORIES_VIEW_MODE_KEY)
+            .maybeSingle();
+
+        if (error) {
+            log.warn("Error fetching sell product category view mode:", error);
+            return "table";
+        }
+
+        const value = data?.setting_value;
+        return value === "grid" ? "grid" : "table";
+    },
+);
 
 /**
  * Fetch internal activities for timetracking

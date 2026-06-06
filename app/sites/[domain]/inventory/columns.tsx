@@ -166,7 +166,10 @@ function getCategoryCode(row: InventoryRow) {
 export const createColumns = (
   domain?: string,
   suppliers: InventorySupplier[] = [],
+  options: { subcategoryColumnTitle?: string } = {},
 ): ColumnDef<InventoryRow>[] => {
+  const subcategoryColumnTitle =
+    options.subcategoryColumnTitle ?? "Sottocategoria";
   const supplierOptions: SelectOption[] = [
     { value: EMPTY_SUPPLIER_VALUE, label: "Nessun fornitore" },
     ...suppliers.map((supplier) => ({
@@ -233,7 +236,10 @@ export const createColumns = (
   {
     accessorKey: "subcategory",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Sottocategoria" />
+      <DataTableColumnHeader
+        column={column}
+        title={subcategoryColumnTitle}
+      />
     ),
     cell: ({ row }) => (
       <EditableCell
@@ -446,7 +452,7 @@ export const createColumns = (
   {
     accessorKey: "quantity",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Qta." />
+      <DataTableColumnHeader column={column} title="Pz." />
     ),
     cell: ({ row }) => (
       <EditableCell

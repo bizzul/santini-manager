@@ -1,89 +1,73 @@
 "use server";
 
-import { Product_category } from "@/types/supabase";
+import { InventoryCategory } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/utils/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/productsCategory/create";
-import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
-import { logger } from "@/lib/logger";
 
 export async function editItem(
-  formData: Pick<Product_category, "name" | "code" | "description">,
-  id: number,
+  props: Pick<InventoryCategory, "name" | "code" | "description" | "image_url">,
+  id: string,
   domain?: string,
 ) {
-  const data = validation.safeParse(formData);
+  const result = validation.safeParse(props);
 
-  const supabase = await createClient();
-  const userContext = await getUserContext();
-  let userId = null;
-  let siteId = null;
-
-  // Get site information
-  if (domain) {
-    try {
-      const siteResult = await getSiteData(domain);
-      if (siteResult?.data) {
-        siteId = siteResult.data.id;
-      }
-    } catch (error) {
-      logger.error("Error fetching site data:", error);
-    }
-  }
-
-  if (userContext) {
-    // Use the authId directly as it's a string and matches Action.user_id type
-    userId = userContext.user.id;
-  }
-
-  if (!data.success) {
-    logger.debug("Validation failed");
+  if (!result.success) {
     return { error: "Validazione elemento fallita!" };
   }
 
+  if (!domain) {
+    return { error: "Dominio sito mancante!" };
+  }
+
+  let siteId: string | null = null;
+
   try {
-    const updateData: any = {
-      name: data.data.name,
-      code: data.data.code || null,
-      description: data.data.description,
+    const siteResult = await getSiteData(domain);
+    siteId = siteResult?.data?.id ?? null;
+  } catch (error) {
+    console.error("Error fetching site data:", error);
+  }
+
+  if (!siteId) {
+    return { error: "Sito non trovato!" };
+  }
+
+  try {
+    const supabase = createServiceClient();
+    const updatePayload: Record<string, unknown> = {
+      name: props.name,
+      code: props.code || null,
+      description: props.description || null,
+      updated_at: new Date().toISOString(),
     };
 
-    if (siteId) {
-      updateData.site_id = siteId;
+    if (props.image_url !== undefined) {
+      updatePayload.image_url = props.image_url || null;
     }
 
-    const { data: result, error: updateError } = await supabase
-      .from("Product_category")
-      .update(updateData)
-      .eq("id", id);
+    const { data, error } = await supabase
+      .from("inventory_categories")
+      .update(updatePayload)
+      .eq("id", id)
+      .eq("site_id", siteId)
+      .select()
+      .single();
 
-    if (updateError) {
-      console.error("Error updating category:", updateError);
-      return { error: "Modifica elemento fallita!" };
+    if (error) {
+      if (error.code === "23505") {
+        return { error: "Una categoria con questo nome esiste già" };
+      }
+      console.error("Error updating inventory category:", error);
+      return { error: error.message };
     }
 
-    // Create a new Action record to track the user action
-    const { error: actionError } = await supabase
-      .from("Action")
-      .insert({
-        type: "product_category_update",
-        data: {
-          product_category: id,
-        },
-        user_id: userId,
-      });
-
-    if (actionError) {
-      logger.error("Error creating action:", actionError);
-      return { error: "Modifica elemento fallita!" };
-    }
-
-    revalidatePath("/categories");
-    logger.debug("Path revalidated, returning success");
-    return { success: true };
-  } catch (e) {
-    logger.error("Error updating category:", e);
-    return { error: "Modifica elemento fallita!" };
+    revalidatePath(`/sites/${domain}/categories`);
+    return { success: true, data };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error updating inventory category:", error);
+    return { error: message };
   }
 }

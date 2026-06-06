@@ -1,13 +1,17 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
+import { isAdminOrSuperadmin } from "@/lib/permissions";
 import {
   requireServerSiteContext,
+  fetchSellProductCategoryCards,
+  fetchSellProductCategoryViewMode,
   fetchSellProductCategories,
+  fetchSellProducts,
+  fetchSellProductSubcategoryImages,
 } from "@/lib/server-data";
-import DialogCreate from "./dialogCreate";
-import DataWrapper from "./dataWrapper";
-import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { PageLayout } from "@/components/page-layout";
+import { CategoriesPageClient } from "./categories-page-client";
 
 export default async function Page({
   params,
@@ -16,39 +20,34 @@ export default async function Page({
 }) {
   const { domain } = await params;
 
-  // Authentication
   const userContext = await getUserContext();
   if (!userContext?.user) {
     return redirect("/login");
   }
 
-  // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
+  const isAdmin = isAdminOrSuperadmin(userContext.role);
 
-  // Fetch data
-  const categories = await fetchSellProductCategories(siteId);
+  const [categoryCards, viewMode, categories, products, subcategoryImages] =
+    await Promise.all([
+      fetchSellProductCategoryCards(siteId),
+      fetchSellProductCategoryViewMode(siteId),
+      fetchSellProductCategories(siteId),
+      fetchSellProducts(siteId),
+      fetchSellProductSubcategoryImages(siteId),
+    ]);
 
   return (
     <PageLayout>
-      <PageHeader>
-        <h1 className="text-2xl font-bold">Categorie Articoli</h1>
-        <DialogCreate domain={domain} />
-      </PageHeader>
-      <PageContent>
-        {categories.length > 0 ? (
-          <DataWrapper data={categories} domain={domain} />
-        ) : (
-          <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">
-              Nessuna categoria articolo registrata!
-            </h1>
-            <p>
-              Premi (Aggiungi categoria) per aggiungere la tua prima categoria
-              articolo
-            </p>
-          </div>
-        )}
-      </PageContent>
+      <CategoriesPageClient
+        categoryCards={categoryCards}
+        categories={categories}
+        products={products}
+        domain={domain}
+        initialViewMode={viewMode}
+        subcategoryImages={subcategoryImages}
+        isAdmin={isAdmin}
+      />
     </PageLayout>
   );
 }

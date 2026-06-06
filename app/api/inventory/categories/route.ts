@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { name, code, description, parent_id } = body;
+        const { name, code, description, parent_id, image_url } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
                 code: code || null,
                 description: description || null,
                 parent_id: parent_id || null,
+                image_url: image_url || null,
             })
             .select()
             .single();
@@ -136,7 +137,7 @@ export async function PUT(req: NextRequest) {
             );
         }
 
-        const { id, name, code, description, parent_id } = body;
+        const { id, name, code, description, parent_id, image_url } = body;
 
         if (!id || !name) {
             return NextResponse.json(
@@ -145,15 +146,21 @@ export async function PUT(req: NextRequest) {
             );
         }
 
+        const updatePayload: Record<string, unknown> = {
+            name,
+            code: code || null,
+            description: description || null,
+            parent_id: parent_id || null,
+            updated_at: new Date().toISOString(),
+        };
+
+        if (image_url !== undefined) {
+            updatePayload.image_url = image_url || null;
+        }
+
         const { data: category, error } = await supabase
             .from("inventory_categories")
-            .update({
-                name,
-                code: code || null,
-                description: description || null,
-                parent_id: parent_id || null,
-                updated_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq("id", id)
             .eq("site_id", siteId)
             .select()
@@ -241,6 +248,13 @@ export async function DELETE(req: NextRequest) {
             );
         }
 
+        const { data: categoryToDelete } = await supabase
+            .from("inventory_categories")
+            .select("image_url")
+            .eq("id", id)
+            .eq("site_id", siteId)
+            .maybeSingle();
+
         const { error } = await supabase
             .from("inventory_categories")
             .delete()
@@ -253,6 +267,15 @@ export async function DELETE(req: NextRequest) {
                 { error: "Failed to delete category" },
                 { status: 500 },
             );
+        }
+
+        if (categoryToDelete?.image_url) {
+            const urlParts = categoryToDelete.image_url.split("/category-images/");
+            if (urlParts.length > 1) {
+                await supabase.storage
+                    .from("category-images")
+                    .remove([urlParts[1]]);
+            }
         }
 
         return NextResponse.json({ success: true });

@@ -19,12 +19,13 @@ const initialState = {
 
 type Props = {
   data: any;
+  domain: string;
   isOpen: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setData: React.Dispatch<React.SetStateAction<any>>;
 };
 
-function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
+function DialogDelete({ data, domain, setData, isOpen = false, setOpen }: Props) {
   const { toast } = useToast();
   // const { pending } = useFormStatus();
   const [pending, setPending] = useState(false);
@@ -36,7 +37,7 @@ function DialogDelete({ data, setData, isOpen = false, setOpen }: Props) {
   async function handleDelete(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
-    const response = await removeItem(data);
+    const response = await removeItem(data, domain);
     if (response?.message) {
       toast({
         description: `Errore! ${response.message}`,

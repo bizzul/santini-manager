@@ -4,6 +4,7 @@ import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
 } from "@radix-ui/react-icons";
+import { ArrowLeft } from "lucide-react";
 import { Table } from "@tanstack/react-table";
 
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,14 @@ import { cn } from "@/lib/utils";
 
 interface DataTablePaginationProps<TData> {
   table: Table<TData>;
+  trailingAction?: () => void;
+  trailingActionLabel?: string;
 }
 
 export function DataTablePagination<TData>({
   table,
+  trailingAction,
+  trailingActionLabel = "Indietro",
 }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between px-2">
@@ -96,6 +101,18 @@ export function DataTablePagination<TData>({
             <DoubleArrowRightIcon className="h-4 w-4" />
           </Button>
         </div>
+        {trailingAction ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={trailingAction}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            {trailingActionLabel}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

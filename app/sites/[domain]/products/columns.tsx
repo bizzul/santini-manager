@@ -80,8 +80,11 @@ const createProductEditHandler = (domain?: string) => {
 };
 
 export const createColumns = (
-  domain?: string
+  domain?: string,
+  options: { subcategoryColumnTitle?: string } = {},
 ): ColumnDef<SellProductWithAction>[] => {
+  const subcategoryColumnTitle =
+    options.subcategoryColumnTitle ?? "Sottocategoria";
   const handleProductEdit = createProductEditHandler(domain);
 
   return [
@@ -235,7 +238,10 @@ export const createColumns = (
     {
       accessorKey: "subcategory",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Sottocategoria" />
+        <DataTableColumnHeader
+          column={column}
+          title={subcategoryColumnTitle}
+        />
       ),
       cell: ({ row }) => (
         <EditableCell
@@ -316,6 +322,25 @@ export const createColumns = (
       ),
       cell: ({ row }) => <span>{row.original.supplier?.name || "-"}</span>,
       size: 150,
+    },
+    {
+      accessorKey: "price_list",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Listino" />
+      ),
+      cell: ({ row }) => (
+        <EditableCell
+          value={row.original.price_list}
+          row={row}
+          field="price_list"
+          type="number"
+          min={0}
+          step={0.01}
+          onSave={handleProductEdit}
+          className="min-w-0 justify-center text-center"
+        />
+      ),
+      size: 100,
     },
     {
       accessorKey: "doc_url",

@@ -1,19 +1,29 @@
 "use client";
 
-import { SellProductCategory } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
+import type { SellCategoryTableRow } from "@/types/sell-product-category-cards";
+import { SellCategoryImageCell } from "@/components/sell-categories/sell-category-image-cell";
+import {
+  formatCategoryPieces,
+  formatCategoryValue,
+} from "@/lib/category-display";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// Handler for inline editing product categories
 const createProductCategoryEditHandler = () => {
   return async (
-    rowData: SellProductCategory,
+    rowData: SellCategoryTableRow,
     field: string,
-    newValue: string | number | boolean | null
+    newValue: string | number | boolean | null,
   ): Promise<{ success?: boolean; error?: string }> => {
     const formData = {
       name: rowData.name,
@@ -28,37 +38,64 @@ const createProductCategoryEditHandler = () => {
         return { error: result.error };
       }
       return { success: true };
-    } catch (error: any) {
-      return { error: error.message || "Errore durante il salvataggio" };
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Errore durante il salvataggio";
+      return { error: message };
     }
   };
 };
 
-export const createColumns = (): ColumnDef<SellProductCategory>[] => {
+export const createColumns = (
+  domain?: string,
+  options?: { canManageImages?: boolean; managementMode?: boolean },
+): ColumnDef<SellCategoryTableRow>[] => {
+  const canManageImages = options?.canManageImages ?? false;
+  const managementMode = options?.managementMode ?? true;
   const handleCategoryEdit = createProductCategoryEditHandler();
 
   return [
+    ...(managementMode
+      ? [
+          {
+            id: "select",
+            header: ({ table }) => (
+              <Checkbox
+                checked={
+                  table.getIsAllPageRowsSelected() ||
+                  (table.getIsSomePageRowsSelected() && "indeterminate")
+                }
+                onCheckedChange={(value) =>
+                  table.toggleAllPageRowsSelected(!!value)
+                }
+                aria-label="Seleziona tutti"
+              />
+            ),
+            cell: ({ row }) => (
+              <Checkbox
+                checked={row.getIsSelected()}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Seleziona riga"
+              />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+          } as ColumnDef<SellCategoryTableRow>,
+        ]
+      : []),
     {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Seleziona tutti"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Seleziona riga"
-        />
-      ),
+      id: "image",
+      header: "Immagine",
       enableSorting: false,
-      enableHiding: false,
+      cell: ({ row }) => (
+        <SellCategoryImageCell
+          domain={domain ?? ""}
+          categoryId={row.original.id}
+          categoryName={row.original.name}
+          imageUrl={row.original.image_url}
+          canManageImages={canManageImages}
+        />
+      ),
     },
     {
       accessorKey: "name",
@@ -96,15 +133,15 @@ export const createColumns = (): ColumnDef<SellProductCategory>[] => {
         <DataTableColumnHeader column={column} title="Colore" />
       ),
       cell: ({ row }) => {
-        const color = row.getValue("color") as string;
+        const color = row.original.color || "#3B82F6";
         return (
           <div className="flex items-center gap-2">
             <div
-              className="w-6 h-6 rounded border"
-              style={{ backgroundColor: color || "#3B82F6" }}
+              className="h-6 w-6 rounded border"
+              style={{ backgroundColor: color }}
             />
             <EditableCell
-              value={color || "#3B82F6"}
+              value={color}
               row={row}
               field="color"
               type="text"
@@ -115,12 +152,50 @@ export const createColumns = (): ColumnDef<SellProductCategory>[] => {
       },
     },
     {
-      id: "actions",
-      header: "Azioni",
-      cell: ({ row }) => <DataTableRowActions row={row} />,
+      accessorKey: "itemCount",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Articoli" />
+      ),
+      cell: ({ row }) => row.original.itemCount,
     },
+    {
+      accessorKey: "subcategoryCount",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Sottocat." />
+      ),
+      cell: ({ row }) =>
+        row.original.itemCount === 0 && row.original.subcategoryCount === 0
+          ? "—"
+          : row.original.subcategoryCount,
+    },
+    {
+      accessorKey: "pieces",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Pezzi" />
+      ),
+      cell: ({ row }) => formatCategoryPieces(row.original.pieces),
+    },
+    {
+      accessorKey: "totalValue",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Valore" />
+      ),
+      cell: ({ row }) => formatCategoryValue(row.original.totalValue),
+    },
+    ...(managementMode
+      ? [
+          {
+            id: "actions",
+            header: "Azioni",
+            cell: ({ row }) => (
+              <DataTableRowActions
+                row={row}
+                domain={domain ?? ""}
+                canManageImages={canManageImages}
+              />
+            ),
+          } as ColumnDef<SellCategoryTableRow>,
+        ]
+      : []),
   ];
 };
-
-// Legacy export for backward compatibility
-export const columns = createColumns();

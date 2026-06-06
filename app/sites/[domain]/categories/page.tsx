@@ -1,13 +1,16 @@
 import React from "react";
 import { redirect } from "next/navigation";
-import { Folder } from "lucide-react";
-
 import { getUserContext } from "@/lib/auth-utils";
-import { requireServerSiteContext, fetchCategories } from "@/lib/server-data";
-import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
-import { EmptyState } from "@/components/layout/empty-state";
-import DialogCreate from "./dialogCreate";
-import DataWrapper from "./dataWrapper";
+import { isAdminOrSuperadmin } from "@/lib/permissions";
+import {
+  requireServerSiteContext,
+  fetchInventoryCategoryCards,
+  fetchInventoryCategoryViewMode,
+  fetchInventoryData,
+  fetchInventorySubcategoryImages,
+} from "@/lib/server-data";
+import { PageLayout } from "@/components/page-layout";
+import { CategoriesPageClient } from "./categories-page-client";
 
 export default async function Page({
   params,
@@ -22,26 +25,28 @@ export default async function Page({
   }
 
   const { siteId } = await requireServerSiteContext(domain);
-  const categories = await fetchCategories(siteId);
+  const isAdmin = isAdminOrSuperadmin(userContext.role);
+
+  const [categoryCards, viewMode, inventoryData, subcategoryImages] =
+    await Promise.all([
+      fetchInventoryCategoryCards(siteId),
+      fetchInventoryCategoryViewMode(siteId),
+      fetchInventoryData(siteId),
+      fetchInventorySubcategoryImages(siteId),
+    ]);
 
   return (
     <PageLayout>
-      <PageHeader
-        title="Categorie"
-        subtitle="Organizza le categorie utilizzate nelle commesse"
-        actions={<DialogCreate domain={domain} />}
+      <CategoriesPageClient
+        categoryCards={categoryCards}
+        categories={inventoryData.categories}
+        inventory={inventoryData.inventory}
+        suppliers={inventoryData.suppliers}
+        domain={domain}
+        initialViewMode={viewMode}
+        subcategoryImages={subcategoryImages}
+        isAdmin={isAdmin}
       />
-      <PageContent>
-        {categories.length > 0 ? (
-          <DataWrapper data={categories} domain={domain} />
-        ) : (
-          <EmptyState
-            icon={<Folder className="h-6 w-6" />}
-            title="Nessuna categoria registrata"
-            description="Premi 'Aggiungi categoria' per creare la prima categoria."
-          />
-        )}
-      </PageContent>
     </PageLayout>
   );
 }

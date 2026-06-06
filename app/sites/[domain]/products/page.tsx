@@ -1,17 +1,18 @@
 import React from "react";
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
+import { isAdminOrSuperadmin } from "@/lib/permissions";
 import {
   requireServerSiteContext,
-  fetchSellProducts,
+  fetchSellProductCategoryCards,
+  fetchSellProductCategoryViewMode,
   fetchSellProductCategories,
+  fetchSellProducts,
+  fetchSellProductSubcategoryImages,
   fetchSiteVerticalProfile,
 } from "@/lib/server-data";
-import DialogCreate from "./dialogCreate";
-import DialogImportCSV from "./dialogImportCSV";
-import ButtonExportCSV from "./buttonExportCSV";
-import SellProductWrapper from "./sellProductWrapper";
-import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { PageLayout } from "@/components/page-layout";
+import { ProductsPageClient } from "./products-page-client";
 
 export default async function Page({
   params,
@@ -20,47 +21,44 @@ export default async function Page({
 }) {
   const { domain } = await params;
 
-  // Authentication
   const userContext = await getUserContext();
   if (!userContext?.user) {
     return redirect("/login");
   }
 
-  // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
-  const verticalProfile = await fetchSiteVerticalProfile(siteId);
+  const isAdmin = isAdminOrSuperadmin(userContext.role);
 
-  // Fetch data
-  const products = await fetchSellProducts(siteId);
-  const categories = await fetchSellProductCategories(siteId);
+  const [
+    verticalProfile,
+    categoryCards,
+    viewMode,
+    categories,
+    products,
+    subcategoryImages,
+  ] = await Promise.all([
+    fetchSiteVerticalProfile(siteId),
+    fetchSellProductCategoryCards(siteId),
+    fetchSellProductCategoryViewMode(siteId),
+    fetchSellProductCategories(siteId),
+    fetchSellProducts(siteId),
+    fetchSellProductSubcategoryImages(siteId),
+  ]);
 
   return (
     <PageLayout>
-      <PageHeader>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.productsPageTitle}</h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.productsPageSubtitle}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <ButtonExportCSV />
-          <DialogImportCSV />
-          <DialogCreate domain={domain} siteId={siteId} />
-        </div>
-      </PageHeader>
-      <PageContent>
-        {products.length > 0 ? (
-          <SellProductWrapper data={products} domain={domain} siteId={siteId} categories={categories} />
-        ) : (
-          <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">Nessun articolo registrato!</h1>
-            <p>
-              Premi (Aggiungi articolo) per aggiungere il tuo primo articolo!
-            </p>
-          </div>
-        )}
-      </PageContent>
+      <ProductsPageClient
+        pageTitle={verticalProfile.pageCopy.productsPageTitle}
+        pageSubtitle={verticalProfile.pageCopy.productsPageSubtitle}
+        categoryCards={categoryCards}
+        categories={categories}
+        products={products}
+        domain={domain}
+        siteId={siteId}
+        initialViewMode={viewMode}
+        subcategoryImages={subcategoryImages}
+        isAdmin={isAdmin}
+      />
     </PageLayout>
   );
 }

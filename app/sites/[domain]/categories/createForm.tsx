@@ -1,13 +1,14 @@
 "use client";
-import React, { useTransition } from "react";
+
+import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -18,16 +19,21 @@ import { Button } from "@/components/ui/button";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/productsCategory/create";
 import { useToast } from "@/hooks/use-toast";
-import { logger } from "@/lib/logger";
+import { CategoryImageUpload } from "@/components/categories/category-image-upload";
 
 const CreateForm = ({
   handleClose,
   domain,
+  canManageImages = false,
 }: {
-  handleClose: any;
+  handleClose: () => void;
   domain: string;
+  canManageImages?: boolean;
 }) => {
   const { toast } = useToast();
+  const router = useRouter();
+  const [createdCategoryId, setCreatedCategoryId] = useState<string | null>(null);
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
@@ -37,30 +43,38 @@ const CreateForm = ({
     },
   });
 
-  const { isSubmitting, errors } = form.formState;
+  const { isSubmitting } = form.formState;
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
+  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (values) => {
     try {
-      logger.debug("data", d);
-      await createItem(d, domain);
-      handleClose(false);
-      toast({
-        description: `Elemento ${d.name} creato correttamente!`,
-      });
-      // form.reset();
-    } catch (e) {
-      toast({
-        description: `Errore nel creare l'elemento! ${e}`,
-      });
+      const response = await createItem(values, domain);
+
+      if (response?.message) {
+        toast({ description: `Errore nel creare l'elemento! ${response.message}` });
+        return;
+      }
+
+      if (response?.data?.id) {
+        setCreatedCategoryId(response.data.id);
+        toast({
+          description: `Categoria ${values.name} creata correttamente!`,
+        });
+        router.refresh();
+        return;
+      }
+
+      handleClose();
+      router.refresh();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast({ description: `Errore nel creare l'elemento! ${message}` });
     }
   };
 
-  logger.debug("error", errors);
-
   return (
     <Form {...form}>
-      <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-2 gap-4">
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="name"
@@ -70,7 +84,7 @@ const CreateForm = ({
                 <FormControl>
                   <Input
                     {...field}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || Boolean(createdCategoryId)}
                     placeholder="es. Legno"
                   />
                 </FormControl>
@@ -87,8 +101,8 @@ const CreateForm = ({
                 <FormControl>
                   <Input
                     {...field}
-                    disabled={isSubmitting}
-                    placeholder="es. LG"
+                    disabled={isSubmitting || Boolean(createdCategoryId)}
+                    placeholder="es. LEG"
                   />
                 </FormControl>
                 <FormMessage />
@@ -105,7 +119,7 @@ const CreateForm = ({
               <FormControl>
                 <Input
                   {...field}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || Boolean(createdCategoryId)}
                   placeholder="es. Pannelli, tavole, etc."
                 />
               </FormControl>
@@ -114,12 +128,26 @@ const CreateForm = ({
           )}
         />
 
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting && (
-            <span className="spinner-border spinner-border-sm mr-1"></span>
+        {createdCategoryId && canManageImages && (
+          <CategoryImageUpload
+            domain={domain}
+            categoryId={createdCategoryId}
+            onUploadComplete={() => router.refresh()}
+            onRemove={() => router.refresh()}
+          />
+        )}
+
+        <div className="flex gap-2">
+          {!createdCategoryId ? (
+            <Button type="submit" disabled={isSubmitting}>
+              Salva
+            </Button>
+          ) : (
+            <Button type="button" onClick={handleClose}>
+              Chiudi
+            </Button>
           )}
-          Salva
-        </Button>
+        </div>
       </form>
     </Form>
   );

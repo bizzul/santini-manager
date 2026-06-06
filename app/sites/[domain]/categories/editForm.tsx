@@ -1,8 +1,10 @@
 "use client";
-import React, { useEffect } from "react";
+
+import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 import {
   Form,
@@ -16,56 +18,57 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { validation } from "@/validation/productsCategory/create";
 import { useToast } from "@/hooks/use-toast";
-import { Product_category } from "@/types/supabase";
+import { InventoryCategory } from "@/types/supabase";
 import { editItem } from "./actions/edit-item.action";
-import { logger } from "@/lib/logger";
+import { CategoryImageUpload } from "@/components/categories/category-image-upload";
 
 type Props = {
-  handleClose: any;
-  data: Product_category;
+  handleClose: () => void;
+  data: InventoryCategory;
+  domain: string;
 };
 
-const EditProductForm = ({ handleClose, data }: Props) => {
+const EditProductForm = ({ handleClose, data, domain }: Props) => {
   const { toast } = useToast();
+  const router = useRouter();
+
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
     defaultValues: {
       name: data.name,
       code: data.code || "",
-      description: data.description,
+      description: data.description || "",
     },
   });
 
   const { isSubmitting } = form.formState;
 
-  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
+  const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (values) => {
     try {
-      const response = await editItem(d, data.id);
+      const response = await editItem(values, data.id, domain);
 
       if (response?.error) {
-        toast({
-          description: `Errore! ${response.error}`,
-        });
-      } else if (response?.success) {
-        handleClose(false);
-        toast({
-          description: `Elemento ${d.name} aggiornato correttamente!`,
-        });
-      } else {
-        logger.debug("Unexpected response:", response);
+        toast({ description: `Errore! ${response.error}` });
+        return;
       }
-    } catch (e) {
-      console.error("Error in form submission:", e);
-      toast({
-        description: `Errore nel modificare l'elemento! ${e}`,
-      });
+
+      if (response?.success) {
+        handleClose();
+        toast({
+          description: `Categoria ${values.name} aggiornata correttamente!`,
+        });
+        router.refresh();
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast({ description: `Errore nel modificare l'elemento! ${message}` });
     }
   };
 
   return (
     <Form {...form}>
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
             name="name"
@@ -93,7 +96,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
                   <Input
                     {...field}
                     disabled={isSubmitting}
-                    placeholder="es. LG"
+                    placeholder="es. LEG"
                   />
                 </FormControl>
                 <FormMessage />
@@ -118,10 +121,17 @@ const EditProductForm = ({ handleClose, data }: Props) => {
             </FormItem>
           )}
         />
+
+        <CategoryImageUpload
+          domain={domain}
+          categoryId={data.id}
+          currentUrl={data.image_url}
+          onUploadComplete={() => router.refresh()}
+          onRemove={() => router.refresh()}
+          disabled={isSubmitting}
+        />
+
         <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting && (
-            <span className="spinner-border spinner-border-sm mr-1"></span>
-          )}
           Salva
         </Button>
       </form>

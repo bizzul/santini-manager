@@ -233,7 +233,21 @@ export interface SellProductCategory {
     icon_color?: string | null;
     image_url?: string | null;
     supplier_names?: string[];
+    sort_order?: number;
     productCount?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface SellProductSubcategoryImage {
+    id: string;
+    site_id: string;
+    category_id: number;
+    subcategory_key: string;
+    subcategory_name: string;
+    description?: string | null;
+    image_url?: string | null;
+    sort_order?: number;
     created_at?: string;
     updated_at?: string;
 }
@@ -601,6 +615,21 @@ export interface InventoryCategory {
     description?: string;
     code?: string;
     parent_id?: string;
+    image_url?: string;
+    sort_order?: number;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface InventorySubcategoryImage {
+    id: string;
+    site_id: string;
+    category_id: string;
+    subcategory_key: string;
+    subcategory_name: string;
+    description?: string | null;
+    image_url?: string | null;
+    sort_order?: number;
     created_at?: string;
     updated_at?: string;
 }

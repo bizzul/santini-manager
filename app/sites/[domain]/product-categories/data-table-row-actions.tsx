@@ -1,8 +1,8 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { ImageIcon, Pencil } from "lucide-react";
 import { Row } from "@tanstack/react-table";
-
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,31 +12,43 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+import { DialogSellCategoryImage } from "@/components/sell-categories/dialog-sell-category-image";
+import type { SellCategoryTableRow } from "@/types/sell-product-category-cards";
 import DialogDelete from "./dialogDelete";
-import { useState } from "react";
 import DialogEdit from "./dialogEdit";
 
-interface DataTableRowActionsProps<TData> {
-  row: Row<TData>;
+interface DataTableRowActionsProps {
+  row: Row<SellCategoryTableRow>;
+  domain: string;
+  canManageImages?: boolean;
 }
 
-export function DataTableRowActions<TData>({
+export function DataTableRowActions({
   row,
-}: DataTableRowActionsProps<TData>) {
+  domain,
+  canManageImages = false,
+}: DataTableRowActionsProps) {
   const data = row.original;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedData, setSelectedData] = useState();
+  const [imageOpen, setImageOpen] = useState(false);
+  const [selectedData, setSelectedData] = useState<SellCategoryTableRow | null>(
+    null,
+  );
 
-  function handleDeleteClick(row: any) {
-    setSelectedData(row);
+  function handleDeleteClick(rowData: SellCategoryTableRow) {
+    setSelectedData(rowData);
     setDeleteOpen(true);
   }
 
-  function handleEditClick(row: any) {
-    setSelectedData(row);
+  function handleEditClick(rowData: SellCategoryTableRow) {
+    setSelectedData(rowData);
     setEditOpen(true);
+  }
+
+  function handleImageClick(rowData: SellCategoryTableRow) {
+    setSelectedData(rowData);
+    setImageOpen(true);
   }
 
   return (
@@ -51,11 +63,9 @@ export function DataTableRowActions<TData>({
             <span className="sr-only">Apri menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[160px]">
+        <DropdownMenuContent align="end" className="w-[180px]">
           <DropdownMenuItem
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore: legacy typing constraint
-            onClick={() => navigator.clipboard.writeText(data.id.toString())}
+            onClick={() => navigator.clipboard.writeText(String(data.id))}
           >
             Copia ID
           </DropdownMenuItem>
@@ -63,14 +73,21 @@ export function DataTableRowActions<TData>({
           <DropdownMenuItem onClick={() => handleEditClick(data)}>
             Modifica
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {canManageImages && (
+            <>
+              <DropdownMenuItem onClick={() => handleImageClick(data)}>
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Gestisci immagine
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem onClick={() => handleDeleteClick(data)}>
             Elimina
             <DropdownMenuShortcut>⌘⌫</DropdownMenuShortcut>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* MODALS */}
       {selectedData && (
         <>
           <DialogDelete
@@ -85,6 +102,16 @@ export function DataTableRowActions<TData>({
             setData={setSelectedData}
             setOpen={setEditOpen}
           />
+          {canManageImages && (
+            <DialogSellCategoryImage
+              open={imageOpen}
+              onOpenChange={setImageOpen}
+              domain={domain}
+              categoryId={selectedData.id}
+              categoryName={selectedData.name}
+              currentUrl={selectedData.image_url}
+            />
+          )}
         </>
       )}
     </>

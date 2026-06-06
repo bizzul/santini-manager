@@ -12,6 +12,7 @@ import {
   getFilteredRowModel,
   RowSelectionState,
   ColumnSizingState,
+  VisibilityState,
 } from "@tanstack/react-table";
 
 import {
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { Button } from "@/components/ui/button";
@@ -42,15 +43,64 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TableColGroup } from "@/components/table/table-colgroup";
+import {
+  getSellProductsCellClassName,
+  getSellProductsHeadClassName,
+  getVisiblePresetColumns,
+} from "@/lib/table-layout-presets";
 import { SellProductWithAction } from "./columns";
 import { SellProductCategory } from "@/types/supabase";
 import { cn } from "@/lib/utils";
+
+type EmbeddedColumnPreset = "categoryDrilldown";
+
+const CATEGORY_DRILLDOWN_COLUMN_IDS = new Set([
+  "internal_code",
+  "subcategory",
+  "tipo",
+  "name",
+  "description",
+  "supplier",
+  "price_list",
+  "doc_url",
+  "actions",
+]);
+
+function getColumnId(column: ColumnDef<any, any>): string | undefined {
+  return (
+    column.id ||
+    ("accessorKey" in column && typeof column.accessorKey === "string"
+      ? column.accessorKey
+      : undefined)
+  );
+}
+
+function getEmbeddedColumnVisibility(
+  columns: ColumnDef<any, any>[],
+  preset: EmbeddedColumnPreset,
+): Record<string, boolean> {
+  const allowedIds =
+    preset === "categoryDrilldown" ? CATEGORY_DRILLDOWN_COLUMN_IDS : new Set();
+
+  return Object.fromEntries(
+    columns
+      .map((column) => {
+        const columnId = getColumnId(column);
+        return columnId ? [columnId, allowedIds.has(columnId)] : null;
+      })
+      .filter(Boolean) as Array<[string, boolean]>,
+  );
+}
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   domain?: string;
   categories?: SellProductCategory[];
+  embeddedMode?: boolean;
+  embeddedColumnPreset?: EmbeddedColumnPreset;
+  onBack?: () => void;
 }
 
 export function DataTable<TData extends { id: number }, TValue>({
@@ -58,11 +108,19 @@ export function DataTable<TData extends { id: number }, TValue>({
   data,
   domain,
   categories = [],
+  embeddedMode = false,
+  embeddedColumnPreset,
+  onBack,
 }: DataTableProps<TData, TValue>) {
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
   // Filter state
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
+    embeddedColumnPreset
+      ? getEmbeddedColumnVisibility(columns, embeddedColumnPreset)
+      : {},
+  );
   const [globalFilter, setGlobalFilter] = useState("");
   // Row selection state
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -77,6 +135,17 @@ export function DataTable<TData extends { id: number }, TValue>({
 
   const { toast } = useToast();
   const router = useRouter();
+
+  useEffect(() => {
+    if (embeddedColumnPreset) {
+      setColumnVisibility(
+        getEmbeddedColumnVisibility(columns, embeddedColumnPreset),
+      );
+    }
+  }, [columns, embeddedColumnPreset]);
+
+  const denseLayout = embeddedMode && Boolean(embeddedColumnPreset);
+  const isDrilldown = embeddedColumnPreset === "categoryDrilldown";
 
   // Filter data by selected categories
   const filteredData = useMemo(() => {
@@ -145,15 +214,17 @@ export function DataTable<TData extends { id: number }, TValue>({
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     onColumnSizingChange: setColumnSizing,
     columnResizeMode: "onChange",
-    enableColumnResizing: true,
+    enableColumnResizing: !denseLayout,
     state: {
       sorting,
       columnFilters,
+      columnVisibility,
       globalFilter,
       rowSelection,
       columnSizing,
@@ -161,6 +232,18 @@ export function DataTable<TData extends { id: number }, TValue>({
     enableGlobalFilter: true,
     enableRowSelection: true,
   });
+
+  const visibleDenseColumns = useMemo(
+    () =>
+      getVisiblePresetColumns(
+        table
+          .getVisibleLeafColumns()
+          .map((column) => column.id)
+          .filter(Boolean),
+        isDrilldown ? "sellProductsDrilldown" : "sellProductsDense",
+      ),
+    [table, columnVisibility, isDrilldown],
+  );
 
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const selectedCount = selectedRows.length;
@@ -196,8 +279,59 @@ export function DataTable<TData extends { id: number }, TValue>({
     }
   };
 
+  const searchControls = (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4",
+        !embeddedMode && categories.length > 0 && "border-t pt-4",
+      )}
+    >
+      <div className="flex flex-1 items-center gap-2">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+          <DebouncedInput
+            value={globalFilter ?? ""}
+            onChange={(value) => setGlobalFilter(String(value))}
+            className="pl-9"
+            placeholder="Cerca prodotti..."
+          />
+        </div>
+        {!embeddedMode && (globalFilter || !allCategoriesSelected) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearAllFilters}
+            className="h-9 gap-1"
+          >
+            <X className="h-4 w-4" />
+            Cancella filtri
+          </Button>
+        )}
+      </div>
+
+      {!embeddedMode && selectedCount > 0 && (
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => setShowDeleteDialog(true)}
+          disabled={isDeleting}
+        >
+          {isDeleting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="mr-2 h-4 w-4" />
+          )}
+          Elimina {selectedCount} selezionati
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <>
+      {embeddedMode ? (
+        <div className="mb-3">{searchControls}</div>
+      ) : (
       <div className="mb-4 rounded-lg border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-4">
           {categories.length > 0 && (
@@ -271,9 +405,6 @@ export function DataTable<TData extends { id: number }, TValue>({
                                 {category.name}
                               </span>
                             </Label>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Filtra i prodotti di questa categoria.
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -284,53 +415,10 @@ export function DataTable<TData extends { id: number }, TValue>({
             </>
           )}
 
-          <div
-            className={cn(
-              "flex items-center justify-between gap-4",
-              categories.length > 0 && "border-t pt-4"
-            )}
-          >
-          <div className="flex flex-1 items-center gap-2">
-            <div className="relative max-w-sm flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-              <DebouncedInput
-                value={globalFilter ?? ""}
-                onChange={(value) => setGlobalFilter(String(value))}
-                className="pl-9"
-                placeholder="Cerca prodotti..."
-              />
-            </div>
-            {(globalFilter || !allCategoriesSelected) && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearAllFilters}
-                className="h-9 gap-1"
-              >
-                <X className="h-4 w-4" />
-                Cancella filtri
-              </Button>
-            )}
-          </div>
-
-          {selectedCount > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="mr-2 h-4 w-4" />
-              )}
-              Elimina {selectedCount} selezionati
-            </Button>
-          )}
-        </div>
+          {searchControls}
         </div>
       </div>
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
@@ -362,8 +450,21 @@ export function DataTable<TData extends { id: number }, TValue>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="rounded-lg border bg-card shadow-sm overflow-visible">
-        <Table style={{ width: table.getCenterTotalSize() }}>
+      <div
+        className={cn(
+          "rounded-lg border bg-card shadow-sm",
+          denseLayout ? "overflow-x-auto" : "overflow-visible",
+        )}
+      >
+        <Table
+          className={
+            denseLayout ? "w-max max-w-full table-fixed text-xs" : undefined
+          }
+          style={denseLayout ? undefined : { width: table.getCenterTotalSize() }}
+        >
+          {denseLayout && visibleDenseColumns.length > 0 ? (
+            <TableColGroup columns={visibleDenseColumns} />
+          ) : null}
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -371,10 +472,21 @@ export function DataTable<TData extends { id: number }, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      style={{
-                        width: header.getSize(),
-                      }}
-                      className="px-2 group"
+                      style={
+                        denseLayout
+                          ? undefined
+                          : {
+                              width: header.getSize(),
+                            }
+                      }
+                      className={
+                        denseLayout
+                          ? getSellProductsHeadClassName(
+                              header.column.id,
+                              isDrilldown,
+                            )
+                          : "group px-2"
+                      }
                     >
                       {header.isPlaceholder
                         ? null
@@ -382,8 +494,7 @@ export function DataTable<TData extends { id: number }, TValue>({
                             header.column.columnDef.header,
                             header.getContext()
                           )}
-                      {/* Resize handle */}
-                      {header.column.getCanResize() && (
+                      {!denseLayout && header.column.getCanResize() && (
                         <div
                           onDoubleClick={() => header.column.resetSize()}
                           onMouseDown={header.getResizeHandler()}
@@ -412,10 +523,21 @@ export function DataTable<TData extends { id: number }, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      style={{
-                        width: cell.column.getSize(),
-                      }}
-                      className="px-2 py-2 overflow-hidden text-ellipsis"
+                      style={
+                        denseLayout
+                          ? undefined
+                          : {
+                              width: cell.column.getSize(),
+                            }
+                      }
+                      className={
+                        denseLayout
+                          ? getSellProductsCellClassName(
+                              cell.column.id,
+                              isDrilldown,
+                            )
+                          : "overflow-hidden text-ellipsis px-2 py-2"
+                      }
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -440,7 +562,7 @@ export function DataTable<TData extends { id: number }, TValue>({
       </div>
       <div className="pt-8">
         {/* Pagination controls */}
-        <DataTablePagination table={table} />
+        <DataTablePagination table={table} trailingAction={onBack} />
       </div>
     </>
   );
