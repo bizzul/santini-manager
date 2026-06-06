@@ -260,6 +260,8 @@ export interface SellProduct {
     tipo?: string | null; // Tipo prodotto nativo
     product_type?: string; // Tipo prodotto
     description?: string; // Descrizione
+    unit?: string | null; // Unita' di misura catalogo
+    list_price?: number | null; // Prezzo listino
     price_list?: boolean; // Listino prezzi (checkbox)
     image_url?: string; // Immagine
     doc_url?: string; // DOC (link a cartella documenti)

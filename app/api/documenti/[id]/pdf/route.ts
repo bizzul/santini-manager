@@ -1,8 +1,10 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
 import { generateDocumentPdfBytes } from "@/lib/documenti/generate-document-pdf";
+import { savePdfToProjectDocuments } from "@/lib/documenti/save-pdf-to-project-documents";
 import { updateDocumentPdfPaths } from "@/lib/documenti/save-document";
 import type { DocumentoArricchito } from "@/validation/documenti/extracted-document";
 import { mapAiProviderError } from "@/lib/ai/map-ai-errors";
@@ -37,7 +39,9 @@ export async function GET(
       return NextResponse.json({ error: "Site ID required" }, { status: 400 });
     }
 
-    const { data: doc, error: docError } = await supabase
+    const serviceClient = createServiceClient();
+
+    const { data: doc, error: docError } = await serviceClient
       .from("documenti")
       .select("*")
       .eq("id", id)
@@ -45,10 +49,29 @@ export async function GET(
       .single();
 
     if (docError || !doc) {
-      return NextResponse.json({ error: "Documento non trovato" }, { status: 404 });
+      console.error("[DocumentiPDF] Documento non trovato:", {
+        id,
+        siteId,
+        docError: docError?.message,
+      });
+      return NextResponse.json(
+        {
+          error: "Documento non trovato",
+          message:
+            "Il documento salvato non è leggibile per questo sito. Verifica i permessi o riprova il salvataggio.",
+          errors: [
+            `Documento ID: ${id}`,
+            `Site ID: ${siteId}`,
+            docError?.message
+              ? `Dettaglio database: ${docError.message}`
+              : "Nessun record trovato con questo ID nel sito corrente.",
+          ],
+        },
+        { status: 404 },
+      );
     }
 
-    const { data: righe } = await supabase
+    const { data: righe } = await serviceClient
       .from("righe_documento")
       .select("*")
       .eq("documento_id", id)
@@ -77,6 +100,7 @@ export async function GET(
         isNuovo: false,
         art: r.art,
         totaleRiga: r.totale_riga != null ? Number(r.totale_riga) : undefined,
+        immagineUrl: r.immagine_url ?? null,
       })),
       condizioniPagamento: doc.condizioni_pagamento ?? [],
       termineFornitura: doc.termine_fornitura,
@@ -100,7 +124,6 @@ export async function GET(
       createdAt: doc.created_at,
     });
 
-    const serviceClient = createServiceClient();
     const storagePath = `${siteId}/documenti/${id}/${filename}`;
 
     const { error: uploadError } = await serviceClient.storage
@@ -125,6 +148,34 @@ export async function GET(
       publicUrl,
       storagePath,
     );
+
+    if (siteDomain) {
+      revalidatePath(`/sites/${siteDomain}/documenti`);
+    }
+
+    if (doc.task_id) {
+      try {
+        await savePdfToProjectDocuments({
+          supabase: serviceClient,
+          siteId,
+          taskId: doc.task_id,
+          filename,
+          pdfBytes: bytes,
+        });
+      } catch (projectError) {
+        console.error(
+          "[DocumentiPDF] Salvataggio PDF nei documenti di progetto fallito:",
+          {
+            documentoId: id,
+            taskId: doc.task_id,
+            error:
+              projectError instanceof Error
+                ? projectError.message
+                : projectError,
+          },
+        );
+      }
+    }
 
     return new NextResponse(Buffer.from(bytes), {
       headers: {

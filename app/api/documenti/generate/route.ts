@@ -14,7 +14,10 @@ import {
   enrichCommercialDocumento,
   enrichLetterDocumento,
 } from "@/lib/documenti/enrich-document";
-import { resolveMatchesFromToolResults } from "@/lib/documenti/match-from-tools";
+import {
+  prefetchArticoliForRighe,
+  resolveMatchesFromToolResults,
+} from "@/lib/documenti/match-from-tools";
 import {
   DOCUMENT_AI_CONFIG_MISSING_MESSAGE,
   resolveAiConfigForDocuments,
@@ -37,6 +40,7 @@ import {
   buildGenerateErrorResponse,
   zodIssuesToErrors,
 } from "@/lib/documenti/format-generate-errors";
+import { applyFormDestinatarioToDocumento } from "@/lib/documenti/apply-form-destinatario";
 import { prefetchDocumentToolResults } from "@/lib/documenti/prefetch-tool-results";
 import { formatLocalDate } from "@/lib/utils";
 
@@ -168,6 +172,13 @@ export async function POST(request: NextRequest) {
 
       documento.tipoDocumento = input.tipoDocumento;
 
+      await prefetchArticoliForRighe(
+        supabase,
+        siteId,
+        documento.righe,
+        articoliFound,
+      );
+
       const { clienteMatch, articoloMatches } = resolveMatchesFromToolResults(
         documento,
         clientesFound,
@@ -189,16 +200,7 @@ export async function POST(request: NextRequest) {
         { allegati: input.allegati, sourceText: input.testo },
       );
 
-      enriched.destinatario.email = input.destinatario.email ?? null;
-      if (input.destinatario.entityId) {
-        enriched.destinatario.isNuovo = false;
-        if (input.destinatario.tipo === "cliente") {
-          enriched.destinatario.clienteId = input.destinatario.entityId;
-        }
-        if (input.destinatario.tipo === "fornitore") {
-          enriched.destinatario.fornitoreId = input.destinatario.entityId;
-        }
-      }
+      applyFormDestinatarioToDocumento(enriched, input.destinatario);
 
       return NextResponse.json({ success: true, documento: enriched });
     }
@@ -215,6 +217,7 @@ export async function POST(request: NextRequest) {
     const enriched = enrichLetterDocumento(letter, input.destinatario, {
       allegati: input.allegati,
     });
+    applyFormDestinatarioToDocumento(enriched, input.destinatario);
 
     return NextResponse.json({ success: true, documento: enriched });
   } catch (error) {

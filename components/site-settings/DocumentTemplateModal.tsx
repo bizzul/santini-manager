@@ -83,6 +83,12 @@ export default function DocumentTemplateModal({
       const data = await res.json();
       if (res.ok) {
         const cfg = { ...emptyConfig(), ...data.config };
+        if (!cfg.mittente.ragioneSociale.trim() && data.siteName) {
+          cfg.mittente.ragioneSociale = data.siteName;
+        }
+        if (!cfg.mittente.ragioneSociale.trim() && data.resolvedMittente?.ragioneSociale) {
+          cfg.mittente.ragioneSociale = data.resolvedMittente.ragioneSociale;
+        }
         setConfig(cfg);
         setCondizioniText((cfg.condizioniDefault ?? []).join("\n"));
         setLogoUrl(cfg.logoUrl ?? data.logoUrl ?? null);
@@ -259,8 +265,9 @@ export default function DocumentTemplateModal({
         <DialogHeader>
           <DialogTitle>Carta intestata documenti</DialogTitle>
           <DialogDescription>
-            Configura mittente, modello carta intestata e documento di
-            riferimento per la generazione AI (output sempre PDF).
+            Configura mittente, IVA, IBAN e modello carta intestata per PDF e
+            anteprima (formato A4). La ragione sociale viene precompilata dal
+            nome del sito se non impostata.
           </DialogDescription>
         </DialogHeader>
 

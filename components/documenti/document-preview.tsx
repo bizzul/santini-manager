@@ -1,9 +1,8 @@
+import type { ReactNode } from "react";
 import type { DocumentoArricchito } from "@/validation/documenti/extracted-document";
 import type { DocumentTemplate } from "@/lib/documenti/template-types";
-import {
-  getDestinatarioLabel,
-  getTipoDocumentoLabel,
-} from "@/lib/documenti/template-types";
+import { getTipoDocumentoLabel } from "@/lib/documenti/template-types";
+import { A4_ASPECT_RATIO, A4_PAGE_WIDTH_MM } from "@/lib/documenti/page-format";
 import {
   getDocumentTypeConfig,
   isLetterType,
@@ -22,6 +21,33 @@ interface DocumentPreviewProps {
   template: DocumentTemplate;
   numero?: string | null;
   dataDocumento?: string;
+}
+
+function buildTitoloDocumento(
+  tipoDocumento: DocumentoArricchito["tipoDocumento"],
+  oggetto: string,
+  numero: string | null | undefined,
+  showNumber: boolean,
+): string {
+  const tipo = getTipoDocumentoLabel(tipoDocumento);
+  const trimmed = oggetto.trim();
+
+  if (showNumber && /N°:/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (showNumber) {
+    return `${tipo} N°: ${numero ?? "—"} - ${trimmed}`;
+  }
+
+  return `${tipo}: ${trimmed}`;
+}
+
+function ContactLine({ children }: { children: ReactNode }) {
+  if (!children || (typeof children === "string" && !children.trim())) {
+    return null;
+  }
+  return <p className="leading-snug">{children}</p>;
 }
 
 export function DocumentPreview({
@@ -47,118 +73,163 @@ export function DocumentPreview({
       year: "numeric",
     });
 
+  const titoloDocumento = buildTitoloDocumento(
+    documento.tipoDocumento,
+    documento.oggetto,
+    numero,
+    showNumber,
+  );
+
+  const hasContactBox =
+    documento.destinatario.aca ||
+    documento.destinatario.via ||
+    documento.destinatario.cap ||
+    documento.destinatario.citta ||
+    documento.destinatario.email;
+
   return (
     <div
-      className="rounded-lg border bg-card p-6 text-sm shadow-sm"
-      style={{ color: template.colori.testo }}
+      className="mx-auto w-full shadow-md"
+      style={{ maxWidth: `${A4_PAGE_WIDTH_MM}mm` }}
     >
-      <div className="mb-6 flex items-start justify-between gap-6">
-        <div className="space-y-1">
+      <div
+        className="overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 text-sm text-black [&_p]:text-black [&_span]:text-black [&_li]:text-black"
+        style={{
+          color: "#000000",
+          aspectRatio: A4_ASPECT_RATIO,
+          minHeight: "min(297mm, 75vh)",
+        }}
+      >
+      <div className="mb-3 flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-0.5">
           {template.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={template.logoUrl}
               alt="Logo"
-              className="mb-3 h-12 w-auto object-contain"
+              className="mb-1.5 h-10 w-auto object-contain"
             />
           ) : null}
-          <p className="font-semibold">{template.mittente.ragioneSociale}</p>
-          <p>{template.mittente.via}</p>
-          <p>
+          <p className="font-semibold leading-tight">
+            {template.mittente.ragioneSociale}
+          </p>
+          <p className="text-xs leading-snug text-neutral-700">
+            {template.mittente.via}
+          </p>
+          <p className="text-xs leading-snug text-neutral-700">
             {template.mittente.cap} {template.mittente.citta}
           </p>
-          <p>IVA: {template.mittente.iva}</p>
+          <p className="text-xs leading-snug text-neutral-700">
+            IVA: {template.mittente.iva}
+          </p>
         </div>
-        <p className="text-muted-foreground">{data}</p>
+        <p className="shrink-0 text-xs text-neutral-600">{data}</p>
       </div>
 
-      <div className="mb-6 flex justify-end">
-        <div className="space-y-1 text-right">
-          <p className="font-medium">Spettabile</p>
-          <p>{documento.destinatario.ragioneSociale}</p>
-          {documento.destinatario.aca ? (
-            <p>a.c.a {documento.destinatario.aca}</p>
-          ) : null}
-          {documento.destinatario.via ? (
-            <p>{documento.destinatario.via}</p>
-          ) : null}
-          {documento.destinatario.cap || documento.destinatario.citta ? (
-            <p>
+      <div className="mb-3 space-y-1.5">
+        <p className="font-medium leading-tight">
+          Spettabile {documento.destinatario.ragioneSociale}
+        </p>
+
+        {hasContactBox ? (
+          <div className="inline-block max-w-full rounded border border-neutral-300 bg-neutral-50 px-2.5 py-1.5 text-xs leading-snug text-black">
+            <ContactLine>
+              {documento.destinatario.aca
+                ? `a.c.a ${documento.destinatario.aca}`
+                : null}
+            </ContactLine>
+            <ContactLine>{documento.destinatario.via}</ContactLine>
+            <ContactLine>
               {[documento.destinatario.cap, documento.destinatario.citta]
                 .filter(Boolean)
                 .join(" ")}
-            </p>
-          ) : null}
-        </div>
+            </ContactLine>
+            <ContactLine>{documento.destinatario.email}</ContactLine>
+          </div>
+        ) : null}
       </div>
 
-      <div className="mb-4 flex flex-wrap items-baseline gap-2">
-        <span className="font-semibold">
-          {getTipoDocumentoLabel(documento.tipoDocumento)}
-          {showNumber ? " N°:" : ":"}
-        </span>
-        {showNumber ? <span>{numero ?? "—"}</span> : null}
-        {showNumber ? <span>-</span> : null}
-        <span>{documento.oggetto}</span>
-      </div>
+      <p className="mb-2 font-semibold leading-tight">{titoloDocumento}</p>
 
       {isLetter ? (
-        <div className="mb-6 whitespace-pre-wrap leading-relaxed">
+        <div className="mb-3 whitespace-pre-wrap text-sm leading-snug">
           {documento.corpoTesto ?? ""}
         </div>
       ) : (
         <>
-          <p className="mb-4">
-            <span className="font-semibold">
-              {getDestinatarioLabel(documento.tipoDocumento)}{" "}
-            </span>
-            {documento.destinatario.ragioneSociale}
-          </p>
-
-          <div className="mb-6 overflow-x-auto rounded-md border">
+          <div className="mb-3 overflow-x-auto rounded border border-neutral-300">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Art.</TableHead>
-                  <TableHead>Descrizione</TableHead>
-                  <TableHead className="w-14 text-right">U</TableHead>
-                  <TableHead className="w-20 text-right">Q</TableHead>
-                  <TableHead className="w-24 text-right">Prezzo</TableHead>
+                <TableRow className="border-neutral-300 bg-neutral-100 hover:bg-neutral-100">
+                  <TableHead className="h-8 px-2 py-1 text-xs font-semibold text-black">
+                    Art.
+                  </TableHead>
+                  <TableHead className="h-8 px-2 py-1 text-xs font-semibold text-black">
+                    Descrizione
+                  </TableHead>
+                  <TableHead className="h-8 w-12 px-2 py-1 text-right text-xs font-semibold text-black">
+                    U
+                  </TableHead>
+                  <TableHead className="h-8 w-14 px-2 py-1 text-right text-xs font-semibold text-black">
+                    Q
+                  </TableHead>
+                  <TableHead className="h-8 w-20 px-2 py-1 text-right text-xs font-semibold text-black">
+                    Prezzo
+                  </TableHead>
                   {showSconto ? (
-                    <TableHead className="w-14 text-right">%</TableHead>
+                    <TableHead className="h-8 w-10 px-2 py-1 text-right text-xs font-semibold text-black">
+                      %
+                    </TableHead>
                   ) : null}
-                  <TableHead className="w-28 text-right">Totale</TableHead>
+                  <TableHead className="h-8 w-24 px-2 py-1 text-right text-xs font-semibold text-black">
+                    Totale
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {documento.righe.map((riga, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="align-top font-medium">
+                  <TableRow
+                    key={index}
+                    className="border-neutral-200 hover:bg-white"
+                  >
+                    <TableCell className="px-2 py-1.5 align-top text-xs font-medium text-black">
                       {riga.art ?? "—"}
                     </TableCell>
-                    <TableCell className="align-top">
-                      <p>{riga.descrizione}</p>
-                      {riga.misure ? (
-                        <p className="mt-1 text-muted-foreground">
-                          Misure: {riga.misure}
-                        </p>
-                      ) : null}
+                    <TableCell className="px-2 py-1.5 align-top text-xs text-black">
+                      <div className="flex gap-2">
+                        {riga.immagineUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={riga.immagineUrl}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded border border-neutral-200 object-cover"
+                          />
+                        ) : null}
+                        <div className="min-w-0">
+                          <p className="leading-snug">{riga.descrizione}</p>
+                          {riga.misure ? (
+                            <p className="mt-0.5 text-xs text-neutral-600">
+                              Misure: {riga.misure}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right align-top">
+                    <TableCell className="px-2 py-1.5 text-right align-top text-xs text-black">
                       {riga.unita}
                     </TableCell>
-                    <TableCell className="text-right align-top">
+                    <TableCell className="px-2 py-1.5 text-right align-top text-xs text-black">
                       {riga.quantita}
                     </TableCell>
-                    <TableCell className="text-right align-top">
+                    <TableCell className="px-2 py-1.5 text-right align-top text-xs text-black">
                       {riga.prezzoUnitario.toFixed(2)}
                     </TableCell>
                     {showSconto ? (
-                      <TableCell className="text-right align-top">
+                      <TableCell className="px-2 py-1.5 text-right align-top text-xs text-black">
                         {riga.sconto != null ? `${riga.sconto}%` : "—"}
                       </TableCell>
                     ) : null}
-                    <TableCell className="text-right align-top font-medium">
+                    <TableCell className="px-2 py-1.5 text-right align-top text-xs font-medium text-black">
                       {(riga.totaleRiga ?? 0).toFixed(2)}
                     </TableCell>
                   </TableRow>
@@ -167,8 +238,8 @@ export function DocumentPreview({
             </Table>
           </div>
 
-          <div className="mb-6 flex justify-end">
-            <div className="w-56 space-y-2">
+          <div className="mb-3 flex justify-end">
+            <div className="w-52 space-y-1 text-xs">
               <div className="flex justify-between">
                 <span>Tot. Netto</span>
                 <span>{totali.totNetto.toFixed(2)}</span>
@@ -177,7 +248,7 @@ export function DocumentPreview({
                 <span>IVA 8.1%</span>
                 <span>{totali.iva.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-t pt-2 font-semibold">
+              <div className="flex justify-between border-t border-neutral-300 pt-1 font-semibold">
                 <span>Totale CHF</span>
                 <span>{totali.totaleCHF.toFixed(2)}</span>
               </div>
@@ -185,9 +256,9 @@ export function DocumentPreview({
           </div>
 
           {documento.condizioniPagamento.length > 0 ? (
-            <div className="mb-4">
+            <div className="mb-2 text-xs">
               <p className="font-semibold">Condizioni di pagamento:</p>
-              <ul className="mt-1 list-inside list-disc text-muted-foreground">
+              <ul className="mt-0.5 list-inside list-disc leading-snug">
                 {documento.condizioniPagamento.map((item, i) => (
                   <li key={i}>{item}</li>
                 ))}
@@ -196,20 +267,22 @@ export function DocumentPreview({
           ) : null}
 
           {documento.termineFornitura ? (
-            <div className="mb-4">
+            <div className="mb-2 text-xs">
               <p className="font-semibold">Termine di fornitura:</p>
-              <p className="text-muted-foreground">
-                {documento.termineFornitura}
-              </p>
+              <p className="leading-snug">{documento.termineFornitura}</p>
             </div>
           ) : null}
         </>
       )}
 
-      <div className="mt-6 border-t pt-4">
+      <div className="mt-3 border-t border-neutral-300 pt-2 text-xs leading-snug text-neutral-700">
         <p>{template.banca.nome}</p>
         <p>IBAN: {template.banca.iban}</p>
       </div>
+      </div>
+      <p className="mt-1 text-center text-[10px] text-muted-foreground">
+        Anteprima A4 ({A4_PAGE_WIDTH_MM} × 297 mm)
+      </p>
     </div>
   );
 }

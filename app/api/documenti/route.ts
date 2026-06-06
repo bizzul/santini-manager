@@ -1,7 +1,14 @@
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { SaveDocumentRequestSchema } from "@/validation/documenti/extracted-document";
+import {
+  createOfferTaskFromDocument,
+  OfferKanbanNotConfiguredError,
+  shouldCreateOfferTaskForDocument,
+} from "@/lib/documenti/create-offer-task-from-document";
+import { fetchSiteDocumenti } from "@/lib/documenti/fetch-site-documenti";
 import { saveDocumento } from "@/lib/documenti/save-document";
 import { logger } from "@/lib/logger";
 
@@ -32,21 +39,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Site ID required" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
-      .from("documenti")
-      .select(
-        "id, tipo_documento, numero, anno, oggetto, status, tot_netto, totale_chf, created_at, destinatario, corpo_testo, pdf_url, allegati",
-      )
-      .eq("site_id", siteId)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    const serviceClient = createServiceClient();
+    const data = await fetchSiteDocumenti(serviceClient, siteId);
 
-    if (error) {
-      log.warn("Failed to fetch documenti", error);
-      return NextResponse.json([]);
-    }
-
-    return NextResponse.json(data ?? []);
+    return NextResponse.json(data);
   } catch (error) {
     log.error("GET documenti failed", error);
     return NextResponse.json(
@@ -100,22 +96,63 @@ export async function POST(req: NextRequest) {
     } = parsed.data;
 
     const serviceClient = createServiceClient();
+
+    let resolvedTaskId = taskId ?? null;
+    let offerCode: string | null = null;
+    let offerCreated = false;
+
+    if (shouldCreateOfferTaskForDocument(documento, resolvedTaskId)) {
+      const offerTask = await createOfferTaskFromDocument(
+        serviceClient,
+        siteId,
+        documento,
+      );
+      resolvedTaskId = offerTask.taskId;
+      offerCode = offerTask.uniqueCode;
+      offerCreated = true;
+    }
+
     const saved = await saveDocumento(serviceClient, siteId, documento, {
       sourceText,
-      taskId: taskId ?? null,
+      taskId: resolvedTaskId,
       status: "final",
       documentoId,
     });
 
+    if (siteDomain) {
+      revalidatePath(`/sites/${siteDomain}/documenti`);
+    }
+
     return NextResponse.json({
       success: true,
-      documento: saved,
+      documento: {
+        ...saved,
+        taskId: resolvedTaskId,
+        offerCode,
+        offerCreated,
+      },
     });
   } catch (error) {
     log.error("POST documenti failed", error);
+
+    if (error instanceof OfferKanbanNotConfiguredError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          message: error.message,
+          errors: [error.message],
+        },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
       {
         error:
+          error instanceof Error
+            ? error.message
+            : "Errore durante il salvataggio del documento",
+        message:
           error instanceof Error
             ? error.message
             : "Errore durante il salvataggio del documento",

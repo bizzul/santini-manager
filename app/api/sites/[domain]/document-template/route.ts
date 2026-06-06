@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import type { DocumentTemplateConfig } from "@/lib/documenti/template-types";
+import {
+  getDocumentTemplateMissingLabels,
+  resolveSiteDocumentTemplate,
+} from "@/lib/documenti/resolve-site-document-template";
 
 async function checkSiteAccess(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -53,13 +57,35 @@ export async function GET(
     const supabase = await createClient();
     const { data: site } = await supabase
       .from("sites")
-      .select("document_template_config, logo")
+      .select("name, document_template_config, logo, organization_id")
       .eq("id", siteResult.data.id)
       .single();
+
+    let organizationName: string | null = null;
+    if (site?.organization_id) {
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("name")
+        .eq("id", site.organization_id)
+        .maybeSingle();
+      organizationName = org?.name ?? null;
+    }
+
+    const resolved = resolveSiteDocumentTemplate({
+      name: site?.name,
+      logo: site?.logo,
+      document_template_config: (site?.document_template_config ??
+        {}) as DocumentTemplateConfig,
+      organizationName,
+    });
 
     return NextResponse.json({
       config: (site?.document_template_config ?? {}) as DocumentTemplateConfig,
       logoUrl: site?.logo ?? null,
+      siteName: site?.name ?? null,
+      resolvedMittente: resolved.mittente,
+      missingFields: getDocumentTemplateMissingLabels(resolved),
+      pageFormat: resolved.pageFormat,
     });
   } catch (error) {
     console.error("Error fetching document template:", error);

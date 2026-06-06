@@ -12,6 +12,9 @@ export interface SavedDocumentResult {
   id: string;
   numero: string;
   anno: number;
+  taskId?: number | null;
+  offerCode?: string | null;
+  offerCreated?: boolean;
 }
 
 export async function saveDocumento(
@@ -152,11 +155,23 @@ export async function saveDocumento(
           ? riga.articoloSource
           : null,
       is_trasporto: riga.isTrasporto,
+      immagine_url: riga.immagineUrl ?? null,
     }));
 
-    const { error: righeError } = await supabase
+    let { error: righeError } = await supabase
       .from("righe_documento")
       .insert(righePayload);
+
+    if (
+      righeError?.message.includes("immagine_url")
+    ) {
+      const legacyPayload = righePayload.map(
+        ({ immagine_url: _immagineUrl, ...riga }) => riga,
+      );
+      ({ error: righeError } = await supabase
+        .from("righe_documento")
+        .insert(legacyPayload));
+    }
 
     if (righeError) {
       if (!options?.documentoId) {

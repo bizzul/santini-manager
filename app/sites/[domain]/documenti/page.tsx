@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext } from "@/lib/server-data";
 import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
+import { fetchSiteDocumenti } from "@/lib/documenti/fetch-site-documenti";
 import { DocumentiPageClient } from "./documenti-page-client";
 
 export default async function Page({
@@ -19,11 +20,15 @@ export default async function Page({
 
   const { siteId } = await requireServerSiteContext(domain);
   const supabase = await createClient();
+  const serviceClient = createServiceClient();
 
   const [template, documentiResult, clientsResult, suppliersResult, offersResult] =
     await Promise.all([
       getSiteDocumentTemplate(siteId),
-      fetchDocumenti(supabase, siteId),
+      fetchSiteDocumenti(serviceClient, siteId).catch((error) => {
+        console.warn("Failed to fetch documenti:", error.message);
+        return [];
+      }),
       supabase
         .from("Client")
         .select(
@@ -83,31 +88,3 @@ export default async function Page({
   );
 }
 
-async function fetchDocumenti(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  siteId: string,
-) {
-  const { data, error } = await supabase
-    .from("documenti")
-    .select(
-      `
-      id, tipo_documento, numero, oggetto, status, totale_chf, created_at,
-      destinatario, corpo_testo, pdf_url, condizioni_pagamento, termine_fornitura,
-      note, cliente_id, allegati,
-      righe_documento (
-        descrizione, misure, unita, quantita, prezzo_unitario, sconto,
-        is_trasporto, articolo_id, art, totale_riga
-      )
-    `,
-    )
-    .eq("site_id", siteId)
-    .order("created_at", { ascending: false })
-    .limit(100);
-
-  if (error) {
-    console.warn("Failed to fetch documenti:", error.message);
-    return [];
-  }
-
-  return data ?? [];
-}

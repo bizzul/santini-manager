@@ -26,6 +26,10 @@ import { getDocumentTypeLabel } from "@/lib/documenti/document-types";
 import { isCommercialType } from "@/lib/documenti/document-types";
 import type { DocumentoArricchito } from "@/validation/documenti/extracted-document";
 import { drawFromStructureMap } from "@/lib/documenti/draw-structure-map-pdf";
+import {
+  drawRowThumbnail,
+  embedCatalogImage,
+} from "@/lib/documenti/embed-row-image-pdf";
 
 interface RigheRow {
   art?: string | null;
@@ -36,6 +40,7 @@ interface RigheRow {
   prezzo_unitario?: number | null;
   sconto?: number | null;
   totale_riga?: number | null;
+  immagine_url?: string | null;
 }
 
 interface PdfDocumentInput {
@@ -58,6 +63,11 @@ function getRigaTotale(riga: RigaPdfInput): number | null | undefined {
   return "totaleRiga" in riga
     ? riga.totaleRiga
     : (riga as RigheRow).totale_riga;
+}
+
+function getRigaImmagineUrl(riga: RigaPdfInput): string | null | undefined {
+  if ("immagineUrl" in riga) return riga.immagineUrl;
+  return (riga as RigheRow).immagine_url;
 }
 
 function formatMoney(value?: number | null): string {
@@ -236,8 +246,28 @@ export async function generateDocumentPdfBytes(
         riga.misure && riga.misure.trim()
           ? `${riga.descrizione}\nMisure: ${riga.misure}`
           : riga.descrizione;
-      const descLines = wrapPdfText(desc, fontRegular, 8, colWidths[1] - 8);
-      const rowH = Math.max(18, descLines.length * 11 + 6);
+
+      const imageUrl = getRigaImmagineUrl(riga);
+      const embeddedImage = await embedCatalogImage(pdfDoc, imageUrl);
+      const thumbOffset = embeddedImage
+        ? drawRowThumbnail(
+            page,
+            embeddedImage,
+            PAGE_MARGIN + colWidths[0] + 4,
+            y,
+          )
+        : 0;
+
+      const descLines = wrapPdfText(
+        desc,
+        fontRegular,
+        8,
+        colWidths[1] - 8 - thumbOffset,
+      );
+      const rowH = Math.max(
+        embeddedImage ? 42 : 18,
+        descLines.length * 11 + 6,
+      );
 
       x = PAGE_MARGIN;
       const cells = [
@@ -265,7 +295,7 @@ export async function generateDocumentPdfBytes(
 
       descLines.forEach((line, li) => {
         page.drawText(line, {
-          x: PAGE_MARGIN + colWidths[0] + 4,
+          x: PAGE_MARGIN + colWidths[0] + 4 + thumbOffset,
           y: y - 12 - li * 11,
           size: 8,
           font: fontRegular,

@@ -54,9 +54,12 @@ describe("resolveMatchesFromToolResults", () => {
         [
           {
             id: 7,
-            nome: "Liste decorative in abete",
+            codice: "AB-01",
+            descrizione: "Liste decorative in abete",
             prezzo: 3.9,
             unita: "m1",
+            immagineUrl: null,
+            score: 0.92,
             source: "sell_product",
           },
         ],
@@ -70,11 +73,12 @@ describe("resolveMatchesFromToolResults", () => {
     );
 
     expect(clienteMatch?.id).toBe(42);
-    expect(articoloMatches.get(0)?.id).toBe(7);
-    expect(articoloMatches.get(0)?.source).toBe("sell_product");
+    expect(articoloMatches.get(0)?.level).toBe("high");
+    expect(articoloMatches.get(0)?.articolo?.id).toBe(7);
+    expect(articoloMatches.get(0)?.articolo?.source).toBe("sell_product");
   });
 
-  it("restituisce null se nessun match", () => {
+  it("restituisce none se nessun match", () => {
     const { clienteMatch, articoloMatches } = resolveMatchesFromToolResults(
       baseDocumento,
       new Map(),
@@ -82,6 +86,7 @@ describe("resolveMatchesFromToolResults", () => {
     );
 
     expect(clienteMatch).toBeNull();
-    expect(articoloMatches.get(0)).toBeNull();
+    expect(articoloMatches.get(0)?.level).toBe("none");
+    expect(articoloMatches.get(0)?.articolo).toBeNull();
   });
 });

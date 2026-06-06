@@ -2,6 +2,10 @@ import {
   getDocumentDestinatarioLabel,
   getDocumentTypeLabel,
 } from "@/lib/documenti/document-types";
+import {
+  DEFAULT_DOCUMENT_PAGE_FORMAT,
+  type DocumentPageFormat,
+} from "@/lib/documenti/page-format";
 import type {
   ReferenceDocument,
   TemplateStructureMap,
@@ -52,19 +56,21 @@ export interface DocumentTemplate {
   referenceDocument: ReferenceDocument | null;
   structureMap: TemplateStructureMap | null;
   structureAnalyzedAt: string | null;
+  pageFormat: DocumentPageFormat;
 }
 
-export const DEFAULT_MATRIS_TEMPLATE: DocumentTemplate = {
+/** Default neutro: nessun dato tenant hardcoded. */
+export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
   mittente: {
-    ragioneSociale: "Matris pro SA",
-    via: "Via Parco 4",
-    cap: "6500",
-    citta: "Bellinzona",
-    iva: "CHE-312.965.779",
+    ragioneSociale: "",
+    via: "",
+    cap: "",
+    citta: "",
+    iva: "",
   },
   banca: {
-    nome: "Banca Raiffeisen Lugano",
-    iban: "CH81 8080 8007 2268 3378 1",
+    nome: "",
+    iban: "",
   },
   logoUrl: null,
   logoPath: null,
@@ -77,10 +83,30 @@ export const DEFAULT_MATRIS_TEMPLATE: DocumentTemplate = {
     secondario: "#64748b",
     testo: "#0f172a",
   },
-  condizioniDefault: ["- 50% all'ordine", "- saldo: 10 giorni netto"],
-  termineFornituraDefault:
-    "- 3-4 settimane dalla conferma d'ordine",
+  condizioniDefault: [],
+  termineFornituraDefault: null,
+  pageFormat: DEFAULT_DOCUMENT_PAGE_FORMAT,
 };
+
+/** Seed opzionale per il sito Matris (configurazione per-tenant, non default globale). */
+export const MATRIS_DOCUMENT_TEMPLATE_SEED: DocumentTemplateConfig = {
+  mittente: {
+    ragioneSociale: "Matris pro SA",
+    via: "Via Parco 4",
+    cap: "6500",
+    citta: "Bellinzona",
+    iva: "CHE-312.965.779",
+  },
+  banca: {
+    nome: "Banca Raiffeisen Lugano",
+    iban: "CH81 8080 8007 2268 3378 1",
+  },
+  condizioniDefault: ["- 50% all'ordine", "- saldo: 10 giorni netto"],
+  termineFornituraDefault: "- 3-4 settimane dalla conferma d'ordine",
+};
+
+/** @deprecated Usare DEFAULT_DOCUMENT_TEMPLATE */
+export const DEFAULT_MATRIS_TEMPLATE = DEFAULT_DOCUMENT_TEMPLATE;
 
 export function getTipoDocumentoLabel(tipo: string): string {
   return getDocumentTypeLabel(tipo);
@@ -94,7 +120,7 @@ export function mergeDocumentTemplate(
   config: DocumentTemplateConfig | null | undefined,
   siteLogo?: string | null,
 ): DocumentTemplate {
-  const base = DEFAULT_MATRIS_TEMPLATE;
+  const base = DEFAULT_DOCUMENT_TEMPLATE;
   const cfg = config ?? {};
 
   return {
@@ -127,5 +153,12 @@ export function mergeDocumentTemplate(
         : base.condizioniDefault,
     termineFornituraDefault:
       cfg.termineFornituraDefault ?? base.termineFornituraDefault,
+    pageFormat: DEFAULT_DOCUMENT_PAGE_FORMAT,
   };
 }
+
+export {
+  getDocumentTemplateIssues,
+  getDocumentTemplateMissingLabels,
+  isDocumentTemplateConfigured,
+} from "@/lib/documenti/resolve-site-document-template";

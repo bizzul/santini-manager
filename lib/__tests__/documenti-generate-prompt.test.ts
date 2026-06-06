@@ -3,7 +3,7 @@ import {
   buildGenerateUserPrompt,
 } from "@/lib/documenti/generate-prompt";
 import type { DocumentTemplate } from "@/lib/documenti/template-types";
-import { DEFAULT_MATRIS_TEMPLATE } from "@/lib/documenti/template-types";
+import { mergeDocumentTemplate } from "@/lib/documenti/template-types";
 import type { GenerateDocumentRequest } from "@/validation/documenti/extracted-document";
 
 const baseInput: GenerateDocumentRequest = {
@@ -48,7 +48,19 @@ describe("generate-prompt", () => {
 
   it("includes structureMap in system prompt when present", () => {
     const template: DocumentTemplate = {
-      ...DEFAULT_MATRIS_TEMPLATE,
+      ...mergeDocumentTemplate(
+        {
+          mittente: {
+            ragioneSociale: "Tenant Test SA",
+            via: "Via 1",
+            cap: "6500",
+            citta: "Bellinzona",
+            iva: "CHE-1",
+          },
+          banca: { nome: "Banca", iban: "CH00" },
+        },
+        null,
+      ),
       structureMap: {
         sections: [
           {

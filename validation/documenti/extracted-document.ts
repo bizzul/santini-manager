@@ -118,12 +118,24 @@ export const GeneratedLetterSchema = z.object({
 export type GeneratedLetter = z.infer<typeof GeneratedLetterSchema>;
 
 /** Arricchito dopo il tool use: id trovato in DB o flag "nuovo". */
+export const ArticoloSuggeritoSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  codice: z.string().nullable().optional(),
+  descrizione: z.string(),
+  unita: z.string().nullable().optional(),
+  prezzo: z.number().nullable().optional(),
+  immagineUrl: z.string().nullable().optional(),
+  score: z.number().optional(),
+});
+
 export const RigaArricchitaSchema = AIRigaSchema.extend({
   articoloId: z.union([z.string(), z.number()]).nullable(),
   articoloSource: z.enum(["sell_product", "inventory", "none"]).optional(),
   isNuovo: z.boolean(),
   art: z.string().optional(),
   totaleRiga: z.number().optional(),
+  immagineUrl: z.string().nullable().optional(),
+  articoliSuggeriti: z.array(ArticoloSuggeritoSchema).optional(),
 });
 
 export type RigaArricchita = z.infer<typeof RigaArricchitaSchema>;

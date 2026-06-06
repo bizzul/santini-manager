@@ -205,6 +205,13 @@ export function DocumentCreateForm({
 
   const handleEntityChange = (id: string) => {
     setSelectedEntityId(id);
+    if (selectedOfferId) {
+      const offer = offers.find((o) => o.id === Number(selectedOfferId));
+      if (offer?.clientId && String(offer.clientId) !== id) {
+        setSelectedOfferId("");
+        setOggetto("");
+      }
+    }
     if (destMode === "cliente") applyCliente(id);
     if (destMode === "fornitore") applyFornitore(id);
   };
@@ -540,10 +547,16 @@ export function DocumentCreateForm({
             </SelectContent>
           </Select>
           <p className="mt-1 text-xs text-muted-foreground">
-            Collega il documento a un&apos;offerta del database: compila
-            automaticamente oggetto e cliente.
+            Opzionale: collega un&apos;offerta esistente per riutilizzare codice
+            e cliente. Se non ne selezioni una, al salvataggio verrà creata
+            automaticamente una nuova offerta in kanban per il cliente scelto.
           </p>
         </div>
+      ) : showOfferPicker ? (
+        <p className="text-xs text-muted-foreground">
+          Al salvataggio verrà creata automaticamente una nuova offerta in kanban
+          per il cliente selezionato.
+        </p>
       ) : null}
 
       <div>

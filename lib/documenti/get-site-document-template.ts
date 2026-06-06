@@ -1,25 +1,51 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import {
-  mergeDocumentTemplate,
-  type DocumentTemplate,
-  type DocumentTemplateConfig,
-} from "@/lib/documenti/template-types";
+  resolveSiteDocumentTemplate,
+  type SiteTemplateSource,
+} from "@/lib/documenti/resolve-site-document-template";
+import type { DocumentTemplate } from "@/lib/documenti/template-types";
+import type { DocumentTemplateConfig } from "@/lib/documenti/template-types";
+
+async function loadSiteTemplateSource(
+  siteId: string,
+): Promise<SiteTemplateSource | null> {
+  const supabase = await createClient();
+
+  const { data: site } = await supabase
+    .from("sites")
+    .select("name, logo, document_template_config, organization_id")
+    .eq("id", siteId)
+    .single();
+
+  if (!site) return null;
+
+  let organizationName: string | null = null;
+  if (site.organization_id) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", site.organization_id)
+      .maybeSingle();
+    organizationName = org?.name ?? null;
+  }
+
+  return {
+    name: site.name,
+    logo: site.logo,
+    document_template_config: (site.document_template_config ??
+      {}) as DocumentTemplateConfig,
+    organizationName,
+  };
+}
 
 export const getSiteDocumentTemplate = cache(
   async (siteId: string): Promise<DocumentTemplate> => {
-    const supabase = await createClient();
-
-    const { data: site } = await supabase
-      .from("sites")
-      .select("document_template_config, logo")
-      .eq("id", siteId)
-      .single();
-
-    const config = (site?.document_template_config ??
-      {}) as DocumentTemplateConfig;
-
-    return mergeDocumentTemplate(config, site?.logo ?? null);
+    const source = await loadSiteTemplateSource(siteId);
+    if (!source) {
+      return resolveSiteDocumentTemplate({});
+    }
+    return resolveSiteDocumentTemplate(source);
   },
 );
 
@@ -37,14 +63,27 @@ export async function getSiteDocumentTemplateByDomain(
 
   const { data: site } = await supabase
     .from("sites")
-    .select("id, document_template_config, logo")
+    .select("name, logo, document_template_config, organization_id")
     .eq("subdomain", subdomain)
     .single();
 
   if (!site) return null;
 
-  const config = (site.document_template_config ??
-    {}) as DocumentTemplateConfig;
+  let organizationName: string | null = null;
+  if (site.organization_id) {
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("name")
+      .eq("id", site.organization_id)
+      .maybeSingle();
+    organizationName = org?.name ?? null;
+  }
 
-  return mergeDocumentTemplate(config, site.logo ?? null);
+  return resolveSiteDocumentTemplate({
+    name: site.name,
+    logo: site.logo,
+    document_template_config: (site.document_template_config ??
+      {}) as DocumentTemplateConfig,
+    organizationName,
+  });
 }

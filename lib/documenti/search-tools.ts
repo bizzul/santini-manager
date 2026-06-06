@@ -11,10 +11,23 @@ export interface ClienteMatch {
 
 export interface ArticoloMatch {
   id: string | number;
-  nome: string;
+  codice: string | null;
+  descrizione: string;
   prezzo: number | null;
   unita: string | null;
-  source: "sell_product" | "inventory";
+  immagineUrl: string | null;
+  score: number;
+  source: "sell_product";
+}
+
+interface CercaArticoloRow {
+  id: number;
+  codice: string | null;
+  descrizione: string | null;
+  unit: string | null;
+  list_price: number | null;
+  image_url: string | null;
+  score: number | null;
 }
 
 function getClientDisplayName(client: {
@@ -108,55 +121,59 @@ export async function cercaArticolo(
   const trimmed = query.trim();
   if (!trimmed) return [];
 
-  const pattern = toPostgrestIlikePattern(trimmed);
-  const results: ArticoloMatch[] = [];
+  const { data, error } = await supabase.rpc("cerca_articolo", {
+    p_site_id: siteId,
+    p_query: trimmed,
+  });
 
-  const { data: sellProducts, error: sellError } = await supabase
+  if (error) {
+    console.warn("[DocumentiSearch] cercaArticolo RPC:", error.message);
+    return fallbackCercaArticolo(supabase, siteId, trimmed);
+  }
+
+  return ((data as CercaArticoloRow[] | null) ?? []).map((row) => ({
+    id: row.id,
+    codice: row.codice,
+    descrizione: row.descrizione ?? trimmed,
+    prezzo: row.list_price != null ? Number(row.list_price) : null,
+    unita: row.unit,
+    immagineUrl: row.image_url,
+    score: Number(row.score ?? 0),
+    source: "sell_product" as const,
+  }));
+}
+
+async function fallbackCercaArticolo(
+  supabase: SupabaseClient,
+  siteId: string,
+  query: string,
+): Promise<ArticoloMatch[]> {
+  const pattern = toPostgrestIlikePattern(query);
+
+  const { data: sellProducts, error } = await supabase
     .from("SellProduct")
-    .select("id, name, description, internal_code")
+    .select(
+      "id, name, description, internal_code, unit, list_price, image_url",
+    )
     .eq("site_id", siteId)
     .or(
       `name.ilike.${pattern},description.ilike.${pattern},internal_code.ilike.${pattern}`,
     )
     .limit(5);
 
-  if (sellError) {
-    console.warn("[DocumentiSearch] cercaArticolo SellProduct:", sellError.message);
+  if (error) {
+    console.warn("[DocumentiSearch] cercaArticolo fallback:", error.message);
+    return [];
   }
 
-  for (const p of sellProducts ?? []) {
-    results.push({
-      id: p.id,
-      nome: p.name || p.internal_code || String(p.id),
-      prezzo: null,
-      unita: null,
-      source: "sell_product",
-    });
-  }
-
-  const { data: inventoryItems, error: inventoryError } = await supabase
-    .from("inventory_items")
-    .select("id, name, description")
-    .eq("site_id", siteId)
-    .or(`name.ilike.${pattern},description.ilike.${pattern}`)
-    .limit(5);
-
-  if (inventoryError) {
-    console.warn(
-      "[DocumentiSearch] cercaArticolo inventory:",
-      inventoryError.message,
-    );
-  }
-
-  for (const item of inventoryItems ?? []) {
-    results.push({
-      id: item.id,
-      nome: item.name,
-      prezzo: null,
-      unita: null,
-      source: "inventory",
-    });
-  }
-
-  return results.slice(0, 10);
+  return (sellProducts ?? []).map((p, index) => ({
+    id: p.id,
+    codice: p.internal_code ?? null,
+    descrizione: p.description?.trim() || p.name || String(p.id),
+    prezzo: p.list_price != null ? Number(p.list_price) : null,
+    unita: p.unit ?? null,
+    immagineUrl: p.image_url ?? null,
+    score: Math.max(0.5 - index * 0.05, 0.2),
+    source: "sell_product" as const,
+  }));
 }

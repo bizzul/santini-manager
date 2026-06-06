@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   PageContent,
   PageHeader,
@@ -58,6 +58,7 @@ interface RigaDb {
   articolo_id: string | null;
   art: string | null;
   totale_riga: number | null;
+  immagine_url: string | null;
 }
 
 export interface DocumentoListItem {
@@ -117,6 +118,7 @@ function dbToDocumentoArricchito(doc: DocumentoListItem): DocumentoArricchito {
     isNuovo: false,
     art: r.art ?? undefined,
     totaleRiga: r.totale_riga != null ? Number(r.totale_riga) : undefined,
+    immagineUrl: r.immagine_url ?? null,
   }));
 
   const totali =
@@ -173,6 +175,25 @@ export function DocumentiPageClient({
   const [viewDocumento, setViewDocumento] =
     useState<DocumentoListItem | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [documentiList, setDocumentiList] = useState(documenti);
+
+  useEffect(() => {
+    setDocumentiList(documenti);
+  }, [documenti]);
+
+  const refreshDocumenti = useCallback(async () => {
+    try {
+      const response = await fetch("/api/documenti", {
+        headers: { "x-site-domain": domain },
+      });
+      if (response.ok) {
+        const data = (await response.json()) as DocumentoListItem[];
+        setDocumentiList(data);
+      }
+    } catch {
+      // L'elenco verrà aggiornato al prossimo router.refresh()
+    }
+  }, [domain]);
 
   const handleGenerated = (
     documento: DocumentoArricchito,
@@ -214,6 +235,7 @@ export function DocumentiPageClient({
       a.download = filename ?? `documento-${docId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+      await refreshDocumenti();
     } catch {
       toast({
         variant: "destructive",
@@ -269,6 +291,7 @@ export function DocumentiPageClient({
               setDocumentoGenerato(null);
               setEditingDocumentoId(null);
               setLinkedTaskId(null);
+              void refreshDocumenti();
             }}
           />
         </PageContent>
@@ -341,7 +364,7 @@ export function DocumentiPageClient({
         }
       />
       <PageContent>
-        {documenti.length === 0 ? (
+        {documentiList.length === 0 ? (
           <EmptyState
             icon={<FileText className="h-6 w-6" />}
             title="Nessun documento"
@@ -365,7 +388,7 @@ export function DocumentiPageClient({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documenti.map((doc) => (
+                {documentiList.map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell>
                       {getTipoDocumentoLabel(doc.tipo_documento)}

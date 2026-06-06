@@ -1,5 +1,9 @@
 import { assignArtCodes } from "@/lib/documenti/art-codes";
 import {
+  resolvePrezzoUnitario,
+  type ArticoloRowMatch,
+} from "@/lib/documenti/articolo-match";
+import {
   calcolaTotaleRiga,
   calcolaTotaliDocumento,
 } from "@/lib/documenti/calcolo-totali";
@@ -9,7 +13,21 @@ import type {
   DestinatarioInput,
   DocumentoArricchito,
   GeneratedLetter,
+  UnitaMisura,
 } from "@/validation/documenti/extracted-document";
+
+const ALLOWED_UNITS = ["m1", "Pz.", "h", "mq", "ml", "kg", "forfait"] as const;
+
+function mapCatalogUnit(
+  unit: string | null | undefined,
+  fallback: UnitaMisura,
+): UnitaMisura {
+  if (!unit) return fallback;
+  const normalized = unit.trim();
+  return (ALLOWED_UNITS as readonly string[]).includes(normalized)
+    ? (normalized as UnitaMisura)
+    : fallback;
+}
 
 export function enrichCommercialDocumento(
   documento: AIDocumento,
@@ -20,13 +38,7 @@ export function enrichCommercialDocumento(
     cap: string | null;
     citta: string | null;
   } | null,
-  articoloMatches?: Map<
-    number,
-    {
-      id: string | number;
-      source: "sell_product" | "inventory";
-    } | null
-  >,
+  articoloMatches?: Map<number, ArticoloRowMatch>,
   extra?: {
     allegati?: DocumentoArricchito["allegati"];
     sourceText?: string;
@@ -35,21 +47,34 @@ export function enrichCommercialDocumento(
   const artCodes = assignArtCodes(documento.righe);
 
   const righe = documento.righe.map((riga, index) => {
-    const match = articoloMatches?.get(index);
-    const showDiscount =
-      documento.tipoDocumento !== "FATTURA";
+    const rowMatch = articoloMatches?.get(index);
+    const match = rowMatch?.level === "high" ? rowMatch.articolo : null;
+    const showDiscount = documento.tipoDocumento !== "FATTURA";
     const sconto = showDiscount ? riga.sconto : null;
+
+    const descrizione = match?.descrizione ?? riga.descrizione;
+    const unita = mapCatalogUnit(match?.unita, riga.unita);
+    const prezzoUnitario = resolvePrezzoUnitario(
+      riga.prezzoUnitario,
+      match?.prezzo,
+    );
 
     return {
       ...riga,
+      descrizione,
+      unita,
+      prezzoUnitario,
       sconto,
       articoloId: match?.id ?? null,
-      articoloSource: match?.source ?? ("none" as const),
+      articoloSource: match ? ("sell_product" as const) : ("none" as const),
       isNuovo: !match,
+      immagineUrl: match?.immagineUrl ?? null,
+      articoliSuggeriti:
+        rowMatch?.level === "suggested" ? rowMatch.candidates : undefined,
       art: artCodes[index],
       totaleRiga: calcolaTotaleRiga(
         riga.quantita,
-        riga.prezzoUnitario,
+        prezzoUnitario,
         sconto,
         documento.tipoDocumento,
       ),
@@ -58,12 +83,11 @@ export function enrichCommercialDocumento(
 
   const destinatario = clienteMatch
     ? {
-        ragioneSociale:
-          documento.destinatario.ragioneSociale || clienteMatch.nome,
+        ragioneSociale: clienteMatch.nome,
         aca: documento.destinatario.aca,
-        via: documento.destinatario.via ?? clienteMatch.via,
-        cap: documento.destinatario.cap ?? clienteMatch.cap,
-        citta: documento.destinatario.citta ?? clienteMatch.citta,
+        via: clienteMatch.via ?? documento.destinatario.via,
+        cap: clienteMatch.cap ?? documento.destinatario.cap,
+        citta: clienteMatch.citta ?? documento.destinatario.citta,
         clienteId: clienteMatch.id,
         fornitoreId: null,
         isNuovo: false,
