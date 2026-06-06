@@ -314,6 +314,202 @@ export async function sendPasswordResetEmail(
 }
 
 /**
+ * Create a draft collaborator without sending any email.
+ * The user is confirmed in Supabase Auth but cannot log in until activated.
+ */
+export async function createDraftCollaborator(
+    siteId: string,
+    email: string,
+    givenName: string,
+    familyName: string,
+    companyRole: string | null,
+    initials: string | null,
+    color: string | null,
+    domain: string,
+) {
+    const supabase = await createClient();
+    const supabaseService = createServiceClient();
+    const { isAdmin, organizationId } = await checkAdminAccess(siteId);
+
+    if (!isAdmin || !organizationId) {
+        return {
+            success: false,
+            error: "Non autorizzato a creare collaboratori bozza",
+        };
+    }
+
+    const { data: existingUser } = await supabase
+        .from("User")
+        .select("authId, activation_status")
+        .eq("email", email)
+        .single();
+
+    if (existingUser?.authId) {
+        return await addCollaboratorToSite(
+            siteId,
+            existingUser.authId,
+            domain,
+        );
+    }
+
+    const { data: createData, error: createError } = await supabaseService
+        .auth.admin
+        .createUser({
+            email,
+            email_confirm: true,
+            user_metadata: {
+                name: givenName,
+                last_name: familyName,
+                role: "user",
+            },
+        });
+
+    if (createError) {
+        return {
+            success: false,
+            error: `Errore nella creazione: ${createError.message}`,
+        };
+    }
+
+    const userId = createData.user.id;
+
+    const { error: userError } = await supabase
+        .from("User")
+        .insert({
+            authId: userId,
+            auth_id: userId,
+            email,
+            given_name: givenName,
+            family_name: familyName,
+            company_role: companyRole,
+            initials: initials || null,
+            color: color || null,
+            role: "user",
+            enabled: false,
+            activation_status: "draft",
+        });
+
+    if (userError) {
+        return {
+            success: false,
+            error: `Errore nella creazione del profilo: ${userError.message}`,
+        };
+    }
+
+    await supabase
+        .from("user_organizations")
+        .insert({
+            organization_id: organizationId,
+            user_id: userId,
+        });
+
+    const { error: siteError } = await supabase
+        .from("user_sites")
+        .insert({
+            site_id: siteId,
+            user_id: userId,
+        });
+
+    if (siteError) {
+        return {
+            success: false,
+            error: `Errore nell'aggiunta al sito: ${siteError.message}`,
+        };
+    }
+
+    revalidatePath(`/sites/${domain}/collaborators`);
+    return {
+        success: true,
+        userId,
+        message:
+            "Collaboratore bozza creato. Configura permessi e dati, poi attivalo con password.",
+    };
+}
+
+/**
+ * Activate a draft collaborator by setting a password manually (no email sent).
+ */
+export async function activateCollaborator(
+    siteId: string,
+    userId: string,
+    password: string,
+    domain: string,
+) {
+    const supabase = await createClient();
+    const supabaseService = createServiceClient();
+    const { isAdmin } = await checkAdminAccess(siteId);
+
+    if (!isAdmin) {
+        return {
+            success: false,
+            error: "Non autorizzato ad attivare collaboratori",
+        };
+    }
+
+    if (!password || password.length < 6) {
+        return {
+            success: false,
+            error: "La password deve essere di almeno 6 caratteri",
+        };
+    }
+
+    const { data: targetUser, error: userError } = await supabase
+        .from("User")
+        .select("activation_status, email")
+        .eq("authId", userId)
+        .single();
+
+    if (userError || !targetUser) {
+        return {
+            success: false,
+            error: "Utente non trovato",
+        };
+    }
+
+    if (targetUser.activation_status !== "draft") {
+        return {
+            success: false,
+            error: "Questo collaboratore non è in stato bozza",
+        };
+    }
+
+    const { error: authError } = await supabaseService.auth.admin
+        .updateUserById(userId, {
+            password,
+            email_confirm: true,
+        });
+
+    if (authError) {
+        return {
+            success: false,
+            error: `Errore nell'impostazione password: ${authError.message}`,
+        };
+    }
+
+    const { error: updateError } = await supabase
+        .from("User")
+        .update({
+            enabled: true,
+            activation_status: "active",
+        })
+        .eq("authId", userId);
+
+    if (updateError) {
+        return {
+            success: false,
+            error: `Errore nell'attivazione: ${updateError.message}`,
+        };
+    }
+
+    revalidatePath(`/sites/${domain}/collaborators`);
+    return {
+        success: true,
+        message: "Collaboratore attivato. Consegna le credenziali manualmente.",
+        email: targetUser.email,
+    };
+}
+
+/**
  * Invite a new user to the site
  * Creates a new user and adds them to the site
  */

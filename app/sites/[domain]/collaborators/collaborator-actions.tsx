@@ -32,8 +32,10 @@ import {
   Briefcase,
   Shield,
   Lock,
+  KeyRound,
 } from "lucide-react";
 import { Collaborator } from "./columns";
+import { ActivateCollaboratorDialog } from "./activate-collaborator-dialog";
 import { EditCollaboratorDialog } from "./edit-collaborator-dialog";
 import { RoleManagementDialog } from "./role-management-dialog";
 import { SystemRoleDialog } from "./system-role-dialog";
@@ -66,11 +68,13 @@ export function CollaboratorActions({
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [isToggleStatusOpen, setIsToggleStatusOpen] = useState(false);
+  const [isActivateOpen, setIsActivateOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   // Non mostrare azioni per admin dell'organizzazione (non possono essere rimossi dal sito)
   const isOrgAdmin = collaborator.is_org_admin;
+  const isDraft = collaborator.activation_status === "draft";
 
   // Check if current user can change system roles (only admin and superadmin)
   const canChangeSystemRole =
@@ -211,10 +215,19 @@ export function CollaboratorActions({
               Permessi Accesso
             </DropdownMenuItem>
           )}
+          {isDraft && (
+            <DropdownMenuItem onClick={() => setIsActivateOpen(true)}>
+              <KeyRound className="h-4 w-4 mr-2" />
+              Attiva collaboratore
+            </DropdownMenuItem>
+          )}
+          {!isDraft && (
           <DropdownMenuItem onClick={() => setIsPasswordResetOpen(true)}>
             <Key className="h-4 w-4 mr-2" />
             Reset Password
           </DropdownMenuItem>
+          )}
+          {!isDraft && (
           <DropdownMenuItem onClick={() => setIsToggleStatusOpen(true)}>
             {collaborator.enabled ? (
               <>
@@ -228,6 +241,7 @@ export function CollaboratorActions({
               </>
             )}
           </DropdownMenuItem>
+          )}
           {!isOrgAdmin && (
             <>
               <DropdownMenuSeparator />
@@ -242,6 +256,17 @@ export function CollaboratorActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Activate Dialog */}
+      {isDraft && (
+        <ActivateCollaboratorDialog
+          collaborator={collaborator}
+          siteId={siteId}
+          domain={domain}
+          isOpen={isActivateOpen}
+          onClose={() => setIsActivateOpen(false)}
+        />
+      )}
 
       {/* Edit Dialog */}
       <EditCollaboratorDialog

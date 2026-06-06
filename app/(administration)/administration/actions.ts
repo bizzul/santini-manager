@@ -1684,9 +1684,10 @@ export async function getOrganizationUsersWithRoles(organizationId: string) {
 // - Regular users (role=user) are added to user_sites
 // - Admin users (role=admin) are added to user_organizations (org admin)
 // - Superadmin users are not added to any junction table (they see everything)
-// Supports two modes:
+// Supports three modes:
 // 1. Invitation mode (default): sends email invitation for user to set password
 // 2. Password mode: creates user with password directly (user is immediately active)
+// 3. Draft mode: creates user without email, pending manual activation with password
 export async function createUser(
     prevState: any,
     formData: FormData,
@@ -1717,8 +1718,9 @@ export async function createUser(
         const name = formData.get("name") as string;
         const last_name = formData.get("last_name") as string;
         
-        // Check if we're creating with password or invitation
+        // Check creation mode: password, draft, or invitation (default)
         const createWithPassword = formData.get("createWithPassword") === "true";
+        const createAsDraft = formData.get("createAsDraft") === "true";
         const password = formData.get("password") as string;
         const confirmPassword = formData.get("confirmPassword") as string;
 
@@ -1745,6 +1747,14 @@ export async function createUser(
             return {
                 success: false,
                 message: "Compila tutti i campi obbligatori",
+            };
+        }
+
+        if (createAsDraft && role !== "user") {
+            return {
+                success: false,
+                message:
+                    "La creazione bozza è disponibile solo per utenti con ruolo 'user'",
             };
         }
 
@@ -1891,6 +1901,51 @@ export async function createUser(
                     role: role,
                     assistance_level: assistanceLevel,
                     enabled: true, // User is immediately active when created with password
+                    activation_status: "active",
+                });
+
+            if (userError) {
+                return {
+                    success: false,
+                    message: userError.message,
+                };
+            }
+        } else if (createAsDraft) {
+            const { data: createData, error: createError } = await supabaseService
+                .auth.admin
+                .createUser({
+                    email,
+                    email_confirm: true,
+                    user_metadata: {
+                        name,
+                        last_name,
+                        role,
+                        context_text: contextText,
+                    },
+                });
+
+            if (createError) {
+                return {
+                    success: false,
+                    message:
+                        "Errore nella creazione bozza: " + createError.message,
+                };
+            }
+
+            userId = createData.user.id;
+            logger.info("User created as draft:", userId);
+
+            const { error: userError } = await supabase.from("User")
+                .insert({
+                    authId: userId,
+                    auth_id: userId,
+                    email,
+                    given_name: name,
+                    family_name: last_name,
+                    role,
+                    assistance_level: assistanceLevel,
+                    enabled: false,
+                    activation_status: "draft",
                 });
 
             if (userError) {
@@ -1946,6 +2001,7 @@ export async function createUser(
                     role: role,
                     assistance_level: assistanceLevel,
                     enabled: false, // User starts as inactive until they confirm their email
+                    activation_status: "active",
                 });
 
             if (userError) {
@@ -2012,12 +2068,18 @@ export async function createUser(
                 success: true,
                 message: "Utente creato con successo! L'utente può accedere immediatamente con le credenziali fornite.",
             };
-        } else {
+        }
+        if (createAsDraft) {
             return {
                 success: true,
-                message: "Utente invitato con successo! Riceverà un'email per impostare la password.",
+                message:
+                    "Utente bozza creato! Configura permessi e dati dalla pagina Collaboratori, poi attivalo con password.",
             };
         }
+        return {
+            success: true,
+            message: "Utente invitato con successo! Riceverà un'email per impostare la password.",
+        };
     } catch (error: any) {
         logger.error("Error creating user:", error);
         return {

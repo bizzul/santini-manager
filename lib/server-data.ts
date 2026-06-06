@@ -1,4 +1,5 @@
 import { createClient, createServiceClient } from "@/utils/supabase/server";
+import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
 import { resolveFactoryDepartmentMeta } from "@/lib/factory/mock-data";
 import {
@@ -5540,10 +5541,11 @@ export const fetchInterniDashboardData = cache(
  * Excludes global superadmins
  */
 export const fetchCollaborators = cache(async (siteId: string) => {
-    const supabase = await createClient();
+    const sessionClient = await createClient();
+    const userContext = await getUserContext();
 
     // Step 1: Get the site's organization_id
-    const { data: site, error: siteError } = await supabase
+    const { data: site, error: siteError } = await sessionClient
         .from("sites")
         .select("organization_id")
         .eq("id", siteId)
@@ -5553,6 +5555,18 @@ export const fetchCollaborators = cache(async (siteId: string) => {
         log.error("Error fetching site:", siteError.message);
         return [];
     }
+
+    const canManageSiteCollaborators = Boolean(
+        userContext?.canAccessAllOrganizations ||
+            (userContext?.role === "admin" &&
+                site?.organization_id &&
+                userContext.organizationIds?.includes(site.organization_id)),
+    );
+
+    // Admins need service client: user_sites RLS only exposes own rows via session client
+    const supabase = canManageSiteCollaborators
+        ? createServiceClient()
+        : sessionClient;
 
     // Step 2: Get user IDs from user_sites for this specific site (direct site users)
     const { data: userSites, error: userSitesError } = await supabase
