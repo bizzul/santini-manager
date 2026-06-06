@@ -32,6 +32,7 @@ import {
 import { Collaborator } from "./columns";
 import { getColumnsWithActions } from "./columns-with-actions";
 import { AddCollaboratorDialog } from "./add-collaborator-dialog";
+import { AddDraftCollaboratorDialog } from "./add-draft-collaborator-dialog";
 import { AddAgentDialog } from "./add-agent-dialog";
 
 interface DataTableProps {
@@ -123,6 +124,7 @@ export function DataTable({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Solo attivi</SelectItem>
+              <SelectItem value="draft">Solo bozze</SelectItem>
               <SelectItem value="disabled">Solo disabilitati</SelectItem>
               <SelectItem value="all">Tutti gli stati</SelectItem>
             </SelectContent>
@@ -131,6 +133,7 @@ export function DataTable({
         {isAdmin && (
           <div className="flex items-center gap-2">
             <AddAgentDialog siteId={siteId} domain={domain} />
+            <AddDraftCollaboratorDialog siteId={siteId} domain={domain} />
             <AddCollaboratorDialog siteId={siteId} domain={domain} />
           </div>
         )}

@@ -30,6 +30,7 @@ export type Collaborator = {
   site_role: string | null;
   is_org_admin?: boolean;
   enabled: boolean;
+  activation_status?: string | null;
   joined_site_at: string | null;
   assigned_roles?: AssignedRole[];
   is_virtual_agent?: boolean;

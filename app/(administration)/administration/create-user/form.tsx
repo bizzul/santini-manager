@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { createUser } from "../actions";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Mail, KeyRound } from "lucide-react";
+import { Mail, KeyRound, UserPlus } from "lucide-react";
 
 const initialState = {
   success: false,
@@ -288,15 +288,46 @@ export function CreateUserForm({
 
       {/* Two action buttons */}
       <div className="pt-4 space-y-3">
-        {/* Hidden input to pass the mode - will be set by button click */}
+        {/* Hidden inputs to pass the mode - will be set by button click */}
         <input type="hidden" name="createWithPassword" id="createWithPasswordInput" value="false" />
+        <input type="hidden" name="createAsDraft" id="createAsDraftInput" value="false" />
+
+        {selectedRole === "user" && (
+          <Button
+            type="submit"
+            variant="outline"
+            onClick={() => {
+              const passwordInput = document.getElementById('createWithPasswordInput') as HTMLInputElement;
+              const draftInput = document.getElementById('createAsDraftInput') as HTMLInputElement;
+              if (passwordInput) passwordInput.value = "false";
+              if (draftInput) draftInput.value = "true";
+            }}
+            className="w-full border-2 border-amber-500/50 text-amber-200 hover:bg-amber-500/20 hover:border-amber-400 transition-all duration-300 py-3 font-semibold flex items-center justify-center gap-2"
+          >
+            <UserPlus className="h-4 w-4" />
+            Crea come bozza (senza email)
+          </Button>
+        )}
+
+        {selectedRole === "user" && (
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/20"></div>
+            </div>
+            <div className="relative px-3 bg-transparent">
+              <span className="text-xs text-white/40 bg-[#1a1a2e] px-2">oppure</span>
+            </div>
+          </div>
+        )}
         
         <Button
           type="submit"
           variant="outline"
           onClick={() => {
-            const input = document.getElementById('createWithPasswordInput') as HTMLInputElement;
-            if (input) input.value = "false";
+            const passwordInput = document.getElementById('createWithPasswordInput') as HTMLInputElement;
+            const draftInput = document.getElementById('createAsDraftInput') as HTMLInputElement;
+            if (passwordInput) passwordInput.value = "false";
+            if (draftInput) draftInput.value = "false";
           }}
           className="w-full border-2 border-white/40 text-white hover:bg-white/30 hover:border-white transition-all duration-300 py-3 font-semibold flex items-center justify-center gap-2"
         >
@@ -318,8 +349,10 @@ export function CreateUserForm({
           variant="outline"
           disabled={!isPasswordValid}
           onClick={() => {
-            const input = document.getElementById('createWithPasswordInput') as HTMLInputElement;
-            if (input) input.value = "true";
+            const passwordInput = document.getElementById('createWithPasswordInput') as HTMLInputElement;
+            const draftInput = document.getElementById('createAsDraftInput') as HTMLInputElement;
+            if (passwordInput) passwordInput.value = "true";
+            if (draftInput) draftInput.value = "false";
           }}
           className="w-full border-2 border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20 hover:border-emerald-400 transition-all duration-300 py-3 font-semibold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-emerald-500/50"
         >

@@ -1,6 +1,8 @@
 // Comprehensive types for Supabase entities (replacing Prisma types)
 
 // User related types
+export type UserActivationStatus = "draft" | "active";
+
 export interface User {
     id: string;
     email?: string;
@@ -8,6 +10,7 @@ export interface User {
     family_name?: string;
     initials?: string;
     picture?: string;
+    activation_status?: UserActivationStatus;
     created_at?: string;
     updated_at?: string;
 }

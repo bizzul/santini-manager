@@ -137,11 +137,18 @@ export function getColumnsWithActions(
         <DataTableColumnHeader column={column} title="Stato" />
       ),
       cell: ({ row }) => {
-        const { enabled, is_virtual_agent } = row.original;
+        const { enabled, is_virtual_agent, activation_status } = row.original;
         if (is_virtual_agent) {
           return (
             <Badge variant="outline" className="border-violet-500/40 text-violet-200">
               Agente Attivo
+            </Badge>
+          );
+        }
+        if (activation_status === "draft") {
+          return (
+            <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+              Bozza
             </Badge>
           );
         }
@@ -152,6 +159,16 @@ export function getColumnsWithActions(
         ) : (
           <Badge variant="destructive">Disabilitato</Badge>
         );
+      },
+      filterFn: (row, id, value) => {
+        if (value === "" || value === "all" || value == null) return true;
+        const { enabled, activation_status, is_virtual_agent } = row.original;
+        if (value === "draft") return activation_status === "draft";
+        if (value === "active") return Boolean(enabled) && activation_status !== "draft";
+        if (value === "disabled") {
+          return !enabled && activation_status !== "draft" && !is_virtual_agent;
+        }
+        return Boolean(row.getValue(id)) === (value === "active");
       },
     },
     {
