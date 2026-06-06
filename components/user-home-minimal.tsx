@@ -25,6 +25,7 @@ interface UserHomeMinimalProps {
   userName: string;
   domain: string;
   availableModules: string[];
+  showDashboard?: boolean;
 }
 
 const iconMap: Record<string, any> = {
@@ -54,15 +55,19 @@ const categoryLabels: Record<string, string> = {
 
 const categoryOrder = ["core", "management", "tools", "reports"];
 
-export function UserHomeMinimal({ userName, domain, availableModules }: UserHomeMinimalProps) {
+export function UserHomeMinimal({
+  userName,
+  domain,
+  availableModules,
+  showDashboard = false,
+}: UserHomeMinimalProps) {
   const basePath = `/sites/${domain}`;
-  
-  // Filter modules that user has access to and that have a valid href
+
   const accessibleModules = AVAILABLE_MODULES.filter(
-    (module) => 
-      availableModules.includes(module.name) && 
-      module.href && 
-      module.name !== "dashboard" // Exclude dashboard since user doesn't have access
+    (module) =>
+      availableModules.includes(module.name) &&
+      module.href &&
+      (showDashboard || module.name !== "dashboard")
   );
 
   // Group modules by category

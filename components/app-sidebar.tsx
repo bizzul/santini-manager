@@ -63,6 +63,7 @@ import {
   faBriefcase,
   faIndustry,
   faListUl,
+  faHouse,
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
 import { CommandDeckLauncher } from "@/components/command-deck/CommandDeckLauncher";
@@ -124,6 +125,7 @@ const iconMap = {
   faBriefcase,
   faIndustry,
   faListUl,
+  faHouse,
 };
 
 type SiteDataQueryResult = {
@@ -1455,9 +1457,23 @@ export function AppSidebar() {
             )}
           </SidebarGroupLabel>
 
-          {/* Dashboard - show skeleton only if modules loading */}
+          {/* Home + Dashboard - show skeleton only if modules loading */}
           <SidebarGroupContent>
             <SidebarMenu>
+              {domain && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Home"
+                    isActive={isActive(`${basePath}/home`)}
+                  >
+                    <Link href={`${basePath}/home`}>
+                      <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
+                      <span>Home</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {isLoadingMenuItems ? (
                 <SidebarMenuItem>
                   <div className="flex items-center gap-2 px-2 py-2">
