@@ -8,6 +8,32 @@ const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+/** Confine semplificato della Svizzera (Polygon GeoJSON, ~6KB) usato per
+ *  evidenziare il paese e sfumare i territori confinanti. */
+const SWISS_GEOJSON_URL = "/geo/switzerland.geojson";
+/** Colore del bordo che evidenzia la Svizzera. */
+const HIGHLIGHT_BORDER_COLOR = "#38bdf8";
+/** Velo applicato fuori dal confine svizzero (paesi confinanti). */
+const FADE_VEIL_COLOR = "#0f172a";
+const FADE_VEIL_OPACITY = 0.42;
+
+/** Bounding box "mondo" entro i limiti della proiezione Web Mercator. */
+const WORLD_RING: [number, number][] = [
+  [-85, -180],
+  [85, -180],
+  [85, 180],
+  [-85, 180],
+];
+
+type GeoJsonPolygonFeature = {
+  geometry: { type: "Polygon"; coordinates: number[][][] };
+};
+
+/** Converte un anello GeoJSON ([lng, lat]) in coordinate Leaflet ([lat, lng]). */
+function toLatLngRing(ring: number[][]): [number, number][] {
+  return ring.map(([lng, lat]) => [lat, lng] as [number, number]);
+}
+
 interface ActiveProjectsMapProps {
   projects: NormalizedProjectLocation[];
   domain: string;
@@ -83,6 +109,7 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const highlightLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const hoverTooltipRef = useRef<import("leaflet").Tooltip | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
@@ -289,6 +316,47 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
       }).addTo(map);
 
       mapRef.current = map;
+
+      // Evidenziazione Svizzera: velo sui paesi confinanti + bordo del paese.
+      // Aggiunto prima del layer dei marker così i pin restano cliccabili sopra.
+      highlightLayerRef.current = L.layerGroup().addTo(map);
+      void (async () => {
+        try {
+          const res = await fetch(SWISS_GEOJSON_URL);
+          if (!res.ok) return;
+          const feature = (await res.json()) as GeoJsonPolygonFeature;
+          if (cancelled || !mapRef.current || !highlightLayerRef.current) return;
+
+          const swissRings = feature.geometry.coordinates.map(toLatLngRing);
+
+          // Maschera: poligono "mondo" con la Svizzera ritagliata (fill-rule
+          // even-odd), così l'interno del paese resta limpido.
+          const mask = L.polygon([WORLD_RING, ...swissRings], {
+            stroke: false,
+            fillColor: FADE_VEIL_COLOR,
+            fillOpacity: FADE_VEIL_OPACITY,
+            fillRule: "evenodd",
+            interactive: false,
+            className: "dashboard-map-fade-mask",
+          });
+
+          // Bordo che evidenzia il confine svizzero.
+          const border = L.polygon(swissRings, {
+            color: HIGHLIGHT_BORDER_COLOR,
+            weight: 2,
+            opacity: 0.9,
+            fill: false,
+            interactive: false,
+            className: "dashboard-map-highlight-border",
+          });
+
+          highlightLayerRef.current.addLayer(mask);
+          highlightLayerRef.current.addLayer(border);
+        } catch {
+          // Confine non disponibile: la mappa resta utilizzabile senza evidenziazione.
+        }
+      })();
+
       markersLayerRef.current = L.layerGroup().addTo(map);
 
       const invalidate = () => {
@@ -319,6 +387,7 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
         mapRef.current.remove();
         mapRef.current = null;
         markersLayerRef.current = null;
+        highlightLayerRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
