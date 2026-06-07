@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { FatturazioneDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -89,7 +94,7 @@ export default function IncassiWeeklyChart({ data }: IncassiWeeklyChartProps) {
       categories: data.map((d) => d.week),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -103,7 +108,7 @@ export default function IncassiWeeklyChart({ data }: IncassiWeeklyChartProps) {
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => formatCHF(value),
@@ -112,7 +117,7 @@ export default function IncassiWeeklyChart({ data }: IncassiWeeklyChartProps) {
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -131,13 +136,13 @@ export default function IncassiWeeklyChart({ data }: IncassiWeeklyChartProps) {
         shape: "circle",
       },
       labels: {
-        colors: "#a1a1aa",
+        colors: getChartAxisColor(),
       },
       itemMargin: {
         horizontal: 8,
       },
     },
-    colors: ["#22c55e", "#3b82f6"],
+    colors: [chartColorAt(3), chartColorAt(0)],
   };
 
   return (

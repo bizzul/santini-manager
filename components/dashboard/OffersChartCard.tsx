@@ -3,22 +3,15 @@
 import { FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
+import {
+  CHART_SERIES_COLORS,
+  chartColorAt,
+  getChartAxisColor,
+} from "@/lib/charts/theme";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
-
-// Default colors for categories
-const DEFAULT_COLORS = [
-  "#3b82f6", // blue
-  "#eab308", // yellow
-  "#f97316", // orange
-  "#22c55e", // green
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#f43f5e", // rose
-];
 
 interface CategoryData {
   name: string;
@@ -45,7 +38,7 @@ export default function OffersChartCard({ data }: OffersChartCardProps) {
   // Map categories with colors
   const departments = data.byCategory.map((cat, index) => ({
     name: cat.name,
-    color: cat.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+    color: cat.color || chartColorAt(index),
     offers: cat.count,
     value: cat.value,
   }));
@@ -135,7 +128,7 @@ export default function OffersChartCard({ data }: OffersChartCardProps) {
       categories: departments.map((d) => d.name),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "11px",
           fontWeight: 600,
         },

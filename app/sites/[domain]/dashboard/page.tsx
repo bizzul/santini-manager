@@ -73,16 +73,10 @@ export default async function SiteDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs initialVerticalProfile={verticalProfile} />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {verticalProfile.pageCopy.dashboardOverviewTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.dashboardOverviewSubtitle}
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.dashboardOverviewTitle}
+        subtitle={verticalProfile.pageCopy.dashboardOverviewSubtitle}
+      />
       <PageContent>
         <div className="space-y-6">
           <KPICards data={dashboardData} />

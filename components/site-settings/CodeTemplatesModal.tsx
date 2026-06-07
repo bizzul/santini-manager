@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, GripVertical, FileCode, Archive, Route } from "lucide-react";
 
 interface CodeTemplatesModalProps {
@@ -328,7 +328,7 @@ export default function CodeTemplatesModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="text-white text-xl">
             Codici

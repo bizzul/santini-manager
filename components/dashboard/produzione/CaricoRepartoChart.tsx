@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { ProduzioneDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -87,7 +92,7 @@ export default function CaricoRepartoChart({
       categories: data.map((d) => d.kanbanName),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -101,7 +106,7 @@ export default function CaricoRepartoChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -111,7 +116,7 @@ export default function CaricoRepartoChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
       xaxis: {
         lines: {
@@ -140,13 +145,13 @@ export default function CaricoRepartoChart({
         shape: "circle",
       },
       labels: {
-        colors: "#a1a1aa",
+        colors: getChartAxisColor(),
       },
       itemMargin: {
         horizontal: 8,
       },
     },
-    colors: ["#22c55e", "#ef4444"],
+    colors: [chartColorAt(3), chartColorAt(7)],
   };
 
   return (

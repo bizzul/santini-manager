@@ -3,6 +3,12 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
+import {
+  CHART_SERIES_COLORS,
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { DashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -14,14 +20,13 @@ interface DepartmentWorkloadChartProps {
 }
 
 const DEPARTMENT_COLORS: { [key: string]: string } = {
-  Vendita: "#3b82f6",
-  AVOR: "#f97316",
-  Produzione: "#22c55e",
-  "Prod.": "#22c55e",
-  Install: "#8b5cf6",
-  "Install.": "#8b5cf6",
-  Service: "#ec4899",
-  Altro: "#6b7280",
+  Vendita: CHART_SERIES_COLORS[0],
+  AVOR: CHART_SERIES_COLORS[2],
+  Produzione: CHART_SERIES_COLORS[3],
+  "Prod.": CHART_SERIES_COLORS[3],
+  Install: CHART_SERIES_COLORS[4],
+  "Install.": CHART_SERIES_COLORS[4],
+  Service: CHART_SERIES_COLORS[5],
 };
 
 export default function DepartmentWorkloadChart({
@@ -80,7 +85,7 @@ export default function DepartmentWorkloadChart({
       categories: sortedData.map((d) => d.department),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -94,7 +99,7 @@ export default function DepartmentWorkloadChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -105,7 +110,7 @@ export default function DepartmentWorkloadChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -115,7 +120,7 @@ export default function DepartmentWorkloadChart({
       },
     },
     colors: sortedData.map(
-      (d) => DEPARTMENT_COLORS[d.department] || "#6b7280"
+      (d, i) => DEPARTMENT_COLORS[d.department] || chartColorAt(i)
     ),
   };
 

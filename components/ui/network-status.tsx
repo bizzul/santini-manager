@@ -31,9 +31,9 @@ export function NetworkStatus({
     >
       <FontAwesomeIcon
         icon={isOnline ? faWifi : faExclamationTriangle}
-        className={isOnline ? "text-green-500" : "text-red-500"}
+        className={isOnline ? "text-success" : "text-destructive"}
       />
-      <span className={isOnline ? "text-green-500" : "text-red-500"}>
+      <span className={isOnline ? "text-success" : "text-destructive"}>
         {isOnline ? "Online" : "Offline"}
       </span>
       {showLastSync && lastOnlineTime && (

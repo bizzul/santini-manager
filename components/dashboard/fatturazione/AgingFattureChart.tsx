@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { FatturazioneDashboardStats } from "@/lib/server-data";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -109,7 +114,7 @@ export default function AgingFattureChart({
       categories: data.map((d) => `${d.bucket} giorni`),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -123,7 +128,7 @@ export default function AgingFattureChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => formatCHF(value),
@@ -134,7 +139,7 @@ export default function AgingFattureChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
       yaxis: {
         lines: {
@@ -154,7 +159,12 @@ export default function AgingFattureChart({
     legend: {
       show: false,
     },
-    colors: ["#22c55e", "#eab308", "#f97316", "#ef4444"],
+    colors: [
+      chartColorAt(3),
+      chartColorAt(1),
+      chartColorAt(2),
+      chartColorAt(7),
+    ],
   };
 
   const kanbanHref = invoiceKanbanId

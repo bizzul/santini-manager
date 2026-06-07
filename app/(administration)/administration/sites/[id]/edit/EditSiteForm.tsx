@@ -38,7 +38,7 @@ import {
   Camera,
   LayoutDashboard,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
 import AiSettingsModal from "@/components/site-settings/AiSettingsModal";
 import DocumentTemplateModal from "@/components/site-settings/DocumentTemplateModal";

@@ -548,7 +548,7 @@ export function VoiceInputDialog({
 
     const renderSuccessStep = () => (
         <div className="flex flex-col items-center gap-4 py-12">
-            <CheckCircle className="h-16 w-16 text-green-500" />
+            <CheckCircle className="h-16 w-16 text-success" />
             <div className="text-center">
                 <h3 className="text-lg font-semibold">Progetti creati!</h3>
                 <p className="text-sm text-muted-foreground">

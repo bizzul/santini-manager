@@ -8,14 +8,14 @@ interface MatchBadgeProps {
 export function MatchBadge({ isNuovo, label }: MatchBadgeProps) {
   if (isNuovo) {
     return (
-      <Badge variant="outline" className="border-amber-500/50 text-amber-700">
+      <Badge variant="outline" className="border-warning/50 text-warning">
         {label ?? "Nuovo"}
       </Badge>
     );
   }
 
   return (
-    <Badge variant="outline" className="border-emerald-500/50 text-emerald-700">
+    <Badge variant="outline" className="border-success/50 text-success">
       {label ?? "Trovato in DB"}
     </Badge>
   );

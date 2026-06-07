@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { ProductsDashboardStats } from "@/lib/server-data";
 import { useParams } from "next/navigation";
 
@@ -38,20 +43,6 @@ export default function ResaleCategoryChart({
 
   // Take top 10 categories
   const topCategories = data.slice(0, 10);
-
-  // Use category colors if available, otherwise use default palette
-  const defaultColors = [
-    "#3b82f6",
-    "#f97316",
-    "#22c55e",
-    "#a855f7",
-    "#ec4899",
-    "#14b8a6",
-    "#eab308",
-    "#6366f1",
-    "#ef4444",
-    "#84cc16",
-  ];
 
   const chartOptions: ApexOptions = {
     chart: {
@@ -96,7 +87,7 @@ export default function ResaleCategoryChart({
       categories: topCategories.map((d) => d.category),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -110,7 +101,7 @@ export default function ResaleCategoryChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -120,7 +111,7 @@ export default function ResaleCategoryChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
       xaxis: {
         lines: {
@@ -143,7 +134,7 @@ export default function ResaleCategoryChart({
       show: false,
     },
     colors: topCategories.map(
-      (cat, i) => cat.color || defaultColors[i % defaultColors.length]
+      (cat, i) => cat.color || chartColorAt(i)
     ),
   };
 

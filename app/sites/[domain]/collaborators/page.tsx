@@ -37,16 +37,14 @@ export default async function Page({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Collaboratori</h1>
-          <p className="text-sm text-muted-foreground">
-            {isAdmin
-              ? "Gestisci i collaboratori collegati a questo sito"
-              : "Visualizza i collaboratori collegati a questo sito"}
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title="Collaboratori"
+        subtitle={
+          isAdmin
+            ? "Gestisci i collaboratori collegati a questo sito"
+            : "Visualizza i collaboratori collegati a questo sito"
+        }
+      />
       <PageContent>
         <DataWrapper
           data={collaborators}

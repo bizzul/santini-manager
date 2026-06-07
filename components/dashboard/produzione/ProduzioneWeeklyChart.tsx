@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  CHART_SERIES_COLORS,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { ProduzioneDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -81,7 +86,7 @@ export default function ProduzioneWeeklyChart({
       categories: data.map((d) => d.week),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -95,7 +100,7 @@ export default function ProduzioneWeeklyChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => Math.round(value).toString(),
@@ -104,7 +109,7 @@ export default function ProduzioneWeeklyChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -123,22 +128,13 @@ export default function ProduzioneWeeklyChart({
         shape: "circle",
       },
       labels: {
-        colors: "#a1a1aa",
+        colors: getChartAxisColor(),
       },
       itemMargin: {
         horizontal: 8,
       },
     },
-    colors: [
-      "#22c55e", // green
-      "#3b82f6", // blue
-      "#f97316", // orange
-      "#a855f7", // purple
-      "#ec4899", // pink
-      "#14b8a6", // teal
-      "#eab308", // yellow
-      "#6366f1", // indigo
-    ].slice(0, columnNames.length),
+    colors: [...CHART_SERIES_COLORS].slice(0, columnNames.length),
   };
 
   return (

@@ -74,16 +74,10 @@ export default async function InventarioDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {verticalProfile.pageCopy.inventoryTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.inventorySubtitle}
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.inventoryTitle}
+        subtitle={verticalProfile.pageCopy.inventorySubtitle}
+      />
       <PageContent>
         <div className="space-y-6">
           {/* KPI Cards */}

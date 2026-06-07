@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { InterniDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -78,7 +83,7 @@ export default function TrendOreInterneChart({
       categories: data.map((d) => d.week),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -92,7 +97,7 @@ export default function TrendOreInterneChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => `${Math.round(value)}h`,
@@ -101,7 +106,7 @@ export default function TrendOreInterneChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -113,7 +118,7 @@ export default function TrendOreInterneChart({
     legend: {
       show: false,
     },
-    colors: ["#a855f7"],
+    colors: [chartColorAt(4)],
   };
 
   return (

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Copy } from "lucide-react";
 import { duplicateOrganization } from "../actions";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 export function DuplicateOrganizationButton({
   organizationId,

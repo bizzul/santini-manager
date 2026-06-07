@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Loader2, Paperclip, Send, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useAssistantVisibility } from "@/hooks/use-assistant-visibility";

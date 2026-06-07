@@ -71,16 +71,10 @@ export default async function VenditaDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {verticalProfile.pageCopy.salesTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.salesSubtitle}
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.salesTitle}
+        subtitle={verticalProfile.pageCopy.salesSubtitle}
+      />
       <PageContent>
         <div className="space-y-6">
           {/* Stato Offerte Section */}

@@ -11,7 +11,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -262,7 +262,7 @@ export default function FactorySettingsModal({
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-xl">Fabbrica</DialogTitle>
             <DialogDescription className="text-white/70">
@@ -477,7 +477,7 @@ export default function FactorySettingsModal({
       </Dialog>
 
       <Dialog open={departmentDialogOpen} onOpenChange={setDepartmentDialogOpen}>
-        <DialogContent className="sm:max-w-lg bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="sm:max-w-lg bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>
               {editingDepartmentId ? "Modifica reparto" : "Nuovo reparto"}
@@ -536,7 +536,7 @@ export default function FactorySettingsModal({
       </Dialog>
 
       <Dialog open={machineDialogOpen} onOpenChange={setMachineDialogOpen}>
-        <DialogContent className="sm:max-w-xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="sm:max-w-xl bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>
               {editingMachineId ? "Modifica macchinario" : "Nuovo macchinario"}

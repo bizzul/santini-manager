@@ -75,9 +75,10 @@ export const List: FC<Props> = ({
         </div>
       )}
 
-      <table className="w-full shadow-xl table-default table-auto text-left">
+      <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <table className="w-full table-auto text-left">
         <thead>
-          <tr className="h-14 bg-[#334155] text-white">
+          <tr className="h-14 bg-muted text-foreground">
             <th className="p-2">Creato da</th>
             <th className="p-2">Reparto</th>
             <th className="p-2">Ore</th>
@@ -231,6 +232,7 @@ export const List: FC<Props> = ({
             })}
         </tbody>
       </table>
+      </div>
 
       {loading && (
         <div>

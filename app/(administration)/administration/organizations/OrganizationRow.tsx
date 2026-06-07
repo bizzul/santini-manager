@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Trash2, Globe, Copy } from "lucide-react";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
 import { deleteOrganization, duplicateOrganization } from "../actions";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Organization {
   id: string;

@@ -2,6 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
+import {
+  BRAND_DEFAULT_COLOR,
+  getChartAxisColor,
+} from "@/lib/charts/theme";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -18,7 +22,7 @@ interface ApexRadialBarProps {
 export default function ApexRadialBar({
   value,
   label,
-  color = "#3b82f6",
+  color = BRAND_DEFAULT_COLOR,
   height = 250,
   theme = "dark",
 }: ApexRadialBarProps) {
@@ -49,7 +53,7 @@ export default function ApexRadialBar({
             show: true,
             fontSize: "16px",
             fontWeight: 600,
-            color: theme === "dark" ? "#a1a1aa" : "#71717a",
+            color: getChartAxisColor(),
             offsetY: -10,
           },
           value: {

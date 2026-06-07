@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { InventoryDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -76,7 +81,7 @@ export default function ValueTrendChart({ data }: ValueTrendChartProps) {
       categories: data.map((d) => d.week),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -90,7 +95,7 @@ export default function ValueTrendChart({ data }: ValueTrendChartProps) {
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => Math.round(value).toString(),
@@ -99,7 +104,7 @@ export default function ValueTrendChart({ data }: ValueTrendChartProps) {
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -123,13 +128,13 @@ export default function ValueTrendChart({ data }: ValueTrendChartProps) {
         shape: "circle",
       },
       labels: {
-        colors: "#a1a1aa",
+        colors: getChartAxisColor(),
       },
       itemMargin: {
         horizontal: 8,
       },
     },
-    colors: ["#22c55e", "#3b82f6"],
+    colors: [chartColorAt(3), chartColorAt(0)],
   };
 
   const chartSeries = [

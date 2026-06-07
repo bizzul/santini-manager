@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Briefcase, Camera, Loader2, Pencil, ShieldCheck, Users } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -207,7 +207,7 @@ export default function HrSettingsModal({
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-xl">HR</DialogTitle>
             <DialogDescription className="text-white/70">

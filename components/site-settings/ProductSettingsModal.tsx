@@ -9,7 +9,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -206,7 +206,7 @@ export default function ProductSettingsModal({
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-xl">Prodotti</DialogTitle>
             <DialogDescription className="text-white/70">
@@ -375,7 +375,7 @@ export default function ProductSettingsModal({
       </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="sm:max-w-2xl bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>
               {form.id ? "Modifica categoria prodotto" : "Nuova categoria prodotto"}

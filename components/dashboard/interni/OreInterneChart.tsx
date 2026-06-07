@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { InterniDashboardStats } from "@/lib/server-data";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -90,7 +95,7 @@ export default function OreInterneChart({ data }: OreInterneChartProps) {
       categories: data.map((d) => d.categoria),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => `${value}h`,
@@ -105,7 +110,7 @@ export default function OreInterneChart({ data }: OreInterneChartProps) {
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -117,7 +122,7 @@ export default function OreInterneChart({ data }: OreInterneChartProps) {
         shade: "dark",
         type: "horizontal",
         shadeIntensity: 0.5,
-        gradientToColors: ["#818cf8"],
+        gradientToColors: [chartColorAt(8)],
         inverseColors: false,
         opacityFrom: 1,
         opacityTo: 1,
@@ -126,7 +131,7 @@ export default function OreInterneChart({ data }: OreInterneChartProps) {
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
       xaxis: {
         lines: {
@@ -148,7 +153,7 @@ export default function OreInterneChart({ data }: OreInterneChartProps) {
     legend: {
       show: false,
     },
-    colors: ["#a855f7"],
+    colors: [chartColorAt(4)],
   };
 
   return (

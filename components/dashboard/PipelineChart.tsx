@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { DashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -60,7 +65,7 @@ export default function PipelineChart({ data }: PipelineChartProps) {
       categories: data.pipelineData.map((d) => d.month),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -74,7 +79,7 @@ export default function PipelineChart({ data }: PipelineChartProps) {
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => `${formatCurrency(value)}`,
@@ -82,7 +87,7 @@ export default function PipelineChart({ data }: PipelineChartProps) {
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -91,7 +96,7 @@ export default function PipelineChart({ data }: PipelineChartProps) {
         formatter: (value) => `CHF ${formatCurrency(value)}`,
       },
     },
-    colors: ["#3b82f6"],
+    colors: [chartColorAt(0)],
   };
 
   const chartSeries = [

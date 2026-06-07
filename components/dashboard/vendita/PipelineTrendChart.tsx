@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { VenditaDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -51,7 +56,7 @@ export default function PipelineTrendChart({ data }: PipelineTrendChartProps) {
       categories: data.map((d) => d.month),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -69,7 +74,7 @@ export default function PipelineTrendChart({ data }: PipelineTrendChartProps) {
         },
         labels: {
           style: {
-            colors: "#a1a1aa",
+            colors: getChartAxisColor(),
             fontSize: "12px",
           },
           formatter: (value) => value.toFixed(0),
@@ -83,7 +88,7 @@ export default function PipelineTrendChart({ data }: PipelineTrendChartProps) {
         },
         labels: {
           style: {
-            colors: "#a1a1aa",
+            colors: getChartAxisColor(),
             fontSize: "12px",
           },
           formatter: (value) => formatCurrency(value),
@@ -93,7 +98,7 @@ export default function PipelineTrendChart({ data }: PipelineTrendChartProps) {
     ],
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -117,13 +122,13 @@ export default function PipelineTrendChart({ data }: PipelineTrendChartProps) {
         shape: "circle",
       },
       labels: {
-        colors: "#a1a1aa",
+            colors: getChartAxisColor(),
       },
       itemMargin: {
         horizontal: 16,
       },
     },
-    colors: ["#3b82f6", "#22c55e"],
+    colors: [chartColorAt(0), chartColorAt(3)],
   };
 
   const chartSeries = [

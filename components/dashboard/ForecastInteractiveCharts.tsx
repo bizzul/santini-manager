@@ -4,6 +4,11 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { ApexOptions } from "apexcharts";
 import { BarChart3, Clock3, Factory, TrendingUp, Wallet } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { DashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -101,19 +106,19 @@ export default function ForecastInteractiveCharts({
         columnWidth: "52%",
       },
     },
-    colors: ["#3b82f6", "#22d3ee"],
+    colors: [chartColorAt(0), chartColorAt(6)],
     dataLabels: { enabled: false },
     xaxis: {
       categories: occupancyCategories.map((item) => item.name),
-      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
+      labels: { style: { colors: getChartAxisColor(), fontSize: "12px" } },
     },
     yaxis: {
       max: 100,
-      title: { text: "% Carico", style: { color: "#94a3b8" } },
-      labels: { style: { colors: "#a1a1aa", fontSize: "12px" } },
+      title: { text: "% Carico", style: { color: getChartAxisColor() } },
+      labels: { style: { colors: getChartAxisColor(), fontSize: "12px" } },
     },
-    grid: { borderColor: "#3f3f46", strokeDashArray: 3 },
-    legend: { labels: { colors: "#cbd5e1" } },
+    grid: { borderColor: getChartGridColor(), strokeDashArray: 3 },
+    legend: { labels: { colors: getChartAxisColor() } },
     tooltip: {
       theme: "dark",
       y: {
@@ -146,7 +151,7 @@ export default function ForecastInteractiveCharts({
       type: "gradient",
       gradient: { opacityFrom: 0.45, opacityTo: 0.15, stops: [0, 100] },
     },
-    colors: ["#a78bfa"],
+    colors: [chartColorAt(4)],
     dataLabels: { enabled: false },
     xaxis: {
       categories: (plannedHoursData?.byDepartment || []).map((item) => item.department),
@@ -180,18 +185,20 @@ export default function ForecastInteractiveCharts({
       background: "transparent",
     },
     stroke: { curve: "smooth", width: 2 },
-    colors: [selectedHorizon.value >= 0 ? "#10b981" : "#ef4444"],
+    colors: [
+      selectedHorizon.value >= 0 ? chartColorAt(3) : chartColorAt(7),
+    ],
     xaxis: {
       categories: (cashFlowData?.monthlySeries || []).map((item) => item.label),
-      labels: { style: { colors: "#a1a1aa", fontSize: "11px" } },
+      labels: { style: { colors: getChartAxisColor(), fontSize: "11px" } },
     },
     yaxis: {
       labels: {
         formatter: (value) => `CHF ${(value / 1000).toFixed(0)}k`,
-        style: { colors: "#a1a1aa", fontSize: "11px" },
+        style: { colors: getChartAxisColor(), fontSize: "11px" },
       },
     },
-    grid: { borderColor: "#3f3f46", strokeDashArray: 3 },
+    grid: { borderColor: getChartGridColor(), strokeDashArray: 3 },
     dataLabels: { enabled: false },
     tooltip: {
       theme: "dark",

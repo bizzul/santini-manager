@@ -1120,7 +1120,7 @@ export function GlobalVoiceAssistant() {
                                                 )}
 
                                             {command.clarification && (
-                                                <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+                                                <div className="mt-3 rounded-lg border border-warning/30 bg-warning/5 p-3 text-sm">
                                                     <p className="font-medium">
                                                         Problema rilevato
                                                     </p>
@@ -1163,7 +1163,7 @@ export function GlobalVoiceAssistant() {
                                                 <div
                                                     className={`mt-3 rounded-lg border p-3 text-sm ${
                                                         executionState.status === "success"
-                                                            ? "border-green-500/30 bg-green-500/5 text-green-700 dark:text-green-300"
+                                                            ? "border-success/30 bg-success/5 text-success"
                                                             : executionState.status === "error"
                                                             ? "border-destructive/30 bg-destructive/5 text-destructive"
                                                             : "border-primary/30 bg-primary/5"
@@ -1191,9 +1191,9 @@ export function GlobalVoiceAssistant() {
                     )}
 
                     {clarificationState && (
-                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                        <div className="rounded-lg border border-warning/30 bg-warning/5 p-3">
                             <div className="flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-amber-600" />
+                                <Sparkles className="h-4 w-4 text-warning" />
                                 <p className="text-sm font-medium">Chiarimento richiesto</p>
                             </div>
                             {clarificationCommandIndex >= 0 && (

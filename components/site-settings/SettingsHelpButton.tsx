@@ -49,7 +49,7 @@ export default function SettingsHelpButton({
       </Tooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-lg bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white">
+        <DialogContent className="sm:max-w-lg bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription className="text-white/70">

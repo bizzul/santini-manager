@@ -281,7 +281,7 @@ export default function ModuleManagementModal({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="text-white text-xl">
             Moduli

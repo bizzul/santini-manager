@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { InventoryDashboardStats } from "@/lib/server-data";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -91,7 +96,7 @@ export default function ValueByCategoryChart({
       categories: topCategories.map((d) => d.category),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => `CHF ${formatCurrency(Number(value))}`,
@@ -106,7 +111,7 @@ export default function ValueByCategoryChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -116,7 +121,7 @@ export default function ValueByCategoryChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
       xaxis: {
         lines: {
@@ -135,7 +140,7 @@ export default function ValueByCategoryChart({
         formatter: (value) => `CHF ${formatCurrency(value)}`,
       },
     },
-    colors: ["#3b82f6"],
+    colors: [chartColorAt(0)],
   };
 
   const chartSeries = [

@@ -1690,7 +1690,7 @@ export function AppSidebar() {
               className={cn(
                 "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] py-2 shadow-[0_8px_20px_hsl(var(--sidebar-card-shadow)/0.1)] dark:bg-black/10 dark:shadow-none",
                 state === "collapsed"
-                  ? "flex-col gap-1 justify-center px-0"
+                  ? "w-full flex-col items-center gap-1 justify-center px-1"
                   : "flex-row justify-around px-2"
               )}
             >

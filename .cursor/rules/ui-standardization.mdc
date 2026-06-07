@@ -93,9 +93,17 @@ Usare SOLO queste utility Tailwind nelle pagine:
   `text-background`.
 - Bordi/ring: `border-border`, `border-input`, `ring-ring`,
   `border-destructive`.
-- Tinte semantiche (solo per stati di feedback): `bg-emerald-*`,
-  `bg-amber-*`, `bg-red-*`, `bg-green-*` quando rappresentano
-  esplicitamente success/warning/danger.
+- Feedback semantico (preferire i token dedicati):
+  `bg-success`, `text-success`, `bg-warning`, `text-warning`,
+  `bg-info`, `text-info`, `bg-destructive`, `text-destructive`.
+  Evitare `bg-emerald-*`, `bg-amber-*`, `bg-red-*`, `bg-green-*` raw.
+- Grafici: usare `lib/charts/theme.ts` (`CHART_SERIES_COLORS`,
+  `getChartAxisColor`, `chartColorAt`) — mai hex sparsi nei chart.
+- Toast: `@/lib/toast` o `useToast` da `@/components/ui/use-toast`.
+  Vietato `sonner` e `package/components/toast`.
+- Icone: `lucide-react` come standard. Vietato aggiungere nuovi import
+  FontAwesome/Heroicons.
+- Modali: `@/components/ui/dialog`. `package/components/modal` e' deprecato.
 
 VIETATO nei className delle pagine:
 
@@ -114,6 +122,8 @@ Eccezioni documentate e gia gestite:
   `app/globals.css`, gia ricondotte a token (`bg-card/60`, `border-border/70`).
 - `components/command-deck/**` mantiene l'estetica immersiva ma usa solo i
   token (`bg-page-shadow`, `bg-surface-strong/X`, `border-border/X`).
+- `components/documenti/document-preview.tsx` usa `.document-print-preview`
+  (foglio A4 bianco intenzionale, non chrome app).
 
 ## 5. Pulsanti, tabelle e form
 

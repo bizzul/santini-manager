@@ -11,6 +11,10 @@ import {
 } from "@/components/ui/select";
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
+import {
+  chartColorAt,
+  getChartAxisColor,
+} from "@/lib/charts/theme";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -94,7 +98,7 @@ export default function OffersCard({ data }: OffersCardProps) {
       categories: ["To do", "In elaborazione", "Inviate"],
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
           fontWeight: 600,
         },
@@ -135,7 +139,7 @@ export default function OffersCard({ data }: OffersCardProps) {
         },
       },
     },
-    colors: ["#eab308", "#3b82f6", "#22c55e"],
+    colors: [chartColorAt(1), chartColorAt(0), chartColorAt(3)],
   };
 
   const chartSeries = [

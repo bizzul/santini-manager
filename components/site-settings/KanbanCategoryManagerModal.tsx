@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Loader2, Plus, Pencil, Trash2, Copy, Folder, Building2 } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { IconSelectorWithColor } from "@/components/kanbans/IconSelector";
@@ -303,7 +303,7 @@ export default function KanbanCategoryManagerModal({
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>{trigger}</DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-white text-xl">
               Kanban
@@ -455,7 +455,7 @@ export default function KanbanCategoryManagerModal({
 
       {/* Form Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[500px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
+        <DialogContent className="sm:max-w-[500px] bg-card border-border text-foreground">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editingCategory ? "Modifica Categoria" : "Nuova Categoria"}
@@ -687,7 +687,7 @@ export default function KanbanCategoryManagerModal({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Elimina Categoria

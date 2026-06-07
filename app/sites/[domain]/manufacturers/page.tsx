@@ -11,6 +11,8 @@ import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+import { Factory } from "lucide-react";
 
 export default async function Page({
   params,
@@ -36,27 +38,25 @@ export default async function Page({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <h1 className="text-2xl font-bold">Produttori</h1>
-        <div className="flex gap-2">
-          <ButtonExportCSV />
-          <DialogImportCSV />
-          <DialogCreate data={categories} domain={domain} />
-        </div>
-      </PageHeader>
+      <PageHeader
+        title="Produttori"
+        actions={
+          <>
+            <ButtonExportCSV />
+            <DialogImportCSV />
+            <DialogCreate data={categories} domain={domain} />
+          </>
+        }
+      />
       <PageContent>
         {manufacturers.length > 0 ? (
           <DataWrapper data={manufacturers} domain={domain} />
         ) : (
-          <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">
-              Nessun produttore registrato!
-            </h1>
-            <p>
-              Premi (Aggiungi produttore) per aggiungere il tuo primo
-              produttore!
-            </p>
-          </div>
+          <EmptyState
+            icon={<Factory className="h-6 w-6" />}
+            title="Nessun produttore registrato"
+            description="Premi 'Aggiungi produttore' per aggiungere il tuo primo produttore."
+          />
         )}
       </PageContent>
     </PageLayout>

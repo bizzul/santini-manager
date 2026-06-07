@@ -93,9 +93,8 @@ export function DocumentPreview({
       style={{ maxWidth: `${A4_PAGE_WIDTH_MM}mm` }}
     >
       <div
-        className="overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 text-sm text-black [&_p]:text-black [&_span]:text-black [&_li]:text-black"
+        className="document-print-preview overflow-y-auto"
         style={{
-          color: "#000000",
           aspectRatio: A4_ASPECT_RATIO,
           minHeight: "min(297mm, 75vh)",
         }}

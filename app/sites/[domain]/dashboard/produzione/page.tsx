@@ -67,16 +67,10 @@ export default async function ProduzioneDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {verticalProfile.pageCopy.productionTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.productionSubtitle}
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.productionTitle}
+        subtitle={verticalProfile.pageCopy.productionSubtitle}
+      />
       <PageContent>
         <div className="space-y-6">
           {/* Stato Produzione - solo se c'è la categoria Produzione */}

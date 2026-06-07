@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
 import { deleteOrganization, deleteSite } from "./actions";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 interface Site {
   id: string;

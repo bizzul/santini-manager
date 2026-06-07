@@ -2,6 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
+import {
+  getBrandDefaultColor,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -79,7 +84,7 @@ export default function ApexBarChart({
       categories: categories,
       labels: {
         style: {
-          colors: theme === "dark" ? "#a1a1aa" : "#71717a",
+          colors: getChartAxisColor(),
           fontSize: "11px",
         },
         rotate: categories.length > 6 ? -45 : 0,
@@ -94,7 +99,7 @@ export default function ApexBarChart({
     yaxis: {
       labels: {
         style: {
-          colors: theme === "dark" ? "#a1a1aa" : "#71717a",
+          colors: getChartAxisColor(),
           fontSize: "11px",
         },
         formatter: (value) => {
@@ -119,7 +124,7 @@ export default function ApexBarChart({
       },
     },
     grid: {
-      borderColor: theme === "dark" ? "#27272a" : "#e4e4e7",
+      borderColor: getChartGridColor(),
       strokeDashArray: 4,
       xaxis: {
         lines: {
@@ -136,7 +141,7 @@ export default function ApexBarChart({
       position: "top",
       horizontalAlign: "left",
       labels: {
-        colors: theme === "dark" ? "#a1a1aa" : "#71717a",
+        colors: getChartAxisColor(),
       },
     },
     tooltip: {
@@ -147,7 +152,7 @@ export default function ApexBarChart({
         },
       },
     },
-    colors: series.map((s) => s.color || "#3b82f6"),
+    colors: series.map((s) => s.color || getBrandDefaultColor()),
   };
 
   return (

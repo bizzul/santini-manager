@@ -8,6 +8,8 @@ import {
 import DialogCreate from "./dialogCreate";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+import { Tags } from "lucide-react";
 
 export default async function Page({
   params,
@@ -30,22 +32,19 @@ export default async function Page({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <h1 className="text-2xl font-bold">Categorie Fornitori</h1>
-        <DialogCreate domain={domain} />
-      </PageHeader>
+      <PageHeader
+        title="Categorie Fornitori"
+        actions={<DialogCreate domain={domain} />}
+      />
       <PageContent>
         {categories.length > 0 ? (
           <DataWrapper data={categories} domain={domain} />
         ) : (
-          <div className="w-full h-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">
-              Nessuna categoria fornitore registrata!
-            </h1>
-            <p>
-              Premi (Aggiungi categoria) per aggiungere la tua prima categoria
-            </p>
-          </div>
+          <EmptyState
+            icon={<Tags className="h-6 w-6" />}
+            title="Nessuna categoria fornitore registrata"
+            description="Premi 'Aggiungi categoria' per aggiungere la tua prima categoria."
+          />
         )}
       </PageContent>
     </PageLayout>

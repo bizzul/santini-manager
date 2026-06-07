@@ -65,14 +65,10 @@ export default async function FactoryPage({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Fabbrica</h1>
-          <p className="text-sm text-muted-foreground">
-            Panoramica reparti, macchinari e stato prodotti in tempo reale.
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title="Fabbrica"
+        subtitle="Panoramica reparti, macchinari e stato prodotti in tempo reale."
+      />
 
       <PageContent>
         <FactoryDashboard

@@ -3,22 +3,15 @@
 import { Factory } from "lucide-react";
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
+import {
+  chartColorAt,
+  getBrandDefaultColor,
+  getChartAxisColor,
+} from "@/lib/charts/theme";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
-
-// Default colors for categories
-const DEFAULT_COLORS = [
-  "#3b82f6", // blue
-  "#eab308", // yellow
-  "#f97316", // orange
-  "#22c55e", // green
-  "#8b5cf6", // purple
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#f43f5e", // rose
-];
 
 // Helper function to darken a hex color
 function darkenColor(hex: string, percent: number): string {
@@ -64,7 +57,7 @@ export default function ProductionOrdersCard({
   // Map categories to department style with colors
   const departments = data.byCategory.map((cat, index) => ({
     name: cat.name,
-    color: cat.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+    color: cat.color || chartColorAt(index),
     projects: cat.projects,
     items: cat.items,
     value: cat.value,
@@ -153,7 +146,7 @@ export default function ProductionOrdersCard({
       categories: departments.map((d) => d.name),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "11px",
           fontWeight: 600,
         },
@@ -181,7 +174,7 @@ export default function ProductionOrdersCard({
       position: "bottom",
       horizontalAlign: "center",
       labels: {
-        colors: "#a1a1aa",
+        colors: getChartAxisColor(),
       },
       markers: {
         size: 6,
@@ -199,7 +192,7 @@ export default function ProductionOrdersCard({
     // Use function to return color based on dataPointIndex
     colors: [
       function ({ dataPointIndex }: { dataPointIndex: number }) {
-        return projectColors[dataPointIndex] || "#3b82f6";
+        return projectColors[dataPointIndex] || getBrandDefaultColor();
       },
       function ({ dataPointIndex }: { dataPointIndex: number }) {
         return elementColors[dataPointIndex] || "#1e40af";

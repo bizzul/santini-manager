@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, ChangeEvent } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import LoadingDots from "@/components/icons/loading-dots";
 
 export default function Uploader() {
@@ -52,24 +52,9 @@ export default function Uploader() {
         }).then(async (res) => {
           if (res.status === 200) {
             const { url } = await res.json();
-            toast(
-              <div className="relative">
-                <div className="p-2">
-                  <p className="font-semibold text-gray-900">File uploaded!</p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Your file has been uploaded to{" "}
-                    <a
-                      className="font-medium text-gray-900 underline"
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {url}
-                    </a>
-                  </p>
-                </div>
-              </div>,
-            );
+            toast.success("File uploaded!", {
+              description: url,
+            });
           } else {
             const error = await res.text();
             toast.error(error);

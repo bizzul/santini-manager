@@ -13,6 +13,8 @@ import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+import { Truck } from "lucide-react";
 
 export default async function Page({
   params,
@@ -40,29 +42,26 @@ export default async function Page({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.suppliersTitle}</h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.suppliersSubtitle}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <ButtonExportCSV />
-          <DialogImportCSV />
-          <DialogCreate data={categories} domain={domain} />
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.suppliersTitle}
+        subtitle={verticalProfile.pageCopy.suppliersSubtitle}
+        actions={
+          <>
+            <ButtonExportCSV />
+            <DialogImportCSV />
+            <DialogCreate data={categories} domain={domain} />
+          </>
+        }
+      />
       <PageContent>
         {suppliers.length > 0 ? (
           <DataWrapper data={suppliers} domain={domain} rowInsights={rowInsights} />
         ) : (
-          <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">Nessun fornitore registrato!</h1>
-            <p>
-              Premi (Aggiungi fornitore) per aggiungere il tuo primo fornitore!
-            </p>
-          </div>
+          <EmptyState
+            icon={<Truck className="h-6 w-6" />}
+            title="Nessun fornitore registrato"
+            description="Premi 'Aggiungi fornitore' per aggiungere il tuo primo fornitore."
+          />
         )}
       </PageContent>
     </PageLayout>

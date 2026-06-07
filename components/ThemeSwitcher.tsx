@@ -92,7 +92,7 @@ export function ThemeSwitcher() {
         aria-hidden="true"
         className={cn(
           "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] p-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:bg-black/10 dark:shadow-none",
-          isCollapsed ? "h-[124px] w-[44px]" : "h-[52px] w-full"
+          isCollapsed ? "h-[124px] w-full" : "h-[52px] w-full"
         )}
       />
     );
@@ -102,7 +102,7 @@ export function ThemeSwitcher() {
     <div
       className={cn(
         "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] p-2 shadow-[0_10px_24px_hsl(var(--sidebar-card-shadow)/0.12)] dark:bg-black/10 dark:shadow-none",
-        isCollapsed ? "w-[44px]" : "w-full"
+        "w-full"
       )}
     >
       <div

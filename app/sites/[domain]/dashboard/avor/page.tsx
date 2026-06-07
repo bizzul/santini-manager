@@ -69,16 +69,10 @@ export default async function AvorDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard – AVOR
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Gestione pratiche ufficio tecnico e stato lavorazioni
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title="Dashboard – AVOR"
+        subtitle="Gestione pratiche ufficio tecnico e stato lavorazioni"
+      />
       <PageContent>
         <div className="space-y-6">
           {/* Stato Pratiche AVOR - KPI per colonna */}

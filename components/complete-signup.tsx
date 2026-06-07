@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { logger } from "@/lib/logger";
 import { UserCheck, Loader2, XCircle, ArrowLeft } from "lucide-react";
 

@@ -12,6 +12,8 @@ import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
 import DataWrapper from "./dataWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+import { Users } from "lucide-react";
 
 export default async function Page({
   params,
@@ -38,27 +40,26 @@ export default async function Page({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.clientsTitle}</h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.clientsSubtitle}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <ButtonExportCSV />
-          <DialogImportCSV />
-          <DialogCreate />
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.clientsTitle}
+        subtitle={verticalProfile.pageCopy.clientsSubtitle}
+        actions={
+          <>
+            <ButtonExportCSV />
+            <DialogImportCSV />
+            <DialogCreate />
+          </>
+        }
+      />
       <PageContent>
         {clients.length > 0 ? (
           <DataWrapper data={clients} domain={domain} rowInsights={rowInsights} />
         ) : (
-          <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">Nessun cliente registrato</h1>
-            <p>Premi (Aggiungi cliente) per aggiungere il tuo primo cliente!</p>
-          </div>
+          <EmptyState
+            icon={<Users className="h-6 w-6" />}
+            title="Nessun cliente registrato"
+            description="Premi 'Aggiungi cliente' per aggiungere il tuo primo cliente."
+          />
         )}
       </PageContent>
     </PageLayout>

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import MobilePage from "@/components/inventory/MobilePage";
 import { createClient } from "@/utils/server";
 import { requireServerSiteContext } from "@/lib/server-data";
+import { ErrorState } from "@/components/layout/error-state";
 
 async function getData(id: number, siteId: string): Promise<any> {
   try {
@@ -44,10 +45,11 @@ async function Page({ params }: { params: Promise<{ id: number; domain: string }
 
   if (data.error) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center gap-2 bg-page-shadow px-6 text-center text-foreground">
-        <h1 className="text-3xl font-bold">
-          Nessun prodotto con questo ID: {id}
-        </h1>
+      <div className="flex min-h-screen w-full items-center justify-center bg-page-shadow px-6">
+        <ErrorState
+          variant="block"
+          title={`Nessun prodotto con questo ID: ${id}`}
+        />
       </div>
     );
   }

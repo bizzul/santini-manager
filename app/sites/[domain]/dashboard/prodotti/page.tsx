@@ -76,16 +76,10 @@ export default async function ProdottiDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            {verticalProfile.pageCopy.productsTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.productsSubtitle}
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.productsTitle}
+        subtitle={verticalProfile.pageCopy.productsSubtitle}
+      />
       <PageContent>
         <div className="space-y-6">
           {/* ============================================ */}

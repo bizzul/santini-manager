@@ -3,6 +3,11 @@
 import dynamic from "next/dynamic";
 import { ApexOptions } from "apexcharts";
 import { TrendingUp } from "lucide-react";
+import {
+  chartColorAt,
+  getChartAxisColor,
+  getChartGridColor,
+} from "@/lib/charts/theme";
 import { ProductsDashboardStats } from "@/lib/server-data";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -69,7 +74,7 @@ export default function ProductionTrendChart({
       categories: data.map((d) => d.week),
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
       },
@@ -83,7 +88,7 @@ export default function ProductionTrendChart({
     yaxis: {
       labels: {
         style: {
-          colors: "#a1a1aa",
+          colors: getChartAxisColor(),
           fontSize: "12px",
         },
         formatter: (value) => Math.round(value).toString(),
@@ -92,7 +97,7 @@ export default function ProductionTrendChart({
     },
     grid: {
       show: true,
-      borderColor: "#3f3f46",
+      borderColor: getChartGridColor(),
       strokeDashArray: 3,
     },
     tooltip: {
@@ -101,7 +106,7 @@ export default function ProductionTrendChart({
         formatter: (value) => `${Math.round(value)} elementi`,
       },
     },
-    colors: ["#3b82f6"],
+    colors: [chartColorAt(0)],
   };
 
   const chartSeries = [

@@ -30,7 +30,7 @@ import {
     EyeOff,
     Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { getVoiceCommandScreenContexts, VOICE_COMMAND_INTENT_LABELS } from "@/lib/voice-command-config";
 import { VOICE_INTENT_REQUIREMENTS } from "@/lib/site-settings-guides";
 
@@ -355,7 +355,7 @@ export default function AiSettingsModal({
                                         </Button>
                                     </div>
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <CheckCircle className="h-3 w-3 text-green-500" />
+                                        <CheckCircle className="h-3 w-3 text-success" />
                                         API key salvata sul server (mai esposta al browser)
                                     </p>
                                 </div>

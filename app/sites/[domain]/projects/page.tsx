@@ -9,6 +9,8 @@ import {
 import { ProjectsHeader } from "./ProjectsHeader";
 import SellProductWrapper from "./sellProductWrapper";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { EmptyState } from "@/components/layout/empty-state";
+import { FolderKanban } from "lucide-react";
 import { Client, SellProduct, Kanban, SellProductCategory } from "@/types/supabase";
 
 // Type for data returned by fetchProjectsData
@@ -42,23 +44,20 @@ export default async function Page({
 
   return (
     <PageLayout>
-      <PageHeader>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">{verticalProfile.pageCopy.projectsTitle}</h1>
-          <p className="text-sm text-muted-foreground">
-            {verticalProfile.pageCopy.projectsSubtitle}
-          </p>
-        </div>
-        <ProjectsHeader data={data} domain={domain} siteId={siteId} />
-      </PageHeader>
+      <PageHeader
+        title={verticalProfile.pageCopy.projectsTitle}
+        subtitle={verticalProfile.pageCopy.projectsSubtitle}
+        actions={<ProjectsHeader data={data} domain={domain} siteId={siteId} />}
+      />
       <PageContent>
         {data.tasks?.length > 0 ? (
           <SellProductWrapper data={data} domain={domain} />
         ) : (
-          <div className="w-full text-center flex flex-col justify-center items-center h-80">
-            <h1 className="font-bold text-2xl">Nessun progetto registrato!</h1>
-            <p>Premi (Aggiungi progetto) per aggiungere il tuo primo progetto!</p>
-          </div>
+          <EmptyState
+            icon={<FolderKanban className="h-6 w-6" />}
+            title="Nessun progetto registrato"
+            description="Premi 'Aggiungi progetto' per aggiungere il tuo primo progetto."
+          />
         )}
       </PageContent>
     </PageLayout>

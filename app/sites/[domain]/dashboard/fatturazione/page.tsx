@@ -87,16 +87,10 @@ export default async function FatturazioneDashboardPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Dashboard – Fatturazione
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Monitoraggio fatture, scadenze e incassi
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title="Dashboard – Fatturazione"
+        subtitle="Monitoraggio fatture, scadenze e incassi"
+      />
       <PageContent>
         <div className="space-y-6">
           {/* Stato Fatture */}

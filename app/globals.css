@@ -24,6 +24,25 @@
   --accent-foreground: 222.2 84% 4.9%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
+  --success: 160 84% 39%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 26 83% 14%;
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 100%;
+  --brand-default: 217.2 91.2% 59.8%;
+  --chart-1: 217.2 91.2% 59.8%;
+  --chart-2: 45 93% 47%;
+  --chart-3: 25 95% 53%;
+  --chart-4: 142 71% 45%;
+  --chart-5: 258 90% 66%;
+  --chart-6: 330 81% 60%;
+  --chart-7: 189 94% 43%;
+  --chart-8: 347 77% 50%;
+  --chart-9: 239 84% 67%;
+  --chart-10: 84 81% 44%;
+  --chart-axis: 240 5% 65%;
+  --chart-grid: 240 4% 26%;
   --border: 35 18% 81%;
   --input: 35 18% 83%;
   --ring: 222.2 84% 4.9%;
@@ -50,6 +69,25 @@
   --accent-foreground: 210 40% 98%;
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 210 40% 98%;
+  --success: 160 84% 39%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 48 96% 89%;
+  --info: 199 89% 48%;
+  --info-foreground: 0 0% 100%;
+  --brand-default: 217.2 91.2% 59.8%;
+  --chart-1: 217.2 91.2% 59.8%;
+  --chart-2: 45 93% 47%;
+  --chart-3: 25 95% 53%;
+  --chart-4: 142 71% 45%;
+  --chart-5: 258 90% 66%;
+  --chart-6: 330 81% 60%;
+  --chart-7: 189 94% 43%;
+  --chart-8: 347 77% 50%;
+  --chart-9: 239 84% 67%;
+  --chart-10: 84 81% 44%;
+  --chart-axis: 240 5% 65%;
+  --chart-grid: 240 4% 26%;
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
   --ring: 212.7 26.8% 83.9%;
@@ -95,11 +133,22 @@
   }
 
   .dashboard-panel-title {
-    @apply text-xl font-bold text-foreground;
+    @apply text-lg font-semibold tracking-tight text-foreground;
   }
 
   .dashboard-panel-subtitle {
     @apply text-sm text-muted-foreground;
+  }
+
+  /* Isolated A4 print simulation — intentional white paper, not app chrome */
+  .document-print-preview {
+    @apply rounded-lg border border-border bg-white p-4 text-sm text-black;
+  }
+
+  .document-print-preview p,
+  .document-print-preview span,
+  .document-print-preview li {
+    color: inherit;
   }
 
 }
@@ -371,6 +420,25 @@ body:has(.home-gradient-bg) {
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --color-brand-default: hsl(var(--brand-default));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-chart-6: hsl(var(--chart-6));
+  --color-chart-7: hsl(var(--chart-7));
+  --color-chart-8: hsl(var(--chart-8));
+  --color-chart-9: hsl(var(--chart-9));
+  --color-chart-10: hsl(var(--chart-10));
+  --color-chart-axis: hsl(var(--chart-axis));
+  --color-chart-grid: hsl(var(--chart-grid));
 }
 
 /*

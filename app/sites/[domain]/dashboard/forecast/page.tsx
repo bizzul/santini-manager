@@ -77,17 +77,10 @@ export default async function SiteDashboardForecastPage({
   return (
     <PageLayout>
       <DashboardTabs />
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Forecast - {verticalProfile.pageCopy.dashboardOverviewTitle}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Dashboard previsionale con KPI conversione, capacita produttiva,
-            fabbisogno ore e cash flow stimato.
-          </p>
-        </div>
-      </PageHeader>
+      <PageHeader
+        title={`Forecast - ${verticalProfile.pageCopy.dashboardOverviewTitle}`}
+        subtitle="Dashboard previsionale con KPI conversione, capacita produttiva, fabbisogno ore e cash flow stimato."
+      />
       <PageContent>
         <div className="space-y-6">
           <ForecastInteractiveCharts data={dashboardData} />

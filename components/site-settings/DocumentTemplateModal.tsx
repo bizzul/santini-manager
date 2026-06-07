@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Paperclip, Sparkles, Upload, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { DocumentTemplateConfig } from "@/lib/documenti/template-types";
 import type { TemplateStructureMap } from "@/lib/documenti/template-structure-types";
 import { createClient } from "@/utils/supabase/client";
