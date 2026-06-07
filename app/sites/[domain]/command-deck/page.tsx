@@ -12,7 +12,9 @@ import {
 import { getUserContext } from "@/lib/auth-utils";
 import { CommandDeckView } from "@/components/command-deck/CommandDeckView";
 import {
+  buildInventoryDrillData,
   buildOrbitSet,
+  buildProductDrillData,
   normalizeAdminUsers,
   normalizeClients,
   normalizeFactoryDepartments,
@@ -20,6 +22,7 @@ import {
   normalizeProducts,
   normalizeProjects,
   normalizeSuppliers,
+  type ModuleDrillGroups,
   type OrbitGroups,
 } from "@/components/command-deck/orbit-items";
 import { getCommandDeckEnabledForSite } from "@/lib/command-deck-settings.server";
@@ -102,7 +105,7 @@ export default async function CommandDeckPage({
   const siteName: string =
     siteContext.siteData?.name || domain || "Santini";
 
-  const orbitGroups = await buildOrbitGroups(siteContext.siteId);
+  const { orbitGroups, drillGroups } = await buildOrbitGroups(siteContext.siteId);
 
   return (
     <div className="h-full w-full">
@@ -113,6 +116,7 @@ export default async function CommandDeckPage({
         commanderRole={userContext.role ?? null}
         commanderAvatarUrl={commanderAvatarUrl}
         orbitGroups={orbitGroups}
+        drillGroups={drillGroups}
         enableModuleOpen={true}
       />
     </div>
@@ -135,7 +139,9 @@ export default async function CommandDeckPage({
  * matches the user's intent of showing only real data when the feature
  * toggle is enabled.
  */
-async function buildOrbitGroups(siteId: string): Promise<OrbitGroups> {
+async function buildOrbitGroups(
+  siteId: string,
+): Promise<{ orbitGroups: OrbitGroups; drillGroups: ModuleDrillGroups }> {
   const logAndReturn = <T,>(label: string, empty: T) =>
     (err: unknown): T => {
       console.error(`[CommandDeck] ${label} fetch failed:`, err);
@@ -145,8 +151,8 @@ async function buildOrbitGroups(siteId: string): Promise<OrbitGroups> {
   const [
     clients,
     suppliers,
-    products,
-    inventory,
+    productsFetched,
+    inventoryFetched,
     projectsData,
     factory,
     users,
@@ -178,14 +184,19 @@ async function buildOrbitGroups(siteId: string): Promise<OrbitGroups> {
   const groups: OrbitGroups = {
     clienti: buildOrbitSet(normalizeClients(clients)),
     fornitori: buildOrbitSet(normalizeSuppliers(suppliers)),
-    prodotti: buildOrbitSet(normalizeProducts(products)),
+    prodotti: buildOrbitSet(normalizeProducts(productsFetched)),
     progetti: buildOrbitSet(normalizeProjects(projectsData.tasks ?? [])),
-    inventario: buildOrbitSet(normalizeInventory(inventory)),
+    inventario: buildOrbitSet(normalizeInventory(inventoryFetched)),
     fabbrica: buildOrbitSet(
       normalizeFactoryDepartments(factory.departments ?? []),
     ),
     admin: buildOrbitSet(normalizeAdminUsers(users)),
   };
 
-  return groups;
+  const drillGroups: ModuleDrillGroups = {
+    prodotti: buildProductDrillData(productsFetched),
+    inventario: buildInventoryDrillData(inventoryFetched),
+  };
+
+  return { orbitGroups: groups, drillGroups };
 }

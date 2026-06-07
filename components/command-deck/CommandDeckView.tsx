@@ -1,16 +1,30 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { COMMAND_DECK_NODES, type CommandDeckNode } from "./nodes";
-import { buildModuleHref } from "./routes";
+import {
+  buildModuleHref,
+  loadPersistedDeckState,
+  resolveOrbitOpenHref,
+  savePersistedDeckState,
+} from "./routes";
 import type { CommandDeckMode } from "./CommandDeckScene";
-import type { OrbitGroups, OrbitSet } from "./orbit-items";
+import {
+  buildOrbitSet,
+  getDrillBreadcrumb,
+  moduleHasDrill,
+  resolveActiveOrbitItems,
+  type DrillState,
+  type ModuleDrillGroups,
+  type OrbitGroups,
+  type OrbitItem,
+  type OrbitSet,
+} from "./orbit-items";
+import { ViewSwitch } from "./ViewSwitch";
 
-// Load the R3F scene client-side only. Three.js touches `window` and WebGL,
-// so disabling SSR avoids hydration warnings and server-side errors.
 const CommandDeckScene = dynamic(
   () => import("./CommandDeckScene").then((m) => m.CommandDeckScene),
   {
@@ -25,26 +39,18 @@ const CommandDeckScene = dynamic(
 
 interface CommandDeckViewProps {
   siteName: string;
-  /** Current site subdomain; used to build module routes via `routes.ts`. */
   domain: string;
   commanderName: string;
   commanderRole?: string | null;
   commanderAvatarUrl?: string | null;
-  /**
-   * Per-node orbit data. Keys are node ids (e.g. "clienti", "fornitori", …).
-   * Each value includes the cap-limited items, the pre-cap total and a flag
-   * signalling whether we fell back to demo items for that category.
-   */
   orbitGroups: OrbitGroups;
-  /**
-   * Toggle module navigation. When `false`, the "Open module" CTA becomes a
-   * disabled preview (useful for offline demos / screenshots).
-   */
+  drillGroups?: ModuleDrillGroups;
   enableModuleOpen?: boolean;
 }
 
-/** Duration of the fade-out overlay before the browser navigates away. */
 const NAV_FADE_DURATION_MS = 260;
+
+const EMPTY_DRILL: DrillState = {};
 
 export function CommandDeckView({
   siteName,
@@ -53,29 +59,95 @@ export function CommandDeckView({
   commanderRole,
   commanderAvatarUrl,
   orbitGroups,
+  drillGroups = {},
   enableModuleOpen = true,
 }: CommandDeckViewProps) {
   const router = useRouter();
 
-  // No default selection: V2.1+ home is centered on the user, not on Overview.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [userHovered, setUserHovered] = useState(false);
   const [mode, setMode] = useState<CommandDeckMode>("galaxy");
+  const [drill, setDrill] = useState<DrillState>(EMPTY_DRILL);
+  const [selectedOrbitItemId, setSelectedOrbitItemId] = useState<string | null>(
+    null,
+  );
   const [openingNodeId, setOpeningNodeId] = useState<string | null>(null);
+  const [openingItemLabel, setOpeningItemLabel] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const saved = loadPersistedDeckState(domain);
+    if (saved) {
+      setSelectedId(saved.selectedId);
+      setDrill(saved.drill ?? EMPTY_DRILL);
+      setMode(saved.mode ?? "galaxy");
+      setSelectedOrbitItemId(saved.selectedOrbitItemId ?? null);
+    }
+    setHydrated(true);
+  }, [domain]);
+
+  const persistState = useCallback(() => {
+    savePersistedDeckState(domain, {
+      selectedId,
+      drill,
+      mode,
+      selectedOrbitItemId,
+    });
+  }, [domain, selectedId, drill, mode, selectedOrbitItemId]);
 
   const selected: CommandDeckNode | null = useMemo(
     () => COMMAND_DECK_NODES.find((n) => n.id === selectedId) ?? null,
     [selectedId],
   );
 
+  const activeOrbitItems = useMemo(
+    () =>
+      selectedId
+        ? resolveActiveOrbitItems(selectedId, drill, orbitGroups, drillGroups)
+        : [],
+    [selectedId, drill, orbitGroups, drillGroups],
+  );
+
+  const selectedOrbitItem: OrbitItem | null = useMemo(() => {
+    if (!selectedOrbitItemId) return null;
+    return activeOrbitItems.find((i) => i.id === selectedOrbitItemId) ?? null;
+  }, [selectedOrbitItemId, activeOrbitItems]);
+
+  const activeOrbitSet: OrbitSet | undefined = useMemo(() => {
+    if (!selectedId) return undefined;
+    return buildOrbitSet(
+      resolveActiveOrbitItems(selectedId, drill, orbitGroups, drillGroups),
+    );
+  }, [selectedId, drill, orbitGroups, drillGroups]);
+
+  const drillBreadcrumb = useMemo(() => {
+    if (!selectedId) return [];
+    return getDrillBreadcrumb(selectedId, drill, drillGroups);
+  }, [selectedId, drill, drillGroups]);
+
   const handleSelect = (id: string) => {
     setSelectedId(id);
+    setDrill(EMPTY_DRILL);
+    setSelectedOrbitItemId(null);
     setMode("focus");
   };
 
   const handleUserClick = () => {
+    if (drill.subcategoryKey) {
+      setDrill((d) => ({ categoryKey: d.categoryKey }));
+      setSelectedOrbitItemId(null);
+      setMode("focus");
+      return;
+    }
+    if (drill.categoryKey) {
+      setDrill(EMPTY_DRILL);
+      setSelectedOrbitItemId(null);
+      setMode("focus");
+      return;
+    }
     setSelectedId(null);
+    setSelectedOrbitItemId(null);
     setMode("galaxy");
   };
 
@@ -83,29 +155,106 @@ export function CommandDeckView({
     setMode("galaxy");
   };
 
-  /**
-   * Navigate to the real site route for a node, with a short fade-out to
-   * avoid a jarring jump. Safe to call from either the CTA or a double-click.
-   */
-  const openModule = useCallback(
-    (nodeId: string) => {
+  const navigateWithFade = useCallback(
+    (href: string, label: string, nodeId?: string) => {
       if (!enableModuleOpen) return;
-      const href = buildModuleHref(domain, nodeId);
-      if (!href) return;
-
-      setOpeningNodeId(nodeId);
-      // Give the overlay time to fade in; Next.js prefetch makes the
-      // subsequent router.push near-instant.
+      persistState();
+      if (nodeId) setOpeningNodeId(nodeId);
+      setOpeningItemLabel(label);
       window.setTimeout(() => {
         router.push(href);
       }, NAV_FADE_DURATION_MS);
     },
-    [domain, enableModuleOpen, router],
+    [enableModuleOpen, persistState, router],
   );
+
+  const openModule = useCallback(
+    (nodeId: string) => {
+      const href = buildModuleHref(domain, nodeId);
+      if (!href) return;
+      const node = COMMAND_DECK_NODES.find((n) => n.id === nodeId);
+      navigateWithFade(href, node?.label ?? nodeId, nodeId);
+    },
+    [domain, navigateWithFade],
+  );
+
+  const handleOrbitItemClick = useCallback(
+    (item: OrbitItem) => {
+      if (!selectedId) return;
+      const kind = item.kind ?? "entity";
+
+      if (kind === "category" && item.childrenKey) {
+        setDrill({ categoryKey: item.childrenKey });
+        setSelectedOrbitItemId(item.id);
+        setMode("focus");
+        return;
+      }
+
+      if (kind === "subcategory" && item.childrenKey) {
+        setDrill((d) => ({
+          categoryKey: d.categoryKey,
+          subcategoryKey: item.childrenKey,
+        }));
+        setSelectedOrbitItemId(item.id);
+        setMode("focus");
+        return;
+      }
+
+      setSelectedOrbitItemId(item.id);
+      setMode("focus");
+    },
+    [selectedId],
+  );
+
+  const handleOrbitItemDoubleClick = useCallback(
+    (item: OrbitItem) => {
+      if (!enableModuleOpen || !selectedId) return;
+      const href = resolveOrbitOpenHref(domain, selectedId, item, {
+        userRole: commanderRole,
+      });
+      if (!href) return;
+      navigateWithFade(href, item.label);
+    },
+    [domain, selectedId, commanderRole, enableModuleOpen, navigateWithFade],
+  );
+
+  const handleDrillBreadcrumbClick = (
+    level: "category" | "subcategory",
+    key: string,
+  ) => {
+    if (level === "category") {
+      setDrill({ categoryKey: key });
+      setSelectedOrbitItemId(null);
+    } else {
+      setDrill((d) => ({ categoryKey: d.categoryKey, subcategoryKey: key }));
+      setSelectedOrbitItemId(null);
+    }
+    setMode("focus");
+  };
+
+  const openSelectedOrbitItem = () => {
+    if (!selectedOrbitItem || !selectedId) return;
+    const href = resolveOrbitOpenHref(domain, selectedId, selectedOrbitItem, {
+      userRole: commanderRole,
+    });
+    if (!href) return;
+    navigateWithFade(href, selectedOrbitItem.label);
+  };
 
   const openingNode = openingNodeId
     ? COMMAND_DECK_NODES.find((n) => n.id === openingNodeId) ?? null
     : null;
+
+  const openingColor = openingNode?.color ?? selected?.color ?? "#7dd3fc";
+  const openingLabel = openingItemLabel ?? openingNode?.label ?? "…";
+
+  if (!hydrated) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-page-shadow text-xs uppercase tracking-[0.4em] text-muted-foreground">
+        <span className="animate-pulse">Loading command deck…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-full w-full overflow-hidden bg-page-shadow text-foreground">
@@ -119,16 +268,20 @@ export function CommandDeckView({
           userAvatarUrl={commanderAvatarUrl}
           userHovered={userHovered}
           orbitGroups={orbitGroups}
+          drillGroups={drillGroups}
+          drill={drill}
+          selectedOrbitItemId={selectedOrbitItemId}
           onHover={setHoveredId}
           onSelect={handleSelect}
           onNodeDoubleClick={openModule}
+          onOrbitItemClick={handleOrbitItemClick}
+          onOrbitItemDoubleClick={handleOrbitItemDoubleClick}
           onUserHover={setUserHovered}
           onUserClick={handleUserClick}
           onBackgroundClick={handleBackgroundClick}
         />
       </div>
 
-      {/* Soft radial vignette to improve text legibility over the scene */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -139,9 +292,11 @@ export function CommandDeckView({
 
       <TopBar
         siteName={siteName}
+        domain={domain}
         mode={mode}
         onModeChange={(next) => setMode(next)}
         hasSelection={selected !== null}
+        hasOrbitFocus={selectedOrbitItemId !== null}
       />
 
       <WelcomePanel
@@ -159,19 +314,25 @@ export function CommandDeckView({
             node={selected}
             mode={mode}
             domain={domain}
-            orbit={orbitGroups[selected.id]}
+            orbit={activeOrbitSet}
+            drillBreadcrumb={drillBreadcrumb}
+            hasDrill={moduleHasDrill(selected.id)}
+            drill={drill}
+            selectedOrbitItem={selectedOrbitItem}
             enableModuleOpen={enableModuleOpen}
+            commanderRole={commanderRole}
             isOpening={openingNodeId === selected.id}
             onOpen={() => openModule(selected.id)}
+            onOpenOrbitItem={openSelectedOrbitItem}
             onEnterFocus={() => setMode("focus")}
             onBackToGalaxy={() => setMode("galaxy")}
+            onDrillBreadcrumbClick={handleDrillBreadcrumbClick}
           />
         )}
       </AnimatePresence>
 
-      {/* Navigation fade-out overlay — plays right before router.push */}
       <AnimatePresence>
-        {openingNode && (
+        {(openingNode || openingItemLabel) && (
           <motion.div
             key="nav-fade"
             initial={{ opacity: 0 }}
@@ -180,21 +341,21 @@ export function CommandDeckView({
             transition={{ duration: NAV_FADE_DURATION_MS / 1000 }}
             className="pointer-events-none absolute inset-0 z-30"
             style={{
-              background: `radial-gradient(circle at center, ${openingNode.color}22, rgba(2,4,8,0.94) 70%)`,
+              background: `radial-gradient(circle at center, ${openingColor}22, rgba(2,4,8,0.94) 70%)`,
             }}
           >
             <div className="flex h-full w-full items-center justify-center">
               <div
                 className="rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.32em]"
                 style={{
-                  color: openingNode.color,
-                  borderColor: `${openingNode.color}88`,
+                  color: openingColor,
+                  borderColor: `${openingColor}88`,
                   background: "rgba(6, 10, 20, 0.75)",
-                  boxShadow: `0 0 24px ${openingNode.color}55`,
+                  boxShadow: `0 0 24px ${openingColor}55`,
                   backdropFilter: "blur(6px)",
                 }}
               >
-                Opening · {openingNode.label}
+                Opening · {openingLabel}
               </div>
             </div>
           </motion.div>
@@ -204,23 +365,23 @@ export function CommandDeckView({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Top bar
-// ---------------------------------------------------------------------------
-
 function TopBar({
   siteName,
+  domain,
   mode,
   onModeChange,
   hasSelection,
+  hasOrbitFocus,
 }: {
   siteName: string;
+  domain: string;
   mode: CommandDeckMode;
   onModeChange: (next: CommandDeckMode) => void;
   hasSelection: boolean;
+  hasOrbitFocus: boolean;
 }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-6 p-4 md:p-5">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-4 p-4 md:p-5">
       <div className="pointer-events-auto flex flex-col">
         <span className="text-[10px] font-semibold uppercase tracking-[0.45em] text-muted-foreground">
           {siteName} · Command Deck
@@ -229,18 +390,22 @@ function TopBar({
           Santini Command Deck
         </h1>
         <span className="mt-0.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-          Immersive home · V2.3
+          Immersive home · V2.4
         </span>
       </div>
 
-      <div className="pointer-events-auto flex items-center gap-3">
+      <div className="pointer-events-auto flex flex-col items-end gap-2 md:flex-row md:items-center md:gap-3">
+        <ViewSwitch domain={domain} active="galaxy" />
+
         <div
           className="hidden items-center gap-2 rounded-full border border-border/60 bg-page-shadow/60 px-3 py-1.5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground backdrop-blur md:flex"
-          title="Double-click a node to open directly, or use the Open button"
+          title="Click to focus, double-click to open"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-sky-300 shadow-[0_0_8px_#7dd3fc]" />
           {mode === "focus"
-            ? "Focus mode · double-click to open"
+            ? hasOrbitFocus
+              ? "Item focus · double-click to open"
+              : "Focus mode · double-click to open"
             : hasSelection
               ? "Home · selection kept"
               : "Home"}
@@ -305,10 +470,6 @@ function ModeToggleButton({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Left welcome panel
-// ---------------------------------------------------------------------------
-
 function WelcomePanel({
   commanderName,
   commanderRole,
@@ -329,7 +490,7 @@ function WelcomePanel({
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="pointer-events-auto absolute bottom-5 left-4 z-20 w-[240px] rounded-xl border border-border/60 bg-page-shadow/75 p-3 shadow-xl shadow-black/50 backdrop-blur-md md:left-5"
+      className="pointer-events-auto absolute bottom-5 left-4 z-20 w-[260px] rounded-xl border border-border/60 bg-page-shadow/75 p-3 shadow-xl shadow-black/50 backdrop-blur-md md:left-5"
     >
       <div className="flex items-center gap-2.5">
         <MiniAvatar name={commanderName} avatarUrl={commanderAvatarUrl} />
@@ -344,7 +505,8 @@ function WelcomePanel({
       </div>
 
       <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">
-        Click a node to focus, double-click to open the module directly.
+        Click a node to focus, double-click to open. Orbit badges drill into
+        categories — click to focus, double-click to open the record.
       </p>
 
       <button
@@ -411,32 +573,63 @@ function MiniAvatar({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Right selected-module panel
-// ---------------------------------------------------------------------------
-
 function SelectedModulePanel({
   node,
   mode,
   domain,
   orbit,
+  drillBreadcrumb,
+  hasDrill,
+  drill,
+  selectedOrbitItem,
   enableModuleOpen,
+  commanderRole,
   isOpening,
   onOpen,
+  onOpenOrbitItem,
   onEnterFocus,
   onBackToGalaxy,
+  onDrillBreadcrumbClick,
 }: {
   node: CommandDeckNode;
   mode: CommandDeckMode;
   domain: string;
   orbit: OrbitSet | undefined;
+  drillBreadcrumb: Array<{
+    key: string;
+    label: string;
+    level: "category" | "subcategory";
+  }>;
+  hasDrill: boolean;
+  drill: DrillState;
+  selectedOrbitItem: OrbitItem | null;
   enableModuleOpen: boolean;
+  commanderRole?: string | null;
   isOpening: boolean;
   onOpen: () => void;
+  onOpenOrbitItem: () => void;
   onEnterFocus: () => void;
   onBackToGalaxy: () => void;
+  onDrillBreadcrumbClick: (
+    level: "category" | "subcategory",
+    key: string,
+  ) => void;
 }) {
   const moduleHref = buildModuleHref(domain, node.id);
+
+  const drillLevelLabel = !hasDrill
+    ? "Entità"
+    : !drill.categoryKey
+      ? "Categorie"
+      : !drill.subcategoryKey
+        ? "Sottocategorie"
+        : "Articoli";
+
+  const orbitItemHref = selectedOrbitItem
+    ? resolveOrbitOpenHref(domain, node.id, selectedOrbitItem, {
+        userRole: commanderRole,
+      })
+    : null;
 
   return (
     <motion.div
@@ -475,9 +668,26 @@ function SelectedModulePanel({
           {node.subtitle}
         </div>
 
-        <p className="mt-3 text-[12px] leading-relaxed text-foreground/80">
-          {node.description}
-        </p>
+        {hasDrill && drillBreadcrumb.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1">
+            {drillBreadcrumb.map((crumb, idx) => (
+              <span key={crumb.key} className="flex items-center gap-1">
+                {idx > 0 && (
+                  <span className="text-[9px] text-muted-foreground">/</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    onDrillBreadcrumbClick(crumb.level, crumb.key)
+                  }
+                  className="rounded border border-border/60 bg-surface-strong/50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/90 transition hover:border-sky-500/50 hover:text-sky-200"
+                >
+                  {crumb.label}
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
 
         {orbit && (
           <div className="mt-3 flex items-center justify-between rounded-md border border-border/70 bg-surface-strong/50 px-2.5 py-1.5">
@@ -493,51 +703,71 @@ function SelectedModulePanel({
                 {orbit.truncated
                   ? `${orbit.items.length} di ${orbit.total}`
                   : orbit.total}{" "}
-                in orbita
+                in orbita · {drillLevelLabel}
               </span>
             </div>
             <span
-              className="rounded-full border px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.24em] uppercase"
-              style={
-                orbit.isDemo
-                  ? {
-                      borderColor: "rgba(253, 230, 138, 0.45)",
-                      color: "#fde68a",
-                      background: "rgba(253, 230, 138, 0.08)",
-                    }
-                  : {
-                      borderColor: `${node.color}66`,
-                      color: node.color,
-                      background: "rgba(6, 10, 20, 0.6)",
-                    }
-              }
+              className="rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.24em]"
+              style={{
+                borderColor: `${node.color}66`,
+                color: node.color,
+                background: "rgba(6, 10, 20, 0.6)",
+              }}
             >
-              {orbit.isDemo ? "demo" : "live"}
+              live
             </span>
           </div>
         )}
 
-        <div className="mt-4">
-          <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-              Live signals
-            </span>
-            <span className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
-              demo
-            </span>
+        {selectedOrbitItem && (
+          <div
+            className="mt-3 rounded-lg border border-border/70 bg-surface-strong/50 p-3"
+            style={{ boxShadow: `inset 0 0 0 1px ${node.color}12` }}
+          >
+            <div className="text-[9px] uppercase tracking-[0.28em] text-muted-foreground">
+              Focused item
+            </div>
+            <div className="mt-1 text-[13px] font-semibold text-foreground">
+              {selectedOrbitItem.label}
+            </div>
+            {selectedOrbitItem.category && (
+              <div
+                className="mt-0.5 text-[10px] uppercase tracking-[0.2em]"
+                style={{ color: `${node.color}cc` }}
+              >
+                {selectedOrbitItem.category}
+              </div>
+            )}
+            {selectedOrbitItem.status && (
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                Stato · {selectedOrbitItem.status}
+              </div>
+            )}
+            {selectedOrbitItem.dueDate && (
+              <div className="mt-0.5 text-[10px] text-amber-200/90">
+                Scadenza ·{" "}
+                {new Date(selectedOrbitItem.dueDate).toLocaleDateString("it-IT")}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={onOpenOrbitItem}
+              disabled={!enableModuleOpen || !orbitItemHref}
+              className="mt-3 w-full rounded-md border border-border/80 bg-page-shadow/70 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground transition hover:border-sky-500/70 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+              style={
+                enableModuleOpen && orbitItemHref
+                  ? { borderColor: `${node.color}66` }
+                  : undefined
+              }
+            >
+              Open record
+            </button>
           </div>
-          <div className="space-y-1.5">
-            {node.signals.map((signal) => (
-              <SignalRow
-                key={signal.label}
-                label={signal.label}
-                value={signal.value}
-                tone={signal.tone}
-                accent={node.color}
-              />
-            ))}
-          </div>
-        </div>
+        )}
+
+        <p className="mt-3 text-[12px] leading-relaxed text-foreground/80">
+          {node.description}
+        </p>
 
         <div className="mt-4 flex flex-col gap-2">
           <PrimaryCta
@@ -560,16 +790,6 @@ function SelectedModulePanel({
   );
 }
 
-/**
- * Primary call-to-action that opens the real module.
- *
- * Implementation detail: we use a plain <button> (not next/link) because we
- * want to play a tiny fade-out before router.push; the click handler is in
- * charge of the actual navigation through `openModule()`.
- *
- * The `href` is still surfaced in `aria-label` / title so screen readers and
- * hover tooltips expose the destination.
- */
 function PrimaryCta({
   node,
   href,
@@ -641,39 +861,6 @@ function PrimaryCta({
     <button type="button" disabled className={`${base} ${disabledClass}`}>
       {content}
     </button>
-  );
-}
-
-function SignalRow({
-  label,
-  value,
-  tone = "neutral",
-  accent,
-}: {
-  label: string;
-  value: string;
-  tone?: "positive" | "negative" | "neutral" | "warning";
-  accent: string;
-}) {
-  const dot =
-    tone === "positive"
-      ? "bg-emerald-400"
-      : tone === "negative"
-        ? "bg-rose-400"
-        : tone === "warning"
-          ? "bg-amber-300"
-          : "bg-muted-foreground";
-  return (
-    <div
-      className="flex items-center justify-between rounded-md border border-border/70 bg-surface-strong/50 px-2.5 py-1.5"
-      style={{ boxShadow: `inset 0 0 0 1px ${accent}0d` }}
-    >
-      <div className="flex items-center gap-2">
-        <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-        <span className="text-[11px] text-foreground/80">{label}</span>
-      </div>
-      <span className="text-[13px] font-semibold text-foreground">{value}</span>
-    </div>
   );
 }
 

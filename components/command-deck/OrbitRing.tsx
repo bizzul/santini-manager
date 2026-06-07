@@ -7,40 +7,19 @@ import * as THREE from "three";
 import type { OrbitItem, OrbitSet } from "./orbit-items";
 
 interface OrbitRingProps {
-  /** World-space position of the parent node (the orbit's center). */
   center: [number, number, number];
-  /** Distance from `center` at which the small circles are placed. */
   radius: number;
-  /**
-   * Inner radius from which the connecting spokes start. Typically set to
-   * the parent node's halo outer radius (including its selected-state
-   * scale), so the lines appear to grow out of the main circle's perimeter.
-   */
   innerRadius?: number;
-  /** Diameter (in CSS pixels) of each mini-circle at normal scale. */
   badgePx?: number;
-  /** Parent node accent color used when an item doesn't specify its own. */
   parentColor: string;
-  /** Pre-cap orbit set (items + total + demo flag). */
   orbit: OrbitSet;
-  /** Optional: mount/unmount animation phase (0..1). */
   visible: boolean;
+  /** Currently focused orbit badge id (for highlight). */
+  selectedOrbitItemId?: string | null;
+  onItemClick?: (item: OrbitItem) => void;
+  onItemDoubleClick?: (item: OrbitItem) => void;
 }
 
-/**
- * Distributes `orbit.items` uniformly around `center` using the canonical
- * formula:
- *
- *     angleStep = 2π / n
- *     angle     = index * angleStep
- *
- * Items are rendered as HTML circular badges inside drei `<Billboard>` +
- * `<Html>`, so the avatar or initials always face the camera and stay
- * crisp regardless of zoom. CSS handles the hover scale (200%) — no React
- * state per-item is required, which keeps the tree light for ~48 items.
- *
- * The whole ring slowly rotates to feel alive without stealing attention.
- */
 export function OrbitRing({
   center,
   radius,
@@ -49,25 +28,19 @@ export function OrbitRing({
   parentColor,
   orbit,
   visible,
+  selectedOrbitItemId = null,
+  onItemClick,
+  onItemDoubleClick,
 }: OrbitRingProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    // Gentle clockwise rotation; small enough not to disorient during hover.
     groupRef.current.rotation.z -= delta * 0.035;
   });
 
   const items = orbit.items;
 
-  /**
-   * For each item we pre-compute both:
-   *  - the badge position (on the outer orbit radius)
-   *  - the spoke endpoints: from the parent circle's perimeter
-   *    (`innerRadius`) to a point just short of the badge center
-   *    (`radius - shortFall`) so the line doesn't disappear behind the
-   *    badge when the badge is hovered (+200% scale).
-   */
   const geometry = useMemo(() => {
     const n = items.length;
     if (n === 0) {
@@ -77,8 +50,6 @@ export function OrbitRing({
       }>;
     }
     const step = (Math.PI * 2) / n;
-    // Pull the spoke's outer end slightly short of the badge so the line
-    // reads as "attached" rather than piercing the circle.
     const outerShortfall = 0.06;
     return items.map((_, i) => {
       const angle = i * step;
@@ -103,9 +74,6 @@ export function OrbitRing({
   return (
     <group position={center}>
       <group ref={groupRef}>
-        {/* Radial spokes: thin glowing lines from the main circle's
-            perimeter out to each orbit item. Rendered as a sibling of the
-            Html badges inside the rotating group so they rotate in sync. */}
         {geometry.map((g, idx) => (
           <Line
             key={`spoke-${items[idx].id}`}
@@ -134,6 +102,9 @@ export function OrbitRing({
                   item={item}
                   parentColor={parentColor}
                   sizePx={badgePx}
+                  isSelected={selectedOrbitItemId === item.id}
+                  onClick={onItemClick}
+                  onDoubleClick={onItemDoubleClick}
                 />
               </Html>
             </Billboard>
@@ -144,28 +115,42 @@ export function OrbitRing({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Single orbit item rendered as an HTML circle.
-// ---------------------------------------------------------------------------
-
 function OrbitBadge({
   item,
   parentColor,
   sizePx,
+  isSelected,
+  onClick,
+  onDoubleClick,
 }: {
   item: OrbitItem;
   parentColor: string;
   sizePx: number;
+  isSelected: boolean;
+  onClick?: (item: OrbitItem) => void;
+  onDoubleClick?: (item: OrbitItem) => void;
 }) {
   const accent = item.color || parentColor;
   const [hovered, setHovered] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const showImage = Boolean(item.imageUrl) && !imageFailed;
+  const active = hovered || isSelected;
+  const interactive = Boolean(onClick || onDoubleClick);
 
-  // Hover scales the whole badge group to 200% (user requirement), with a
-  // springy transition powered by CSS. Pointer-events are re-enabled just on
-  // the hoverable core — the outer wrapper stays pointer-events:none so the
-  // rotating ring group doesn't eat clicks from the parent 3D node.
+  const formatDueDate = (iso: string | null | undefined): string | null => {
+    if (!iso) return null;
+    try {
+      return new Date(iso).toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "short",
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const dueLabel = formatDueDate(item.dueDate);
+
   return (
     <div
       style={{
@@ -173,31 +158,48 @@ function OrbitBadge({
         pointerEvents: "none",
       }}
     >
-      {/* Hoverable core */}
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
+        onClick={
+          onClick
+            ? (e) => {
+                e.stopPropagation();
+                onClick(item);
+              }
+            : undefined
+        }
+        onDoubleClick={
+          onDoubleClick
+            ? (e) => {
+                e.stopPropagation();
+                onDoubleClick(item);
+              }
+            : undefined
+        }
         style={{
-          pointerEvents: "auto",
+          pointerEvents: interactive ? "auto" : "none",
           width: sizePx,
           height: sizePx,
           borderRadius: "50%",
-          border: `1.5px solid ${accent}${hovered ? "" : "aa"}`,
-          background: "rgba(6, 10, 20, 0.85)",
+          border: `1.5px solid ${accent}${active ? "" : "aa"}`,
+          background: isSelected
+            ? "rgba(6, 10, 20, 0.95)"
+            : "rgba(6, 10, 20, 0.85)",
           overflow: "hidden",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          boxShadow: hovered
+          boxShadow: active
             ? `0 0 18px ${accent}88, 0 2px 10px rgba(0,0,0,0.5)`
             : `0 0 6px ${accent}44, 0 1px 4px rgba(0,0,0,0.4)`,
-          transform: `scale(${hovered ? 2 : 1})`,
+          transform: `scale(${hovered ? 2 : isSelected ? 1.15 : 1})`,
           transformOrigin: "center",
           transition:
             "transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 220ms ease, border-color 220ms ease",
-          cursor: "pointer",
+          cursor: interactive ? "pointer" : "default",
           backdropFilter: "blur(4px)",
-          zIndex: hovered ? 10 : 1,
+          zIndex: active ? 10 : 1,
         }}
       >
         {showImage ? (
@@ -228,8 +230,7 @@ function OrbitBadge({
         )}
       </div>
 
-      {/* Hover tooltip with label + category */}
-      {hovered && (
+      {active && (
         <div
           style={{
             position: "absolute",
@@ -274,6 +275,43 @@ function OrbitBadge({
                 }}
               >
                 {item.category}
+              </div>
+            )}
+            {item.status && (
+              <div
+                style={{
+                  color: "rgba(226, 232, 240, 0.75)",
+                  fontSize: 9,
+                  marginTop: 2,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {item.status}
+              </div>
+            )}
+            {dueLabel && (
+              <div
+                style={{
+                  color: "#fde68a",
+                  fontSize: 9,
+                  marginTop: 1,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                Scadenza · {dueLabel}
+              </div>
+            )}
+            {interactive && (
+              <div
+                style={{
+                  color: "rgba(148, 163, 184, 0.85)",
+                  fontSize: 8,
+                  marginTop: 3,
+                  letterSpacing: "0.08em",
+                }}
+              >
+                Click focus · double-click apri
               </div>
             )}
           </div>

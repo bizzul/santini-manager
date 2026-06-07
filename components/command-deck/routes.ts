@@ -1,34 +1,10 @@
 /**
  * Centralized route map for the Command Deck nodes.
- *
- * Single source of truth: every navigation affordance (CTA in the selected
- * panel, future double-click shortcut, deep-link badges…) resolves the
- * target through `buildModuleHref()` so we never drift between nodes.ts
- * metadata and actual site-scoped paths.
- *
- * All paths below have been verified to exist as folders under
- * `app/sites/[domain]/` so the final URL is guaranteed to be renderable.
  */
 
 import type { CommandDeckNode } from "./nodes";
+import type { DrillState, OrbitItem } from "./orbit-items";
 
-/**
- * Node id → relative path inside `/sites/[domain]`.
- *
- * Route choices:
- *  - fabbrica   → /factory        (factory floor / production area)
- *  - clienti    → /clients        (customer registry)
- *  - fornitori  → /suppliers      (supplier registry; NOT manufacturers)
- *  - prodotti   → /products       (sell products catalog)
- *  - progetti   → /progetti       (projects; italian alias, matches the
- *                                  italian label used in the UI)
- *  - inventario → /inventory      (warehouse & stock)
- *  - admin      → /collaborators  (user/role/permissions admin — the most
- *                                  universally-accessible site-scoped admin
- *                                  entry; the `/administration/...` area is
- *                                  outside the [domain] tree and gated to
- *                                  admin/superadmin only)
- */
 export const COMMAND_DECK_ROUTE_MAP: Record<string, string> = {
   fabbrica: "/factory",
   clienti: "/clients",
@@ -39,12 +15,6 @@ export const COMMAND_DECK_ROUTE_MAP: Record<string, string> = {
   admin: "/collaborators",
 };
 
-/**
- * Build the absolute path for a given node in the context of a site domain.
- * Returns `null` if the node id is not registered in the map (defensive:
- * keeps us from producing broken URLs if a new node is added without an
- * explicit route decision).
- */
 export function buildModuleHref(
   domain: string,
   nodeId: string,
@@ -54,10 +24,105 @@ export function buildModuleHref(
   return `/sites/${domain}${relative}`;
 }
 
-/** Convenience helper used by the overlay when rendering the selected node. */
 export function buildModuleHrefForNode(
   domain: string,
   node: CommandDeckNode,
 ): string | null {
   return buildModuleHref(domain, node.id);
+}
+
+export interface ResolveOrbitHrefOptions {
+  userRole?: string | null;
+}
+
+/**
+ * Resolve the "open" destination for an orbit badge at any drill level.
+ * Returns `null` when no safe route exists.
+ */
+export function resolveOrbitOpenHref(
+  domain: string,
+  moduleId: string,
+  item: OrbitItem,
+  opts: ResolveOrbitHrefOptions = {},
+): string | null {
+  if (item.href) return item.href;
+
+  const base = `/sites/${domain}`;
+  const kind = item.kind ?? "entity";
+  const role = opts.userRole;
+
+  if (kind === "category") {
+    if (moduleId === "prodotti") return `${base}/product-categories`;
+    if (moduleId === "inventario") return `${base}/categories`;
+    return buildModuleHref(domain, moduleId);
+  }
+
+  if (kind === "subcategory") {
+    return buildModuleHref(domain, moduleId);
+  }
+
+  if (kind === "activity") {
+    const mod = item.moduleId ?? moduleId;
+    return buildModuleHref(domain, mod) ?? `${base}/home`;
+  }
+
+  // entity (default)
+  switch (moduleId) {
+    case "progetti":
+      if (role === "admin" || role === "superadmin") {
+        return `${base}/progetti/${item.id}`;
+      }
+      return `${base}/projects?edit=${item.id}`;
+    case "clienti":
+      return `${base}/clients?edit=${item.id}`;
+    case "prodotti":
+      return `${base}/products/${item.id}`;
+    case "inventario":
+      return `${base}/inventory`;
+    case "fornitori":
+      return `${base}/suppliers`;
+    case "fabbrica":
+      return `${base}/factory`;
+    case "admin":
+      return `${base}/collaborators`;
+    default:
+      return buildModuleHref(domain, moduleId);
+  }
+}
+
+/** Session storage key for persisting deck camera/selection state per site. */
+export function deckStateStorageKey(domain: string): string {
+  return `command-deck-state:${domain}`;
+}
+
+export interface PersistedDeckState {
+  selectedId: string | null;
+  drill: DrillState;
+  mode: "galaxy" | "focus";
+  selectedOrbitItemId: string | null;
+}
+
+export function loadPersistedDeckState(
+  domain: string,
+): PersistedDeckState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(deckStateStorageKey(domain));
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedDeckState;
+  } catch {
+    return null;
+  }
+}
+
+export function savePersistedDeckState(
+  domain: string,
+  state: PersistedDeckState,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(deckStateStorageKey(domain), JSON.stringify(state));
+  } catch {
+    // ignore quota errors
+  }
 }
