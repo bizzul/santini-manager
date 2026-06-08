@@ -1,10 +1,14 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateSiteWithUsers, deleteSite } from "../../actions";
 import { MultiSelect } from "@/components/ui/multi-select";
-import ModuleManagementModal from "@/components/module-management/ModuleManagementModal";
+const ModuleManagementModal = dynamic(
+  () => import("@/components/module-management/ModuleManagementModal"),
+  { ssr: false },
+);
 import KanbanCategoryManagerModal from "@/components/site-settings/KanbanCategoryManagerModal";
 import InventoryCategoryManagerModal from "@/components/site-settings/InventoryCategoryManagerModal";
 import ProductSettingsModal from "@/components/site-settings/ProductSettingsModal";

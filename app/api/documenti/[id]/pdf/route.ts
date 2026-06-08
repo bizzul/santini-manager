@@ -4,6 +4,8 @@ import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
 import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
 import { generateDocumentPdfBytes } from "@/lib/documenti/generate-document-pdf";
+import { generatePdfmeDocumentBytes } from "@/lib/documenti/generate-pdfme-pdf";
+import { hasPdfmeOverlay } from "@/lib/documenti/default-pdfme-template";
 import { savePdfToProjectDocuments } from "@/lib/documenti/save-pdf-to-project-documents";
 import { updateDocumentPdfPaths } from "@/lib/documenti/save-document";
 import type { DocumentoArricchito } from "@/validation/documenti/extracted-document";
@@ -116,13 +118,20 @@ export async function GET(
       allegati: doc.allegati ?? [],
     };
 
-    const { bytes, filename } = await generateDocumentPdfBytes({
-      documento,
-      righe: righe ?? undefined,
-      template,
-      numero: doc.numero,
-      createdAt: doc.created_at,
-    });
+    const { bytes, filename } = hasPdfmeOverlay(template)
+      ? await generatePdfmeDocumentBytes({
+          documento,
+          template,
+          numero: doc.numero,
+          createdAt: doc.created_at,
+        })
+      : await generateDocumentPdfBytes({
+          documento,
+          righe: righe ?? undefined,
+          template,
+          numero: doc.numero,
+          createdAt: doc.created_at,
+        });
 
     const storagePath = `${siteId}/documenti/${id}/${filename}`;
 

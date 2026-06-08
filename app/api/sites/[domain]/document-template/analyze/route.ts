@@ -10,6 +10,16 @@ import { mapAiProviderError } from "@/lib/ai/map-ai-errors";
 import type { DocumentTemplateConfig } from "@/lib/documenti/template-types";
 import { extractTextFromTemplateBuffer } from "@/lib/documenti/extract-template-text";
 import { analyzeTemplateStructure } from "@/lib/documenti/analyze-template-structure";
+import { extractPdfTextRegions } from "@/lib/documenti/extract-pdf-text-regions";
+import {
+  analyzeLetterheadFieldLayout,
+  filterValidAiFieldLayouts,
+} from "@/lib/documenti/analyze-letterhead-field-layout";
+import {
+  buildTemplateFromAiLayouts,
+  type LetterheadFieldId,
+  type LetterheadLayoutPreset,
+} from "@/lib/documenti/letterhead-field-catalog";
 
 async function checkSiteAccess(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -108,6 +118,8 @@ export async function POST(
     }
 
     let extractedText = config.templateModelText?.trim() ?? "";
+    let referenceBuffer: Buffer | null = null;
+    let referenceIsPdf = false;
 
     if (config.referenceDocument?.storagePath) {
       const serviceClient = createServiceClient();
@@ -123,9 +135,13 @@ export async function POST(
         );
       }
 
-      const buffer = Buffer.from(await fileData.arrayBuffer());
+      referenceBuffer = Buffer.from(await fileData.arrayBuffer());
+      referenceIsPdf =
+        config.referenceDocument.mimeType === "application/pdf" ||
+        config.referenceDocument.name.toLowerCase().endsWith(".pdf");
+
       const extracted = await extractTextFromTemplateBuffer(
-        buffer,
+        referenceBuffer,
         config.referenceDocument.mimeType,
         config.referenceDocument.name,
       );
@@ -148,10 +164,56 @@ export async function POST(
       templateModelText: config.templateModelText,
     });
 
+    let pdfmeTemplate = config.pdfmeTemplate ?? null;
+    let letterheadLayoutPreset: LetterheadLayoutPreset | null =
+      config.letterheadLayoutPreset ?? "matris";
+    let layoutNotes: string | null = null;
+
+    const basePdfUrl = config.letterheadBasePdf?.url?.trim() || null;
+
+    if (referenceIsPdf && referenceBuffer && basePdfUrl) {
+      const { regions, pageWidthMm, pageHeightMm } =
+        await extractPdfTextRegions(referenceBuffer);
+
+      if (regions.length > 0) {
+        const aiLayout = await analyzeLetterheadFieldLayout({
+          model,
+          regions,
+          extractedText,
+          pageWidthMm,
+          pageHeightMm,
+        });
+
+        const validLayouts = filterValidAiFieldLayouts(aiLayout);
+        if (validLayouts.length > 0) {
+          pdfmeTemplate = buildTemplateFromAiLayouts(
+            basePdfUrl,
+            aiLayout.variant,
+            letterheadLayoutPreset ?? "matris",
+            validLayouts.map((field) => ({
+              fieldId: field.fieldId as LetterheadFieldId,
+              position: field.position,
+              width: field.width,
+              height: field.height,
+              fontSize: field.fontSize,
+              alignment: field.alignment,
+            })),
+          );
+          letterheadLayoutPreset =
+            aiLayout.variant === "letter" ? "lettera" : letterheadLayoutPreset;
+          layoutNotes = aiLayout.notes ?? null;
+        }
+      }
+    }
+
     const updatedConfig: DocumentTemplateConfig = {
       ...config,
       structureMap,
       structureAnalyzedAt: new Date().toISOString(),
+      ...(pdfmeTemplate ? { pdfmeTemplate } : {}),
+      ...(letterheadLayoutPreset
+        ? { letterheadLayoutPreset }
+        : {}),
     };
 
     const { error: updateError } = await supabase
@@ -167,6 +229,14 @@ export async function POST(
       success: true,
       structureMap,
       analyzedAt: updatedConfig.structureAnalyzedAt,
+      pdfmeTemplate,
+      letterheadLayoutPreset,
+      layoutApplied: Boolean(pdfmeTemplate && referenceIsPdf && basePdfUrl),
+      layoutNotes,
+      layoutSkippedReason:
+        referenceIsPdf && !basePdfUrl
+          ? "Carica prima il PDF carta intestata nel tab Carta intestata per applicare il posizionamento automatico."
+          : null,
     });
   } catch (error) {
     console.error("Template analyze failed:", error);

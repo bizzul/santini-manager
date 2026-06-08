@@ -63,66 +63,57 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  // Create persister only on client side
   const [persister] = useState(() => {
     if (typeof window === "undefined") return undefined;
     return createSyncStoragePersister({
       storage: window.localStorage,
-      // Bump the cache key to discard stale persisted entries
-      // after changing the site-modules caching strategy.
       key: QUERY_CACHE_PERSIST_KEY,
-      // Throttle writes to localStorage
       throttleTime: 1000,
     });
   });
 
-  // If we're on the server or persister isn't ready, render without persistence
+  const appShell = (
+    <ModalProvider>
+      <ThemeProviders>
+        <SessionMonitor />
+        <Suspense>
+          <GlobalSupportAssistant />
+          <GlobalVoiceAssistant />
+        </Suspense>
+        {children}
+      </ThemeProviders>
+    </ModalProvider>
+  );
+
+  // Always keep QueryClientProvider mounted to avoid context gaps during hydration.
   if (!isClient || !persister) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <ModalProvider>
-          <ThemeProviders>
-            <SessionMonitor />
-            <Suspense>
-              <GlobalSupportAssistant />
-              <GlobalVoiceAssistant />
-            </Suspense>
-            {children}
-          </ThemeProviders>
-        </ModalProvider>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{appShell}</QueryClientProvider>
     );
   }
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{
-        persister,
-        // Cache persists for 24 hours
-        maxAge: 1000 * 60 * 60 * 24,
-        // Only persist specific stable queries
-        dehydrateOptions: {
-          shouldDehydrateQuery: (query) => {
-            // Only persist if query was successful and is in our allowed list
-            return (
-              query.state.status === "success" &&
-              shouldPersistQuery(query.queryKey)
-            );
+    <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={{
+          persister,
+          // Cache persists for 24 hours
+          maxAge: 1000 * 60 * 60 * 24,
+          // Only persist specific stable queries
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) => {
+              // Only persist if query was successful and is in our allowed list
+              return (
+                query.state.status === "success" &&
+                shouldPersistQuery(query.queryKey)
+              );
+            },
           },
-        },
-      }}
-    >
-      <ModalProvider>
-        <ThemeProviders>
-          <SessionMonitor />
-          <Suspense>
-            <GlobalSupportAssistant />
-            <GlobalVoiceAssistant />
-          </Suspense>
-          {children}
-        </ThemeProviders>
-      </ModalProvider>
-    </PersistQueryClientProvider>
+        }}
+      >
+        {appShell}
+      </PersistQueryClientProvider>
+    </QueryClientProvider>
   );
 }

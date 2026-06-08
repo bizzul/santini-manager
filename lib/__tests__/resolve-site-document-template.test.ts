@@ -5,6 +5,7 @@ import {
   isDocumentTemplateConfigured,
   resolveSiteDocumentTemplate,
 } from "@/lib/documenti/resolve-site-document-template";
+import { buildTemplateFromCatalog } from "@/lib/documenti/default-pdfme-template";
 
 describe("resolveSiteDocumentTemplate", () => {
   it("usa il nome del sito come fallback per ragione sociale", () => {
@@ -68,5 +69,60 @@ describe("resolveSiteDocumentTemplate", () => {
 
     expect(config.mittente?.ragioneSociale).toBe("Azienda Configurata");
     expect(config.banca?.iban).toBe("CH00");
+  });
+
+  it("segnala designer mancante se caricato solo lo sfondo", () => {
+    const template = resolveSiteDocumentTemplate({
+      name: "Test SA",
+      document_template_config: {
+        letterheadBasePdf: {
+          url: "https://example.com/base.pdf",
+          storagePath: "site/letterhead/base.pdf",
+          mimeType: "application/pdf",
+        },
+        mittente: {
+          ragioneSociale: "Test SA",
+          via: "Via 1",
+          cap: "6500",
+          citta: "Bellinzona",
+          iva: "CHE-123",
+        },
+        banca: { nome: "Banca", iban: "CH00" },
+      },
+    });
+
+    expect(isDocumentTemplateConfigured(template)).toBe(false);
+    expect(getDocumentTemplateMissingLabels(template, { blockingOnly: true })).toContain(
+      "Posizionamento campi carta intestata (Designer)",
+    );
+  });
+
+  it("considera configurato un overlay pdfme completo", () => {
+    const pdfmeTemplate = buildTemplateFromCatalog(
+      "https://example.com/base.pdf",
+      "commercial",
+      "matris",
+    );
+    const template = resolveSiteDocumentTemplate({
+      name: "Test SA",
+      document_template_config: {
+        letterheadBasePdf: {
+          url: "https://example.com/base.pdf",
+          storagePath: "site/letterhead/base.pdf",
+          mimeType: "application/pdf",
+        },
+        pdfmeTemplate,
+        mittente: {
+          ragioneSociale: "Test SA",
+          via: "Via 1",
+          cap: "6500",
+          citta: "Bellinzona",
+          iva: "CHE-123",
+        },
+        banca: { nome: "Banca", iban: "CH00" },
+      },
+    });
+
+    expect(isDocumentTemplateConfigured(template)).toBe(true);
   });
 });

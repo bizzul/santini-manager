@@ -2,46 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
+import { userCanAccessSite } from "@/lib/site-access";
 
 const RIGA_IMAGE_BUCKET = "document-assets";
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
-
-async function userCanAccessSite(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  siteId: string,
-  organizationId: string | null,
-): Promise<boolean> {
-  const { data: userProfile } = await supabase
-    .from("User")
-    .select("role")
-    .eq("authId", userId)
-    .single();
-
-  if (userProfile?.role === "superadmin") return true;
-
-  const { data: userSite } = await supabase
-    .from("user_sites")
-    .select("site_id")
-    .eq("user_id", userId)
-    .eq("site_id", siteId)
-    .maybeSingle();
-
-  if (userSite) return true;
-
-  if (organizationId) {
-    const { data: userOrg } = await supabase
-      .from("user_organizations")
-      .select("organization_id")
-      .eq("user_id", userId)
-      .eq("organization_id", organizationId)
-      .maybeSingle();
-    if (userOrg) return true;
-  }
-
-  return false;
-}
 
 export async function POST(
   request: NextRequest,

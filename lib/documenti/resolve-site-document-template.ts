@@ -5,6 +5,10 @@ import {
   type DocumentTemplateConfig,
 } from "@/lib/documenti/template-types";
 import { DEFAULT_DOCUMENT_PAGE_FORMAT } from "@/lib/documenti/page-format";
+import {
+  validateTemplateFields,
+  type LetterheadTemplateVariant,
+} from "@/lib/documenti/letterhead-field-catalog";
 
 export interface SiteTemplateSource {
   name?: string | null;
@@ -101,7 +105,48 @@ export function getDocumentTemplateIssues(
     });
   }
 
+  const hasLetterhead = Boolean(template.letterheadBasePdf?.url);
+  const hasPdfme = Boolean(template.pdfmeTemplate?.schemas?.length);
+
+  if (hasLetterhead && !hasPdfme) {
+    issues.push({
+      field: "pdfmeTemplate",
+      label: "Posizionamento campi carta intestata (Designer)",
+      blocking: true,
+    });
+  }
+
+  if (hasPdfme && !hasLetterhead) {
+    issues.push({
+      field: "letterheadBasePdf",
+      label: "Modello carta intestata (PDF/immagine)",
+      blocking: true,
+    });
+  }
+
+  if (hasPdfme && template.pdfmeTemplate) {
+    const variant = inferLetterheadVariant(template);
+    for (const issue of validateTemplateFields(template.pdfmeTemplate, variant)) {
+      if (issue.blocking) {
+        issues.push({
+          field: `pdfme.${issue.fieldId}`,
+          label: issue.label,
+          blocking: true,
+        });
+      }
+    }
+  }
+
   return issues;
+}
+
+function inferLetterheadVariant(
+  template: DocumentTemplate,
+): LetterheadTemplateVariant {
+  if (template.pdfmeTemplate?.schemas?.[0]?.corpoTesto) {
+    return "letter";
+  }
+  return "commercial";
 }
 
 export function isDocumentTemplateConfigured(

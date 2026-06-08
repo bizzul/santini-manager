@@ -1,3 +1,4 @@
+import type { Template } from "@pdfme/common";
 import {
   getDocumentDestinatarioLabel,
   getDocumentTypeLabel,
@@ -10,6 +11,15 @@ import type {
   ReferenceDocument,
   TemplateStructureMap,
 } from "@/lib/documenti/template-structure-types";
+
+export interface LetterheadBasePdf {
+  url: string;
+  storagePath: string;
+  mimeType: string;
+  pages?: number;
+  width?: number;
+  height?: number;
+}
 
 export interface MittenteTemplate {
   ragioneSociale: string;
@@ -42,6 +52,12 @@ export interface DocumentTemplateConfig {
   referenceDocument?: ReferenceDocument | null;
   structureMap?: TemplateStructureMap | null;
   structureAnalyzedAt?: string | null;
+  /** PDF sfondo carta intestata caricato dal cliente. */
+  letterheadBasePdf?: LetterheadBasePdf | null;
+  /** Template pdfme (schemas + basePdf) per overlay campi dinamici. */
+  pdfmeTemplate?: Template | null;
+  /** Preset layout campi (santini, matris, lettera). */
+  letterheadLayoutPreset?: "santini" | "matris" | "lettera" | null;
 }
 
 export interface DocumentTemplate {
@@ -56,6 +72,8 @@ export interface DocumentTemplate {
   referenceDocument: ReferenceDocument | null;
   structureMap: TemplateStructureMap | null;
   structureAnalyzedAt: string | null;
+  letterheadBasePdf: LetterheadBasePdf | null;
+  pdfmeTemplate: Template | null;
   pageFormat: DocumentPageFormat;
 }
 
@@ -78,6 +96,8 @@ export const DEFAULT_DOCUMENT_TEMPLATE: DocumentTemplate = {
   referenceDocument: null,
   structureMap: null,
   structureAnalyzedAt: null,
+  letterheadBasePdf: null,
+  pdfmeTemplate: null,
   colori: {
     primario: "#1e3a5f",
     secondario: "#64748b",
@@ -142,6 +162,8 @@ export function mergeDocumentTemplate(
     referenceDocument: cfg.referenceDocument ?? base.referenceDocument,
     structureMap: cfg.structureMap ?? base.structureMap,
     structureAnalyzedAt: cfg.structureAnalyzedAt ?? base.structureAnalyzedAt,
+    letterheadBasePdf: cfg.letterheadBasePdf ?? base.letterheadBasePdf,
+    pdfmeTemplate: cfg.pdfmeTemplate ?? base.pdfmeTemplate,
     colori: {
       primario: cfg.colori?.primario ?? base.colori.primario,
       secondario: cfg.colori?.secondario ?? base.colori.secondario,

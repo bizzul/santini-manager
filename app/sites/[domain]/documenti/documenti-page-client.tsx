@@ -293,7 +293,7 @@ export function DocumentiPageClient({
           title="Generatore documenti"
           subtitle="Verifica i campi generati prima del salvataggio"
         />
-        <PageContent>
+        <PageContent className="max-w-none">
           <DocumentReviewForm
             domain={domain}
             siteId={siteId}

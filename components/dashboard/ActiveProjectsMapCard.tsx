@@ -48,7 +48,7 @@ export default function ActiveProjectsMapCard({
   projects,
   domain,
   className,
-  mapHeightClassName = "h-[420px]",
+  mapHeightClassName = "h-[520px]",
 }: ActiveProjectsMapCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -158,49 +158,30 @@ export default function ActiveProjectsMapCard({
         !isExpanded && className,
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h3 className="dashboard-panel-title">Mappa</h3>
-          <p className="dashboard-panel-subtitle">
-            Progetti geolocalizzati da coordinate o indirizzo cliente
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center rounded-full border border-blue-400/40 bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-100">
-            {visibleProjects.length} cantieri visibili
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsExpanded((v) => !v)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-400 transition hover:border-slate-500 hover:text-slate-100"
-            aria-label={isExpanded ? "Riduci mappa" : "Espandi mappa"}
-          >
-            {isExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Stato"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as ProjectMapStatusFilter)}
+              className="h-9 min-w-44 rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+            >
+              {PROJECT_STATUS_OPTIONS.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
 
-      <div className="dashboard-panel-inner flex flex-wrap gap-2 p-2">
-        <select
-          aria-label="Stato"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as ProjectMapStatusFilter)}
-          className="h-9 min-w-44 rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-        >
-          {PROJECT_STATUS_OPTIONS.map((status) => (
-            <option key={status.value} value={status.value}>
-              {status.label}
-            </option>
-          ))}
-        </select>
-
-        {categoryOptions.length > 0 && (
-          <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="flex h-9 min-w-56 items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-              >
+            {categoryOptions.length > 0 && (
+              <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-9 min-w-56 items-center justify-between gap-2 rounded-xl border border-slate-700 bg-slate-900/80 px-3 text-xs font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+                  >
                 <span className="flex items-center gap-2 truncate">
                   {triggerSelectedColors.length > 0 && (
                     <span className="flex -space-x-1">
@@ -282,6 +263,21 @@ export default function ActiveProjectsMapCard({
             </PopoverContent>
           </Popover>
         )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-full border border-blue-400/40 bg-blue-500/20 px-3 py-1 text-xs font-medium text-blue-100">
+            {visibleProjects.length} cantieri visibili
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/80 text-slate-400 transition hover:border-slate-500 hover:text-slate-100"
+            aria-label={isExpanded ? "Riduci mappa" : "Espandi mappa"}
+          >
+            {isExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
 
       <div

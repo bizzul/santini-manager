@@ -1,0 +1,78 @@
+import type { DocumentoArricchito } from "@/validation/documenti/extracted-document";
+
+/** Documento di esempio per anteprima nell'editor carta intestata. */
+export const LETTERHEAD_SAMPLE_DOCUMENT: DocumentoArricchito = {
+  tipoDocumento: "OFFERTA",
+  destinatario: {
+    ragioneSociale: "Darmacentro La Turrita",
+    aca: "Settore acquisti",
+    via: "Via Parco 3",
+    cap: "6500",
+    citta: "Bellinzona",
+    email: null,
+    clienteId: null,
+    isNuovo: false,
+  },
+  oggetto: "Medical Manager",
+  corpoTesto: null,
+  righe: [
+    {
+      descrizione: "Azione borse",
+      descrizioneEstesa: null,
+      misure: null,
+      unita: "Pz.",
+      quantita: 5,
+      prezzoUnitario: 0,
+      sconto: null,
+      isTrasporto: false,
+      articoloId: null,
+      isNuovo: false,
+      art: "1",
+      totaleRiga: 0,
+      immagineUrl: null,
+    },
+    {
+      descrizione: "Consulenza tecnica",
+      descrizioneEstesa: "Supporto configurazione sistema",
+      misure: null,
+      unita: "h",
+      quantita: 8,
+      prezzoUnitario: 120,
+      sconto: 10,
+      isTrasporto: false,
+      articoloId: null,
+      isNuovo: false,
+      art: "2",
+      totaleRiga: 864,
+      immagineUrl: null,
+    },
+  ],
+  condizioniPagamento: ["- 50% all'ordine", "- saldo: 10 giorni netto"],
+  termineFornitura: "3-4 settimane dalla conferma d'ordine",
+  note: "Trasporto franco fabbrica",
+  totali: { totNetto: 864, iva: 69.98, totaleCHF: 933.98 },
+  allegati: [],
+};
+
+export const LETTERHEAD_SAMPLE_LETTER: DocumentoArricchito = {
+  tipoDocumento: "LETTERA_UFFICIALE",
+  destinatario: {
+    ragioneSociale: "Comune di Bellinzona",
+    aca: "Ufficio tecnico",
+    via: "Viale Stazione 30",
+    cap: "6500",
+    citta: "Bellinzona",
+    email: null,
+    clienteId: null,
+    isNuovo: false,
+  },
+  oggetto: "Comunicazione lavori stradali",
+  corpoTesto:
+    "Con la presente Le comunichiamo quanto concordato in sede di riunione.\n\nRestiamo a disposizione per ogni chiarimento.",
+  righe: [],
+  condizioniPagamento: [],
+  termineFornitura: null,
+  note: null,
+  totali: undefined,
+  allegati: [],
+};

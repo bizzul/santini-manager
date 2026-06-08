@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import {
   DocumentoArricchitoSchema,
+  UnitaEnum,
   type DocumentoArricchito,
 } from "@/validation/documenti/extracted-document";
 import {
@@ -53,6 +54,8 @@ import {
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
 
+const UNITA_OPTIONS = UnitaEnum.options;
+
 interface DocumentReviewFormProps {
   domain: string;
   siteId: string;
@@ -93,19 +96,23 @@ export function DocumentReviewForm({
   });
 
   const addRiga = () => {
-    append({
-      descrizione: "",
-      descrizioneEstesa: null,
-      misure: null,
-      unita: "Pz.",
-      quantita: 1,
-      prezzoUnitario: 0,
-      sconto: showDiscount ? null : null,
-      isTrasporto: false,
-      articoloId: null,
-      isNuovo: true,
-      immagineUrl: null,
-    });
+    const newIndex = fields.length;
+    append(
+      {
+        descrizione: "",
+        descrizioneEstesa: null,
+        misure: null,
+        unita: "Pz.",
+        quantita: 1,
+        prezzoUnitario: 0,
+        sconto: null,
+        isTrasporto: false,
+        articoloId: null,
+        isNuovo: true,
+        immagineUrl: null,
+      },
+      { focusName: `righe.${newIndex}.descrizione` },
+    );
   };
 
   const uploadRigaImage = async (index: number, file: File) => {
@@ -303,144 +310,166 @@ export function DocumentReviewForm({
   );
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          <GenerateErrorsAlert errors={saveErrors} />
-          {templateIssues.length > 0 ? (
-            <Alert
-              variant={hasBlockingTemplateIssues ? "destructive" : "default"}
-              className="py-2"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle className="text-sm">
-                {hasBlockingTemplateIssues
-                  ? "Carta intestata incompleta"
-                  : "Completa la carta intestata"}
-              </AlertTitle>
-              <AlertDescription className="text-xs">
-                {hasBlockingTemplateIssues
-                  ? `Mancano: ${missingTemplateLabels.join(", ")}. Configurali nelle impostazioni del sito prima di generare il PDF definitivo.`
-                  : `Per un PDF completo aggiungi: ${missingTemplateLabels.join(", ")} nelle impostazioni del sito.`}
-              </AlertDescription>
-            </Alert>
-          ) : null}
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="@container flex w-full min-w-0 flex-col gap-4"
+      >
+        <GenerateErrorsAlert errors={saveErrors} />
+        {templateIssues.length > 0 ? (
+          <Alert
+            variant={hasBlockingTemplateIssues ? "destructive" : "default"}
+            className="py-2"
+          >
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle className="text-sm">
+              {hasBlockingTemplateIssues
+                ? "Carta intestata incompleta"
+                : "Completa la carta intestata"}
+            </AlertTitle>
+            <AlertDescription className="text-xs">
+              {hasBlockingTemplateIssues
+                ? `Mancano: ${missingTemplateLabels.join(", ")}. Configurali nelle impostazioni del sito prima di generare il PDF definitivo.`
+                : `Per un PDF completo aggiungi: ${missingTemplateLabels.join(", ")} nelle impostazioni del sito.`}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-          <h2 className="text-base font-semibold">Verifica e correggi</h2>
+        <h2 className="text-sm font-semibold tracking-tight">
+          Verifica e correggi
+        </h2>
 
-          <div className="max-w-lg rounded-md border border-border/70 bg-muted/15 p-2.5">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
+        {/* Due colonne fisse 50/50 (stile inline: bypassa Tailwind) */}
+        <div
+          className="w-full"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "start",
+            gap: "1.5rem",
+          }}
+        >
+          {/* Colonna sinistra */}
+          <div className="min-w-0 space-y-3" style={{ minWidth: 0 }}>
+          <div className="rounded-md border border-border/70 bg-muted/15 p-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
               <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 Destinatario
               </p>
-              <MatchBadge isNuovo={watched.destinatario?.isNuovo ?? true} />
-            </div>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-              <FormField
-                control={form.control}
-                name="destinatario.ragioneSociale"
-                render={({ field }) => (
-                  <FormItem className="col-span-2 space-y-0.5">
-                    <FormLabel className="text-xs">Ragione sociale</FormLabel>
-                    <FormControl>
-                      <Input className="h-8 text-sm" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinatario.aca"
-                render={({ field }) => (
-                  <FormItem className="space-y-0.5">
-                    <FormLabel className="text-xs">a.c.a</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinatario.email"
-                render={({ field }) => (
-                  <FormItem className="space-y-0.5">
-                    <FormLabel className="text-xs">Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinatario.via"
-                render={({ field }) => (
-                  <FormItem className="col-span-2 space-y-0.5">
-                    <FormLabel className="text-xs">Via</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinatario.cap"
-                render={({ field }) => (
-                  <FormItem className="space-y-0.5">
-                    <FormLabel className="text-xs">CAP</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinatario.citta"
-                render={({ field }) => (
-                  <FormItem className="space-y-0.5">
-                    <FormLabel className="text-xs">Città</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
+              <MatchBadge
+                isNuovo={watched.destinatario?.isNuovo ?? true}
+                label={
+                  watched.destinatario?.isNuovo ? "Nuovo cliente" : undefined
+                }
               />
             </div>
+            <div className="grid grid-cols-6 gap-x-2 gap-y-1">
+                <FormField
+                  control={form.control}
+                  name="destinatario.ragioneSociale"
+                  render={({ field }) => (
+                    <FormItem className="col-span-6 space-y-0">
+                      <FormLabel className="text-[11px]">Ragione sociale</FormLabel>
+                      <FormControl>
+                        <Input className="h-8 text-sm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destinatario.aca"
+                  render={({ field }) => (
+                    <FormItem className="col-span-3 space-y-0">
+                      <FormLabel className="text-[11px]">a.c.a</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destinatario.email"
+                  render={({ field }) => (
+                    <FormItem className="col-span-3 space-y-0">
+                      <FormLabel className="text-[11px]">Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destinatario.via"
+                  render={({ field }) => (
+                    <FormItem className="col-span-6 space-y-0">
+                      <FormLabel className="text-[11px]">Via</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destinatario.cap"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 space-y-0">
+                      <FormLabel className="text-[11px]">CAP</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="destinatario.citta"
+                  render={({ field }) => (
+                    <FormItem className="col-span-4 space-y-0">
+                      <FormLabel className="text-[11px]">Città</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)]">
+          <div className="grid gap-2 @md:grid-cols-[11rem_minmax(0,1fr)]">
+          <div className="rounded-md border border-border/70 bg-muted/15 p-2">
             <FormField
               control={form.control}
               name="tipoDocumento"
               render={({ field }) => (
-                <FormItem className="space-y-0.5">
-                  <FormLabel className="text-xs">Tipo documento</FormLabel>
+                <FormItem className="space-y-0">
+                  <FormLabel className="text-[11px]">Tipo documento</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger className="h-8 text-sm">
@@ -459,13 +488,15 @@ export function DocumentReviewForm({
                 </FormItem>
               )}
             />
+          </div>
 
+          <div className="rounded-md border border-border/70 bg-muted/15 p-2">
             <FormField
               control={form.control}
               name="oggetto"
               render={({ field }) => (
-                <FormItem className="space-y-0.5">
-                  <FormLabel className="text-xs">Oggetto</FormLabel>
+                <FormItem className="space-y-0">
+                  <FormLabel className="text-[11px]">Oggetto</FormLabel>
                   <FormControl>
                     <Input className="h-8 text-sm" {...field} />
                   </FormControl>
@@ -474,354 +505,473 @@ export function DocumentReviewForm({
               )}
             />
           </div>
+        </div>
 
-          {isLetter ? (
-            <FormField
-              control={form.control}
-              name="corpoTesto"
-              render={({ field }) => (
-                <FormItem className="space-y-0.5">
-                  <FormLabel className="text-xs">Corpo lettera</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={12}
-                      className="text-sm"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ) : (
+            {isLetter ? (
+              <>
+                <FormField
+                  control={form.control}
+                  name="corpoTesto"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0.5">
+                      <FormLabel className="text-xs">Corpo lettera</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={12}
+                          className="text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="note"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0.5">
+                      <FormLabel className="text-xs">Note</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={2}
+                          className="text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </>
+            ) : (
             <>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Righe articolo</p>
-                {fields.map((field, index) => {
-                  const riga = watched.righe?.[index];
-                  const importoRiga = calcolaTotaleRiga(
-                    riga?.quantita ?? 0,
-                    riga?.prezzoUnitario ?? 0,
-                    riga?.sconto,
-                    watched.tipoDocumento,
-                  );
+              <div className="overflow-hidden rounded-md border border-border/70">
+                <div className="flex items-center justify-between gap-2 border-b border-border/70 bg-muted/20 px-3 py-2">
+                  <p className="text-sm font-medium">Righe articolo</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={addRiga}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Nuova riga
+                  </Button>
+                </div>
 
-                  return (
-                    <div
-                      key={field.id}
-                      className="space-y-2 rounded-md border border-border/70 bg-muted/10 p-2.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1.5 text-[11px] font-semibold text-muted-foreground">
-                          {index + 1}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          <MatchBadge isNuovo={riga?.isNuovo ?? true} />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                            onClick={() => remove(index)}
-                            aria-label={`Rimuovi riga ${index + 1}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
+                {fields.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted-foreground">
+                    <p>Nessuna riga articolo.</p>
+                    <Button type="button" variant="outline" size="sm" onClick={addRiga}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Aggiungi la prima riga
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/60">
+                    {fields.map((field, index) => {
+                      const riga = watched.righe?.[index];
+                      const importoRiga = calcolaTotaleRiga(
+                        riga?.quantita ?? 0,
+                        riga?.prezzoUnitario ?? 0,
+                        riga?.sconto,
+                        watched.tipoDocumento,
+                      );
 
-                      {(riga?.articoliSuggeriti?.length ?? 0) > 0 ? (
-                        <Select
-                          onValueChange={(value) => {
-                            const candidate = riga?.articoliSuggeriti?.find(
-                              (item) => String(item.id) === value,
-                            );
-                            if (candidate) {
-                              applySuggestedArticolo(index, candidate);
-                            }
-                          }}
+                      return (
+                        <div
+                          key={field.id}
+                          className="space-y-1.5 bg-muted/5 p-2"
                         >
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue placeholder="Corrispondenze catalogo…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {riga?.articoliSuggeriti?.map((item) => (
-                              <SelectItem
-                                key={String(item.id)}
-                                value={String(item.id)}
-                              >
-                                {item.codice ? `${item.codice} — ` : ""}
-                                {item.descrizione}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : null}
-
-                      <div className="flex gap-2">
-                        <div className="shrink-0">
-                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Immagine
-                          </p>
-                          {riga?.immagineUrl ? (
-                            <div className="group relative h-14 w-14">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={riga.immagineUrl}
-                                alt=""
-                                className="h-14 w-14 rounded border object-cover"
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  form.setValue(
-                                    `righe.${index}.immagineUrl`,
-                                    null,
-                                    { shouldDirty: true },
-                                  )
-                                }
-                                className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
-                                aria-label="Rimuovi immagine"
-                              >
-                                <X className="h-2.5 w-2.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <label
-                              className="flex h-14 w-14 cursor-pointer flex-col items-center justify-center gap-0.5 rounded border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                              title="Carica immagine (opzionale)"
-                            >
-                              {uploadingImageIndex === index ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <ImagePlus className="h-4 w-4" />
-                              )}
-                              <span className="text-[8px] leading-none">
-                                Carica
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
+                                {index + 1}
                               </span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                disabled={uploadingImageIndex === index}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) uploadRigaImage(index, file);
-                                  e.target.value = "";
-                                }}
-                              />
-                            </label>
-                          )}
-                        </div>
-                        <FormField
-                          control={form.control}
-                          name={`righe.${index}.descrizione`}
-                          render={({ field: f }) => (
-                            <FormItem className="flex-1 space-y-0.5">
-                              <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Descrizione
-                              </FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  rows={2}
-                                  className="min-h-[3.5rem] resize-y py-1.5 text-sm leading-snug"
-                                  {...f}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name={`righe.${index}.descrizioneEstesa`}
-                        render={({ field: f }) => (
-                          <FormItem className="space-y-0.5">
-                            <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              Descrizione completa (opzionale)
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                rows={3}
-                                placeholder="Testo descrittivo esteso, dettagli, note tecniche…"
-                                className="min-h-[4rem] resize-y py-1.5 text-sm leading-snug"
-                                {...f}
-                                value={f.value ?? ""}
-                                onChange={(e) =>
-                                  f.onChange(e.target.value || null)
+                              <MatchBadge
+                                isNuovo={riga?.isNuovo ?? true}
+                                label={
+                                  riga?.isNuovo ? "Nuovo articolo" : "Da catalogo"
                                 }
                               />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                              onClick={() => remove(index)}
+                              aria-label={`Rimuovi riga ${index + 1}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
 
-                      <div
-                        className={`grid gap-x-2 gap-y-1 ${
-                          showDiscount ? "grid-cols-5" : "grid-cols-4"
-                        }`}
-                      >
-                        <FormField
-                          control={form.control}
-                          name={`righe.${index}.unita`}
-                          render={({ field: f }) => (
-                            <FormItem className="space-y-0.5">
-                              <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                U
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  className="h-8 px-1.5 text-center text-sm"
-                                  {...f}
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`righe.${index}.quantita`}
-                          render={({ field: f }) => (
-                            <FormItem className="space-y-0.5">
-                              <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Q
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="any"
-                                  className="h-8 px-1.5 text-center text-sm"
-                                  {...f}
-                                  onChange={(e) =>
-                                    f.onChange(parseFloat(e.target.value) || 0)
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`righe.${index}.prezzoUnitario`}
-                          render={({ field: f }) => (
-                            <FormItem className="space-y-0.5">
-                              <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                Prezzo
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  step="any"
-                                  className="h-8 px-1.5 text-right text-sm"
-                                  {...f}
-                                  onChange={(e) =>
-                                    f.onChange(parseFloat(e.target.value) || 0)
-                                  }
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        {showDiscount ? (
+                          {(riga?.articoliSuggeriti?.length ?? 0) > 0 ? (
+                            <Select
+                              onValueChange={(value) => {
+                                const candidate = riga?.articoliSuggeriti?.find(
+                                  (item) => String(item.id) === value,
+                                );
+                                if (candidate) {
+                                  applySuggestedArticolo(index, candidate);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs">
+                                <SelectValue placeholder="Corrispondenze catalogo…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {riga?.articoliSuggeriti?.map((item) => (
+                                  <SelectItem
+                                    key={String(item.id)}
+                                    value={String(item.id)}
+                                  >
+                                    {item.codice ? `${item.codice} — ` : ""}
+                                    {item.descrizione}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : null}
+
+                          <div className="grid gap-1.5 sm:grid-cols-[2.75rem_minmax(0,1fr)]">
+                            <div>
+                              {riga?.immagineUrl ? (
+                                <div className="group relative h-11 w-11">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={riga.immagineUrl}
+                                    alt=""
+                                    className="h-11 w-11 rounded border object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      form.setValue(
+                                        `righe.${index}.immagineUrl`,
+                                        null,
+                                        { shouldDirty: true },
+                                      )
+                                    }
+                                    className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                                    aria-label="Rimuovi immagine"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <label
+                                  className="flex h-11 w-11 cursor-pointer flex-col items-center justify-center rounded border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                                  title="Carica immagine"
+                                >
+                                  {uploadingImageIndex === index ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <ImagePlus className="h-3.5 w-3.5" />
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    disabled={uploadingImageIndex === index}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) uploadRigaImage(index, file);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                            <FormField
+                              control={form.control}
+                              name={`righe.${index}.descrizione`}
+                              render={({ field: f }) => (
+                                <FormItem className="space-y-0">
+                                  <FormLabel className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                    Descrizione
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      rows={1}
+                                      className="min-h-[2.25rem] resize-y py-1 text-sm leading-snug"
+                                      {...f}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
                           <FormField
                             control={form.control}
-                            name={`righe.${index}.sconto`}
+                            name={`righe.${index}.descrizioneEstesa`}
                             render={({ field: f }) => (
-                              <FormItem className="space-y-0.5">
-                                <FormLabel className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  % Sc
+                              <FormItem className="space-y-0">
+                                <FormLabel className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                  Dettaglio (opz.)
                                 </FormLabel>
                                 <FormControl>
-                                  <Input
-                                    type="number"
-                                    step="any"
-                                    className="h-8 px-1.5 text-center text-sm"
+                                  <Textarea
+                                    rows={1}
+                                    placeholder="Note tecniche, dettagli…"
+                                    className="min-h-[2rem] resize-y py-1 text-sm leading-snug"
+                                    {...f}
                                     value={f.value ?? ""}
                                     onChange={(e) =>
-                                      f.onChange(
-                                        e.target.value
-                                          ? parseFloat(e.target.value)
-                                          : null,
-                                      )
+                                      f.onChange(e.target.value || null)
                                     }
                                   />
                                 </FormControl>
                               </FormItem>
                             )}
                           />
-                        ) : null}
-                        <div className="space-y-0.5">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Importo
-                          </p>
-                          <Input
-                            readOnly
-                            tabIndex={-1}
-                            className="h-8 bg-muted/40 px-1.5 text-right text-sm font-medium"
-                            value={importoRiga.toFixed(2)}
-                          />
+
+                          <div
+                            className={`grid gap-1 ${
+                              showDiscount
+                                ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)]"
+                                : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]"
+                            }`}
+                          >
+                            <FormField
+                              control={form.control}
+                              name={`righe.${index}.unita`}
+                              render={({ field: f }) => (
+                                <FormItem className="space-y-0">
+                                  <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
+                                    U
+                                  </FormLabel>
+                                  <Select
+                                    value={f.value}
+                                    onValueChange={f.onChange}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger className="h-7 px-1 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {UNITA_OPTIONS.map((u) => (
+                                        <SelectItem key={u} value={u}>
+                                          {u}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`righe.${index}.quantita`}
+                              render={({ field: f }) => (
+                                <FormItem className="space-y-0">
+                                  <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
+                                    Q
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="any"
+                                      className="h-7 px-1 text-center text-xs"
+                                      {...f}
+                                      onChange={(e) =>
+                                        f.onChange(parseFloat(e.target.value) || 0)
+                                      }
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`righe.${index}.prezzoUnitario`}
+                              render={({ field: f }) => (
+                                <FormItem className="space-y-0">
+                                  <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
+                                    Prezzo
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="any"
+                                      className="h-7 px-1 text-right text-xs"
+                                      {...f}
+                                      onChange={(e) =>
+                                        f.onChange(parseFloat(e.target.value) || 0)
+                                      }
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            {showDiscount ? (
+                              <FormField
+                                control={form.control}
+                                name={`righe.${index}.sconto`}
+                                render={({ field: f }) => (
+                                  <FormItem className="space-y-0">
+                                    <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
+                                      % Sc
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        step="any"
+                                        className="h-7 px-1 text-center text-xs"
+                                        value={f.value ?? ""}
+                                        onChange={(e) =>
+                                          f.onChange(
+                                            e.target.value
+                                              ? parseFloat(e.target.value)
+                                              : null,
+                                          )
+                                        }
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            ) : null}
+                            <div className="space-y-0">
+                              <p className="text-[10px] font-medium uppercase text-muted-foreground">
+                                Importo
+                              </p>
+                              <Input
+                                readOnly
+                                tabIndex={-1}
+                                className="h-7 bg-muted/40 px-1 text-right text-xs font-medium"
+                                value={importoRiga.toFixed(2)}
+                              />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full border-dashed"
-                  onClick={addRiga}
-                >
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Aggiungi riga
-                </Button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="border-t border-border/70 bg-muted/10 px-3 py-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full border border-dashed border-border/80"
+                    onClick={addRiga}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Aggiungi riga
+                  </Button>
+                </div>
               </div>
 
-              <FormField
-                control={form.control}
-                name="termineFornitura"
-                render={({ field }) => (
-                  <FormItem className="space-y-0.5">
-                    <FormLabel className="text-xs">Termine di fornitura</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="h-8 text-sm"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-2 rounded-md border border-border/70 bg-muted/10 p-2 md:grid-cols-2">
+                <p className="text-sm font-medium md:col-span-2">Condizioni e note</p>
+                <FormField
+                  control={form.control}
+                  name="condizioniPagamento"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0 md:col-span-2">
+                      <FormLabel className="text-[11px]">
+                        Condizioni di pagamento
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={2}
+                          className="text-sm"
+                          value={(field.value ?? []).join("\n")}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value
+                                .split("\n")
+                                .map((line) => line.trim())
+                                .filter(Boolean),
+                            )
+                          }
+                          placeholder="Una condizione per riga"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="termineFornitura"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0">
+                      <FormLabel className="text-[11px]">Termine di fornitura</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="h-8 text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="note"
+                  render={({ field }) => (
+                    <FormItem className="space-y-0">
+                      <FormLabel className="text-[11px]">Note / trasporto</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={2}
+                          className="min-h-[2.25rem] resize-y text-sm"
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          placeholder="Note aggiuntive…"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </>
-          )}
+            )}
 
-          <div className="flex gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onBack}>
-              Indietro
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                form.formState.isSubmitting || !isDocumentTemplateConfigured(template)
-              }
-            >
-              {form.formState.isSubmitting
-                ? "Salvataggio..."
-                : "Salva e genera PDF"}
-            </Button>
+            <div className="sticky bottom-0 flex gap-2 border-t border-border/50 bg-background/95 py-2 backdrop-blur-sm">
+              <Button type="button" variant="outline" size="sm" onClick={onBack}>
+                Indietro
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={
+                  form.formState.isSubmitting ||
+                  !isDocumentTemplateConfigured(template)
+                }
+              >
+                {form.formState.isSubmitting
+                  ? "Salvataggio..."
+                  : "Salva e genera PDF"}
+              </Button>
+            </div>
           </div>
-        </form>
-      </Form>
 
-      <div className="lg:sticky lg:top-4 lg:self-start">
-        <p className="mb-3 text-sm font-medium text-muted-foreground">
-          Anteprima
-        </p>
-        <DocumentPreview documento={previewDocumento} template={template} />
-      </div>
-    </div>
+          <aside
+            className="w-full"
+            style={{ minWidth: 0, position: "sticky", top: "1rem" }}
+          >
+            <p className="mb-2 text-sm font-medium text-muted-foreground">
+              Anteprima
+            </p>
+            <DocumentPreview
+              documento={previewDocumento}
+              template={template}
+            />
+          </aside>
+        </div>
+      </form>
+    </Form>
   );
 }

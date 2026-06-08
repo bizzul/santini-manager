@@ -559,3 +559,8 @@ body:has(.home-gradient-bg) {
 .guide-assistant-wave {
   animation: guideAssistantWave 1.8s ease-in-out infinite;
 }
+
+/* Editor carta intestata: canvas pdfme a tutta larghezza (sidebar interna nascosta) */
+.letterhead-pdfme-host [style*="overflow: auto"] {
+  margin-right: 0 !important;
+}

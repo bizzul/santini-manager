@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Dialog,
   DialogContent,
@@ -14,15 +15,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Paperclip, Sparkles, Upload, X } from "lucide-react";
 import { toast } from "@/lib/toast";
-import type { DocumentTemplateConfig } from "@/lib/documenti/template-types";
+import type { DocumentTemplateConfig, LetterheadBasePdf } from "@/lib/documenti/template-types";
 import type { TemplateStructureMap } from "@/lib/documenti/template-structure-types";
+import type { Template } from "@pdfme/common";
+import {
+  buildTemplateFromCatalog,
+  presetLabel,
+  variantFromPreset,
+  type LetterheadLayoutPreset,
+} from "@/lib/documenti/letterhead-field-catalog";
+import { DOCUMENT_TYPES } from "@/lib/documenti/document-types";
+import {
+  A4_TWO_SHEETS_WIDTH_CSS,
+} from "@/lib/documenti/page-format";
 import { createClient } from "@/utils/supabase/client";
 import {
   validateDocumentAttachment,
   DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES,
 } from "@/lib/documenti/attachment-validation";
+
+const LetterheadDesignerGuided = dynamic(
+  () =>
+    import("@/components/document-template/letterhead-designer-guided").then(
+      (m) => m.LetterheadDesignerGuided,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    ),
+  },
+);
 
 interface DocumentTemplateModalProps {
   subdomain: string;
@@ -66,6 +94,10 @@ export default function DocumentTemplateModal({
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadingRef, setUploadingRef] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingLetterhead, setUploadingLetterhead] = useState(false);
+  const [layoutPreset, setLayoutPreset] =
+    useState<LetterheadLayoutPreset>("matris");
+  const [activeTab, setActiveTab] = useState("letterhead");
   const [config, setConfig] = useState<DocumentTemplateConfig>(emptyConfig());
   const [condizioniText, setCondizioniText] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -93,6 +125,9 @@ export default function DocumentTemplateModal({
         setCondizioniText((cfg.condizioniDefault ?? []).join("\n"));
         setLogoUrl(cfg.logoUrl ?? data.logoUrl ?? null);
         setStructurePreview(cfg.structureMap ?? null);
+        if (cfg.letterheadLayoutPreset) {
+          setLayoutPreset(cfg.letterheadLayoutPreset);
+        }
       }
     } catch {
       toast.error("Errore nel caricamento del template");
@@ -195,34 +230,113 @@ export default function DocumentTemplateModal({
 
     setUploadingLogo(true);
     try {
-      const supabase = createClient();
-      const filePath = `${siteId}/logo.webp`;
-      const { error: uploadError } = await supabase.storage
-        .from("document-assets")
-        .upload(filePath, file, {
-          upsert: true,
-          contentType: "image/webp",
-        });
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (uploadError) throw uploadError;
+      const res = await fetch(
+        `/api/sites/${subdomain}/document-template/logo`,
+        { method: "POST", body: formData },
+      );
+      const data = (await res.json()) as {
+        url?: string;
+        storagePath?: string;
+        error?: string;
+      };
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("document-assets").getPublicUrl(filePath);
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Caricamento fallito");
+      }
 
       setConfig((prev) => ({
         ...prev,
-        logoPath: filePath,
-        logoUrl: publicUrl,
+        logoPath: data.storagePath ?? null,
+        logoUrl: data.url,
       }));
-      setLogoUrl(publicUrl);
+      setLogoUrl(data.url);
       toast.success("Logo caricato");
-    } catch {
-      toast.error("Errore nel caricamento del logo");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Errore nel caricamento del logo",
+      );
     } finally {
       setUploadingLogo(false);
     }
   };
+
+  const uploadLetterhead = async (file: File) => {
+    setUploadingLetterhead(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(
+        `/api/sites/${subdomain}/document-template/letterhead`,
+        { method: "POST", body: formData },
+      );
+      const data = (await res.json()) as LetterheadBasePdf & { error?: string };
+
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Caricamento fallito");
+      }
+
+      const letterhead: LetterheadBasePdf = {
+        url: data.url,
+        storagePath: data.storagePath,
+        mimeType: data.mimeType,
+        pages: data.pages,
+        width: data.width,
+        height: data.height,
+      };
+
+      const pdfmeTemplate = buildTemplateFromCatalog(
+        data.url,
+        variantFromPreset(layoutPreset),
+        layoutPreset,
+      );
+
+      setConfig((prev) => ({
+        ...prev,
+        letterheadBasePdf: letterhead,
+        pdfmeTemplate,
+        letterheadLayoutPreset: layoutPreset,
+      }));
+      toast.success("Modello carta intestata caricato");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Errore nel caricamento del modello",
+      );
+    } finally {
+      setUploadingLetterhead(false);
+    }
+  };
+
+  const handlePdfmeTemplateChange = (updated: Template) => {
+    setConfig((prev) => ({
+      ...prev,
+      pdfmeTemplate: updated,
+    }));
+  };
+
+  const resetPdfmeTemplate = () => {
+    const url = config.letterheadBasePdf?.url;
+    if (!url) return;
+    setConfig((prev) => ({
+      ...prev,
+      pdfmeTemplate: buildTemplateFromCatalog(
+        url,
+        variantFromPreset(layoutPreset),
+        layoutPreset,
+      ),
+      letterheadLayoutPreset: layoutPreset,
+    }));
+    toast.success("Campi reimpostati al layout predefinito");
+  };
+
+  const templateVariant = variantFromPreset(layoutPreset);
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
@@ -246,8 +360,25 @@ export default function DocumentTemplateModal({
         ...prev,
         structureMap: data.structureMap,
         structureAnalyzedAt: data.analyzedAt,
+        ...(data.pdfmeTemplate ? { pdfmeTemplate: data.pdfmeTemplate } : {}),
+        ...(data.letterheadLayoutPreset
+          ? { letterheadLayoutPreset: data.letterheadLayoutPreset }
+          : {}),
       }));
-      toast.success("Modello analizzato con AI");
+      if (data.letterheadLayoutPreset) {
+        setLayoutPreset(data.letterheadLayoutPreset);
+      }
+      if (data.layoutApplied) {
+        setActiveTab("letterhead");
+        toast.success(
+          "Campi posizionati automaticamente dal documento di riferimento",
+        );
+      } else if (data.layoutSkippedReason) {
+        toast.warning(String(data.layoutSkippedReason));
+        toast.success("Struttura documento analizzata");
+      } else {
+        toast.success("Modello analizzato con AI");
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Errore nell'analisi");
     } finally {
@@ -261,13 +392,19 @@ export default function DocumentTemplateModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[680px] max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent
+        className="flex h-[95vh] max-h-[95vh] flex-col overflow-hidden p-6"
+        style={{
+          width: A4_TWO_SHEETS_WIDTH_CSS,
+          maxWidth: A4_TWO_SHEETS_WIDTH_CSS,
+        }}
+      >
+        <DialogHeader className="shrink-0">
           <DialogTitle>Carta intestata documenti</DialogTitle>
           <DialogDescription>
             Configura mittente, IVA, IBAN e modello carta intestata per PDF e
-            anteprima (formato A4). La ragione sociale viene precompilata dal
-            nome del sito se non impostata.
+            anteprima (formato A4). Lo stesso layout vale per offerte, conferme,
+            fatture, preventivi e lettere.
           </DialogDescription>
         </DialogHeader>
 
@@ -276,271 +413,413 @@ export default function DocumentTemplateModal({
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Logo aziendale</Label>
-              <div className="flex items-center gap-3">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={logoUrl}
-                    alt="Logo"
-                    className="h-12 w-auto rounded border object-contain"
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    Nessun logo
-                  </span>
-                )}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploadingLogo}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = "image/jpeg,image/png,image/webp";
-                    input.onchange = () => {
-                      const file = input.files?.[0];
-                      if (file) void uploadLogo(file);
-                    };
-                    input.click();
-                  }}
-                >
-                  {uploadingLogo ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex min-h-0 flex-1 flex-col py-2"
+          >
+            <TabsList className="grid w-full shrink-0 grid-cols-3">
+              <TabsTrigger value="letterhead">Carta intestata</TabsTrigger>
+              <TabsTrigger value="company">Dati azienda</TabsTrigger>
+              <TabsTrigger value="advanced">Avanzate</TabsTrigger>
+            </TabsList>
+
+            <TabsContent
+              value="letterhead"
+              className="mt-4 min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden"
+            >
+              <LetterheadDesignerGuided
+                template={
+                  config.pdfmeTemplate ?? {
+                    basePdf: config.letterheadBasePdf?.url ?? "",
+                    schemas: [{}],
+                  }
+                }
+                variant={templateVariant}
+                preset={layoutPreset}
+                onChange={handlePdfmeTemplateChange}
+                toolbar={
+                    <div className="space-y-3 rounded-lg border p-3">
+                    <Label className="text-sm">Modello carta intestata</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Carica il PDF del cliente. Logo e dati azienda sono già
+                      nella carta intestata.
+                    </p>
+                    <div className="rounded-md border border-border/60 bg-muted/20 p-2">
+                      <p className="text-xs font-medium">Tipologie documento</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        Un unico layout condiviso per tutti i tipi:
+                      </p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {DOCUMENT_TYPES.map((t) => (
+                          <span
+                            key={t.id}
+                            className="inline-flex rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
+                          >
+                            {t.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingLetterhead}
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.accept =
+                            "application/pdf,image/jpeg,image/png,image/webp";
+                          input.onchange = () => {
+                            const file = input.files?.[0];
+                            if (file) void uploadLetterhead(file);
+                          };
+                          input.click();
+                        }}
+                      >
+                        {uploadingLetterhead ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="mr-2 h-4 w-4" />
+                        )}
+                        Carica modello
+                      </Button>
+                      <select
+                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        value={layoutPreset}
+                        onChange={(e) => {
+                          const preset = e.target.value as LetterheadLayoutPreset;
+                          setLayoutPreset(preset);
+                          setConfig((prev) => ({
+                            ...prev,
+                            letterheadLayoutPreset: preset,
+                          }));
+                        }}
+                      >
+                        <option value="matris">{presetLabel("matris")}</option>
+                        <option value="santini">{presetLabel("santini")}</option>
+                        <option value="lettera">{presetLabel("lettera")}</option>
+                      </select>
+                      {config.letterheadBasePdf ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="justify-start px-0"
+                            onClick={resetPdfmeTemplate}
+                          >
+                            Reimposta campi
+                          </Button>
+                          <p className="text-xs text-muted-foreground">
+                            Modello caricato
+                            {config.letterheadBasePdf.width
+                              ? ` (${config.letterheadBasePdf.width}×${config.letterheadBasePdf.height} mm)`
+                              : ""}
+                          </p>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                }
+                emptyPreview={
+                  <div className="flex h-full min-h-[480px] flex-col items-center justify-center gap-2 p-8 text-center text-sm text-muted-foreground">
+                    <Upload className="h-10 w-10 opacity-40" />
+                    <p>
+                      Carica un PDF o un&apos;immagine per iniziare a
+                      posizionare i campi standard.
+                    </p>
+                  </div>
+                }
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="company"
+              className="mt-4 max-h-[calc(92vh-12rem)] space-y-4 overflow-y-auto data-[state=inactive]:hidden"
+            >
+              <div className="space-y-2">
+                <Label>Logo aziendale</Label>
+                <div className="flex items-center gap-3">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt="Logo"
+                      className="h-12 w-auto rounded border object-contain"
+                    />
                   ) : (
-                    <Upload className="mr-2 h-4 w-4" />
+                    <span className="text-sm text-muted-foreground">
+                      Nessun logo
+                    </span>
                   )}
-                  Carica logo
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Ragione sociale</Label>
-              <Input
-                value={m.ragioneSociale ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    mittente: { ...m, ragioneSociale: e.target.value },
-                  })
-                }
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-3">
-              <div className="sm:col-span-2 space-y-2">
-                <Label>Via</Label>
-                <Input
-                  value={m.via ?? ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      mittente: { ...m, via: e.target.value },
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>CAP</Label>
-                <Input
-                  value={m.cap ?? ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      mittente: { ...m, cap: e.target.value },
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Città</Label>
-                <Input
-                  value={m.citta ?? ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      mittente: { ...m, citta: e.target.value },
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>IVA / IDI</Label>
-                <Input
-                  value={m.iva ?? ""}
-                  onChange={(e) =>
-                    setConfig({
-                      ...config,
-                      mittente: { ...m, iva: e.target.value },
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Banca</Label>
-              <Input
-                value={b.nome ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    banca: { ...b, nome: e.target.value },
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>IBAN</Label>
-              <Input
-                value={b.iban ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    banca: { ...b, iban: e.target.value },
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Condizioni di pagamento predefinite (una per riga)</Label>
-              <Textarea
-                rows={3}
-                value={condizioniText}
-                onChange={(e) => setCondizioniText(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Termine di fornitura predefinito</Label>
-              <Input
-                value={config.termineFornituraDefault ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    termineFornituraDefault: e.target.value || null,
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2 rounded-lg border p-4">
-              <Label>Modello carta intestata (testo con placeholder)</Label>
-              <p className="text-xs text-muted-foreground">{PLACEHOLDER_GUIDE}</p>
-              <Textarea
-                rows={8}
-                placeholder={PLACEHOLDER_GUIDE}
-                value={config.templateModelText ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    templateModelText: e.target.value || null,
-                  })
-                }
-              />
-            </div>
-
-            <div className="space-y-2 rounded-lg border p-4">
-              <Label>Documento di riferimento (PDF, Word, Excel)</Label>
-              <p className="text-xs text-muted-foreground">
-                Max {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB.
-                Analizzato dall&apos;AI per mappare la struttura (output PDF).
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={uploadingRef}
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept =
-                      ".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                    input.onchange = () => {
-                      const file = input.files?.[0];
-                      if (file) void uploadReferenceDocument(file);
-                    };
-                    input.click();
-                  }}
-                >
-                  {uploadingRef ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Paperclip className="mr-2 h-4 w-4" />
-                  )}
-                  Carica documento
-                </Button>
-                {config.referenceDocument ? (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
+                    disabled={uploadingLogo}
                     onClick={() => {
-                      setConfig((prev) => ({
-                        ...prev,
-                        referenceDocument: null,
-                        structureMap: null,
-                        structureAnalyzedAt: null,
-                      }));
-                      setStructurePreview(null);
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/jpeg,image/png,image/webp";
+                      input.onchange = () => {
+                        const file = input.files?.[0];
+                        if (file) void uploadLogo(file);
+                      };
+                      input.click();
                     }}
                   >
-                    <X className="mr-2 h-4 w-4" />
-                    Rimuovi
+                    {uploadingLogo ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    Carica logo
                   </Button>
-                ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Usato per fallback e anteprima HTML. Con carta intestata PDF
+                  il logo è già nello sfondo.
+                </p>
               </div>
-              {config.referenceDocument ? (
-                <p className="text-sm">{config.referenceDocument.name}</p>
-              ) : null}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={
-                  analyzing ||
-                  (!config.referenceDocument && !config.templateModelText)
-                }
-                onClick={() => void handleAnalyze()}
-              >
-                {analyzing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Analizza modello con AI
-              </Button>
-              {structurePreview?.sections?.length ? (
-                <div className="mt-2 rounded border bg-muted/30 p-3 text-sm">
-                  <p className="mb-2 font-medium">Struttura rilevata</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    {[...structurePreview.sections]
-                      .sort((a, b) => a.order - b.order)
-                      .map((s) => (
-                        <li key={s.id}>
-                          {s.order}. {s.label} ({s.fields.length} campi)
-                        </li>
-                      ))}
-                  </ul>
-                  {config.structureAnalyzedAt ? (
-                    <p className="mt-2 text-xs">
-                      Analizzato:{" "}
-                      {new Date(config.structureAnalyzedAt).toLocaleString(
-                        "it-CH",
-                      )}
-                    </p>
+
+              <div className="space-y-2">
+                <Label>Ragione sociale</Label>
+                <Input
+                  value={m.ragioneSociale ?? ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      mittente: { ...m, ragioneSociale: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="sm:col-span-2 space-y-2">
+                  <Label>Via</Label>
+                  <Input
+                    value={m.via ?? ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        mittente: { ...m, via: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>CAP</Label>
+                  <Input
+                    value={m.cap ?? ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        mittente: { ...m, cap: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Città</Label>
+                  <Input
+                    value={m.citta ?? ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        mittente: { ...m, citta: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>IVA / IDI</Label>
+                  <Input
+                    value={m.iva ?? ""}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        mittente: { ...m, iva: e.target.value },
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Banca</Label>
+                <Input
+                  value={b.nome ?? ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      banca: { ...b, nome: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>IBAN</Label>
+                <Input
+                  value={b.iban ?? ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      banca: { ...b, iban: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Condizioni di pagamento predefinite (una per riga)</Label>
+                <Textarea
+                  rows={3}
+                  value={condizioniText}
+                  onChange={(e) => setCondizioniText(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Termine di fornitura predefinito</Label>
+                <Input
+                  value={config.termineFornituraDefault ?? ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      termineFornituraDefault: e.target.value || null,
+                    })
+                  }
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent
+              value="advanced"
+              className="mt-4 max-h-[calc(92vh-12rem)] space-y-4 overflow-y-auto data-[state=inactive]:hidden"
+            >
+              <div className="space-y-2 rounded-lg border p-4">
+                <Label>Modello carta intestata (testo con placeholder)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Solo per generazione AI contenuti (legacy). Con overlay PDF
+                  non influisce sul layout.
+                </p>
+                <p className="text-xs text-muted-foreground">{PLACEHOLDER_GUIDE}</p>
+                <Textarea
+                  rows={8}
+                  placeholder={PLACEHOLDER_GUIDE}
+                  value={config.templateModelText ?? ""}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      templateModelText: e.target.value || null,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2 rounded-lg border p-4">
+                <Label>Documento di riferimento (PDF, Word, Excel)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Max {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB.
+                  Carica un documento già compilato (es. conferma/offerta): l&apos;AI
+                  rileva dove sono i campi e li posiziona automaticamente nel tab
+                  Carta intestata (serve il PDF sfondo già caricato).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingRef}
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept =
+                        ".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                      input.onchange = () => {
+                        const file = input.files?.[0];
+                        if (file) void uploadReferenceDocument(file);
+                      };
+                      input.click();
+                    }}
+                  >
+                    {uploadingRef ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Paperclip className="mr-2 h-4 w-4" />
+                    )}
+                    Carica documento
+                  </Button>
+                  {config.referenceDocument ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setConfig((prev) => ({
+                          ...prev,
+                          referenceDocument: null,
+                          structureMap: null,
+                          structureAnalyzedAt: null,
+                        }));
+                        setStructurePreview(null);
+                      }}
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Rimuovi
+                    </Button>
                   ) : null}
                 </div>
-              ) : null}
-            </div>
-          </div>
+                {config.referenceDocument ? (
+                  <p className="text-sm">{config.referenceDocument.name}</p>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={
+                    analyzing ||
+                    (!config.referenceDocument && !config.templateModelText)
+                  }
+                  onClick={() => void handleAnalyze()}
+                >
+                  {analyzing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-2 h-4 w-4" />
+                  )}
+                  Analizza modello con AI
+                </Button>
+                {structurePreview?.sections?.length ? (
+                  <div className="mt-2 rounded border bg-muted/30 p-3 text-sm">
+                    <p className="mb-2 font-medium">Struttura rilevata</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      {[...structurePreview.sections]
+                        .sort((a, b) => a.order - b.order)
+                        .map((s) => (
+                          <li key={s.id}>
+                            {s.order}. {s.label} ({s.fields.length} campi)
+                          </li>
+                        ))}
+                    </ul>
+                    {config.structureAnalyzedAt ? (
+                      <p className="mt-2 text-xs">
+                        Analizzato:{" "}
+                        {new Date(config.structureAnalyzedAt).toLocaleString(
+                          "it-CH",
+                        )}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Annulla
           </Button>
