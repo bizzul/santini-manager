@@ -32,6 +32,7 @@
     "@headlessui/tailwindcss": "^0.2.2",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^3.10.0",
+    "@napi-rs/canvas": "^1.0.0",
     "@pdfme/common": "^4.5.2",
     "@pdfme/generator": "^4.5.2",
     "@pdfme/schemas": "^4.5.2",

@@ -165,7 +165,7 @@ const nextConfig = {
   },
 
   // Reduce bundle size by excluding server-only packages from client
-  serverExternalPackages: ["sharp"],
+  serverExternalPackages: ["sharp", "pdfjs-dist", "@napi-rs/canvas"],
 };
 
 module.exports = nextConfig;

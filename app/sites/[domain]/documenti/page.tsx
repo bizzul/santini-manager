@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext } from "@/lib/server-data";
-import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
+import { getSiteDocumentTemplatesByType } from "@/lib/documenti/get-site-document-template";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { fetchSiteDocumenti } from "@/lib/documenti/fetch-site-documenti";
 import {
@@ -25,9 +25,9 @@ export default async function Page({
   const supabase = await createClient();
   const serviceClient = createServiceClient();
 
-  const [template, documentiResult, clientsResult, suppliersResult, offersResult] =
+  const [templatesByType, documentiResult, clientsResult, suppliersResult, offersResult] =
     await Promise.all([
-      getSiteDocumentTemplate(siteId),
+      getSiteDocumentTemplatesByType(siteId),
       fetchSiteDocumenti(serviceClient, siteId).catch((error) => {
         console.warn("Failed to fetch documenti:", error.message);
         return [];
@@ -82,7 +82,7 @@ export default async function Page({
     <DocumentiPageClient
       domain={domain}
       siteId={siteId}
-      template={template}
+      templatesByType={templatesByType}
       documenti={documentiResult as DocumentoListItem[]}
       clients={clientsResult.data ?? []}
       suppliers={suppliersResult.data ?? []}

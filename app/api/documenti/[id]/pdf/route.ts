@@ -2,7 +2,8 @@ import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext, getSiteContextFromDomain } from "@/lib/site-context";
-import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
+import type { DocumentTypeId } from "@/lib/documenti/document-types";
+import { getSiteDocumentTemplateForType } from "@/lib/documenti/get-site-document-template";
 import { generateDocumentPdfBytes } from "@/lib/documenti/generate-document-pdf";
 import { generatePdfmeDocumentBytes } from "@/lib/documenti/generate-pdfme-pdf";
 import { hasPdfmeOverlay } from "@/lib/documenti/default-pdfme-template";
@@ -79,7 +80,10 @@ export async function GET(
       .eq("documento_id", id)
       .order("posizione", { ascending: true });
 
-    const template = await getSiteDocumentTemplate(siteId);
+    const template = await getSiteDocumentTemplateForType(
+      siteId,
+      doc.tipo_documento as DocumentTypeId,
+    );
 
     const documento: DocumentoArricchito = {
       tipoDocumento: doc.tipo_documento,

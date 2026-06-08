@@ -1,4 +1,5 @@
 import type { Template } from "@pdfme/common";
+import { isLetterType } from "@/lib/documenti/document-types";
 
 export type LetterheadFieldCategory = "header" | "body" | "footer";
 export type LetterheadFieldType = "text" | "table";
@@ -682,12 +683,34 @@ export function variantFromPreset(
 export function presetLabel(preset: LetterheadLayoutPreset): string {
   switch (preset) {
     case "santini":
-      return "Layout Santini";
+      return "Layout commerciale (Santini)";
     case "matris":
-      return "Layout Matris";
+      return "Layout commerciale (Matris)";
     case "lettera":
       return "Layout lettera";
   }
+}
+
+const SITE_COMMERCIAL_PRESET: Record<string, LetterheadLayoutPreset> = {
+  matrispro: "matris",
+  matris: "matris",
+  santini: "santini",
+};
+
+/** Preset commerciale predefinito per subdomain del sito (no preset di altri tenant). */
+export function getSiteCommercialPreset(subdomain: string): LetterheadLayoutPreset {
+  const key = subdomain.toLowerCase().split(":")[0].replace(/\..+$/, "");
+  if (key.includes("santini")) return "santini";
+  if (key.includes("matris")) return "matris";
+  return SITE_COMMERCIAL_PRESET[key] ?? "matris";
+}
+
+export function getSiteLayoutPresetForDocumentType(
+  subdomain: string,
+  tipoDocumento: string,
+): LetterheadLayoutPreset {
+  if (isLetterType(tipoDocumento)) return "lettera";
+  return getSiteCommercialPreset(subdomain);
 }
 
 /** @deprecated Usare buildTemplateFromCatalog */

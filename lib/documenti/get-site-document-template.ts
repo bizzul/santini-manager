@@ -2,10 +2,13 @@ import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import {
   resolveSiteDocumentTemplate,
+  resolveAllSiteDocumentTemplatesByType,
+  resolveSiteDocumentTemplateForType,
   type SiteTemplateSource,
 } from "@/lib/documenti/resolve-site-document-template";
 import type { DocumentTemplate } from "@/lib/documenti/template-types";
 import type { DocumentTemplateConfig } from "@/lib/documenti/template-types";
+import type { DocumentTypeId } from "@/lib/documenti/document-types";
 
 async function loadSiteTemplateSource(
   siteId: string,
@@ -46,6 +49,29 @@ export const getSiteDocumentTemplate = cache(
       return resolveSiteDocumentTemplate({});
     }
     return resolveSiteDocumentTemplate(source);
+  },
+);
+
+export const getSiteDocumentTemplatesByType = cache(
+  async (siteId: string): Promise<Record<DocumentTypeId, DocumentTemplate>> => {
+    const source = await loadSiteTemplateSource(siteId);
+    if (!source) {
+      return resolveAllSiteDocumentTemplatesByType({});
+    }
+    return resolveAllSiteDocumentTemplatesByType(source);
+  },
+);
+
+export const getSiteDocumentTemplateForType = cache(
+  async (
+    siteId: string,
+    tipoDocumento: DocumentTypeId,
+  ): Promise<DocumentTemplate> => {
+    const source = await loadSiteTemplateSource(siteId);
+    if (!source) {
+      return resolveSiteDocumentTemplateForType({}, tipoDocumento);
+    }
+    return resolveSiteDocumentTemplateForType(source, tipoDocumento);
   },
 );
 

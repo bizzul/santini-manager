@@ -14,6 +14,16 @@ export interface PdfTextRegionPage {
   regions: PdfTextRegion[];
 }
 
+/** Polyfill DOM APIs richieste da pdfjs-dist in Node.js. */
+async function ensurePdfJsDomPolyfills(): Promise<void> {
+  if (typeof globalThis.DOMMatrix !== "undefined") return;
+
+  const canvas = await import("@napi-rs/canvas");
+  globalThis.DOMMatrix = canvas.DOMMatrix as typeof DOMMatrix;
+  globalThis.ImageData = canvas.ImageData as unknown as typeof ImageData;
+  globalThis.Path2D = canvas.Path2D as typeof Path2D;
+}
+
 /** Raggruppa righe di testo vicine verticalmente (stessa riga logica). */
 export function mergePdfTextRegions(
   regions: PdfTextRegion[],
@@ -46,6 +56,8 @@ export function mergePdfTextRegions(
 export async function extractPdfTextRegions(
   buffer: Buffer,
 ): Promise<PdfTextRegionPage> {
+  await ensurePdfJsDomPolyfills();
+
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(buffer),

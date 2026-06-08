@@ -18,6 +18,21 @@ const ALLOWED_TYPES = [
   "image/webp",
 ];
 
+import {
+  DOCUMENT_TYPE_IDS,
+  type DocumentTypeId,
+} from "@/lib/documenti/document-types";
+
+function parseDocType(value: FormDataEntryValue | null): DocumentTypeId {
+  if (
+    typeof value === "string" &&
+    (DOCUMENT_TYPE_IDS as readonly string[]).includes(value)
+  ) {
+    return value as DocumentTypeId;
+  }
+  return "OFFERTA";
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ domain: string }> },
@@ -49,6 +64,7 @@ export async function POST(
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
+    const docType = parseDocType(formData.get("docType"));
 
     if (!file) {
       return NextResponse.json(
@@ -70,7 +86,7 @@ export async function POST(
     }
 
     const normalized = await normalizeLetterheadToPdf(file);
-    const filePath = `${siteResult.data.id}/letterhead/base.pdf`;
+    const filePath = `${siteResult.data.id}/letterhead/${docType}/base.pdf`;
 
     const { publicUrl, storagePath } = await uploadDocumentAsset(
       filePath,
@@ -79,6 +95,7 @@ export async function POST(
     );
 
     return NextResponse.json({
+      docType,
       url: publicUrl,
       storagePath,
       mimeType: normalized.mimeType,

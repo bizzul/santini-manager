@@ -22,7 +22,7 @@ import {
   DOCUMENT_AI_CONFIG_MISSING_MESSAGE,
   resolveAiConfigForDocuments,
 } from "@/lib/ai/resolve-ai-config";
-import { getSiteDocumentTemplate } from "@/lib/documenti/get-site-document-template";
+import { getSiteDocumentTemplateForType } from "@/lib/documenti/get-site-document-template";
 import {
   createModelFromAiConfig,
   normalizeAiModelId,
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
     const input = parsed.data;
     const [aiConfig, siteTemplate] = await Promise.all([
       resolveAiConfigForDocuments(siteId),
-      getSiteDocumentTemplate(siteId),
+      getSiteDocumentTemplateForType(siteId, input.tipoDocumento),
     ]);
     resolvedAiConfig = aiConfig;
 

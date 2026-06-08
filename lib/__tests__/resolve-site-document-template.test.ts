@@ -4,6 +4,7 @@ import {
   getDocumentTemplateMissingLabels,
   isDocumentTemplateConfigured,
   resolveSiteDocumentTemplate,
+  resolveSiteDocumentTemplateForType,
 } from "@/lib/documenti/resolve-site-document-template";
 import { buildTemplateFromCatalog } from "@/lib/documenti/default-pdfme-template";
 
@@ -124,5 +125,57 @@ describe("resolveSiteDocumentTemplate", () => {
     });
 
     expect(isDocumentTemplateConfigured(template)).toBe(true);
+  });
+
+  it("risolve template per-tipo con fallback legacy", () => {
+    const legacyPdfme = buildTemplateFromCatalog(
+      "https://example.com/legacy.pdf",
+      "commercial",
+      "matris",
+    );
+    const offertaPdfme = buildTemplateFromCatalog(
+      "https://example.com/offerta.pdf",
+      "commercial",
+      "matris",
+    );
+
+    const source = {
+      name: "Test SA",
+      document_template_config: {
+        letterheadBasePdf: {
+          url: "https://example.com/legacy.pdf",
+          storagePath: "site/letterhead/base.pdf",
+          mimeType: "application/pdf",
+        },
+        pdfmeTemplate: legacyPdfme,
+        templatesByType: {
+          OFFERTA: {
+            letterheadBasePdf: {
+              url: "https://example.com/offerta.pdf",
+              storagePath: "site/letterhead/OFFERTA/base.pdf",
+              mimeType: "application/pdf",
+            },
+            pdfmeTemplate: offertaPdfme,
+            letterheadLayoutPreset: "matris" as const,
+          },
+        },
+        mittente: {
+          ragioneSociale: "Test SA",
+          via: "Via 1",
+          cap: "6500",
+          citta: "Bellinzona",
+          iva: "CHE-123",
+        },
+        banca: { nome: "Banca", iban: "CH00" },
+      },
+    };
+
+    const offerta = resolveSiteDocumentTemplateForType(source, "OFFERTA");
+    const fattura = resolveSiteDocumentTemplateForType(source, "FATTURA");
+
+    expect(offerta.letterheadBasePdf?.url).toBe("https://example.com/offerta.pdf");
+    expect(offerta.pdfmeTemplate).toBe(offertaPdfme);
+    expect(fattura.letterheadBasePdf?.url).toBe("https://example.com/legacy.pdf");
+    expect(fattura.pdfmeTemplate).toBe(legacyPdfme);
   });
 });

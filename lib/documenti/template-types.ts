@@ -1,4 +1,5 @@
 import type { Template } from "@pdfme/common";
+import type { DocumentTypeId } from "@/lib/documenti/document-types";
 import {
   getDocumentDestinatarioLabel,
   getDocumentTypeLabel,
@@ -40,6 +41,15 @@ export interface ColoriTemplate {
   testo?: string;
 }
 
+export type LetterheadLayoutPresetId = "santini" | "matris" | "lettera";
+
+/** Overlay carta intestata per un singolo tipo documento. */
+export interface DocumentTypeTemplateEntry {
+  letterheadBasePdf?: LetterheadBasePdf | null;
+  pdfmeTemplate?: Template | null;
+  letterheadLayoutPreset?: LetterheadLayoutPresetId | null;
+}
+
 export interface DocumentTemplateConfig {
   mittente?: Partial<MittenteTemplate>;
   banca?: Partial<BancaTemplate>;
@@ -56,8 +66,10 @@ export interface DocumentTemplateConfig {
   letterheadBasePdf?: LetterheadBasePdf | null;
   /** Template pdfme (schemas + basePdf) per overlay campi dinamici. */
   pdfmeTemplate?: Template | null;
-  /** Preset layout campi (santini, matris, lettera). */
-  letterheadLayoutPreset?: "santini" | "matris" | "lettera" | null;
+  /** Preset layout campi (santini, matris, lettera) — legacy, usare templatesByType. */
+  letterheadLayoutPreset?: LetterheadLayoutPresetId | null;
+  /** Modello carta intestata per ogni tipo documento. */
+  templatesByType?: Partial<Record<DocumentTypeId, DocumentTypeTemplateEntry>>;
 }
 
 export interface DocumentTemplate {

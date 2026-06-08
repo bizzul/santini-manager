@@ -9,6 +9,11 @@ import {
   validateTemplateFields,
   type LetterheadTemplateVariant,
 } from "@/lib/documenti/letterhead-field-catalog";
+import {
+  DOCUMENT_TYPE_IDS,
+  type DocumentTypeId,
+} from "@/lib/documenti/document-types";
+import { getDocumentTypeTemplateEntry } from "@/lib/documenti/document-type-template";
 
 export interface SiteTemplateSource {
   name?: string | null;
@@ -56,12 +61,38 @@ export function buildDocumentTemplateConfigFromSite(
 export function resolveSiteDocumentTemplate(
   source: SiteTemplateSource,
 ): DocumentTemplate {
+  return resolveSiteDocumentTemplateForType(source, "OFFERTA");
+}
+
+export function resolveSiteDocumentTemplateForType(
+  source: SiteTemplateSource,
+  tipoDocumento: DocumentTypeId,
+): DocumentTemplate {
   const config = buildDocumentTemplateConfigFromSite(source);
   const merged = mergeDocumentTemplate(config, source.logo ?? null);
+  const typeEntry = getDocumentTypeTemplateEntry(config, tipoDocumento);
+
+  if (typeEntry?.letterheadBasePdf) {
+    merged.letterheadBasePdf = typeEntry.letterheadBasePdf;
+  }
+  if (typeEntry?.pdfmeTemplate) {
+    merged.pdfmeTemplate = typeEntry.pdfmeTemplate;
+  }
+
   return {
     ...merged,
     pageFormat: DEFAULT_DOCUMENT_PAGE_FORMAT,
   };
+}
+
+export function resolveAllSiteDocumentTemplatesByType(
+  source: SiteTemplateSource,
+): Record<DocumentTypeId, DocumentTemplate> {
+  const result = {} as Record<DocumentTypeId, DocumentTemplate>;
+  for (const tipo of DOCUMENT_TYPE_IDS) {
+    result[tipo] = resolveSiteDocumentTemplateForType(source, tipo);
+  }
+  return result;
 }
 
 export function getDocumentTemplateIssues(

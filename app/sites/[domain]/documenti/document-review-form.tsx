@@ -29,6 +29,7 @@ import {
   isDocumentTemplateConfigured,
   type DocumentTemplate,
 } from "@/lib/documenti/template-types";
+import type { DocumentTypeId } from "@/lib/documenti/document-types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import {
@@ -60,7 +61,7 @@ interface DocumentReviewFormProps {
   domain: string;
   siteId: string;
   initialDocumento: DocumentoArricchito;
-  template: DocumentTemplate;
+  templatesByType: Record<DocumentTypeId, DocumentTemplate>;
   sourceText: string;
   documentoId?: string | null;
   taskId?: number | null;
@@ -71,7 +72,7 @@ interface DocumentReviewFormProps {
 export function DocumentReviewForm({
   domain,
   initialDocumento,
-  template,
+  templatesByType,
   sourceText,
   documentoId,
   taskId,
@@ -171,6 +172,13 @@ export function DocumentReviewForm({
   const isLetter = isLetterType(watched.tipoDocumento);
   const typeConfig = getDocumentTypeConfig(watched.tipoDocumento);
   const showDiscount = typeConfig?.showDiscount ?? true;
+
+  const template = useMemo(
+    () =>
+      templatesByType[watched.tipoDocumento as DocumentTypeId] ??
+      templatesByType.OFFERTA,
+    [templatesByType, watched.tipoDocumento],
+  );
 
   const previewDocumento = useMemo(() => {
     if (isLetter) {

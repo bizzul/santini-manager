@@ -27,6 +27,7 @@ import {
   type VoiceDocumentPrefill,
 } from "@/lib/voice-document-prefill";
 import type { DocumentTemplate } from "@/lib/documenti/template-types";
+import type { DocumentTypeId } from "@/lib/documenti/document-types";
 import { DocumentReviewForm } from "./document-review-form";
 import {
   DocumentCreateForm,
@@ -101,7 +102,7 @@ export interface DocumentoListItem {
 interface DocumentiPageClientProps {
   domain: string;
   siteId: string;
-  template: DocumentTemplate;
+  templatesByType: Record<DocumentTypeId, DocumentTemplate>;
   documenti: DocumentoListItem[];
   clients: ClienteOption[];
   suppliers: FornitoreOption[];
@@ -164,7 +165,7 @@ function dbToDocumentoArricchito(doc: DocumentoListItem): DocumentoArricchito {
 export function DocumentiPageClient({
   domain,
   siteId,
-  template,
+  templatesByType,
   documenti,
   clients,
   suppliers,
@@ -298,7 +299,7 @@ export function DocumentiPageClient({
             domain={domain}
             siteId={siteId}
             initialDocumento={documentoGenerato}
-            template={template}
+            templatesByType={templatesByType}
             sourceText={sourceText}
             documentoId={editingDocumentoId}
             taskId={linkedTaskId}
@@ -337,7 +338,7 @@ export function DocumentiPageClient({
         <PageContent variant="narrow">
           <DocumentPreview
             documento={previewDoc}
-            template={template}
+            template={templatesByType[viewDocumento.tipo_documento]}
             numero={viewDocumento.numero}
             dataDocumento={new Date(viewDocumento.created_at).toLocaleDateString(
               "it-CH",

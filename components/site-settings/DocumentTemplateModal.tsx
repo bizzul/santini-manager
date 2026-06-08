@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Dialog,
@@ -23,11 +23,20 @@ import type { TemplateStructureMap } from "@/lib/documenti/template-structure-ty
 import type { Template } from "@pdfme/common";
 import {
   buildTemplateFromCatalog,
+  getSiteLayoutPresetForDocumentType,
   presetLabel,
   variantFromPreset,
-  type LetterheadLayoutPreset,
 } from "@/lib/documenti/letterhead-field-catalog";
-import { DOCUMENT_TYPES } from "@/lib/documenti/document-types";
+import {
+  DOCUMENT_TYPES,
+  type DocumentTypeId,
+} from "@/lib/documenti/document-types";
+import {
+  getDocumentTypeTemplateEntry,
+  isDocumentTypeTemplateConfigured,
+  listConfiguredDocumentTypes,
+  mergeDocumentTypeTemplateEntry,
+} from "@/lib/documenti/document-type-template";
 import {
   A4_TWO_SHEETS_WIDTH_CSS,
 } from "@/lib/documenti/page-format";
@@ -95,8 +104,7 @@ export default function DocumentTemplateModal({
   const [uploadingRef, setUploadingRef] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingLetterhead, setUploadingLetterhead] = useState(false);
-  const [layoutPreset, setLayoutPreset] =
-    useState<LetterheadLayoutPreset>("matris");
+  const [activeDocType, setActiveDocType] = useState<DocumentTypeId>("OFFERTA");
   const [activeTab, setActiveTab] = useState("letterhead");
   const [config, setConfig] = useState<DocumentTemplateConfig>(emptyConfig());
   const [condizioniText, setCondizioniText] = useState("");
@@ -125,9 +133,6 @@ export default function DocumentTemplateModal({
         setCondizioniText((cfg.condizioniDefault ?? []).join("\n"));
         setLogoUrl(cfg.logoUrl ?? data.logoUrl ?? null);
         setStructurePreview(cfg.structureMap ?? null);
-        if (cfg.letterheadLayoutPreset) {
-          setLayoutPreset(cfg.letterheadLayoutPreset);
-        }
       }
     } catch {
       toast.error("Errore nel caricamento del template");
@@ -135,6 +140,24 @@ export default function DocumentTemplateModal({
       setLoading(false);
     }
   };
+
+  const layoutPreset = useMemo(
+    () => getSiteLayoutPresetForDocumentType(subdomain, activeDocType),
+    [subdomain, activeDocType],
+  );
+
+  const activeTypeEntry = useMemo(
+    () => getDocumentTypeTemplateEntry(config, activeDocType),
+    [config, activeDocType],
+  );
+
+  const activeLetterhead = activeTypeEntry?.letterheadBasePdf ?? null;
+  const activePdfmeTemplate = activeTypeEntry?.pdfmeTemplate ?? null;
+
+  const configuredTypes = useMemo(
+    () => listConfiguredDocumentTypes(config),
+    [config],
+  );
 
   const buildPayload = (): DocumentTemplateConfig => ({
     ...config,
@@ -270,6 +293,7 @@ export default function DocumentTemplateModal({
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("docType", activeDocType);
 
       const res = await fetch(
         `/api/sites/${subdomain}/document-template/letterhead`,
@@ -296,13 +320,14 @@ export default function DocumentTemplateModal({
         layoutPreset,
       );
 
-      setConfig((prev) => ({
-        ...prev,
-        letterheadBasePdf: letterhead,
-        pdfmeTemplate,
-        letterheadLayoutPreset: layoutPreset,
-      }));
-      toast.success("Modello carta intestata caricato");
+      setConfig((prev) =>
+        mergeDocumentTypeTemplateEntry(prev, activeDocType, {
+          letterheadBasePdf: letterhead,
+          pdfmeTemplate,
+          letterheadLayoutPreset: layoutPreset,
+        }),
+      );
+      toast.success(`Modello carta intestata caricato per ${DOCUMENT_TYPES.find((t) => t.id === activeDocType)?.label ?? activeDocType}`);
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -315,24 +340,32 @@ export default function DocumentTemplateModal({
   };
 
   const handlePdfmeTemplateChange = (updated: Template) => {
-    setConfig((prev) => ({
-      ...prev,
-      pdfmeTemplate: updated,
-    }));
+    setConfig((prev) =>
+      mergeDocumentTypeTemplateEntry(prev, activeDocType, {
+        pdfmeTemplate: updated,
+        letterheadLayoutPreset: layoutPreset,
+        letterheadBasePdf:
+          getDocumentTypeTemplateEntry(prev, activeDocType)?.letterheadBasePdf ??
+          prev.letterheadBasePdf ??
+          null,
+      }),
+    );
   };
 
   const resetPdfmeTemplate = () => {
-    const url = config.letterheadBasePdf?.url;
+    const url = activeLetterhead?.url;
     if (!url) return;
-    setConfig((prev) => ({
-      ...prev,
-      pdfmeTemplate: buildTemplateFromCatalog(
-        url,
-        variantFromPreset(layoutPreset),
-        layoutPreset,
-      ),
-      letterheadLayoutPreset: layoutPreset,
-    }));
+    setConfig((prev) =>
+      mergeDocumentTypeTemplateEntry(prev, activeDocType, {
+        pdfmeTemplate: buildTemplateFromCatalog(
+          url,
+          variantFromPreset(layoutPreset),
+          layoutPreset,
+        ),
+        letterheadLayoutPreset: layoutPreset,
+        letterheadBasePdf: activeLetterhead,
+      }),
+    );
     toast.success("Campi reimpostati al layout predefinito");
   };
 
@@ -349,25 +382,35 @@ export default function DocumentTemplateModal({
 
       const res = await fetch(
         `/api/sites/${subdomain}/document-template/analyze`,
-        { method: "POST" },
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ docType: activeDocType }),
+        },
       );
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message ?? data.error ?? "Analisi fallita");
       }
       setStructurePreview(data.structureMap);
-      setConfig((prev) => ({
-        ...prev,
-        structureMap: data.structureMap,
-        structureAnalyzedAt: data.analyzedAt,
-        ...(data.pdfmeTemplate ? { pdfmeTemplate: data.pdfmeTemplate } : {}),
-        ...(data.letterheadLayoutPreset
-          ? { letterheadLayoutPreset: data.letterheadLayoutPreset }
-          : {}),
-      }));
-      if (data.letterheadLayoutPreset) {
-        setLayoutPreset(data.letterheadLayoutPreset);
-      }
+      setConfig((prev) => {
+        const next: DocumentTemplateConfig = {
+          ...prev,
+          structureMap: data.structureMap,
+          structureAnalyzedAt: data.analyzedAt,
+        };
+        if (data.pdfmeTemplate) {
+          return mergeDocumentTypeTemplateEntry(next, activeDocType, {
+            pdfmeTemplate: data.pdfmeTemplate,
+            letterheadLayoutPreset:
+              data.letterheadLayoutPreset ?? layoutPreset,
+            letterheadBasePdf:
+              getDocumentTypeTemplateEntry(prev, activeDocType)
+                ?.letterheadBasePdf ?? prev.letterheadBasePdf ?? null,
+          });
+        }
+        return next;
+      });
       if (data.layoutApplied) {
         setActiveTab("letterhead");
         toast.success(
@@ -402,9 +445,8 @@ export default function DocumentTemplateModal({
         <DialogHeader className="shrink-0">
           <DialogTitle>Carta intestata documenti</DialogTitle>
           <DialogDescription>
-            Configura mittente, IVA, IBAN e modello carta intestata per PDF e
-            anteprima (formato A4). Lo stesso layout vale per offerte, conferme,
-            fatture, preventivi e lettere.
+            Configura mittente, IVA, IBAN e un modello carta intestata per ogni
+            tipologia di documento (offerta, conferma, fattura, lettera, ecc.).
           </DialogDescription>
         </DialogHeader>
 
@@ -430,8 +472,8 @@ export default function DocumentTemplateModal({
             >
               <LetterheadDesignerGuided
                 template={
-                  config.pdfmeTemplate ?? {
-                    basePdf: config.letterheadBasePdf?.url ?? "",
+                  activePdfmeTemplate ?? {
+                    basePdf: activeLetterhead?.url ?? "",
                     schemas: [{}],
                   }
                 }
@@ -445,21 +487,30 @@ export default function DocumentTemplateModal({
                       Carica il PDF del cliente. Logo e dati azienda sono già
                       nella carta intestata.
                     </p>
-                    <div className="rounded-md border border-border/60 bg-muted/20 p-2">
-                      <p className="text-xs font-medium">Tipologie documento</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        Un unico layout condiviso per tutti i tipi:
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
+                    <div className="space-y-2">
+                      <Label className="text-sm">Tipo documento</Label>
+                      <select
+                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        value={activeDocType}
+                        onChange={(e) =>
+                          setActiveDocType(e.target.value as DocumentTypeId)
+                        }
+                      >
                         {DOCUMENT_TYPES.map((t) => (
-                          <span
-                            key={t.id}
-                            className="inline-flex rounded-md bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
-                          >
+                          <option key={t.id} value={t.id}>
                             {t.label}
-                          </span>
+                            {isDocumentTypeTemplateConfigured(config, t.id)
+                              ? " ✓"
+                              : ""}
+                          </option>
                         ))}
-                      </div>
+                      </select>
+                      <p className="text-[10px] text-muted-foreground">
+                        Layout di partenza: {presetLabel(layoutPreset)}.{" "}
+                        {configuredTypes.length > 0
+                          ? `${configuredTypes.length} tipi configurati.`
+                          : "Nessun tipo configurato ancora."}
+                      </p>
                     </div>
                     <div className="flex flex-col gap-2">
                       <Button
@@ -486,23 +537,7 @@ export default function DocumentTemplateModal({
                         )}
                         Carica modello
                       </Button>
-                      <select
-                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                        value={layoutPreset}
-                        onChange={(e) => {
-                          const preset = e.target.value as LetterheadLayoutPreset;
-                          setLayoutPreset(preset);
-                          setConfig((prev) => ({
-                            ...prev,
-                            letterheadLayoutPreset: preset,
-                          }));
-                        }}
-                      >
-                        <option value="matris">{presetLabel("matris")}</option>
-                        <option value="santini">{presetLabel("santini")}</option>
-                        <option value="lettera">{presetLabel("lettera")}</option>
-                      </select>
-                      {config.letterheadBasePdf ? (
+                      {activeLetterhead ? (
                         <>
                           <Button
                             type="button"
@@ -515,8 +550,8 @@ export default function DocumentTemplateModal({
                           </Button>
                           <p className="text-xs text-muted-foreground">
                             Modello caricato
-                            {config.letterheadBasePdf.width
-                              ? ` (${config.letterheadBasePdf.width}×${config.letterheadBasePdf.height} mm)`
+                            {activeLetterhead.width
+                              ? ` (${activeLetterhead.width}×${activeLetterhead.height} mm)`
                               : ""}
                           </p>
                         </>

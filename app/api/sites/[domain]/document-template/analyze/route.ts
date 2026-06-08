@@ -20,6 +20,16 @@ import {
   type LetterheadFieldId,
   type LetterheadLayoutPreset,
 } from "@/lib/documenti/letterhead-field-catalog";
+import {
+  DOCUMENT_TYPE_IDS,
+  type DocumentTypeId,
+} from "@/lib/documenti/document-types";
+import {
+  getDocumentTypeTemplateEntry,
+  mergeDocumentTypeTemplateEntry,
+} from "@/lib/documenti/document-type-template";
+
+export const runtime = "nodejs";
 
 async function checkSiteAccess(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -57,8 +67,18 @@ async function checkSiteAccess(
   return false;
 }
 
+function parseDocType(value: unknown): DocumentTypeId {
+  if (
+    typeof value === "string" &&
+    (DOCUMENT_TYPE_IDS as readonly string[]).includes(value)
+  ) {
+    return value as DocumentTypeId;
+  }
+  return "OFFERTA";
+}
+
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ domain: string }> },
 ) {
   try {
@@ -85,6 +105,14 @@ export async function POST(
     );
     if (!hasAccess) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    let docType: DocumentTypeId = "OFFERTA";
+    try {
+      const body = (await request.json()) as { docType?: string };
+      docType = parseDocType(body.docType);
+    } catch {
+      // body opzionale
     }
 
     const { data: site } = await supabase
@@ -164,57 +192,86 @@ export async function POST(
       templateModelText: config.templateModelText,
     });
 
-    let pdfmeTemplate = config.pdfmeTemplate ?? null;
+    const typeEntry = getDocumentTypeTemplateEntry(config, docType);
+    let pdfmeTemplate = typeEntry?.pdfmeTemplate ?? config.pdfmeTemplate ?? null;
     let letterheadLayoutPreset: LetterheadLayoutPreset | null =
-      config.letterheadLayoutPreset ?? "matris";
+      typeEntry?.letterheadLayoutPreset ??
+      config.letterheadLayoutPreset ??
+      "matris";
     let layoutNotes: string | null = null;
+    let layoutSkippedReason: string | null = null;
 
-    const basePdfUrl = config.letterheadBasePdf?.url?.trim() || null;
+    const basePdfUrl =
+      typeEntry?.letterheadBasePdf?.url?.trim() ||
+      config.letterheadBasePdf?.url?.trim() ||
+      null;
 
     if (referenceIsPdf && referenceBuffer && basePdfUrl) {
-      const { regions, pageWidthMm, pageHeightMm } =
-        await extractPdfTextRegions(referenceBuffer);
+      try {
+        const { regions, pageWidthMm, pageHeightMm } =
+          await extractPdfTextRegions(referenceBuffer);
 
-      if (regions.length > 0) {
-        const aiLayout = await analyzeLetterheadFieldLayout({
-          model,
-          regions,
-          extractedText,
-          pageWidthMm,
-          pageHeightMm,
-        });
+        if (regions.length > 0) {
+          const aiLayout = await analyzeLetterheadFieldLayout({
+            model,
+            regions,
+            extractedText,
+            pageWidthMm,
+            pageHeightMm,
+          });
 
-        const validLayouts = filterValidAiFieldLayouts(aiLayout);
-        if (validLayouts.length > 0) {
-          pdfmeTemplate = buildTemplateFromAiLayouts(
-            basePdfUrl,
-            aiLayout.variant,
-            letterheadLayoutPreset ?? "matris",
-            validLayouts.map((field) => ({
-              fieldId: field.fieldId as LetterheadFieldId,
-              position: field.position,
-              width: field.width,
-              height: field.height,
-              fontSize: field.fontSize,
-              alignment: field.alignment,
-            })),
-          );
-          letterheadLayoutPreset =
-            aiLayout.variant === "letter" ? "lettera" : letterheadLayoutPreset;
-          layoutNotes = aiLayout.notes ?? null;
+          const validLayouts = filterValidAiFieldLayouts(aiLayout);
+          if (validLayouts.length > 0) {
+            pdfmeTemplate = buildTemplateFromAiLayouts(
+              basePdfUrl,
+              aiLayout.variant,
+              letterheadLayoutPreset ?? "matris",
+              validLayouts.map((field) => ({
+                fieldId: field.fieldId as LetterheadFieldId,
+                position: field.position,
+                width: field.width,
+                height: field.height,
+                fontSize: field.fontSize,
+                alignment: field.alignment,
+              })),
+            );
+            letterheadLayoutPreset =
+              aiLayout.variant === "letter" ? "lettera" : letterheadLayoutPreset;
+            layoutNotes = aiLayout.notes ?? null;
+          } else {
+            layoutSkippedReason =
+              "L'AI non ha rilevato posizioni campi valide nel PDF di riferimento.";
+          }
+        } else {
+          layoutSkippedReason =
+            "Nessun testo estraibile dal PDF di riferimento per il posizionamento automatico.";
         }
+      } catch (regionError) {
+        console.warn("[TemplateAnalyze] Estrazione regioni PDF fallita:", regionError);
+        layoutSkippedReason =
+          regionError instanceof Error
+            ? `Posizionamento automatico non disponibile: ${regionError.message}`
+            : "Posizionamento automatico non disponibile per questo PDF.";
       }
+    } else if (referenceIsPdf && !basePdfUrl) {
+      layoutSkippedReason =
+        "Carica prima il PDF carta intestata per questo tipo documento nel tab Carta intestata.";
     }
 
-    const updatedConfig: DocumentTemplateConfig = {
+    let updatedConfig: DocumentTemplateConfig = {
       ...config,
       structureMap,
       structureAnalyzedAt: new Date().toISOString(),
-      ...(pdfmeTemplate ? { pdfmeTemplate } : {}),
-      ...(letterheadLayoutPreset
-        ? { letterheadLayoutPreset }
-        : {}),
     };
+
+    if (pdfmeTemplate || letterheadLayoutPreset) {
+      updatedConfig = mergeDocumentTypeTemplateEntry(updatedConfig, docType, {
+        pdfmeTemplate: pdfmeTemplate ?? typeEntry?.pdfmeTemplate ?? null,
+        letterheadLayoutPreset,
+        letterheadBasePdf:
+          typeEntry?.letterheadBasePdf ?? config.letterheadBasePdf ?? null,
+      });
+    }
 
     const { error: updateError } = await supabase
       .from("sites")
@@ -227,16 +284,14 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
+      docType,
       structureMap,
       analyzedAt: updatedConfig.structureAnalyzedAt,
       pdfmeTemplate,
       letterheadLayoutPreset,
-      layoutApplied: Boolean(pdfmeTemplate && referenceIsPdf && basePdfUrl),
+      layoutApplied: Boolean(pdfmeTemplate && referenceIsPdf && basePdfUrl && !layoutSkippedReason),
       layoutNotes,
-      layoutSkippedReason:
-        referenceIsPdf && !basePdfUrl
-          ? "Carica prima il PDF carta intestata nel tab Carta intestata per applicare il posizionamento automatico."
-          : null,
+      layoutSkippedReason,
     });
   } catch (error) {
     console.error("Template analyze failed:", error);
