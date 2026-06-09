@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
-import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { PageLayout, PageContent } from "@/components/page-layout";
 
 export interface KanbanCategory {
   id: number;
@@ -39,13 +39,11 @@ export type TaskWithKanban = Task & {
 async function getData(siteId: string): Promise<TaskWithKanban[]> {
   const supabase = await createClient();
   
-  // Fetch tasks with delivery dates
   const { data: tasks, error: tasksError } = await supabase
     .from("Task")
     .select("*, SellProduct:sellProductId(id, name, type, category:sellproduct_categories(id, name, color)), Client:clientId(businessName, individualFirstName, individualLastName), column:KanbanColumn!kanbanColumnId(title, identifier)")
     .eq("site_id", siteId)
-    .eq("archived", false)
-    .not("deliveryDate", "is", null);
+    .eq("archived", false);
   
   if (tasksError) {
     console.error("Error fetching tasks for calendar:", tasksError);
@@ -102,8 +100,16 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     });
   }
 
-  // Combine tasks with kanbans
-  const tasksWithKanbans: TaskWithKanban[] = tasks.map(task => {
+  const tasksWithSchedule = tasks.filter(
+    (task) =>
+      task.deliveryDate ||
+      task.service_data_inizio ||
+      task.service_data_fine ||
+      task.ora_inizio ||
+      task.ora_fine
+  );
+
+  const tasksWithKanbans: TaskWithKanban[] = tasksWithSchedule.map((task) => {
     const kanbanId = task.kanbanId || task.kanban_id;
     return {
       ...task,
@@ -137,11 +143,7 @@ async function Page({
 
   return (
     <PageLayout>
-      <PageHeader
-        title="Calendario assistenza"
-        subtitle="Pianificazione degli interventi di assistenza"
-      />
-      <PageContent>
+      <PageContent className="flex h-full min-h-0 flex-col">
         <CalendarComponent
           tasks={data as TaskWithKanban[]}
           calendarType="service"

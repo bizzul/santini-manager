@@ -19,12 +19,14 @@ import type { WeeklyCalendarItem } from "./weekly-calendar-types";
 interface CalendarProjectCardProps {
   item: WeeklyCalendarItem | PositionedCalendarItem;
   compact?: boolean;
+  readOnly?: boolean;
   onClick?: () => void;
 }
 
 export function CalendarProjectCard({
   item,
   compact = false,
+  readOnly = false,
   onClick,
 }: CalendarProjectCardProps) {
   const Icon = getProductCategoryIcon(item.projectIcon || item.category || undefined);
@@ -49,20 +51,19 @@ export function CalendarProjectCard({
   const visibleCollaborators = collaborators.slice(0, 3);
   const hiddenCollaboratorsCount = Math.max(collaborators.length - visibleCollaborators.length, 0);
 
-  const card = (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "group relative w-full overflow-hidden rounded-r-xl rounded-l-sm border-y border-r border-slate-200 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-900",
-        compact ? "h-full min-h-0 p-2" : "min-h-[116px] p-3"
-      )}
-      style={{
-        borderLeftWidth: "4px",
-        borderLeftStyle: "solid",
-        borderLeftColor: item.color || "#64748b",
-      }}
-    >
+  const cardClassName = cn(
+    "group relative w-full overflow-hidden rounded-r-xl rounded-l-sm border-y border-r border-border bg-card text-left shadow-sm transition-all duration-200",
+    !readOnly && "hover:-translate-y-0.5 hover:shadow-md",
+    compact ? "h-full min-h-0 p-2" : "min-h-[116px] p-3"
+  );
+  const cardStyle = {
+    borderLeftWidth: "4px",
+    borderLeftStyle: "solid" as const,
+    borderLeftColor: item.color || "#64748b",
+  };
+
+  const cardBody = (
+    <>
       <div
         className={cn(
           "flex items-start justify-between gap-2 border-b border-slate-200 dark:border-slate-700",
@@ -213,6 +214,16 @@ export function CalendarProjectCard({
           </div>
         )}
       </div>
+    </>
+  );
+
+  const card = readOnly ? (
+    <div className={cardClassName} style={cardStyle}>
+      {cardBody}
+    </div>
+  ) : (
+    <button type="button" onClick={onClick} className={cardClassName} style={cardStyle}>
+      {cardBody}
     </button>
   );
 

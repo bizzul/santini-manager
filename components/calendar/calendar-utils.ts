@@ -44,6 +44,64 @@ const MINUTES_PER_HOUR = 60;
 
 export type ProjectCalendarType = "production" | "installation" | "service" | "all";
 
+export function getCalendarPagePath(
+  calendarType: ProjectCalendarType,
+  domain: string
+): string {
+  switch (calendarType) {
+    case "installation":
+      return `/sites/${domain}/calendar-installation`;
+    case "service":
+      return `/sites/${domain}/calendar-service`;
+    case "production":
+    case "all":
+    default:
+      return `/sites/${domain}/calendar`;
+  }
+}
+
+export function buildCalendarProjectEditHref(
+  item: WeeklyCalendarItem,
+  calendarType: ProjectCalendarType,
+  domain: string
+): string | null {
+  if (item.sourceId == null) {
+    return null;
+  }
+
+  return `${getCalendarPagePath(calendarType, domain)}?edit=${item.sourceId}`;
+}
+
+export function resolveCalendarReturnNavigation(
+  domain: string,
+  returnTo: string | null | undefined,
+  fallback: { href: string; label: string }
+): { href: string; label: string } {
+  if (!returnTo) {
+    return fallback;
+  }
+
+  try {
+    const decoded = decodeURIComponent(returnTo);
+    const allowedPaths = [
+      `/sites/${domain}/calendar`,
+      `/sites/${domain}/calendar-installation`,
+      `/sites/${domain}/calendar-service`,
+    ];
+
+    if (
+      decoded.startsWith("/") &&
+      allowedPaths.some((path) => decoded === path || decoded.startsWith(`${path}?`))
+    ) {
+      return { href: decoded, label: "Torna al calendario" };
+    }
+  } catch {
+    // ignore malformed returnTo
+  }
+
+  return fallback;
+}
+
 type ProjectTaskSource = {
   id: number;
   unique_code?: string | null;
@@ -53,6 +111,18 @@ type ProjectTaskSource = {
   luogo?: string | null;
   deliveryDate?: string | null;
   termine_produzione?: string | null;
+  produzione_data_inizio?: string | null;
+  produzione_data_fine?: string | null;
+  posa_data_inizio?: string | null;
+  posa_data_fine?: string | null;
+  service_data_inizio?: string | null;
+  service_data_fine?: string | null;
+  produzione_ora_inizio?: string | null;
+  produzione_ora_fine?: string | null;
+  posa_ora_inizio?: string | null;
+  posa_ora_fine?: string | null;
+  service_ora_inizio?: string | null;
+  service_ora_fine?: string | null;
   ora_inizio?: string | null;
   ora_fine?: string | null;
   squadra?: number | null;
@@ -210,7 +280,7 @@ function buildInitials(name?: string | null): string {
     .toUpperCase();
 }
 
-function parseDateValue(value?: string | Date | null): Date | null {
+export function parseDateValue(value?: string | Date | null): Date | null {
   if (!value) return null;
   if (value instanceof Date) {
     return Number.isNaN(value.getTime()) ? null : value;
@@ -441,6 +511,113 @@ function splitDurationAcrossWorkday(
   };
 }
 
+type ScheduleWindowFields = {
+  dataInizio?: string | null;
+  dataFine?: string | null;
+  oraInizio?: string | null;
+  oraFine?: string | null;
+};
+
+function getPhaseFieldsForCalendarType(
+  calendarType: ProjectCalendarType,
+  task: ProjectTaskSource
+): ScheduleWindowFields {
+  switch (calendarType) {
+    case "production":
+      return {
+        dataInizio: task.produzione_data_inizio,
+        dataFine: task.produzione_data_fine || task.termine_produzione,
+        oraInizio: task.produzione_ora_inizio,
+        oraFine: task.produzione_ora_fine,
+      };
+    case "installation":
+      return {
+        dataInizio: task.posa_data_inizio,
+        dataFine: task.posa_data_fine || task.deliveryDate,
+        oraInizio: task.posa_ora_inizio || task.ora_inizio,
+        oraFine: task.posa_ora_fine || task.ora_fine,
+      };
+    case "service":
+      return {
+        dataInizio: task.service_data_inizio,
+        dataFine: task.service_data_fine || task.deliveryDate,
+        oraInizio: task.service_ora_inizio || task.ora_inizio,
+        oraFine: task.service_ora_fine || task.ora_fine,
+      };
+    default:
+      return {
+        dataInizio: task.deliveryDate || task.termine_produzione,
+        dataFine: task.deliveryDate || task.termine_produzione,
+        oraInizio: task.ora_inizio,
+        oraFine: task.ora_fine,
+      };
+  }
+}
+
+export function taskHasScheduleForCalendarType(
+  task: ProjectTaskSource,
+  calendarType: ProjectCalendarType
+): boolean {
+  const fields = getPhaseFieldsForCalendarType(calendarType, task);
+  return Boolean(fields.dataInizio || fields.dataFine);
+}
+
+function formatTimeForPayload(date: Date): string {
+  return format(date, "HH:mm");
+}
+
+function formatDateForPayload(date: Date): string {
+  return format(date, "yyyy-MM-dd");
+}
+
+export function buildSchedulePayload(
+  calendarType: ProjectCalendarType,
+  start: Date,
+  end: Date
+): Record<string, string | null> {
+  const dateInizio = formatDateForPayload(start);
+  const dateFine = formatDateForPayload(end);
+  const oraInizio = formatTimeForPayload(start);
+  const oraFine = formatTimeForPayload(end);
+
+  switch (calendarType) {
+    case "production":
+      return {
+        produzione_data_inizio: dateInizio,
+        produzione_data_fine: dateFine,
+        produzione_ora_inizio: oraInizio,
+        produzione_ora_fine: oraFine,
+        termine_produzione: dateFine,
+      };
+    case "installation":
+      return {
+        posa_data_inizio: dateInizio,
+        posa_data_fine: dateFine,
+        posa_ora_inizio: oraInizio,
+        posa_ora_fine: oraFine,
+        deliveryDate: dateFine,
+        ora_inizio: oraInizio,
+        ora_fine: oraFine,
+      };
+    case "service":
+      return {
+        service_data_inizio: dateInizio,
+        service_data_fine: dateFine,
+        service_ora_inizio: oraInizio,
+        service_ora_fine: oraFine,
+        deliveryDate: dateFine,
+        ora_inizio: oraInizio,
+        ora_fine: oraFine,
+      };
+    default:
+      return {
+        deliveryDate: dateFine,
+        ora_inizio: oraInizio,
+        ora_fine: oraFine,
+      };
+  }
+}
+
 function getTaskAccentColor(task: ProjectTaskSource): string {
   if (task.is_draft || task.isDraft) return "#f59e0b";
   if (task.display_mode === "small_green" || task.displayMode === "small_green") {
@@ -464,19 +641,32 @@ export function buildProjectCalendarItems(
   calendarType: ProjectCalendarType = "installation"
 ): WeeklyCalendarItem[] {
   const items: WeeklyCalendarItem[] = [];
-  const isProductionCalendar = calendarType === "production" || calendarType === "all";
+  const effectiveCalendarType =
+    calendarType === "all" ? "production" : calendarType;
 
   tasks.forEach((task) => {
-    const calendarDate = task.deliveryDate || task.termine_produzione;
-    const hasExplicitTimeRange = Boolean(task.ora_inizio && task.ora_fine);
-    const scheduleDisplay: CalendarScheduleDisplay = isProductionCalendar
-      ? "date-only"
-      : hasExplicitTimeRange
-        ? "timed"
-        : "time-pending";
+    if (!taskHasScheduleForCalendarType(task, effectiveCalendarType)) {
+      return;
+    }
+
+    const phaseFields = getPhaseFieldsForCalendarType(effectiveCalendarType, task);
+    const dataInizio = phaseFields.dataInizio || phaseFields.dataFine;
+    const dataFine = phaseFields.dataFine || phaseFields.dataInizio;
+
+    if (!dataInizio && !dataFine) {
+      return;
+    }
+
+    const hasExplicitTimeRange = Boolean(
+      phaseFields.oraInizio && phaseFields.oraFine
+    );
+    const scheduleDisplay: CalendarScheduleDisplay = hasExplicitTimeRange
+      ? "timed"
+      : "time-pending";
+
     const start = withTime(
-      calendarDate,
-      scheduleDisplay === "timed" ? task.ora_inizio : null,
+      dataInizio || dataFine,
+      hasExplicitTimeRange ? phaseFields.oraInizio : null,
       FALLBACK_TASK_START_HOUR,
       FALLBACK_TASK_START_MINUTE
     );
@@ -485,14 +675,18 @@ export function buildProjectCalendarItems(
       return;
     }
 
-    const end =
+    let end =
       withTime(
-        calendarDate,
-        scheduleDisplay === "timed" ? task.ora_fine : null,
+        dataFine || dataInizio,
+        hasExplicitTimeRange ? phaseFields.oraFine : null,
         start.getHours() + 3,
         start.getMinutes()
       ) ||
       addMinutesSafe(start, FALLBACK_TASK_DURATION_MINUTES);
+
+    if (!isBefore(start, end)) {
+      end = addMinutesSafe(start, FALLBACK_TASK_DURATION_MINUTES);
+    }
 
     const clientName = getProjectClientName(task);
     const objectName = getProjectObjectName(task);

@@ -289,12 +289,17 @@ const EditTaskKanban = ({
       produzione_data_fine: undefined,
       posa_data_inizio: undefined,
       posa_data_fine: undefined,
+      service_data_inizio: undefined,
+      service_data_fine: undefined,
       produzione_ora_inizio: null,
       produzione_ora_fine: null,
       posa_ora_inizio: null,
       posa_ora_fine: null,
+      service_ora_inizio: null,
+      service_ora_fine: null,
       produzione_collaborator_ids: [],
       posa_collaborator_ids: [],
+      service_collaborator_ids: [],
       ora_inizio: null,
       ora_fine: null,
       squadra: null,
@@ -359,6 +364,11 @@ const EditTaskKanban = ({
   const [selectedPosaCollaborators, setSelectedPosaCollaborators] = useState<string[]>(
     Array.isArray(resource?.posa_collaborator_ids)
       ? resource.posa_collaborator_ids.map((id: unknown) => String(id))
+      : []
+  );
+  const [selectedServiceCollaborators, setSelectedServiceCollaborators] = useState<string[]>(
+    Array.isArray(resource?.service_collaborator_ids)
+      ? resource.service_collaborator_ids.map((id: unknown) => String(id))
       : []
   );
 
@@ -430,6 +440,11 @@ const EditTaskKanban = ({
         setSelectedPosaCollaborators(
           Array.isArray(task.posa_collaborator_ids)
             ? task.posa_collaborator_ids.map((id: unknown) => String(id))
+            : []
+        );
+        setSelectedServiceCollaborators(
+          Array.isArray(task.service_collaborator_ids)
+            ? task.service_collaborator_ids.map((id: unknown) => String(id))
             : []
         );
       }
@@ -586,6 +601,34 @@ const EditTaskKanban = ({
           ? (resource as any).posa_collaborator_ids.map((id: unknown) => String(id))
           : []
       );
+      form.setValue(
+        "service_data_inizio",
+        resource.service_data_inizio
+          ? parseLocalDate(resource.service_data_inizio)
+          : undefined
+      );
+      form.setValue(
+        "service_data_fine",
+        resource.service_data_fine
+          ? parseLocalDate(resource.service_data_fine)
+          : resource.deliveryDate
+            ? parseLocalDate(resource.deliveryDate)
+            : undefined
+      );
+      form.setValue(
+        "service_ora_inizio",
+        (resource as any).service_ora_inizio ?? (resource as any).ora_inizio ?? null
+      );
+      form.setValue(
+        "service_ora_fine",
+        (resource as any).service_ora_fine ?? (resource as any).ora_fine ?? null
+      );
+      form.setValue(
+        "service_collaborator_ids",
+        Array.isArray((resource as any).service_collaborator_ids)
+          ? (resource as any).service_collaborator_ids.map((id: unknown) => String(id))
+          : []
+      );
       form.setValue("ora_inizio", (resource as any).ora_inizio ?? null);
       form.setValue("ora_fine", (resource as any).ora_fine ?? null);
       form.setValue("squadra", (resource as any).squadra ?? null);
@@ -616,6 +659,11 @@ const EditTaskKanban = ({
       setSelectedPosaCollaborators(
         Array.isArray(resource.posa_collaborator_ids)
           ? resource.posa_collaborator_ids.map((id: unknown) => String(id))
+          : []
+      );
+      setSelectedServiceCollaborators(
+        Array.isArray(resource.service_collaborator_ids)
+          ? resource.service_collaborator_ids.map((id: unknown) => String(id))
           : []
       );
     };
@@ -752,10 +800,19 @@ const EditTaskKanban = ({
         produzione_ora_fine: productionRequired ? d.produzione_ora_fine ?? null : null,
         posa_ora_inizio: d.posa_ora_inizio ?? null,
         posa_ora_fine: d.posa_ora_fine ?? null,
+        service_data_inizio: d.service_data_inizio || null,
+        service_data_fine: d.service_data_fine || null,
+        service_ora_inizio: d.service_ora_inizio ?? null,
+        service_ora_fine: d.service_ora_fine ?? null,
         produzione_collaborator_ids: selectedProductionCollaborators,
         posa_collaborator_ids: selectedPosaCollaborators,
+        service_collaborator_ids: selectedServiceCollaborators,
         assigned_collaborator_ids: Array.from(
-          new Set([...selectedProductionCollaborators, ...selectedPosaCollaborators])
+          new Set([
+            ...selectedProductionCollaborators,
+            ...selectedPosaCollaborators,
+            ...selectedServiceCollaborators,
+          ])
         ),
         // Deprecated field - intentionally nulled because assignment now uses collaborators list
         squadra: null,
@@ -2374,6 +2431,196 @@ const EditTaskKanban = ({
                                 checked={isChecked}
                                 onCheckedChange={(checked) => {
                                   setSelectedPosaCollaborators((current) => {
+                                    if (checked) {
+                                      return current.includes(collaborator.id)
+                                        ? current
+                                        : [...current, collaborator.id];
+                                    }
+                                    return current.filter((id) => id !== collaborator.id);
+                                  });
+                                }}
+                              />
+                              <Avatar className="h-7 w-7 border border-slate-500">
+                                <AvatarImage
+                                  src={collaborator.picture || undefined}
+                                  alt={collaborator.name}
+                                />
+                                <AvatarFallback
+                                  className="text-[10px] font-semibold text-white"
+                                  style={{
+                                    backgroundColor:
+                                      collaborator.color || getAvatarColor(collaborator.id),
+                                  }}
+                                >
+                                  {collaborator.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="truncate text-sm">{collaborator.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
+                        Nessun collaboratore disponibile.
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
+                <h3 className="text-sm font-medium">Service</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    name="service_data_inizio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data inizio</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSubmitting}
+                              >
+                                {field.value
+                                  ? field.value.toLocaleDateString("it-IT")
+                                  : "Seleziona data"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={field.onChange}
+                              disabled={isWeekend}
+                              captionLayout="dropdown"
+                              startMonth={new Date(new Date().getFullYear(), 0)}
+                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="service_ora_inizio"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ora inizio</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isSubmitting}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="service_data_fine"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Data fine</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={isSubmitting}
+                              >
+                                {field.value
+                                  ? field.value.toLocaleDateString("it-IT")
+                                  : "Seleziona data"}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value || undefined}
+                              onSelect={field.onChange}
+                              disabled={isWeekend}
+                              captionLayout="dropdown"
+                              startMonth={new Date(new Date().getFullYear(), 0)}
+                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="service_ora_fine"
+                    control={form.control}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ora fine</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="time"
+                            {...field}
+                            value={field.value ?? ""}
+                            disabled={isSubmitting}
+                            onChange={(e) => field.onChange(e.target.value || null)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-between"
+                    >
+                      <span>Assegna collaboratori</span>
+                      <span className="text-xs text-muted-foreground">
+                        {selectedServiceCollaborators.length}
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[360px] max-w-[90vw] p-2" align="start">
+                    {availableCollaborators.length > 0 ? (
+                      <div className="max-h-[260px] overflow-y-auto space-y-1">
+                        {availableCollaborators.map((collaborator) => {
+                          const isChecked = selectedServiceCollaborators.includes(
+                            collaborator.id
+                          );
+                          return (
+                            <label
+                              key={`service-${collaborator.id}`}
+                              className="flex items-center gap-2 rounded-md border border-slate-500 bg-muted/20 px-2 py-2 cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => {
+                                  setSelectedServiceCollaborators((current) => {
                                     if (checked) {
                                       return current.includes(collaborator.id)
                                         ? current

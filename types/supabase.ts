@@ -75,8 +75,13 @@ export interface Task {
     produzione_ora_fine?: string | null;
     posa_ora_inizio?: string | null;
     posa_ora_fine?: string | null;
+    service_data_inizio?: string | null;
+    service_data_fine?: string | null;
+    service_ora_inizio?: string | null;
+    service_ora_fine?: string | null;
     produzione_collaborator_ids?: string[] | null;
     posa_collaborator_ids?: string[] | null;
+    service_collaborator_ids?: string[] | null;
     assigned_collaborator_ids?: string[] | null;
     ora_inizio?: string | null;
     ora_fine?: string | null;

@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
-import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
+import { PageLayout, PageContent } from "@/components/page-layout";
 
 export interface KanbanCategory {
   id: number;
@@ -135,8 +135,13 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
     return [];
   }
 
-  // Filter tasks that have either deliveryDate or termine_produzione
-  const tasksWithDate = (tasks || []).filter(t => t.deliveryDate || t.termine_produzione);
+  const tasksWithDate = (tasks || []).filter(
+    (t) =>
+      t.deliveryDate ||
+      t.termine_produzione ||
+      t.produzione_data_inizio ||
+      t.produzione_data_fine
+  );
   
   console.log("[Calendar Production] Total tasks in production kanbans:", tasks?.length);
   console.log("[Calendar Production] Tasks with date (deliveryDate or termine_produzione):", tasksWithDate.length);
@@ -155,7 +160,13 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
       return [];
     }
     
-    const tasksAltWithDate = (tasksAlt || []).filter(t => t.deliveryDate || t.termine_produzione);
+    const tasksAltWithDate = (tasksAlt || []).filter(
+      (t) =>
+        t.deliveryDate ||
+        t.termine_produzione ||
+        t.produzione_data_inizio ||
+        t.produzione_data_fine
+    );
     console.log("[Calendar Production] Tasks (alt) with date:", tasksAltWithDate.length);
     
     if (tasksAltWithDate.length === 0) {
@@ -232,11 +243,7 @@ async function Page({
 
   return (
     <PageLayout>
-      <PageHeader
-        title="Calendario produzione"
-        subtitle="Pianificazione e scadenze delle commesse in produzione"
-      />
-      <PageContent>
+      <PageContent className="flex h-full min-h-0 flex-col">
         <CalendarComponent
           tasks={data as TaskWithKanban[]}
           calendarType="all"

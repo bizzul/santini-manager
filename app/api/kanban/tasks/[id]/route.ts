@@ -278,8 +278,10 @@ export async function PATCH(
       'posa_data_inizio', 'posa_data_fine',
       'produzione_ora_inizio', 'produzione_ora_fine',
       'posa_ora_inizio', 'posa_ora_fine',
+      'service_data_inizio', 'service_data_fine',
+      'service_ora_inizio', 'service_ora_fine',
       'produzione_collaborator_ids', 'posa_collaborator_ids',
-      'assigned_collaborator_ids',
+      'service_collaborator_ids', 'assigned_collaborator_ids',
       'ora_inizio', 'ora_fine', 'squadra',
       'other', 'positions', 'numero_pezzi',
       'kanbanColumnId', 'kanbanId',
@@ -300,6 +302,8 @@ export async function PATCH(
           field === 'produzione_data_fine' ||
           field === 'posa_data_inizio' ||
           field === 'posa_data_fine' ||
+          field === 'service_data_inizio' ||
+          field === 'service_data_fine' ||
           field === 'offer_send_date'
         ) {
           updateData[field] = toDateString(body[field]);
@@ -357,8 +361,13 @@ export async function PATCH(
         updateError.message?.includes("produzione_ora_fine") ||
         updateError.message?.includes("posa_ora_inizio") ||
         updateError.message?.includes("posa_ora_fine") ||
+        updateError.message?.includes("service_data_inizio") ||
+        updateError.message?.includes("service_data_fine") ||
+        updateError.message?.includes("service_ora_inizio") ||
+        updateError.message?.includes("service_ora_fine") ||
         updateError.message?.includes("produzione_collaborator_ids") ||
         updateError.message?.includes("posa_collaborator_ids") ||
+        updateError.message?.includes("service_collaborator_ids") ||
         updateError.message?.includes("assigned_collaborator_ids"))
     ) {
       delete updateData.offer_send_date;
@@ -374,8 +383,13 @@ export async function PATCH(
       delete updateData.produzione_ora_fine;
       delete updateData.posa_ora_inizio;
       delete updateData.posa_ora_fine;
+      delete updateData.service_data_inizio;
+      delete updateData.service_data_fine;
+      delete updateData.service_ora_inizio;
+      delete updateData.service_ora_fine;
       delete updateData.produzione_collaborator_ids;
       delete updateData.posa_collaborator_ids;
+      delete updateData.service_collaborator_ids;
       delete updateData.assigned_collaborator_ids;
       ({ data: taskData, error: updateError } = await runUpdate(updateData));
     }

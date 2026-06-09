@@ -1,12 +1,13 @@
 "use client";
-import React, { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Task, Kanban } from "@/types/supabase";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MonthlyCalendarView } from "./MonthlyCalendarView";
-import { WeeklyCalendarView } from "./WeeklyCalendarView";
+import { CalendarProjectEditDialog } from "./CalendarProjectEditDialog";
+import { ProjectSchedulerCalendar } from "./ProjectSchedulerCalendar";
 import {
   buildProjectCalendarItems,
+  getCalendarPagePath,
+  taskHasScheduleForCalendarType,
   type ProjectCalendarType,
 } from "./calendar-utils";
 
@@ -125,25 +126,26 @@ export default function CalendarComponent({
   domain?: string;
 }) {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const domainFromPath = params?.domain as string | undefined;
   const effectiveDomain = domain ?? domainFromPath;
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
+  const editTaskId = searchParams.get("edit");
 
-  // Filter tasks by calendar type and delivery date
   const filteredTasks = tasks.filter((task) => {
-    // Must have delivery date
-    if (!task.deliveryDate) {
+    const displayType: ProjectCalendarType =
+      calendarType === "all" ? "production" : calendarType;
+
+    if (!taskHasScheduleForCalendarType(task, displayType)) {
       return false;
     }
-    
-    // If calendarType is "all", show all tasks
+
     if (calendarType === "all") {
       return true;
     }
-    
-    // Must match calendar type
-    const matches = matchesCalendarType(task.Kanban, calendarType);
-    return matches;
+
+    return matchesCalendarType(task.Kanban, calendarType);
   });
   const displayCalendarType: ProjectCalendarType =
     calendarType === "all" ? "production" : calendarType;
@@ -156,60 +158,79 @@ export default function CalendarComponent({
     return buildProjectCalendarItems(filteredTasks, effectiveDomain, displayCalendarType);
   }, [displayCalendarType, effectiveDomain, filteredTasks]);
 
-  return (
-    <div className="py-4 z-20 relative w-full">
-      <div className="mb-4 flex justify-center">
-        <Tabs
-          value={viewMode}
-          onValueChange={(value) => setViewMode(value as "week" | "month")}
-        >
-          <TabsList>
-            <TabsTrigger value="week">Settimana operativa</TabsTrigger>
-            <TabsTrigger value="month">Mese</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+  const taskToEdit = useMemo(() => {
+    if (!editTaskId) {
+      return null;
+    }
 
-      {viewMode === "week" ? (
-        <WeeklyCalendarView
+    const id = Number.parseInt(editTaskId, 10);
+    if (Number.isNaN(id)) {
+      return null;
+    }
+
+    return tasks.find((task) => task.id === id) ?? null;
+  }, [editTaskId, tasks]);
+
+  const closeProjectEdit = useCallback(() => {
+    if (!effectiveDomain) {
+      return;
+    }
+
+    const path = getCalendarPagePath(displayCalendarType, effectiveDomain);
+    router.replace(path, { scroll: false });
+    router.refresh();
+  }, [displayCalendarType, effectiveDomain, router]);
+
+  useEffect(() => {
+    if (!editTaskId || taskToEdit || !effectiveDomain) {
+      return;
+    }
+
+    const path = getCalendarPagePath(displayCalendarType, effectiveDomain);
+    router.replace(path, { scroll: false });
+  }, [displayCalendarType, editTaskId, effectiveDomain, router, taskToEdit]);
+
+  return (
+    <div
+      className={
+        viewMode === "week"
+          ? "relative z-20 flex h-full min-h-0 w-full flex-col"
+          : "relative z-20 w-full py-4"
+      }
+    >
+      {effectiveDomain && (
+        <ProjectSchedulerCalendar
           items={weeklyItems}
-          mode="admin"
-          title={`${CALENDAR_TYPE_NAMES[calendarType]} - Settimana`}
+          calendarType={displayCalendarType}
+          domain={effectiveDomain}
+          view={viewMode}
+          onViewChange={setViewMode}
+          title={`${CALENDAR_TYPE_NAMES[calendarType]} - ${viewMode === "week" ? "Settimana" : "Mese"}`}
           description={
             isProductionCalendar
-              ? "Planner operativo per tenere sotto controllo le scadenze giornaliere di produzione."
-              : "Planner operativo con card progetto stile Kanban e segnalazione per gli orari ancora da definire."
+              ? viewMode === "week"
+                ? "Planner operativo con card progetto trascinabili e ridimensionabili."
+                : "Vista mensile con finestre di produzione su più giorni."
+              : viewMode === "week"
+                ? "Planner operativo con card progetto trascinabili e ridimensionabili."
+                : "Vista mensile con card progetto e segnalazione per gli orari ancora da definire."
           }
-          slotStartHour={6}
-          slotEndHour={19}
-          slotMinutes={60}
-          visibleWeekDays={7}
-          weeksToShow={2}
-          showFiltersBar={false}
-          emptyStateTitle="Nessun progetto in settimana"
+          emptyStateTitle={
+            viewMode === "week" ? "Nessun progetto in settimana" : "Nessun progetto nel mese"
+          }
           emptyStateDescription={
             isProductionCalendar
-              ? "Le card compariranno qui appena i progetti avranno una data di completamento."
-              : "Le card compariranno qui appena i progetti avranno data o fascia oraria."
+              ? "Le card compariranno qui appena i progetti avranno una finestra di produzione."
+              : "Le card compariranno qui appena i progetti avranno data e fascia oraria."
           }
         />
-      ) : (
-        <MonthlyCalendarView
-          items={weeklyItems}
-          mode="admin"
-          calendarType={displayCalendarType}
-          title={`${CALENDAR_TYPE_NAMES[calendarType]} - Mese`}
-          description={
-            isProductionCalendar
-              ? "Vista mensile a scadenza: per la produzione conta il giorno entro cui completare il progetto."
-              : "Vista mensile con card stile planner settimanale e campanello sui progetti senza orario."
-          }
-          emptyStateTitle="Nessun progetto nel mese"
-          emptyStateDescription={
-            isProductionCalendar
-              ? "Le card compariranno qui appena i progetti avranno una data entro cui completarsi."
-              : "Le card compariranno qui appena i progetti avranno una data pianificata."
-          }
+      )}
+      {effectiveDomain && taskToEdit && (
+        <CalendarProjectEditDialog
+          task={taskToEdit}
+          open={Boolean(editTaskId)}
+          onClose={closeProjectEdit}
+          domain={effectiveDomain}
         />
       )}
     </div>

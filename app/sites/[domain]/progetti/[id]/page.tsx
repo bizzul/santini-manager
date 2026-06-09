@@ -29,6 +29,7 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { resolveCalendarReturnNavigation } from "@/components/calendar/calendar-utils";
 
 function getWeekNumber(date: Date): number {
   const d = new Date(
@@ -241,10 +242,13 @@ async function getData(id: number, siteId: string): Promise<any> {
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: number; domain: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id, domain } = await params;
+  const { returnTo } = await searchParams;
 
   const session = await getUserContext();
   if (!session || !session.user || !session.user.id) {
@@ -388,10 +392,20 @@ export default async function Page({
   const kanbanIdentifier = Array.isArray(data.kanban)
     ? data.kanban[0]?.identifier
     : data.kanban?.identifier;
-  const backHref = kanbanIdentifier
-    ? `/sites/${domain}/kanban?name=${encodeURIComponent(kanbanIdentifier)}`
-    : `/sites/${domain}/projects`;
-  const backLabel = kanbanIdentifier ? "Torna al kanban" : "Torna ai progetti";
+  const defaultBack = kanbanIdentifier
+    ? {
+        href: `/sites/${domain}/kanban?name=${encodeURIComponent(kanbanIdentifier)}`,
+        label: "Torna al kanban",
+      }
+    : {
+        href: `/sites/${domain}/projects`,
+        label: "Torna ai progetti",
+      };
+  const { href: backHref, label: backLabel } = resolveCalendarReturnNavigation(
+    domain,
+    returnTo,
+    defaultBack
+  );
 
   return (
     <DetailSheetLayout backHref={backHref} backLabel={backLabel}>
