@@ -37,6 +37,8 @@ function toLatLngRing(ring: number[][]): [number, number][] {
 interface ActiveProjectsMapProps {
   projects: NormalizedProjectLocation[];
   domain: string;
+  doubleClickZoom?: boolean;
+  onDoubleClick?: () => void;
 }
 
 function escapeHtml(text: string): string {
@@ -105,7 +107,12 @@ function buildProjectTooltipHtml(
   `;
 }
 
-export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMapProps) {
+export default function ActiveProjectsMap({
+  projects,
+  domain,
+  doubleClickZoom = true,
+  onDoubleClick,
+}: ActiveProjectsMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
@@ -304,7 +311,7 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
         zoom: 6,
         scrollWheelZoom: true,
         dragging: true,
-        doubleClickZoom: true,
+        doubleClickZoom,
         boxZoom: true,
         zoomControl: true,
         touchZoom: true,
@@ -399,6 +406,31 @@ export default function ActiveProjectsMap({ projects, domain }: ActiveProjectsMa
     }
     void applyMarkers();
   }, [applyMarkers, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) {
+      return;
+    }
+
+    if (doubleClickZoom) {
+      map.doubleClickZoom.enable();
+    } else {
+      map.doubleClickZoom.disable();
+    }
+  }, [doubleClickZoom, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !onDoubleClick) {
+      return;
+    }
+
+    map.on("dblclick", onDoubleClick);
+    return () => {
+      map.off("dblclick", onDoubleClick);
+    };
+  }, [mapReady, onDoubleClick]);
 
   return (
     <div className="absolute inset-0 z-[2] min-h-[200px]">

@@ -284,14 +284,14 @@ export default function ActiveProjectsMapCard({
         className={cn(
           "relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60",
           isExpanded ? "flex-1 min-h-0" : mapHeightClassName,
-          !isExpanded && "cursor-pointer",
         )}
-        onClick={!isExpanded ? () => setIsExpanded(true) : undefined}
       >
         <ActiveProjectsMap
           key={domain}
           projects={visibleProjects}
           domain={domain}
+          doubleClickZoom={isExpanded}
+          onDoubleClick={!isExpanded ? () => setIsExpanded(true) : undefined}
         />
 
         {visibleProjects.length === 0 && (
@@ -310,9 +310,14 @@ export default function ActiveProjectsMapCard({
         )}
 
         {!isExpanded && (
-          <div className="pointer-events-none absolute right-2 top-2 z-20 rounded-lg border border-slate-700/50 bg-slate-900/80 p-1.5 backdrop-blur-sm">
-            <Maximize2 className="h-3.5 w-3.5 text-slate-300" />
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="absolute right-2 top-2 z-20 rounded-lg border border-slate-700/50 bg-slate-900/80 p-1.5 text-slate-300 backdrop-blur-sm transition hover:border-slate-500 hover:text-slate-100"
+            aria-label="Espandi mappa"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
 

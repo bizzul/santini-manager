@@ -40,7 +40,7 @@ import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Settings, ShieldCheck } from "lucide-react";
+import { Settings } from "lucide-react";
 import {
   faWaveSquare,
   faTable,
@@ -253,6 +253,13 @@ const getMenuItems = (
       ],
     },
     {
+      label: "Documenti",
+      icon: "faBriefcase",
+      href: `${basePath}/documenti`,
+      alert: false,
+      moduleName: "projects",
+    },
+    {
       label: "Calendari",
       icon: "faCalendarDays",
       alert: false,
@@ -354,13 +361,6 @@ const getMenuItems = (
       label: labels?.projects || "Progetti",
       icon: "faTable",
       href: `${basePath}/projects`,
-      alert: false,
-      moduleName: "projects",
-    },
-    {
-      label: "Documenti",
-      icon: "faBriefcase",
-      href: `${basePath}/documenti`,
       alert: false,
       moduleName: "projects",
     },
@@ -934,10 +934,7 @@ export function AppSidebar() {
     }
     return "/administration";
   }, [canManageSettings, domain, siteData?.id]);
-  const settingsTitle = domain ? "Impostazioni sito" : "Administration";
-  const settingsDescription = domain
-    ? "Configura moduli, categorie e parametri operativi del sito."
-    : "Gestisci configurazioni e impostazioni generali della piattaforma.";
+  const settingsTitle = domain ? "Impostazioni" : "Administration";
 
   // Raggruppa i menu items per categoria
   const groupedMenuItems = useMemo(() => {
@@ -946,6 +943,7 @@ export function AppSidebar() {
     const reportsLabel = verticalProfile.menuLabels.reports;
     const core = menuItems.filter((item) => item.label === "Dashboard");
     const projects = menuItems.filter((item) => item.label === kanbanLabel);
+    const documenti = menuItems.filter((item) => item.label === "Documenti");
     const calendars = menuItems.filter((item) => item.label === "Calendari");
     const contacts = menuItems.filter((item) => item.label === "Contatti");
     const warehouse = menuItems.filter((item) => item.label === "Magazzino");
@@ -969,6 +967,7 @@ export function AppSidebar() {
           "Fabbrica",
           "Prodotti",
           projectsLabel,
+          "Documenti",
           "Categorie",
           "Errori",
           reportsLabel,
@@ -978,6 +977,7 @@ export function AppSidebar() {
     return {
       core,
       projects,
+      documenti,
       calendars,
       attendance,
       contacts,
@@ -1530,6 +1530,20 @@ export function AppSidebar() {
               </>
             )}
 
+            {/* Documenti */}
+            {groupedMenuItems.documenti.length > 0 && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {groupedMenuItems.documenti.map(renderMenuItem)}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+
             {/* Calendari */}
             {groupedMenuItems.calendars.length > 0 && (
               <>
@@ -1632,48 +1646,25 @@ export function AppSidebar() {
               </>
             )}
 
-            {state !== "collapsed" && (
+            {canManageSettings && settingsHref && (
               <>
                 <SidebarSeparator />
-                <SidebarGroup className="mt-auto flex-1">
-                  <SidebarGroupLabel>Impostazioni</SidebarGroupLabel>
-                  <SidebarGroupContent className="flex flex-1 flex-col">
-                    <div className="flex flex-1 flex-col gap-4">
-                      <div className="flex flex-1 flex-col rounded-2xl border border-[hsl(var(--sidebar-border)/0.75)] bg-[hsl(var(--sidebar-card)/0.72)] p-4 shadow-[inset_0_1px_0_hsl(var(--sidebar-card)/0.55)] dark:border-white/10 dark:bg-white/[0.03]">
-                        <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-[hsl(var(--sidebar-card))] text-[hsl(var(--sidebar-foreground))] shadow-[0_10px_20px_hsl(var(--sidebar-card-shadow)/0.1)] dark:bg-white/10 dark:text-white dark:shadow-none">
-                          <Settings className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-2">
-                          <p className="text-sm font-semibold text-[hsl(var(--sidebar-foreground))] dark:text-white">
-                            {settingsTitle}
-                          </p>
-                          <p className="text-xs leading-5 text-[hsl(var(--sidebar-foreground)/0.62)] dark:text-white/60">
-                            {settingsDescription}
-                          </p>
-                        </div>
-                        <div className="mt-auto pt-4">
-                          {settingsHref ? (
-                            <SidebarMenu>
-                              <SidebarMenuItem>
-                                <SidebarMenuButton
-                                  asChild
-                                  className="h-10 rounded-xl bg-[hsl(var(--sidebar-card-strong)/0.9)] shadow-[0_8px_18px_hsl(var(--sidebar-card-shadow)/0.12)] dark:bg-white/10 dark:shadow-none"
-                                >
-                                  <Link href={settingsHref}>
-                                    <ShieldCheck className="h-4 w-4" />
-                                    <span>Apri impostazioni</span>
-                                  </Link>
-                                </SidebarMenuButton>
-                              </SidebarMenuItem>
-                            </SidebarMenu>
-                          ) : (
-                            <div className="rounded-xl border border-dashed border-[hsl(var(--sidebar-border)/0.8)] px-3 py-2 text-xs text-[hsl(var(--sidebar-foreground)/0.62)] dark:border-white/10 dark:text-white/60">
-                              Disponibile per admin e superadmin.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                <SidebarGroup className="mt-auto">
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={settingsTitle}
+                          isActive={isActive(settingsHref)}
+                        >
+                          <Link href={settingsHref}>
+                            <Settings className="h-4 w-4" />
+                            <span>{settingsTitle}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
               </>
