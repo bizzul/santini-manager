@@ -77,6 +77,14 @@ export const SITE_SETTINGS_GUIDES = {
       "Le prime 40/50 domande sono semplici e standard: servono a identificare bisogni, preferenze visive, workflow e dati prioritari in pochi minuti.",
     ],
   },
+  flowchart: {
+    summary:
+      "Mostra la home in modalita diagramma interattivo a schermo intero.",
+    details: [
+      "Quando la vista diagramma e attiva, la home si apre in modalita diagramma a schermo intero con zoom, pan e nodi cliccabili; un toggle permette di tornare alla vista standard.",
+      "Puoi scegliere il tipo di diagramma (WBS, Venn e Gantt in arrivo) e la categoria centrale: utente collegato (filtrata sui suoi permessi) o sito (vista completa di tutti i dati).",
+    ],
+  },
   commandDeck: {
     summary:
       "Abilita la navigazione immersiva Command Deck per questo spazio.",

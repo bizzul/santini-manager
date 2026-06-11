@@ -565,9 +565,10 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
-  // Initialize collapsed menus from localStorage (with Kanban collapsed by default)
+  // Server-safe defaults: localStorage is read only after mount, so the
+  // first client render matches the SSR HTML (avoids hydration mismatch).
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
-    getInitialCollapsedMenus
+    { Kanban: true }
   );
   const { toast } = useToast();
   const { isOnline } = useOnlineStatus();
@@ -575,15 +576,19 @@ export function AppSidebar() {
   const [isHydrated, setIsHydrated] = useState(false);
 
   // Track if Kanban section has been opened at least once (for lazy loading)
-  const [kanbanOpened, setKanbanOpened] = useState(getInitialKanbanOpened);
+  const [kanbanOpened, setKanbanOpened] = useState(false);
 
-  // Persist collapsed menus state to localStorage
+  // Restore persisted sidebar state from localStorage after mount.
   useEffect(() => {
+    setCollapsedMenus(getInitialCollapsedMenus());
+    setKanbanOpened(getInitialKanbanOpened());
     setIsHydrated(true);
   }, []);
 
-  // Persist collapsed menus state to localStorage
+  // Persist collapsed menus state to localStorage (only after the initial
+  // restore, to avoid overwriting the stored value with the defaults).
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem(
         SIDEBAR_COLLAPSED_MENUS_KEY,
@@ -592,10 +597,11 @@ export function AppSidebar() {
     } catch (e) {
       // Ignore localStorage errors
     }
-  }, [collapsedMenus]);
+  }, [collapsedMenus, isHydrated]);
 
   // Persist kanban opened state to localStorage
   useEffect(() => {
+    if (!isHydrated) return;
     try {
       localStorage.setItem(
         SIDEBAR_KANBAN_OPENED_KEY,
@@ -604,7 +610,7 @@ export function AppSidebar() {
     } catch (e) {
       // Ignore localStorage errors
     }
-  }, [kanbanOpened]);
+  }, [kanbanOpened, isHydrated]);
 
   // Optimized domain extraction
   const domain = useMemo(() => extractDomainFromPath(pathname), [pathname]);

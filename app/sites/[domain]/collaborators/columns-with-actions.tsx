@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
 import { Badge } from "@/components/ui/badge";
@@ -76,10 +77,21 @@ export function getColumnsWithActions(
         <DataTableColumnHeader column={column} title="Nome" />
       ),
       cell: ({ row }) => {
-        const { given_name, family_name } = row.original;
+        const { id, given_name, family_name, is_virtual_agent } = row.original;
         const fullName =
           [given_name, family_name].filter(Boolean).join(" ") || "N/A";
-        return <span className="font-medium">{fullName}</span>;
+        // Virtual agents (negative ids) have no dashboard page.
+        if (is_virtual_agent || Number(id) <= 0) {
+          return <span className="font-medium">{fullName}</span>;
+        }
+        return (
+          <Link
+            href={`/sites/${domain}/collaborators/${id}`}
+            className="font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+          >
+            {fullName}
+          </Link>
+        );
       },
     },
     {

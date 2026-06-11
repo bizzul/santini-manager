@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSiteContext, hasSiteId } from "@/lib/site-context";
 import { createServiceClient } from "@/utils/supabase/server";
 import { createTabularReportResponse } from "@/lib/tabular-report-export";
+import { getCollaboratorDashboard } from "@/lib/collaborator-dashboard.server";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +113,76 @@ export async function POST(req: NextRequest) {
         : "-",
     },
   ];
+
+  // Dashboard sections: hours, balances, attendance and projects.
+  const dashboard = await getCollaboratorDashboard({
+    siteId: siteContext.siteId,
+    userId: collaboratorId,
+  });
+
+  if (dashboard) {
+    const year = new Date().getFullYear();
+    const formatHours = (value: number) =>
+      `${value.toLocaleString("it-CH", { maximumFractionDigits: 1 })} h`;
+
+    rows.push(
+      { Campo: "", Valore: "" },
+      { Campo: `— Ore e saldi ${year} —`, Valore: "" },
+      {
+        Campo: "Ore contrattuali",
+        Valore: `${dashboard.profile.weeklyHours} h/settimana`,
+      },
+      { Campo: `Ore lavorate ${year}`, Valore: formatHours(dashboard.yearHours) },
+      {
+        Campo: "Ore attese (anno in corso)",
+        Valore: formatHours(dashboard.expectedYearHours),
+      },
+      {
+        Campo: "Saldo ore",
+        Valore: `${dashboard.hoursBalance >= 0 ? "+" : ""}${formatHours(dashboard.hoursBalance)}`,
+      },
+      {
+        Campo: "Ferie",
+        Valore: `usate ${dashboard.vacationUsed} / ${dashboard.profile.vacationDaysPerYear} gg · residue ${dashboard.vacationRemaining} gg`,
+      },
+    );
+
+    if (Object.keys(dashboard.attendanceCounts).length > 0) {
+      rows.push(
+        { Campo: "", Valore: "" },
+        { Campo: `— Presenze ${year} —`, Valore: "" },
+        ...Object.entries(dashboard.attendanceCounts).map(
+          ([status, count]) => ({
+            Campo: status.charAt(0).toUpperCase() +
+              status.slice(1).replace(/_/g, " "),
+            Valore: `${count} gg`,
+          }),
+        ),
+      );
+    }
+
+    rows.push(
+      { Campo: "", Valore: "" },
+      { Campo: "— Ore per mese (ultimi 12 mesi) —", Valore: "" },
+      ...dashboard.hoursPerMonth.map((bucket) => ({
+        Campo: bucket.label,
+        Valore: formatHours(bucket.hours),
+      })),
+    );
+
+    if (dashboard.projects.length > 0) {
+      rows.push(
+        { Campo: "", Valore: "" },
+        { Campo: "— Progetti e attività (ultimi 12 mesi) —", Valore: "" },
+        ...dashboard.projects.map((project) => ({
+          Campo: project.client
+            ? `${project.label} (${project.client})`
+            : project.label,
+          Valore: `${formatHours(project.hours)} · ${project.entries} registrazioni`,
+        })),
+      );
+    }
+  }
 
   return createTabularReportResponse({
     title: "Scheda collaboratore",

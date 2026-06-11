@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { updateSiteWithUsers, deleteSite } from "../../actions";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { AVAILABLE_MODULES } from "@/lib/module-config";
 const ModuleManagementModal = dynamic(
   () => import("@/components/module-management/ModuleManagementModal"),
   { ssr: false },
@@ -41,6 +41,7 @@ import {
   UserCheck,
   Camera,
   LayoutDashboard,
+  GitBranch,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
@@ -49,6 +50,11 @@ import DocumentTemplateModal from "@/components/site-settings/DocumentTemplateMo
 import SiteThemeSettingsModal from "@/components/site-settings/SiteThemeSettingsModal";
 import SiteSupportAndSubscriptionModal from "@/components/site-settings/SiteSupportAndSubscriptionModal";
 import { SiteCommandDeckModal } from "@/components/site-settings/SiteCommandDeckModal";
+import { SiteFlowchartModal } from "@/components/site-settings/SiteFlowchartModal";
+import SiteHealthBar, {
+  type HealthItem,
+} from "@/components/site-settings/SiteHealthBar";
+import type { SiteFlowchartSettings } from "@/lib/flowchart-settings";
 import SiteDashboardSettingsModal from "@/components/site-settings/SiteDashboardSettingsModal";
 import { DangerousDeleteDialog } from "@/components/dialogs/DangerousDeleteDialog";
 import { logger } from "@/lib/logger";
@@ -120,6 +126,7 @@ export default function EditSiteForm({
   initialThemeSettings,
   initialSupportBotEnabled,
   initialCommandDeckEnabled,
+  initialFlowchartSettings,
 }: {
   site: any;
   siteUsers: any[];
@@ -129,6 +136,7 @@ export default function EditSiteForm({
   initialThemeSettings: SiteThemeSettings;
   initialSupportBotEnabled: boolean;
   initialCommandDeckEnabled: boolean;
+  initialFlowchartSettings: SiteFlowchartSettings;
 }) {
   const [form, setForm] = useState({
     name: site.name || "",
@@ -187,21 +195,6 @@ export default function EditSiteForm({
     [activeSelectedUsers]
   );
 
-  const userOptions = useMemo(() => {
-    const baseOptions = uniqueUsers.map((user: any) => ({
-      value: user.id,
-      label: getUserDisplayName(user),
-    }));
-    const knownIds = new Set(baseOptions.map((opt) => opt.value));
-    const orphanOptions = form.users
-      .filter((id: string) => !knownIds.has(id))
-      .map((id: string) => ({
-        value: id,
-        label: `Utente sconosciuto (${id.slice(0, 8)}...)`,
-      }));
-    return [...baseOptions, ...orphanOptions];
-  }, [uniqueUsers, form.users]);
-
   const activeUserCards = useMemo(
     () =>
       activeSelectedUsers.map((user) => ({
@@ -233,12 +226,113 @@ export default function EditSiteForm({
     loadSummary();
   }, [site.id, userRole]);
 
-  function handleUsersChange(selected: string[]) {
-    setForm((current) => ({
-      ...current,
-      users: Array.from(new Set(selected)),
-    }));
-  }
+  const healthItems = useMemo<HealthItem[]>(() => {
+    if (!settingsSummary) return [];
+
+    const factoryConfigured =
+      (settingsSummary.factory?.departments ?? 0) > 0 ||
+      (settingsSummary.factory?.machines ?? 0) > 0;
+    const productItems = settingsSummary.products?.items ?? 0;
+    const hrRates = settingsSummary.hr?.configuredRates ?? 0;
+
+    return [
+      {
+        label: "Moduli",
+        value: `${settingsSummary.modules?.active ?? 0}/${settingsSummary.modules?.total ?? 0}`,
+        status: "ok",
+        cardKey: "modules",
+      },
+      {
+        label: "Utenti",
+        value: `${settingsSummary.users?.total ?? 0}`,
+        status: "ok",
+        cardKey: "hr",
+      },
+      {
+        label: "Prodotti",
+        value: `${productItems}`,
+        status: productItems > 0 ? "ok" : "incomplete",
+        cardKey: "products",
+      },
+      {
+        label: "Fabbrica",
+        value: factoryConfigured
+          ? `${settingsSummary.factory?.departments ?? 0} reparti`
+          : "Non configurata",
+        status: factoryConfigured ? "ok" : "incomplete",
+        cardKey: "factory",
+      },
+      {
+        label: "HR costi",
+        value: hrRates > 0 ? `${hrRates} definiti` : "Costi mancanti",
+        status: hrRates > 0 ? "ok" : "warning",
+        cardKey: "hr",
+      },
+    ];
+  }, [settingsSummary]);
+
+  // Active modules + special functions summary (real data from the
+  // site-summary endpoint and the per-site feature settings).
+  const activeModulesSummary = useMemo(() => {
+    const names: string[] =
+      settingsSummary?.modules?.enabledNames ?? [];
+    const byName = new Map(
+      AVAILABLE_MODULES.map((module) => [module.name, module])
+    );
+    return names
+      .map((name) => byName.get(name))
+      .filter(
+        (module): module is (typeof AVAILABLE_MODULES)[number] =>
+          Boolean(module)
+      )
+      .map((module) => ({ name: module.name, label: module.label }));
+  }, [settingsSummary]);
+
+  const specialFunctions = useMemo(
+    () => [
+      {
+        key: "ai",
+        label: "Intelligenza Artificiale",
+        icon: Bot,
+        enabled: Boolean(settingsSummary?.ai?.hasApiKey),
+        detail: settingsSummary?.ai?.provider
+          ? String(settingsSummary.ai.provider)
+          : undefined,
+      },
+      {
+        key: "dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        enabled: (settingsSummary?.modules?.enabledNames ?? []).includes(
+          "dashboard"
+        ),
+      },
+      {
+        key: "flowchart",
+        label: "Vista Diagramma",
+        icon: GitBranch,
+        enabled: Boolean(initialFlowchartSettings?.enabled),
+      },
+      {
+        key: "command-deck",
+        label: "Command Deck",
+        icon: Layers,
+        enabled: Boolean(initialCommandDeckEnabled),
+      },
+      {
+        key: "support-bot",
+        label: "Assistente di supporto",
+        icon: Bot,
+        enabled: Boolean(initialSupportBotEnabled),
+      },
+    ],
+    [
+      settingsSummary,
+      initialFlowchartSettings,
+      initialCommandDeckEnabled,
+      initialSupportBotEnabled,
+    ]
+  );
 
   const handleImageChange = useCallback(
     (file: File | null) => {
@@ -442,7 +536,7 @@ export default function EditSiteForm({
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid gap-4">
           <div className="space-y-4 rounded-2xl border border-white/15 bg-white/5 p-4">
             <div>
               <Label className="text-white/80 text-sm font-medium">Logo del sito</Label>
@@ -614,140 +708,92 @@ export default function EditSiteForm({
                 className="mt-2 w-full bg-white/10 border border-white/30 text-white placeholder:text-white/50 focus:border-white/60 focus:bg-white/15 rounded-lg px-4 py-3 backdrop-blur-sm"
               />
             </div>
-          </div>
 
-          <div className="rounded-2xl border border-white/15 bg-white/5 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            {/* Active modules + special functions summary */}
+            <div className="rounded-xl border border-white/15 bg-white/5 p-4 space-y-4">
               <div>
-                <h3 className="text-white text-base font-semibold">Users</h3>
+                <h3 className="text-white text-base font-semibold">
+                  Moduli e funzioni attive
+                </h3>
                 <p className="text-xs text-white/55 mt-1">
-                  Versione semplificata: totale utenti, ruoli principali e accesso rapido
-                  al pannello utente.
+                  Riepilogo dei moduli abilitati e delle funzioni speciali del
+                  sito.
                 </p>
               </div>
-            </div>
-            <div className="mt-3">
-              <MultiSelect
-                options={userOptions}
-                onValueChange={handleUsersChange}
-                defaultValue={form.users}
-                placeholder="Cerca utenti..."
-                variant="default"
-                animation={0}
-                maxCount={4}
-                className="w-full"
-              />
-            </div>
-            <div className="mt-2 rounded-xl border border-white/15 bg-white/5 p-4 space-y-4">
-              <div className="flex flex-wrap gap-3">
-                <div className="min-w-[140px] rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-white/45">
-                    Utenti tot
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-white">
-                    {activeSelectedUsers.length}
-                  </p>
-                </div>
-                <div className="min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-white/45">
-                    Utenti admin
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-white">
-                    {activeUserCounts.admin || 0}
-                  </p>
-                </div>
-                <div className="min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wide text-white/45">
-                    Utenti users
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-white">
-                    {activeUserCounts.user || 0}
-                  </p>
-                </div>
-                {Object.entries(activeUserCounts)
-                  .filter(([role]) => role !== "admin" && role !== "user")
-                  .map(([role, count]) => (
-                  <div
-                    key={role}
-                    className="min-w-[110px] rounded-xl border border-white/10 bg-white/5 px-3 py-2"
-                  >
-                    <p className="text-[11px] uppercase tracking-wide text-white/45">
-                      {ROLE_LABELS[role] || role}
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-white">{count}</p>
-                  </div>
-                  ))}
-              </div>
 
-              {activeUserCards.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-white/70">
-                    <UserCheck className="h-4 w-4" />
-                    <span>Utenti attivi selezionati (clic per aprire il pannello)</span>
-                  </div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    {activeUserCards.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950/20 px-3 py-2"
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-white/45">
+                  <Layers className="h-3.5 w-3.5" />
+                  Moduli attivi
+                  {settingsSummary?.modules && (
+                    <span className="text-white/60">
+                      {settingsSummary.modules.active}/
+                      {settingsSummary.modules.total}
+                    </span>
+                  )}
+                </div>
+                {activeModulesSummary.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeModulesSummary.map((module) => (
+                      <span
+                        key={module.name}
+                        className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-xs text-white/85"
                       >
-                        <label className="relative block cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-                            className="sr-only"
-                            onChange={(event) =>
-                              handleUserPictureChange(
-                                user.id,
-                                event.target.files?.[0] || null
-                              )
-                            }
-                          />
-                          <Avatar className="h-11 w-11 border border-white/20">
-                            <AvatarImage
-                              src={user.picture || undefined}
-                              alt={user.label}
-                              className="object-cover"
-                            />
-                            <AvatarFallback className="bg-white/10 text-xs font-semibold text-white">
-                              {user.initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-slate-900 bg-white/90 text-slate-900">
-                            {uploadingUserPictureId === user.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Camera className="h-3 w-3" />
-                            )}
-                          </span>
-                        </label>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-white">
-                            {user.label}
-                          </p>
-                          <p className="truncate text-xs text-white/50">
-                            {user.email || "Nessuna email"} •{" "}
-                            {ROLE_LABELS[user.role] || user.role}
-                          </p>
-                          <p className="mt-1 text-[11px] text-white/40">
-                            Clicca sul cerchio per caricare la foto profilo
-                          </p>
-                        </div>
-                        <Link href={`/administration/users/${user.id}`}>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-white/85 hover:bg-white/10"
-                          >
-                            Apri
-                          </Button>
-                        </Link>
-                      </div>
+                        {module.label}
+                      </span>
                     ))}
                   </div>
+                ) : (
+                  <p className="text-xs italic text-white/40">
+                    {settingsSummary
+                      ? "Nessun modulo attivo."
+                      : "Caricamento moduli..."}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-white/45">
+                  <Bot className="h-3.5 w-3.5" />
+                  Funzioni speciali
                 </div>
-              )}
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {specialFunctions.map((fn) => {
+                    const Icon = fn.icon;
+                    return (
+                      <div
+                        key={fn.key}
+                        className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2"
+                      >
+                        <Icon
+                          className={`h-4 w-4 shrink-0 ${
+                            fn.enabled ? "text-emerald-300" : "text-white/35"
+                          }`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm text-white/85">
+                            {fn.label}
+                          </p>
+                          {fn.detail && fn.enabled && (
+                            <p className="truncate text-[11px] text-white/45">
+                              {fn.detail}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                            fn.enabled
+                              ? "bg-emerald-500/20 text-emerald-200"
+                              : "bg-white/10 text-white/45"
+                          }`}
+                        >
+                          {fn.enabled ? "Attiva" : "Disattiva"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -774,6 +820,8 @@ export default function EditSiteForm({
                 HR e AI in un unico pannello.
               </p>
             </div>
+
+            <SiteHealthBar items={healthItems} />
 
             <SettingsOverviewCards
               summary={settingsSummary}
@@ -988,6 +1036,26 @@ export default function EditSiteForm({
                       className="border-sky-300/35 bg-sky-500/15 text-sky-100 hover:bg-sky-500/25"
                     >
                       Abilita 3D Desk View
+                    </Button>
+                  }
+                />
+              }
+              flowchartEnabled={initialFlowchartSettings.enabled}
+              flowchartAction={
+                <SiteFlowchartModal
+                  siteId={site.id}
+                  siteName={site.name || site.subdomain}
+                  siteSubdomain={site.subdomain}
+                  initialSettings={initialFlowchartSettings}
+                  canConfigure={userRole === "superadmin"}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="border-teal-300/35 bg-teal-500/15 text-teal-100 hover:bg-teal-500/25"
+                    >
+                      <GitBranch className="h-4 w-4 mr-2" />
+                      Configura vista diagramma
                     </Button>
                   }
                 />

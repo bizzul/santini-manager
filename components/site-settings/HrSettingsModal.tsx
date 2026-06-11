@@ -20,6 +20,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { UserPermissionsDialog } from "@/components/permissions/user-permissions-dialog";
+import {
+  DEFAULT_VACATION_DAYS,
+  DEFAULT_WEEKLY_HOURS,
+  HR_SETTING_KEY,
+  parseHrSettings,
+} from "@/lib/hr-settings";
 
 interface HrSettingsModalProps {
   siteId: string;
@@ -27,10 +33,6 @@ interface HrSettingsModalProps {
   users: any[];
   trigger: React.ReactNode;
 }
-
-type HrSettings = {
-  hourlyRates?: Record<string, number | null>;
-};
 
 export default function HrSettingsModal({
   siteId,
@@ -42,6 +44,14 @@ export default function HrSettingsModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hourlyRates, setHourlyRates] = useState<Record<string, string>>({});
+  const [weeklyHours, setWeeklyHours] = useState<Record<string, string>>({});
+  const [vacationDays, setVacationDays] = useState<Record<string, string>>({});
+  const [defaultWeeklyHours, setDefaultWeeklyHours] = useState<string>(
+    String(DEFAULT_WEEKLY_HOURS)
+  );
+  const [defaultVacationDays, setDefaultVacationDays] = useState<string>(
+    String(DEFAULT_VACATION_DAYS)
+  );
   const [permissionsUser, setPermissionsUser] = useState<any | null>(null);
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [userPictureOverrides, setUserPictureOverrides] = useState<
@@ -148,20 +158,25 @@ export default function HrSettingsModal({
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/settings/site-config?siteId=${siteId}&settingKey=hr_settings`
+        `/api/settings/site-config?siteId=${siteId}&settingKey=${HR_SETTING_KEY}`
       );
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.error || "Impossibile caricare le impostazioni HR");
       }
-      const value: HrSettings = result.value || {};
-      const nextRates = users.reduce<Record<string, string>>((acc, user) => {
-        const rawValue = value.hourlyRates?.[user.id];
-        acc[user.id] =
-          rawValue === null || rawValue === undefined ? "" : String(rawValue);
-        return acc;
-      }, {});
-      setHourlyRates(nextRates);
+      const value = parseHrSettings(result.value);
+      const toInputMap = (map: Record<string, number | null>) =>
+        users.reduce<Record<string, string>>((acc, user) => {
+          const rawValue = map[user.id];
+          acc[user.id] =
+            rawValue === null || rawValue === undefined ? "" : String(rawValue);
+          return acc;
+        }, {});
+      setHourlyRates(toInputMap(value.hourlyRates));
+      setWeeklyHours(toInputMap(value.weeklyHours));
+      setVacationDays(toInputMap(value.vacationDays));
+      setDefaultWeeklyHours(String(value.defaultWeeklyHours));
+      setDefaultVacationDays(String(value.defaultVacationDays));
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Errore nel caricamento"
@@ -174,19 +189,32 @@ export default function HrSettingsModal({
   async function handleSave() {
     setSaving(true);
     try {
+      const toValueMap = (map: Record<string, string>) =>
+        Object.fromEntries(
+          Object.entries(map).map(([userId, value]) => [
+            userId,
+            value === "" ? null : Number(value),
+          ])
+        );
+
       const response = await fetch("/api/settings/site-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           siteId,
-          settingKey: "hr_settings",
+          settingKey: HR_SETTING_KEY,
           value: {
-            hourlyRates: Object.fromEntries(
-              Object.entries(hourlyRates).map(([userId, value]) => [
-                userId,
-                value === "" ? null : Number(value),
-              ])
-            ),
+            hourlyRates: toValueMap(hourlyRates),
+            weeklyHours: toValueMap(weeklyHours),
+            vacationDays: toValueMap(vacationDays),
+            defaultWeeklyHours:
+              defaultWeeklyHours === ""
+                ? DEFAULT_WEEKLY_HOURS
+                : Number(defaultWeeklyHours),
+            defaultVacationDays:
+              defaultVacationDays === ""
+                ? DEFAULT_VACATION_DAYS
+                : Number(defaultVacationDays),
           },
         }),
       });
@@ -246,6 +274,53 @@ export default function HrSettingsModal({
                   </Card>
                 ))}
               </div>
+
+              <Card className="border-white/15 bg-white/5 text-white">
+                <CardContent className="p-4">
+                  <p className="mb-3 text-sm font-medium text-white/85">
+                    Parametri contrattuali di default
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-white/80">
+                        Ore settimanali (default)
+                      </Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        step="0.5"
+                        value={defaultWeeklyHours}
+                        onChange={(event) =>
+                          setDefaultWeeklyHours(event.target.value)
+                        }
+                        placeholder={String(DEFAULT_WEEKLY_HOURS)}
+                        className="bg-white/10 border-white/30 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-white/80">
+                        Giorni ferie/anno (default)
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        value={defaultVacationDays}
+                        onChange={(event) =>
+                          setDefaultVacationDays(event.target.value)
+                        }
+                        placeholder={String(DEFAULT_VACATION_DAYS)}
+                        className="bg-white/10 border-white/30 text-white"
+                      />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-white/55">
+                    Usati per calcolare saldo ore e saldo vacanze nella
+                    dashboard del collaboratore, quando non impostati a livello
+                    individuale.
+                  </p>
+                </CardContent>
+              </Card>
 
               <div className="grid gap-4">
                 {users.map((user) => (
@@ -312,26 +387,68 @@ export default function HrSettingsModal({
                     {editingUserId === user.id && (
                       <CardContent>
                         <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label className="text-white/80">Costo orario</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={hourlyRates[user.id] || ""}
-                              onChange={(event) =>
-                                setHourlyRates((current) => ({
-                                  ...current,
-                                  [user.id]: event.target.value,
-                                }))
-                              }
-                              placeholder="es. 35"
-                              className="bg-white/10 border-white/30 text-white"
-                            />
-                            <p className="text-xs text-white/55">
-                              Il costo orario viene salvato nelle impostazioni HR
-                              del sito.
-                            </p>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label className="text-white/80">
+                                Costo orario
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={hourlyRates[user.id] || ""}
+                                onChange={(event) =>
+                                  setHourlyRates((current) => ({
+                                    ...current,
+                                    [user.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder="es. 35"
+                                className="bg-white/10 border-white/30 text-white"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-white/80">
+                                Ore settimanali
+                              </Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                step="0.5"
+                                value={weeklyHours[user.id] || ""}
+                                onChange={(event) =>
+                                  setWeeklyHours((current) => ({
+                                    ...current,
+                                    [user.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder={`default ${defaultWeeklyHours || DEFAULT_WEEKLY_HOURS}`}
+                                className="bg-white/10 border-white/30 text-white"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-white/80">
+                                Giorni ferie/anno
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={vacationDays[user.id] || ""}
+                                onChange={(event) =>
+                                  setVacationDays((current) => ({
+                                    ...current,
+                                    [user.id]: event.target.value,
+                                  }))
+                                }
+                                placeholder={`default ${defaultVacationDays || DEFAULT_VACATION_DAYS}`}
+                                className="bg-white/10 border-white/30 text-white"
+                              />
+                              <p className="text-xs text-white/55">
+                                Vuoto = usa i default di sito. Valori usati per
+                                i saldi nella dashboard del collaboratore.
+                              </p>
+                            </div>
                           </div>
 
                           <div className="space-y-3">

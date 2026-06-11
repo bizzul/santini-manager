@@ -80,9 +80,10 @@ export async function GET(request: NextRequest) {
         module.is_enabled,
       ]) || []
     );
-    const activeModules = AVAILABLE_MODULES.filter(
+    const activeModulesList = AVAILABLE_MODULES.filter(
       (module) => enabledModules.get(module.name) ?? module.enabledByDefault
-    ).length;
+    );
+    const activeModules = activeModulesList.length;
 
     const kanbanIds = kanbansResult.data?.map((kanban) => kanban.id) || [];
     const kanbanColumnsResult =
@@ -137,6 +138,7 @@ export async function GET(request: NextRequest) {
       modules: {
         active: activeModules,
         total: AVAILABLE_MODULES.length,
+        enabledNames: activeModulesList.map((module) => module.name),
       },
       kanban: {
         boards: kanbanIds.length,

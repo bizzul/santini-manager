@@ -50,8 +50,11 @@ const nextConfig = {
         headers: [
           // Security headers
           {
+            // SAMEORIGIN (not DENY) so same-origin previews can embed pages
+            // in an iframe (e.g. the diagram preview in the admin panel),
+            // while still blocking embedding from external sites.
             key: "X-Frame-Options",
-            value: "DENY",
+            value: "SAMEORIGIN",
           },
           {
             key: "X-Content-Type-Options",

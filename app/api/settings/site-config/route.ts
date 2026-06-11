@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
+import { FLOWCHART_SETTING_KEY } from "@/lib/flowchart-settings";
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,6 +73,18 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (settingKey === FLOWCHART_SETTING_KEY) {
+      const { data: site } = await supabase
+        .from("sites")
+        .select("subdomain")
+        .eq("id", siteId)
+        .maybeSingle();
+
+      if (site?.subdomain) {
+        revalidatePath(`/sites/${site.subdomain}/home`);
+      }
     }
 
     return NextResponse.json({ success: true });

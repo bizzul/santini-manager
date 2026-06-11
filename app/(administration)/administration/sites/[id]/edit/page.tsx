@@ -16,6 +16,10 @@ import {
   COMMAND_DECK_SETTING_KEY,
   parseCommandDeckEnabled,
 } from "@/lib/command-deck-settings";
+import {
+  FLOWCHART_SETTING_KEY,
+  parseFlowchartSettings,
+} from "@/lib/flowchart-settings";
 
 export default async function EditSitePage({
   params,
@@ -46,6 +50,7 @@ export default async function EditSitePage({
     { data: themeSetting },
     { data: supportBotSetting },
     { data: commandDeckSetting },
+    { data: flowchartSetting },
   ] = await Promise.all([
     supabase
       .from("site_settings")
@@ -65,12 +70,21 @@ export default async function EditSitePage({
       .eq("site_id", id)
       .eq("setting_key", COMMAND_DECK_SETTING_KEY)
       .maybeSingle(),
+    supabase
+      .from("site_settings")
+      .select("setting_value")
+      .eq("site_id", id)
+      .eq("setting_key", FLOWCHART_SETTING_KEY)
+      .maybeSingle(),
   ]);
 
   const initialThemeSettings = resolveSiteThemeSettings(themeSetting?.setting_value);
   const initialSupportBotEnabled = Boolean(supportBotSetting?.setting_value ?? false);
   const initialCommandDeckEnabled = parseCommandDeckEnabled(
     commandDeckSetting?.setting_value,
+  );
+  const initialFlowchartSettings = parseFlowchartSettings(
+    flowchartSetting?.setting_value,
   );
 
   if (!site)
@@ -145,6 +159,7 @@ export default async function EditSitePage({
             initialThemeSettings={initialThemeSettings}
             initialSupportBotEnabled={initialSupportBotEnabled}
             initialCommandDeckEnabled={initialCommandDeckEnabled}
+            initialFlowchartSettings={initialFlowchartSettings}
           />
         </div>
       </div>
