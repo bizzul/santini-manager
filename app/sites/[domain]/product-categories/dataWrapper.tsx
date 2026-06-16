@@ -1,8 +1,15 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import AreaTreeDiagram from "@/components/diagram/AreaTreeDiagram";
+import { useDiagramFocus } from "@/components/diagram/use-diagram-focus";
+import { capPanelRows } from "@/lib/area-tree-diagram";
+import type { AreaTreeSector } from "@/lib/area-tree-diagram";
+import { categoryIconName } from "@/lib/category-diagram-icons";
+import { cn } from "@/lib/utils";
+import { getSellProductDisplayCode } from "@/lib/sell-product-code";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { BrowseViewToolbar } from "@/components/categories/browse-view-toolbar";
@@ -49,6 +56,8 @@ interface SellCategoriesViewProps {
   isAdmin: boolean;
   managementMode?: boolean;
   siteId?: string;
+  diagramRootLabel?: string;
+  diagramRootIcon?: string;
 }
 
 const SellCategoriesView = ({
@@ -63,10 +72,15 @@ const SellCategoriesView = ({
   isAdmin,
   managementMode = true,
   siteId,
+  diagramRootLabel = "Prodotti",
+  diagramRootIcon = "faBox",
 }: SellCategoriesViewProps) => {
   const router = useRouter();
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<SellCategoryViewMode>(initialViewMode);
+  const diagramFocus = useDiagramFocus();
+  const [viewMode, setViewMode] = useState<SellCategoryViewMode>(() =>
+    diagramFocus.isDiagram ? "diagram" : initialViewMode,
+  );
   const [globalFilter, setGlobalFilter] = useState("");
   const [isPersistingView, startPersistTransition] = useTransition();
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
@@ -102,9 +116,25 @@ const SellCategoriesView = ({
     [subcategoryCards, drill.subcategoryKey],
   );
 
+  useEffect(() => {
+    if (managementMode) return;
+    if (diagramFocus.isDiagram) {
+      setViewMode("diagram");
+      onDrillChange({ level: "categories" });
+    }
+  }, [managementMode, diagramFocus.isDiagram, onDrillChange]);
+
   const handleViewModeChange = useCallback(
     (mode: SellCategoryViewMode) => {
       setViewMode(mode);
+      if (!managementMode) {
+        if (mode === "diagram") {
+          diagramFocus.setView("diagram");
+          return;
+        }
+        diagramFocus.clearDiagramParams();
+      }
+      if (mode === "diagram") return;
       startPersistTransition(async () => {
         try {
           await saveSellProductCategoryViewMode(domain, mode);
@@ -113,24 +143,32 @@ const SellCategoriesView = ({
         }
       });
     },
-    [domain],
+    [domain, diagramFocus, managementMode],
   );
 
   const handleCategoryCardClick = useCallback(
     (item: CategoryCardGridItem) => {
       if (!item.id) return;
+      if (!managementMode && viewMode === "diagram") {
+        diagramFocus.pushFocus({ type: "cat", value: item.id });
+        return;
+      }
       onDrillChange({
         level: "subcategories",
         categoryId: item.id,
         categoryName: item.name,
       });
     },
-    [onDrillChange],
+    [diagramFocus, managementMode, onDrillChange, viewMode],
   );
 
   const handleSubcategoryCardClick = useCallback(
     (item: CategoryCardGridItem) => {
       if (!drill.categoryId || !drill.categoryName) return;
+      if (!managementMode && viewMode === "diagram") {
+        diagramFocus.pushFocus({ type: "sub", value: item.key });
+        return;
+      }
       onDrillChange({
         level: "products",
         categoryId: drill.categoryId,
@@ -139,7 +177,14 @@ const SellCategoriesView = ({
         subcategoryName: item.name,
       });
     },
-    [drill.categoryId, drill.categoryName, onDrillChange],
+    [
+      diagramFocus,
+      drill.categoryId,
+      drill.categoryName,
+      managementMode,
+      onDrillChange,
+      viewMode,
+    ],
   );
 
   const handleImageAction = useCallback(
@@ -268,6 +313,8 @@ const SellCategoriesView = ({
     viewMode === "grid" && drill.level === "categories";
   const showSubcategoryGrid =
     viewMode === "grid" && drill.level === "subcategories";
+  const showAreaTreeDiagram =
+    viewMode === "diagram" && drill.level === "categories";
   const showHierarchicalTable =
     !managementMode &&
     siteId &&
@@ -337,13 +384,85 @@ const SellCategoriesView = ({
     }
   }, [drill, onDrillChange]);
 
+  const diagramSectors: AreaTreeSector[] = useMemo(() => {
+    if (!showAreaTreeDiagram) return [];
+
+    return filteredCategoryCards.map((card) => {
+      const categoryProducts = products.filter(
+        (product) => product.category_id === card.id,
+      );
+      const panelData = capPanelRows(
+        categoryProducts,
+        (product) => ({
+          id: String(product.id),
+          label: product.name || getSellProductDisplayCode(product),
+          onClick: () => router.push(`/sites/${domain}/products/${product.id}`),
+        }),
+        () => {
+          diagramFocus.clearDiagramParams();
+          setViewMode("table");
+          onDrillChange({
+            level: "categoryProducts",
+            categoryId: String(card.id),
+            categoryName: card.name,
+          });
+        },
+      );
+
+      const storedIcon = categories.find((c) => c.id === card.id)?.icon;
+
+      return {
+        id: String(card.id),
+        label: card.name,
+        badge: String(categoryProducts.length),
+        color: card.color ?? undefined,
+        icon: categoryIconName(card.name, storedIcon),
+        panels: [
+          {
+            id: "products",
+            rows: panelData.rows,
+            moreCount: panelData.moreCount,
+            onMore: panelData.onMore,
+          },
+        ],
+      };
+    });
+  }, [
+    categories,
+    diagramFocus,
+    domain,
+    filteredCategoryCards,
+    onDrillChange,
+    products,
+    router,
+    showAreaTreeDiagram,
+  ]);
+
+  const diagramRoot = useMemo(
+    () => ({
+      label: diagramRootLabel,
+      sublabel: "Catalogo articoli",
+      icon: diagramRootIcon,
+    }),
+    [diagramRootIcon, diagramRootLabel],
+  );
+
   return (
-    <div className="w-full min-w-0 space-y-3">
+    <div
+      className={cn(
+        "w-full min-w-0",
+        showAreaTreeDiagram
+          ? "flex h-full min-h-0 flex-col gap-3"
+          : "space-y-3",
+      )}
+    >
       {!managementMode ? (
         <BrowseViewToolbar
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           viewToggleDisabled={isPersistingView}
+          showDiagramToggle
+          backDomain={domain}
           globalFilter={globalFilter}
           onGlobalFilterChange={setGlobalFilter}
           searchPlaceholder="Cerca per nome o descrizione..."
@@ -389,6 +508,17 @@ const SellCategoriesView = ({
           data={categoryCards}
           domain={domain}
         />
+      )}
+
+      {showAreaTreeDiagram && (
+        <div className="min-h-0 flex-1">
+          <AreaTreeDiagram
+            root={diagramRoot}
+            sectors={diagramSectors}
+            siteId={siteId}
+            diagramKey="products"
+          />
+        </div>
       )}
 
       {showCategoryGrid && (

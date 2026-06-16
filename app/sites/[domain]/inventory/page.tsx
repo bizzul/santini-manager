@@ -52,6 +52,7 @@ export default async function Page({
         inventory={inventoryData.inventory}
         suppliers={inventoryData.suppliers}
         domain={domain}
+        siteId={siteId}
         initialViewMode={viewMode}
         subcategoryImages={subcategoryImages}
         isAdmin={isAdmin}

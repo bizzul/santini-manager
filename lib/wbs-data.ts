@@ -64,6 +64,11 @@ export interface WbsLeaf {
     href?: string;
     /** When present, clicking the leaf opens this summary. */
     detail?: WbsLeafDetail;
+    /**
+     * Optional 4th-level children (e.g. kanban board columns) shown when the
+     * leaf is expanded in the diagram. Each child carries a label + count badge.
+     */
+    children?: WbsLeaf[];
 }
 
 /** Level 2: a module of the site, clickable + expandable. */

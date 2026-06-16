@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useMemo, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import AreaTreeDiagram from "@/components/diagram/AreaTreeDiagram";
+import { useDiagramFocus } from "@/components/diagram/use-diagram-focus";
+import { capPanelRows } from "@/lib/area-tree-diagram";
+import type { AreaTreeSector } from "@/lib/area-tree-diagram";
+import { categoryIconName } from "@/lib/category-diagram-icons";
+import { cn } from "@/lib/utils";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { BrowseViewToolbar } from "@/components/categories/browse-view-toolbar";
@@ -49,6 +55,9 @@ interface InventoryCategoriesViewProps {
   onDrillChange: (drill: CategoryDrillState) => void;
   isAdmin: boolean;
   managementMode?: boolean;
+  siteId?: string;
+  diagramRootLabel?: string;
+  diagramRootIcon?: string;
 }
 
 const InventoryCategoriesView = ({
@@ -63,10 +72,16 @@ const InventoryCategoriesView = ({
   onDrillChange,
   isAdmin,
   managementMode = true,
+  siteId,
+  diagramRootLabel = "Magazzino",
+  diagramRootIcon = "faWarehouse",
 }: InventoryCategoriesViewProps) => {
   const router = useRouter();
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<CategoryViewMode>(initialViewMode);
+  const diagramFocus = useDiagramFocus();
+  const [viewMode, setViewMode] = useState<CategoryViewMode>(() =>
+    diagramFocus.isDiagram ? "diagram" : initialViewMode,
+  );
   const [globalFilter, setGlobalFilter] = useState("");
   const [isPersistingView, startPersistTransition] = useTransition();
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
@@ -101,9 +116,25 @@ const InventoryCategoriesView = ({
     [subcategoryCards, drill.subcategoryKey],
   );
 
+  useEffect(() => {
+    if (managementMode) return;
+    if (diagramFocus.isDiagram) {
+      setViewMode("diagram");
+      onDrillChange({ level: "categories" });
+    }
+  }, [managementMode, diagramFocus.isDiagram, onDrillChange]);
+
   const handleViewModeChange = useCallback(
     (mode: CategoryViewMode) => {
       setViewMode(mode);
+      if (!managementMode) {
+        if (mode === "diagram") {
+          diagramFocus.setView("diagram");
+          return;
+        }
+        diagramFocus.clearDiagramParams();
+      }
+      if (mode === "diagram") return;
       startPersistTransition(async () => {
         try {
           await saveInventoryCategoryViewMode(domain, mode);
@@ -112,24 +143,32 @@ const InventoryCategoriesView = ({
         }
       });
     },
-    [domain],
+    [domain, diagramFocus, managementMode],
   );
 
   const handleCategoryCardClick = useCallback(
     (item: CategoryCardGridItem) => {
       if (!item.id) return;
+      if (!managementMode && viewMode === "diagram") {
+        diagramFocus.pushFocus({ type: "cat", value: item.id });
+        return;
+      }
       onDrillChange({
         level: "subcategories",
         categoryId: item.id,
         categoryName: item.name,
       });
     },
-    [onDrillChange],
+    [diagramFocus, managementMode, onDrillChange, viewMode],
   );
 
   const handleSubcategoryCardClick = useCallback(
     (item: CategoryCardGridItem) => {
       if (!drill.categoryId || !drill.categoryName) return;
+      if (!managementMode && viewMode === "diagram") {
+        diagramFocus.pushFocus({ type: "sub", value: item.key });
+        return;
+      }
       onDrillChange({
         level: "articles",
         categoryId: drill.categoryId,
@@ -138,7 +177,14 @@ const InventoryCategoriesView = ({
         subcategoryName: item.name,
       });
     },
-    [drill.categoryId, drill.categoryName, onDrillChange],
+    [
+      diagramFocus,
+      drill.categoryId,
+      drill.categoryName,
+      managementMode,
+      onDrillChange,
+      viewMode,
+    ],
   );
 
   const handleImageAction = useCallback(
@@ -265,6 +311,8 @@ const InventoryCategoriesView = ({
     viewMode === "grid" && drill.level === "categories";
   const showSubcategoryGrid =
     viewMode === "grid" && drill.level === "subcategories";
+  const showAreaTreeDiagram =
+    viewMode === "diagram" && drill.level === "categories";
   const showHierarchicalTable =
     !managementMode &&
     viewMode === "table" &&
@@ -333,13 +381,82 @@ const InventoryCategoriesView = ({
     }
   }, [drill, onDrillChange]);
 
+  const diagramSectors: AreaTreeSector[] = useMemo(() => {
+    if (!showAreaTreeDiagram) return [];
+
+    return filteredCategoryCards.map((card) => {
+      const categoryItems = inventory.filter(
+        (item) => item.category_id === card.id,
+      );
+      const panelData = capPanelRows(
+        categoryItems,
+        (item) => ({
+          id: item.id,
+          label: item.name || item.internal_code || "Articolo",
+          onClick: () =>
+            router.push(`/sites/${domain}/inventory/edit/${item.item_id}`),
+        }),
+        () => {
+          diagramFocus.clearDiagramParams();
+          setViewMode("table");
+          onDrillChange({
+            level: "categoryArticles",
+            categoryId: card.id,
+            categoryName: card.name,
+          });
+        },
+      );
+
+      return {
+        id: card.id,
+        label: card.name,
+        badge: String(categoryItems.length),
+        icon: categoryIconName(card.name),
+        panels: [
+          {
+            id: "articles",
+            rows: panelData.rows,
+            moreCount: panelData.moreCount,
+            onMore: panelData.onMore,
+          },
+        ],
+      };
+    });
+  }, [
+    diagramFocus,
+    domain,
+    filteredCategoryCards,
+    inventory,
+    onDrillChange,
+    router,
+    showAreaTreeDiagram,
+  ]);
+
+  const diagramRoot = useMemo(
+    () => ({
+      label: diagramRootLabel,
+      sublabel: "Giacenze e articoli",
+      icon: diagramRootIcon,
+    }),
+    [diagramRootIcon, diagramRootLabel],
+  );
+
   return (
-    <div className="w-full min-w-0 space-y-3">
+    <div
+      className={cn(
+        "w-full min-w-0",
+        showAreaTreeDiagram
+          ? "flex h-full min-h-0 flex-col gap-3"
+          : "space-y-3",
+      )}
+    >
       {!managementMode ? (
         <BrowseViewToolbar
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
           viewToggleDisabled={isPersistingView}
+          showDiagramToggle
+          backDomain={domain}
           globalFilter={globalFilter}
           onGlobalFilterChange={setGlobalFilter}
           searchPlaceholder="Cerca per codice, nome, descrizione..."
@@ -385,6 +502,17 @@ const InventoryCategoriesView = ({
           data={categoryCards}
           domain={domain}
         />
+      )}
+
+      {showAreaTreeDiagram && (
+        <div className="min-h-0 flex-1">
+          <AreaTreeDiagram
+            root={diagramRoot}
+            sectors={diagramSectors}
+            siteId={siteId}
+            diagramKey="inventory"
+          />
+        </div>
       )}
 
       {showCategoryGrid && (

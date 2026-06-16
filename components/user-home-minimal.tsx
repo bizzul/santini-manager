@@ -15,6 +15,7 @@ import type { WbsLeaf, WbsTree } from "@/lib/wbs-data";
 interface UserHomeMinimalProps {
   userName: string;
   domain: string;
+  siteId?: string;
   availableModules: string[];
   showDashboard?: boolean;
   flowchartSettings?: SiteFlowchartSettings;
@@ -35,6 +36,7 @@ const categoryOrder = ["core", "management", "tools", "reports"];
 export function UserHomeMinimal({
   userName,
   domain,
+  siteId,
   availableModules,
   showDashboard = false,
   flowchartSettings,
@@ -125,10 +127,11 @@ export function UserHomeMinimal({
             forcedView={forcedView}
             standard={standardContent}
             diagram={
-              <div className="h-[calc(100vh-280px)] min-h-[480px]">
+              <div className="h-full min-h-[480px]">
                 <FlowchartSectionLazy
                   type={flowchartSettings.type}
                   domain={domain}
+                  siteId={siteId}
                   tree={wbsTree}
                   nodeStyle={flowchartSettings.nodeStyle}
                 />

@@ -76,6 +76,8 @@ export function ProductsPageClient({
             isAdmin={isAdmin}
             managementMode={false}
             siteId={siteId}
+            diagramRootLabel={pageTitle}
+            diagramRootIcon="faBox"
           />
         ) : (
           <EmptyState

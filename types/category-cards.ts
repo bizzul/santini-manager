@@ -1,6 +1,6 @@
 import type { InventoryCategory } from "@/types/supabase";
 
-export type CategoryViewMode = "table" | "grid";
+export type CategoryViewMode = "table" | "grid" | "diagram";
 
 export const INVENTORY_CATEGORIES_VIEW_MODE_KEY = "inventory_categories_view_mode";
 

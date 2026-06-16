@@ -256,6 +256,30 @@ async function fetchModuleContents(
                             : `/kanban?name=${firstBoard.identifier}`
                         : "/kanban";
 
+                    const multipleBoards = group.boards.length > 1;
+                    const columnChildren: WbsLeaf[] = group.boards.flatMap(
+                        (board) => {
+                            const orderedColumns = [...(board.columns ?? [])]
+                                .sort((a, b) =>
+                                    (a.position ?? 0) - (b.position ?? 0)
+                                );
+                            return orderedColumns.map((column) => {
+                                const stats =
+                                    columnStats.get(column.id) ??
+                                        { count: 0, pieces: 0, sum: 0 };
+                                const baseLabel = column.title || "Colonna";
+                                return {
+                                    id: `kanban-col-${board.id}-${column.id}`,
+                                    label: multipleBoards
+                                        ? `${board.title || "Kanban"}: ${baseLabel}`
+                                        : baseLabel,
+                                    badge: String(stats.count),
+                                    color: group.color ?? undefined,
+                                };
+                            });
+                        },
+                    );
+
                     return {
                     id: `kanban-cat-${key}`,
                     label: group.name,
@@ -263,6 +287,7 @@ async function fetchModuleContents(
                     color: group.color ?? undefined,
                     icon: group.icon ?? undefined,
                     href,
+                    children: columnChildren,
                     detail: {
                         title: `Kanban — ${group.name}`,
                         sections: group.boards.map((board) => {

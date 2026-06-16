@@ -20,12 +20,10 @@ import "@xyflow/react/dist/style.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   BarChart3,
-  Check,
   ChevronDown,
   ExternalLink,
   FolderKanban,
   LayoutDashboard,
-  Move,
   RotateCw,
   X,
   Wrench,
@@ -33,6 +31,9 @@ import {
 import { cn } from "@/lib/utils";
 import { getModuleFaIcon } from "@/lib/module-fa-icons";
 import { getKanbanIcon } from "@/lib/kanban-icons";
+import { DiagramStage } from "@/components/diagram/diagram-stage";
+import { DiagramEditToolbar } from "@/components/diagram/diagram-edit-toolbar";
+import { useDiagramLayouts } from "@/components/diagram/use-diagram-layouts";
 import { faIndustry } from "@fortawesome/free-solid-svg-icons";
 import {
   Dialog,
@@ -53,6 +54,7 @@ interface WbsDiagramProps {
   tree: WbsTree;
   domain: string;
   nodeStyle?: FlowchartNodeStyle;
+  siteId?: string;
 }
 
 /* ---------------------------- node shapes ----------------------------- */
@@ -80,14 +82,18 @@ function leafShape(style: FlowchartNodeStyle): string {
 /* ------------------------------- layout ------------------------------- */
 
 const ROOT_W = 180;
-const CAT_W = 210;
-const CAT_SLOT = 234;
-const MOD_W = 196;
-const MOD_SLOT = 218;
-const LEAF_W = 200;
-const LEAF_H = 48;
+const CAT_W = 196;
+const CAT_SLOT = 220;
+const MOD_W = 184;
+const MOD_SLOT = 204;
+const LEAF_W = 188;
+const LEAF_H = 46;
 const LEAF_GAP = 10;
-const GROUP_GAP = 56;
+const GROUP_GAP = 52;
+
+const COL_W = 164;
+const COL_H = 40;
+const COL_GAP = 10;
 
 const ROOT_Y = 0;
 const CAT_Y = 240;
@@ -136,17 +142,30 @@ type LeafData = {
   onSelect?: () => void;
   /** Navigates to the leaf deep link (leaves with href but no detail). */
   onOpen?: () => void;
+  /** When true, the leaf shows a chevron to expand its children (columns). */
+  hasChildren?: boolean;
+  expanded?: boolean;
+  onToggleChildren?: () => void;
+};
+
+type ColumnData = {
+  label: string;
+  badge?: string;
+  color?: string;
+  nodeStyle: FlowchartNodeStyle;
 };
 
 type RootFlowNode = Node<RootData, "wbsRoot">;
 type CategoryFlowNode = Node<CategoryData, "wbsCategory">;
 type ModuleFlowNode = Node<ModuleData, "wbsModule">;
 type LeafFlowNode = Node<LeafData, "wbsLeaf">;
+type ColumnFlowNode = Node<ColumnData, "wbsColumn">;
 type WbsFlowNode =
   | RootFlowNode
   | CategoryFlowNode
   | ModuleFlowNode
-  | LeafFlowNode;
+  | LeafFlowNode
+  | ColumnFlowNode;
 
 /* ------------------------------- styling ------------------------------- */
 
@@ -333,70 +352,95 @@ function ModuleNode({ data }: NodeProps<ModuleFlowNode>) {
 
 function LeafNode({ data }: NodeProps<LeafFlowNode>) {
   const interactive = data.hasDetail || Boolean(data.onOpen);
-  const Wrapper = interactive ? "button" : "div";
+  const Inner = interactive ? "button" : "div";
   const KanbanIcon = data.icon ? getKanbanIcon(data.icon) : null;
 
   return (
-    <Wrapper
-      type={interactive ? "button" : undefined}
-      onClick={data.hasDetail ? data.onSelect : data.onOpen}
-      aria-label={
-        data.hasDetail
-          ? `Mostra riassunto di ${data.label}`
-          : data.onOpen
-            ? `Apri ${data.label}`
-            : undefined
-      }
+    <div
       className={cn(
-        "flex items-center gap-2.5 border-2 border-foreground/20 bg-card px-3 py-2 text-sm font-medium text-foreground shadow-md",
+        "flex items-stretch overflow-hidden border-2 border-foreground/20 bg-card text-sm font-medium text-foreground shadow-md",
         leafShape(data.nodeStyle),
-        interactive &&
-          "cursor-pointer transition-colors hover:border-primary hover:bg-accent/60"
       )}
       style={{
         width: LEAF_W,
         ...(data.color ? { borderColor: data.color } : {}),
       }}
     >
-      {data.avatar ? (
-        data.avatar.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={data.avatar.imageUrl}
-            alt=""
-            className="h-7 w-7 shrink-0 rounded-full border border-foreground/20 object-cover"
+      <Inner
+        type={interactive ? "button" : undefined}
+        onClick={data.hasDetail ? data.onSelect : data.onOpen}
+        aria-label={
+          data.hasDetail
+            ? `Mostra riassunto di ${data.label}`
+            : data.onOpen
+              ? `Apri ${data.label}`
+              : undefined
+        }
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left",
+          interactive &&
+            "cursor-pointer transition-colors hover:bg-accent/60",
+        )}
+      >
+        {data.avatar ? (
+          data.avatar.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={data.avatar.imageUrl}
+              alt=""
+              className="h-7 w-7 shrink-0 rounded-full border border-foreground/20 object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-foreground/15 bg-muted text-[10px] font-bold text-foreground"
+              style={
+                data.avatar.color
+                  ? { backgroundColor: data.avatar.color, color: "#fff" }
+                  : undefined
+              }
+            >
+              {data.avatar.initials}
+            </span>
+          )
+        ) : KanbanIcon ? (
+          <KanbanIcon
+            aria-hidden
+            className="h-4 w-4 shrink-0"
+            style={data.color ? { color: data.color } : undefined}
           />
-        ) : (
+        ) : data.color ? (
           <span
             aria-hidden
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-foreground/15 bg-muted text-[10px] font-bold text-foreground"
-            style={
-              data.avatar.color
-                ? { backgroundColor: data.avatar.color, color: "#fff" }
-                : undefined
-            }
-          >
-            {data.avatar.initials}
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: data.color }}
+          />
+        ) : null}
+        <span className="min-w-0 flex-1 truncate">{data.label}</span>
+        {data.badge !== undefined && (
+          <span className="shrink-0 rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
+            {data.badge}
           </span>
-        )
-      ) : KanbanIcon ? (
-        <KanbanIcon
-          aria-hidden
-          className="h-4 w-4 shrink-0"
-          style={data.color ? { color: data.color } : undefined}
-        />
-      ) : data.color ? (
-        <span
-          aria-hidden
-          className="h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: data.color }}
-        />
-      ) : null}
-      <span className="min-w-0 flex-1 truncate text-left">{data.label}</span>
-      {data.badge !== undefined && (
-        <span className="shrink-0 rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
-          {data.badge}
-        </span>
+        )}
+      </Inner>
+      {data.hasChildren && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            data.onToggleChildren?.();
+          }}
+          aria-expanded={data.expanded}
+          aria-label={`${data.label}: ${data.expanded ? "nascondi" : "mostra"} colonne`}
+          className="flex w-7 shrink-0 items-center justify-center border-l border-foreground/20 bg-muted/70 transition-colors hover:bg-accent"
+        >
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 transition-transform",
+              data.expanded && "rotate-180",
+            )}
+          />
+        </button>
       )}
       <Handle
         type="target"
@@ -404,7 +448,38 @@ function LeafNode({ data }: NodeProps<LeafFlowNode>) {
         id="left"
         className={hiddenHandle}
       />
-    </Wrapper>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className={hiddenHandle}
+      />
+    </div>
+  );
+}
+
+function ColumnNode({ data }: NodeProps<ColumnFlowNode>) {
+  return (
+    <div
+      className="flex items-center gap-2 rounded-md border border-foreground/20 bg-card px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm"
+      style={{
+        width: COL_W,
+        ...(data.color ? { borderColor: data.color } : {}),
+      }}
+    >
+      <span className="min-w-0 flex-1 truncate">{data.label}</span>
+      {data.badge !== undefined && (
+        <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px] font-semibold text-foreground">
+          {data.badge}
+        </span>
+      )}
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        className={hiddenHandle}
+      />
+    </div>
   );
 }
 
@@ -413,6 +488,7 @@ const nodeTypes: NodeTypes = {
   wbsCategory: CategoryNode,
   wbsModule: ModuleNode,
   wbsLeaf: LeafNode,
+  wbsColumn: ColumnNode,
 };
 
 /* ------------------------------- diagram ------------------------------- */
@@ -421,6 +497,7 @@ function WbsDiagramInner({
   tree,
   domain,
   nodeStyle = "hybrid",
+  siteId,
 }: WbsDiagramProps) {
   const router = useRouter();
   const { fitView } = useReactFlow();
@@ -429,6 +506,9 @@ function WbsDiagramInner({
   const [refreshing, setRefreshing] = useState(false);
   const [detail, setDetail] = useState<WbsLeafDetail | null>(null);
   const [detailHref, setDetailHref] = useState<string | null>(null);
+
+  const layout = useDiagramLayouts({ siteId, diagramKey: "home-wbs" });
+  const { editMode, setEditMode, positionOverrides, positionsRef } = layout;
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => new Set(tree.categories.map((category) => category.category))
@@ -443,6 +523,10 @@ function WbsDiagramInner({
             .map((module) => module.name)
         )
       )
+  );
+  // Level-4 (leaf children, e.g. kanban columns): collapsed by default.
+  const [expandedLeaves, setExpandedLeaves] = useState<Set<string>>(
+    () => new Set(),
   );
 
   const treeSignature = useMemo(
@@ -516,16 +600,18 @@ function WbsDiagramInner({
     });
   };
 
-  // User-dragged node positions (override the computed layout).
-  const [positionOverrides, setPositionOverrides] = useState<
-    Record<string, { x: number; y: number }>
-  >({});
-  const [editMode, setEditMode] = useState(false);
+  const toggleLeaf = (leafId: string) => {
+    setExpandedLeaves((current) => {
+      const next = new Set(current);
+      if (next.has(leafId)) next.delete(leafId);
+      else next.add(leafId);
+      return next;
+    });
+  };
 
-  // Reset manual positions when the tree structure changes.
-  useEffect(() => {
-    setPositionOverrides({});
-  }, [treeSignature]);
+  // Node positions (`positionOverrides`) and edit mode are managed by the
+  // shared layouts controller, which also handles saving named layouts.
+  // Positions are keyed by stable node ids, so they survive tree refetches.
 
   const { nodes, edges } = useMemo(() => {
     const nodes: WbsFlowNode[] = [];
@@ -610,7 +696,8 @@ function WbsDiagramInner({
             expanded: moduleExpanded,
             nodeStyle,
             onToggle: () => toggleModule(module.name),
-            onOpen: () => router.push(`/sites/${domain}${module.href}`),
+            onOpen: () =>
+              router.push(`/sites/${domain}${module.href}?view=diagram`),
           },
         });
 
@@ -629,14 +716,24 @@ function WbsDiagramInner({
 
         if (!moduleExpanded) return;
 
-        module.items.forEach((item, itemIndex) => {
+        const leafX = moduleCenter - LEAF_W / 2 + 20;
+        // Vertical cursor: leaves stack downward, and an expanded leaf's
+        // children (columns) are inserted as a vertical column directly below
+        // it, pushing the following sibling leaves further down.
+        let cursorY = LEAF_Y;
+
+        module.items.forEach((item) => {
           const leafId = `leaf-${module.name}-${item.id}`;
+          const leafY = cursorY;
+          const hasChildren = Boolean(item.children?.length);
+          const leafExpanded = hasChildren && expandedLeaves.has(leafId);
+
           nodes.push({
             id: leafId,
             type: "wbsLeaf",
             position: {
-              x: moduleCenter - LEAF_W / 2 + 20,
-              y: LEAF_Y + itemIndex * (LEAF_H + LEAF_GAP),
+              x: leafX,
+              y: leafY,
             },
             data: {
               label: item.label,
@@ -646,6 +743,11 @@ function WbsDiagramInner({
               avatar: item.avatar,
               hasDetail: Boolean(item.detail),
               nodeStyle,
+              hasChildren,
+              expanded: leafExpanded,
+              onToggleChildren: hasChildren
+                ? () => toggleLeaf(leafId)
+                : undefined,
               onSelect: item.detail
                 ? () => {
                     setDetail(item.detail ?? null);
@@ -670,15 +772,64 @@ function WbsDiagramInner({
               strokeWidth: 1.75,
             },
           });
+
+          cursorY += LEAF_H + LEAF_GAP;
+
+          // Level-4: expanded leaf children (e.g. kanban columns) stacked
+          // vertically below the leaf, slightly indented.
+          if (leafExpanded && item.children) {
+            const columnX = leafX + 24;
+            item.children.forEach((column, columnIndex) => {
+              const columnId = `col-${module.name}-${item.id}-${column.id}`;
+              const columnY = cursorY + columnIndex * (COL_H + COL_GAP);
+              nodes.push({
+                id: columnId,
+                type: "wbsColumn",
+                position: {
+                  x: columnX,
+                  y: columnY,
+                },
+                data: {
+                  label: column.label,
+                  badge: column.badge,
+                  color: column.color,
+                  nodeStyle,
+                },
+              });
+
+              edges.push({
+                id: `e-${leafId}-${columnId}`,
+                source: leafId,
+                target: columnId,
+                sourceHandle: "bottom",
+                targetHandle: "top",
+                type: "smoothstep",
+                style: {
+                  stroke: column.color ?? "hsl(var(--muted-foreground))",
+                  strokeWidth: 1.5,
+                },
+              });
+            });
+            cursorY +=
+              item.children.length * (COL_H + COL_GAP) + LEAF_GAP;
+          }
         });
       });
     });
 
     return { nodes, edges };
-    // toggleCategory/toggleModule are stable enough for this memo: they only
-    // wrap setState updaters.
+    // toggleCategory/toggleModule/toggleLeaf are stable enough for this memo:
+    // they only wrap setState updaters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree, domain, nodeStyle, expandedCategories, expandedModules, router]);
+  }, [
+    tree,
+    domain,
+    nodeStyle,
+    expandedCategories,
+    expandedModules,
+    expandedLeaves,
+    router,
+  ]);
 
   // Apply user-dragged positions on top of the computed layout.
   const displayNodes = useMemo(
@@ -703,6 +854,11 @@ function WbsDiagramInner({
     return map;
   }, [edges]);
 
+  // Keep the full position map available to the layout-save controller.
+  positionsRef.current = Object.fromEntries(
+    displayNodes.map((node) => [node.id, node.position]),
+  );
+
   // Latest displayed nodes, readable from the drag handler without
   // re-creating it on every render.
   const displayNodesRef = useRef<WbsFlowNode[]>(displayNodes);
@@ -710,43 +866,9 @@ function WbsDiagramInner({
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      setPositionOverrides((current) => {
-        let next: Record<string, { x: number; y: number }> | null = null;
-        const byId = new Map(
-          displayNodesRef.current.map((node) => [node.id, node])
-        );
-
-        for (const change of changes) {
-          if (change.type !== "position" || !change.position) continue;
-
-          const node = byId.get(change.id);
-          next = next ?? { ...current };
-          next[change.id] = change.position;
-          if (!node) continue;
-
-          // Move every descendant by the same delta as the dragged node.
-          const dx = change.position.x - node.position.x;
-          const dy = change.position.y - node.position.y;
-          if (dx === 0 && dy === 0) continue;
-
-          const stack = [...(childrenMap.get(change.id) ?? [])];
-          while (stack.length > 0) {
-            const childId = stack.pop()!;
-            const child = byId.get(childId);
-            if (child) {
-              next[childId] = {
-                x: child.position.x + dx,
-                y: child.position.y + dy,
-              };
-            }
-            stack.push(...(childrenMap.get(childId) ?? []));
-          }
-        }
-
-        return next ?? current;
-      });
+      layout.onNodesChange(changes, displayNodesRef.current, childrenMap);
     },
-    [childrenMap]
+    [layout, childrenMap],
   );
 
   // Re-fit only after React Flow has measured every node (avoids the broken
@@ -768,6 +890,7 @@ function WbsDiagramInner({
     nodes.length,
     expandedCategories,
     expandedModules,
+    expandedLeaves,
     treeSignature,
     fitDiagram,
   ]);
@@ -821,34 +944,7 @@ function WbsDiagramInner({
         style={{ width: "100%", height: "100%" }}
       >
         <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setEditMode((current) => !current)}
-            aria-pressed={editMode}
-            aria-label={
-              editMode
-                ? "Termina modifica posizione"
-                : "Modifica posizione dei nodi"
-            }
-            className={cn(
-              "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium shadow-sm transition-colors",
-              editMode
-                ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
-                : "border-border bg-card text-foreground hover:bg-accent"
-            )}
-          >
-            {editMode ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                Fatto
-              </>
-            ) : (
-              <>
-                <Move className="h-3.5 w-3.5" />
-                Modifica posizione
-              </>
-            )}
-          </button>
+          <DiagramEditToolbar controller={layout} />
           <button
             type="button"
             onClick={handleRefresh}
@@ -984,10 +1080,10 @@ function WbsDiagramInner({
 
 export default function WbsDiagram(props: WbsDiagramProps) {
   return (
-    <div className="h-full min-h-[480px] w-full overflow-hidden rounded-lg border bg-page-soft">
+    <DiagramStage variant="full" className="min-h-[480px]">
       <ReactFlowProvider>
         <WbsDiagramInner {...props} />
       </ReactFlowProvider>
-    </div>
+    </DiagramStage>
   );
 }

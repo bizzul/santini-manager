@@ -10,7 +10,7 @@ import {
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
-import DataWrapper from "./dataWrapper";
+import { ClientsPageClient } from "./clients-page-client";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Users } from "lucide-react";
@@ -53,7 +53,12 @@ export default async function Page({
       />
       <PageContent>
         {clients.length > 0 ? (
-          <DataWrapper data={clients} domain={domain} rowInsights={rowInsights} />
+          <ClientsPageClient
+            clients={clients}
+            domain={domain}
+            siteId={siteId}
+            rowInsights={rowInsights}
+          />
         ) : (
           <EmptyState
             icon={<Users className="h-6 w-6" />}

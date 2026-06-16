@@ -1,6 +1,6 @@
 import type { SellProductCategory } from "@/types/supabase";
 
-export type SellCategoryViewMode = "table" | "grid";
+export type SellCategoryViewMode = "table" | "grid" | "diagram";
 
 export const SELL_PRODUCT_CATEGORIES_VIEW_MODE_KEY =
   "sell_product_categories_view_mode";

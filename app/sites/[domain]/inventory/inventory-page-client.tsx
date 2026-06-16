@@ -23,6 +23,7 @@ interface InventoryPageClientProps {
   inventory: InventoryRow[];
   suppliers: InventorySupplier[];
   domain: string;
+  siteId: string;
   initialViewMode: CategoryViewMode;
   subcategoryImages: SubcategoryImageRecord[];
   isAdmin: boolean;
@@ -41,6 +42,7 @@ export function InventoryPageClient({
   inventory,
   suppliers,
   domain,
+  siteId,
   initialViewMode,
   subcategoryImages,
   isAdmin,
@@ -72,6 +74,9 @@ export function InventoryPageClient({
             onDrillChange={setDrill}
             isAdmin={isAdmin}
             managementMode={false}
+            siteId={siteId}
+            diagramRootLabel={pageTitle}
+            diagramRootIcon="faWarehouse"
           />
         ) : (
           <EmptyState

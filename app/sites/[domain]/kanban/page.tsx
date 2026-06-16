@@ -1,14 +1,15 @@
 import React from "react";
 import { redirect } from "next/navigation";
 
-import ContentPage from "@/components/kanbans/ContentPage";
 import { getUserContext } from "@/lib/auth-utils";
 import {
   requireServerSiteContext,
   fetchKanbanWithTasks,
   fetchSingleKanban,
+  fetchKanbanDiagramBoards,
 } from "@/lib/server-data";
-import { PageLayout } from "@/components/page-layout";
+import { PageLayout, PageHeader } from "@/components/page-layout";
+import { KanbanPageClient } from "./kanban-page-client";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function Page({
   const domain = resolvedParams.domain;
   const sp = await searchParams;
   const kanName = sp.name;
+  const isDiagram = sp.view === "diagram";
 
   const userContext = await getUserContext();
   if (!userContext || !userContext.user) {
@@ -32,25 +34,31 @@ export default async function Page({
   const siteContext = await requireServerSiteContext(domain);
   const { siteId } = siteContext;
 
-  const [kanbanData, kanban] = await Promise.all([
+  const [kanbanData, kanban, diagramBoards] = await Promise.all([
     fetchKanbanWithTasks(siteId, kanName),
     kanName ? fetchSingleKanban(siteId, kanName) : Promise.resolve(null),
+    !kanName ? fetchKanbanDiagramBoards(siteId) : Promise.resolve([]),
   ]);
 
-  // The Kanban board renders its own immersive, color-driven header (matching
-  // the kanban color), so the page intentionally omits PageHeader and lets the
-  // board occupy the full content area inside the PageLayout shell.
   return (
     <PageLayout>
-      <ContentPage
-        kanName={kanName!}
+      {isDiagram && !kanName ? (
+        <PageHeader
+          title="Kanban"
+          subtitle="Bacheche organizzate per categoria"
+        />
+      ) : null}
+      <KanbanPageClient
+        kanName={kanName}
+        domain={domain}
+        siteId={siteId}
+        diagramBoards={diagramBoards}
         clients={kanbanData.clients}
         products={kanbanData.products}
         categories={kanbanData.categories}
         history={kanbanData.history}
         initialTasks={kanbanData.tasks}
         kanban={kanban}
-        domain={domain}
       />
     </PageLayout>
   );

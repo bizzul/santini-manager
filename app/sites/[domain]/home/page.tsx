@@ -102,6 +102,7 @@ export default async function SiteUniversalHomePage({
     <UserHomeMinimal
       userName={userName}
       domain={domain}
+      siteId={siteContext.siteId}
       availableModules={availableModules}
       showDashboard={hasDashboardAccess}
       flowchartSettings={flowchartSettings}

@@ -5,7 +5,7 @@ import {
   requireServerSiteContext,
   fetchCollaborators,
 } from "@/lib/server-data";
-import DataWrapper from "./dataWrapper";
+import { CollaboratorsPageClient } from "./collaborators-page-client";
 import { checkIsAdmin, getAssistantCollaboratorProfiles } from "./actions";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
@@ -46,7 +46,7 @@ export default async function Page({
         }
       />
       <PageContent>
-        <DataWrapper
+        <CollaboratorsPageClient
           data={collaborators}
           domain={domain}
           siteId={siteId}

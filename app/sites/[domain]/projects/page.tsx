@@ -51,7 +51,7 @@ export default async function Page({
       />
       <PageContent>
         {data.tasks?.length > 0 ? (
-          <SellProductWrapper data={data} domain={domain} />
+          <SellProductWrapper data={data} domain={domain} siteId={siteId} />
         ) : (
           <EmptyState
             icon={<FolderKanban className="h-6 w-6" />}

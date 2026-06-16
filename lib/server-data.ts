@@ -835,6 +835,90 @@ export const fetchKanbans = cache(async (siteId: string) => {
     return data || [];
 });
 
+/** Kanban boards for the navigable area diagram view. */
+export const fetchKanbanDiagramBoards = cache(async (siteId: string) => {
+    const supabase = await createClient();
+
+    const [boardsResult, tasksResult] = await Promise.all([
+        supabase
+            .from("Kanban")
+            .select(
+                "id, title, identifier, category_id, category:KanbanCategory(id, name, identifier, display_order, color, icon), columns:KanbanColumn(id, title, position)",
+            )
+            .eq("site_id", siteId),
+        supabase
+            .from("Task")
+            .select("kanbanColumnId")
+            .eq("site_id", siteId)
+            .eq("archived", false),
+    ]);
+
+    if (boardsResult.error) {
+        log.error("Error fetching kanban diagram boards:", boardsResult.error);
+        return [];
+    }
+
+    type CategoryRel = {
+        id: number;
+        name: string | null;
+        identifier: string | null;
+        display_order: number | null;
+        color: string | null;
+        icon: string | null;
+    };
+
+    type ColumnRow = {
+        id: number;
+        title: string | null;
+        position: number | null;
+    };
+
+    const columnStats = new Map<number, number>();
+    for (const task of (tasksResult.data ?? []) as {
+        kanbanColumnId: number | null;
+    }[]) {
+        if (task.kanbanColumnId == null) continue;
+        columnStats.set(
+            task.kanbanColumnId,
+            (columnStats.get(task.kanbanColumnId) ?? 0) + 1,
+        );
+    }
+
+    return (boardsResult.data ?? []).map((board) => {
+        const category = Array.isArray(board.category)
+            ? board.category[0] ?? null
+            : (board.category as CategoryRel | null);
+        const categoryId =
+            category?.id != null
+                ? String(category.id)
+                : board.category_id != null
+                ? String(board.category_id)
+                : "none";
+
+        const rawColumns = (board.columns ?? []) as ColumnRow[];
+        const columns = [...rawColumns]
+            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+            .map((column) => ({
+                id: column.id,
+                title: column.title || "Colonna",
+                taskCount: columnStats.get(column.id) ?? 0,
+            }));
+
+        return {
+            id: board.id as number,
+            title: board.title as string | null,
+            identifier: board.identifier as string | null,
+            categoryId,
+            categoryName: category?.name || "Senza categoria",
+            categoryIdentifier: category?.identifier ?? null,
+            categoryColor: category?.color ?? null,
+            categoryIcon: category?.icon ?? null,
+            displayOrder: category?.display_order ?? Number.MAX_SAFE_INTEGER,
+            columns,
+        };
+    });
+});
+
 /**
  * Fetch inventory products for a site (legacy - uses old Product table)
  * @deprecated Use fetchInventoryItems instead

@@ -13,6 +13,7 @@ import type { WbsTree } from "@/lib/wbs-data";
 export interface FlowchartSectionProps {
   type: FlowchartType;
   domain: string;
+  siteId?: string;
   /** WBS tree built server-side; required for the `wbs` type. */
   tree?: WbsTree;
   nodeStyle?: FlowchartNodeStyle;
@@ -26,6 +27,7 @@ export interface FlowchartSectionProps {
 export default function FlowchartSection({
   type,
   domain,
+  siteId,
   tree,
   nodeStyle,
 }: FlowchartSectionProps) {
@@ -42,7 +44,14 @@ export default function FlowchartSection({
         </div>
       );
     }
-    return <WbsDiagram tree={tree} domain={domain} nodeStyle={nodeStyle} />;
+    return (
+      <WbsDiagram
+        tree={tree}
+        domain={domain}
+        siteId={siteId}
+        nodeStyle={nodeStyle}
+      />
+    );
   }
 
   return (

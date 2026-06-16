@@ -471,6 +471,35 @@ body:has(.home-gradient-bg) {
   }
 }
 
+/* Diagram stage: soft perspective grid floor for depth.
+   Token-driven so it reads correctly in both light and dark themes. */
+.diagram-stage__grid {
+  background-image:
+    linear-gradient(
+      to right,
+      hsl(var(--primary) / 0.08) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      hsl(var(--primary) / 0.08) 1px,
+      transparent 1px
+    );
+  background-size: 44px 44px;
+  background-position: center bottom;
+  transform: perspective(640px) rotateX(58deg);
+  transform-origin: center bottom;
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent);
+  opacity: 0.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .diagram-stage__grid {
+    opacity: 0.4;
+  }
+}
+
 @keyframes guideAssistantFloat {
   0%,
   100% {
