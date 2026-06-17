@@ -214,8 +214,13 @@ export function CategoryCardGrid({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, index) => (
+      <div
+        className="grid gap-3"
+        style={{
+          gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+        }}
+      >
+        {Array.from({ length: 16 }).map((_, index) => (
           <CategoryCardSkeleton key={index} />
         ))}
       </div>
@@ -223,7 +228,10 @@ export function CategoryCardGrid({
   }
 
   const gridContent = (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div
+      className="grid gap-3"
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))" }}
+    >
       {filteredItems.map((item) =>
         canSort ? (
           <SortableCategoryCard

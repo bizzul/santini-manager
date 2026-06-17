@@ -156,12 +156,12 @@ export function CategoryCard({
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 text-base font-semibold text-foreground">
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
           {name}
         </h3>
-        <p className="text-sm text-muted-foreground">{statsLine}</p>
-        <div className="mt-auto space-y-1 text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">{statsLine}</p>
+        <div className="mt-auto space-y-0.5 text-xs text-muted-foreground">
           <p>
             <span className="font-medium text-foreground">Pezzi:</span>{" "}
             {formatCategoryPieces(pieces)}
