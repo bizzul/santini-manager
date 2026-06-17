@@ -19,6 +19,7 @@ import { DialogCategoryImage } from "@/components/categories/dialog-category-ima
 import { DialogSubcategoryImage } from "@/components/categories/dialog-subcategory-image";
 import {
   aggregateSubcategoryCards,
+  filterInventoryByCategoryAndSubcategory,
   mergeSubcategoryRecords,
 } from "@/lib/category-aggregation";
 import {
@@ -388,38 +389,64 @@ const InventoryCategoriesView = ({
       const categoryItems = inventory.filter(
         (item) => item.category_id === card.id,
       );
-      const panelData = capPanelRows(
-        categoryItems,
-        (item) => ({
-          id: item.id,
-          label: item.name || item.internal_code || "Articolo",
-          onClick: () =>
-            router.push(`/sites/${domain}/inventory/edit/${item.item_id}`),
-        }),
-        () => {
-          diagramFocus.clearDiagramParams();
-          setViewMode("table");
-          onDrillChange({
-            level: "categoryArticles",
-            categoryId: card.id,
-            categoryName: card.name,
-          });
-        },
+
+      const subcategoryCards = mergeSubcategoryRecords(
+        aggregateSubcategoryCards(card.id, inventory),
+        subcategoryImages.filter((image) => image.category_id === card.id),
       );
+
+      const panels =
+        subcategoryCards.length > 0
+          ? subcategoryCards.map((sub) => {
+              const subItems = filterInventoryByCategoryAndSubcategory(
+                inventory,
+                card.id,
+                sub.key,
+              );
+              const panelData = capPanelRows(
+                subItems,
+                (item) => ({
+                  id: item.id,
+                  label: item.name || item.internal_code || "Articolo",
+                  onClick: () =>
+                    router.push(
+                      `/sites/${domain}/inventory/edit/${item.item_id}`,
+                    ),
+                }),
+                () => {
+                  diagramFocus.clearDiagramParams();
+                  setViewMode("table");
+                  onDrillChange({
+                    level: "articles",
+                    categoryId: card.id,
+                    categoryName: card.name,
+                    subcategoryKey: sub.key,
+                    subcategoryName: sub.name,
+                  });
+                },
+              );
+
+              return {
+                id: sub.key,
+                title: sub.name,
+                rows: panelData.rows,
+                moreCount: panelData.moreCount,
+                onMore: panelData.onMore,
+              };
+            })
+          : [
+              {
+                id: "empty",
+                rows: [],
+              },
+            ];
 
       return {
         id: card.id,
         label: card.name,
         badge: String(categoryItems.length),
         icon: categoryIconName(card.name),
-        panels: [
-          {
-            id: "articles",
-            rows: panelData.rows,
-            moreCount: panelData.moreCount,
-            onMore: panelData.onMore,
-          },
-        ],
+        panels,
       };
     });
   }, [
@@ -430,6 +457,7 @@ const InventoryCategoriesView = ({
     onDrillChange,
     router,
     showAreaTreeDiagram,
+    subcategoryImages,
   ]);
 
   const diagramRoot = useMemo(
