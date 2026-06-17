@@ -143,6 +143,19 @@ export function useDiagramLayouts({
     setActiveId(null);
   }, []);
 
+  /** Restore node positions to the initial view: saved active layout or computed default. */
+  const resetDiagram = useCallback(() => {
+    if (activeId) {
+      const active = layouts.find((l) => l.id === activeId);
+      if (active) {
+        setPositionOverrides({ ...active.positions });
+        return;
+      }
+    }
+    setPositionOverrides({});
+    setActiveId(null);
+  }, [activeId, layouts]);
+
   const persist = useCallback(
     async (nextLayouts: DiagramLayout[], nextActiveId: string | null) => {
       // Optimistic local update.
@@ -262,6 +275,7 @@ export function useDiagramLayouts({
     positionsRef,
     onNodesChange,
     resetOverrides,
+    resetDiagram,
     layouts,
     activeId,
     isSaving,

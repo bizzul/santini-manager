@@ -24,7 +24,6 @@ import {
   ExternalLink,
   FolderKanban,
   LayoutDashboard,
-  RotateCw,
   X,
   Wrench,
 } from "lucide-react";
@@ -33,6 +32,7 @@ import { getModuleFaIcon } from "@/lib/module-fa-icons";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { DiagramStage } from "@/components/diagram/diagram-stage";
 import { DiagramEditToolbar } from "@/components/diagram/diagram-edit-toolbar";
+import { DiagramRefreshButton } from "@/components/diagram/diagram-refresh-button";
 import { useDiagramLayouts } from "@/components/diagram/use-diagram-layouts";
 import { faIndustry } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -174,22 +174,22 @@ const CATEGORY_ACCENTS: Record<
   { node: string; icon: string; edge: string }
 > = {
   core: {
-    node: "border-info bg-info/25",
+    node: "border-info",
     icon: "text-info",
     edge: "hsl(var(--info))",
   },
   management: {
-    node: "border-primary bg-primary/25",
+    node: "border-primary",
     icon: "text-primary",
     edge: "hsl(var(--primary))",
   },
   tools: {
-    node: "border-warning bg-warning/25",
+    node: "border-warning",
     icon: "text-warning",
     edge: "hsl(var(--warning))",
   },
   reports: {
-    node: "border-success bg-success/25",
+    node: "border-success",
     icon: "text-success",
     edge: "hsl(var(--success))",
   },
@@ -215,7 +215,7 @@ function RootNode({ data }: NodeProps<RootFlowNode>) {
     <div className="flex flex-col items-center gap-2" style={{ width: ROOT_W }}>
       <div
         className={cn(
-          "flex h-32 w-32 items-center justify-center border-4 border-primary bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/30",
+          "flex h-32 w-32 items-center justify-center border-4 border-primary bg-primary text-primary-foreground shadow-2xl ring-4 ring-primary/40",
           rootShape(data.nodeStyle)
         )}
         aria-label={data.label}
@@ -224,9 +224,13 @@ function RootNode({ data }: NodeProps<RootFlowNode>) {
         <FontAwesomeIcon icon={faIndustry} style={{ fontSize: "3.25rem" }} />
       </div>
       <div className="text-center">
-        <p className="text-base font-semibold text-foreground">{data.label}</p>
+        <p className="diagram-node-floating-label text-base font-semibold">
+          {data.label}
+        </p>
         {data.sublabel && (
-          <p className="text-sm text-muted-foreground">{data.sublabel}</p>
+          <p className="diagram-node-floating-label-muted text-sm">
+            {data.sublabel}
+          </p>
         )}
       </div>
       <Handle
@@ -249,11 +253,11 @@ function CategoryNode({ data }: NodeProps<CategoryFlowNode>) {
       aria-expanded={data.expanded}
       aria-label={`${data.label}: ${data.expanded ? "comprimi" : "espandi"} moduli`}
       className={cn(
-        "flex items-center justify-center gap-2 border-2 px-4 py-3 shadow-md transition-colors hover:brightness-110",
+        "diagram-node-surface flex items-center justify-center gap-2 border-[3px] px-4 py-3 transition-colors hover:brightness-110",
         categoryShape(data.nodeStyle),
-        accent.node
+        accent.node,
       )}
-      style={{ width: CAT_W }}
+      style={{ width: CAT_W, backgroundColor: "#000000" }}
     >
       <Icon className={cn("h-5 w-5 shrink-0", accent.icon)} />
       <span className="text-base font-semibold text-foreground">
@@ -290,16 +294,17 @@ function ModuleNode({ data }: NodeProps<ModuleFlowNode>) {
   return (
     <div
       className={cn(
-        "flex items-stretch overflow-hidden border-2 border-foreground/25 bg-card shadow-md",
-        moduleShape(data.nodeStyle)
+        "diagram-node-surface flex items-stretch overflow-hidden border-[3px]",
+        moduleShape(data.nodeStyle),
+        accent.node,
       )}
-      style={{ width: MOD_W }}
+      style={{ width: MOD_W, backgroundColor: "#000000" }}
     >
       <button
         type="button"
         onClick={data.onOpen}
         aria-label={`Apri modulo ${data.label}`}
-        className="flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-center text-[15px] font-semibold text-foreground transition-colors hover:bg-accent/60"
+        className="diagram-node-surface-hover flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-center text-[15px] font-semibold text-white transition-colors"
       >
         {moduleIcon && (
           <FontAwesomeIcon
@@ -323,7 +328,7 @@ function ModuleNode({ data }: NodeProps<ModuleFlowNode>) {
           }}
           aria-expanded={data.expanded}
           aria-label={`${data.label}: ${data.expanded ? "nascondi" : "mostra"} contenuti`}
-          className="flex w-8 items-center justify-center border-l border-foreground/20 bg-muted/70 transition-colors hover:bg-accent"
+          className="diagram-node-surface-hover flex w-8 items-center justify-center border-l border-white/20 transition-colors"
         >
           <ChevronDown
             className={cn(
@@ -358,11 +363,12 @@ function LeafNode({ data }: NodeProps<LeafFlowNode>) {
   return (
     <div
       className={cn(
-        "flex items-stretch overflow-hidden border-2 border-foreground/20 bg-card text-sm font-medium text-foreground shadow-md",
+        "diagram-node-surface flex items-stretch overflow-hidden border-[3px] text-sm font-medium",
         leafShape(data.nodeStyle),
       )}
       style={{
         width: LEAF_W,
+        backgroundColor: "#000000",
         ...(data.color ? { borderColor: data.color } : {}),
       }}
     >
@@ -377,9 +383,8 @@ function LeafNode({ data }: NodeProps<LeafFlowNode>) {
               : undefined
         }
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left",
-          interactive &&
-            "cursor-pointer transition-colors hover:bg-accent/60",
+          "diagram-node-surface-hover flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 text-left text-white",
+          interactive && "cursor-pointer transition-colors",
         )}
       >
         {data.avatar ? (
@@ -416,7 +421,7 @@ function LeafNode({ data }: NodeProps<LeafFlowNode>) {
             style={{ backgroundColor: data.color }}
           />
         ) : null}
-        <span className="min-w-0 flex-1 truncate">{data.label}</span>
+        <span className="min-w-0 flex-1 truncate text-white">{data.label}</span>
         {data.badge !== undefined && (
           <span className="shrink-0 rounded-full bg-muted px-1.5 text-xs font-semibold text-foreground">
             {data.badge}
@@ -432,7 +437,7 @@ function LeafNode({ data }: NodeProps<LeafFlowNode>) {
           }}
           aria-expanded={data.expanded}
           aria-label={`${data.label}: ${data.expanded ? "nascondi" : "mostra"} colonne`}
-          className="flex w-7 shrink-0 items-center justify-center border-l border-foreground/20 bg-muted/70 transition-colors hover:bg-accent"
+          className="diagram-node-surface-hover flex w-7 shrink-0 items-center justify-center border-l border-white/20 transition-colors"
         >
           <ChevronDown
             className={cn(
@@ -461,13 +466,14 @@ function LeafNode({ data }: NodeProps<LeafFlowNode>) {
 function ColumnNode({ data }: NodeProps<ColumnFlowNode>) {
   return (
     <div
-      className="flex items-center gap-2 rounded-md border border-foreground/20 bg-card px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm"
+      className="diagram-node-surface flex items-center gap-2 rounded-md border-[3px] px-2.5 py-1.5 text-xs font-medium"
       style={{
         width: COL_W,
+        backgroundColor: "#000000",
         ...(data.color ? { borderColor: data.color } : {}),
       }}
     >
-      <span className="min-w-0 flex-1 truncate">{data.label}</span>
+      <span className="min-w-0 flex-1 truncate text-white">{data.label}</span>
       {data.badge !== undefined && (
         <span className="shrink-0 rounded-full bg-muted px-1.5 text-[11px] font-semibold text-foreground">
           {data.badge}
@@ -503,12 +509,12 @@ function WbsDiagramInner({
   const { fitView } = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [detail, setDetail] = useState<WbsLeafDetail | null>(null);
   const [detailHref, setDetailHref] = useState<string | null>(null);
 
   const layout = useDiagramLayouts({ siteId, diagramKey: "home-wbs" });
-  const { editMode, setEditMode, positionOverrides, positionsRef } = layout;
+  const { editMode, setEditMode, positionOverrides, positionsRef, resetDiagram } =
+    layout;
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => new Set(tree.categories.map((category) => category.category))
@@ -566,6 +572,25 @@ function WbsDiagramInner({
     setDetailHref(null);
   }, [treeSignature]);
 
+  const resetExpansionState = useCallback(() => {
+    const currentTree = treeRef.current;
+    setExpandedCategories(
+      new Set(currentTree.categories.map((category) => category.category)),
+    );
+    setExpandedModules(
+      new Set(
+        currentTree.categories.flatMap((category) =>
+          category.modules
+            .filter((module) => module.items.length > 0)
+            .map((module) => module.name),
+        ),
+      ),
+    );
+    setExpandedLeaves(new Set());
+    setDetail(null);
+    setDetailHref(null);
+  }, []);
+
   const fitDiagram = useCallback(() => {
     const element = wrapperRef.current;
     if (!element || element.clientWidth === 0 || element.clientHeight === 0) {
@@ -576,10 +601,12 @@ function WbsDiagramInner({
   }, [fitView]);
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    router.refresh();
-    // Visual feedback only; server data is recomputed on refresh.
-    window.setTimeout(() => setRefreshing(false), 1000);
+    resetDiagram();
+    setEditMode(false);
+    resetExpansionState();
+    requestAnimationFrame(fitDiagram);
+    window.setTimeout(fitDiagram, 120);
+    window.setTimeout(fitDiagram, 320);
   };
 
   const toggleCategory = (category: string) => {
@@ -941,22 +968,11 @@ function WbsDiagramInner({
         panOnDrag
         proOptions={{ hideAttribution: true }}
         className="!bg-transparent"
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", background: "transparent" }}
       >
         <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
           <DiagramEditToolbar controller={layout} />
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            aria-label="Aggiorna dati diagramma"
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent"
-          >
-            <RotateCw
-              className={cn("h-3.5 w-3.5", refreshing && "animate-spin")}
-            />
-            Aggiorna
-          </button>
+          <DiagramRefreshButton onRefresh={handleRefresh} showFeedback />
         </div>
         {editMode && (
           <p className="absolute left-3 top-3 z-10 max-w-[280px] rounded-lg border border-border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm">
@@ -967,7 +983,7 @@ function WbsDiagramInner({
         <Controls
           showInteractive={false}
           position="bottom-right"
-          className="!rounded-lg !border !border-border !bg-card !shadow-md [&>button]:!border-b-border [&>button]:!bg-card [&>button]:!text-foreground [&>button:hover]:!bg-accent [&>button>svg]:!fill-current"
+          className="diagram-stage-chrome !rounded-lg !border !shadow-md [&>button]:!border-b-border [&>button]:!bg-transparent [&>button]:!text-inherit [&>button:hover]:!brightness-105 [&>button>svg]:!fill-current"
         />
       </ReactFlow>
 

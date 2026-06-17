@@ -23,6 +23,7 @@ import { getModuleFaIcon } from "@/lib/module-fa-icons";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { DiagramStage } from "@/components/diagram/diagram-stage";
 import { DiagramEditToolbar } from "@/components/diagram/diagram-edit-toolbar";
+import { DiagramRefreshButton } from "@/components/diagram/diagram-refresh-button";
 import { useDiagramLayouts } from "@/components/diagram/use-diagram-layouts";
 import {
   panelContentHeight,
@@ -127,9 +128,13 @@ function RootNode({ data }: NodeProps<RootFlowNode>) {
         )}
       </div>
       <div className="text-center">
-        <p className="text-base font-semibold text-foreground">{data.label}</p>
+        <p className="diagram-node-floating-label text-base font-semibold">
+          {data.label}
+        </p>
         {data.sublabel ? (
-          <p className="text-sm text-muted-foreground">{data.sublabel}</p>
+          <p className="diagram-node-floating-label-muted text-sm">
+            {data.sublabel}
+          </p>
         ) : null}
       </div>
       <Handle type="source" position={Position.Bottom} id="bottom" className={hiddenHandle} />
@@ -143,9 +148,10 @@ function SectorNode({ data }: NodeProps<SectorFlowNode>) {
 
   return (
     <div
-      className="flex items-center justify-center gap-2 rounded-xl border-2 border-foreground/25 bg-card px-3 py-2.5 shadow-lg ring-1 ring-black/5 dark:ring-white/10"
+      className="diagram-node-surface flex items-center justify-center gap-2 rounded-xl border-[3px] px-3 py-2.5"
       style={{
         width: data.width,
+        backgroundColor: "#000000",
         ...(data.color ? { borderColor: data.color } : {}),
       }}
     >
@@ -185,14 +191,15 @@ function SectorNode({ data }: NodeProps<SectorFlowNode>) {
 function PanelNode({ data }: NodeProps<PanelFlowNode>) {
   return (
     <div
-      className="overflow-hidden rounded-md border-2 border-foreground/20 bg-card shadow-lg ring-1 ring-black/5 dark:ring-white/10"
+      className="diagram-node-surface overflow-hidden rounded-md border-[3px]"
       style={{
         width: data.width,
+        backgroundColor: "#000000",
         ...(data.accentColor ? { borderColor: data.accentColor } : {}),
       }}
     >
       {data.title ? (
-        <div className="border-b border-border/60 bg-muted/40 px-3 py-2">
+        <div className="diagram-node-surface-header border-b px-3 py-2">
           <p className="truncate text-xs font-semibold uppercase tracking-wide text-foreground">
             {data.title}
           </p>
@@ -208,9 +215,8 @@ function PanelNode({ data }: NodeProps<PanelFlowNode>) {
                 type={row.onClick ? "button" : undefined}
                 onClick={row.onClick}
                 className={cn(
-                  "flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm",
-                  row.onClick &&
-                    "cursor-pointer transition-colors hover:bg-accent/60",
+                  "diagram-node-surface-hover flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm text-white",
+                  row.onClick && "cursor-pointer transition-colors",
                 )}
               >
                 <span className="min-w-0 flex-1 truncate text-foreground">
@@ -232,7 +238,7 @@ function PanelNode({ data }: NodeProps<PanelFlowNode>) {
         <button
           type="button"
           onClick={data.onMore}
-          className="w-full border-t border-border/60 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-accent/60"
+          className="diagram-node-surface-hover w-full border-t border-white/20 px-3 py-1.5 text-xs font-medium text-white transition-colors"
         >
           +{data.moreCount} altri
         </button>
@@ -264,7 +270,8 @@ function AreaTreeCanvasInner({
     diagramKey,
     initial: initialLayouts,
   });
-  const { editMode, positionOverrides, positionsRef, onNodesChange } = layout;
+  const { editMode, positionOverrides, positionsRef, onNodesChange, resetDiagram, setEditMode } =
+    layout;
 
   const { nodes, edges, childrenMap } = useMemo(() => {
     const flowNodes: AreaFlowNode[] = [];
@@ -319,7 +326,7 @@ function AreaTreeCanvasInner({
         sourceHandle: "bottom",
         targetHandle: "top",
         type: "smoothstep",
-        style: { stroke: "hsl(var(--muted-foreground))", strokeWidth: 2 },
+        style: { stroke: "rgba(190, 225, 255, 0.55)", strokeWidth: 2 },
       });
 
       const panelChildren: string[] = [];
@@ -392,6 +399,13 @@ function AreaTreeCanvasInner({
     fitView({ padding: 0.12, duration: 200 });
   }, [fitView]);
 
+  const handleRefresh = useCallback(() => {
+    resetDiagram();
+    setEditMode(false);
+    requestAnimationFrame(fitDiagram);
+    window.setTimeout(fitDiagram, 120);
+  }, [fitDiagram, resetDiagram, setEditMode]);
+
   useEffect(() => {
     if (!nodesInitialized || nodes.length === 0) return;
     const frame = requestAnimationFrame(fitDiagram);
@@ -421,8 +435,9 @@ function AreaTreeCanvasInner({
 
   return (
     <DiagramStage variant="full" className="min-h-[480px]" innerRef={wrapperRef}>
-      <div className="absolute right-3 top-3 z-20">
+      <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
         <DiagramEditToolbar controller={layout} />
+        <DiagramRefreshButton onRefresh={handleRefresh} />
       </div>
       <ReactFlow
         nodes={displayNodes}
@@ -443,12 +458,12 @@ function AreaTreeCanvasInner({
         panOnDrag
         proOptions={{ hideAttribution: true }}
         className="!bg-transparent"
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", background: "transparent" }}
       >
         <Controls
           showInteractive={false}
           position="bottom-right"
-          className="!rounded-lg !border !border-border !bg-card !shadow-md [&>button]:!border-b-border [&>button]:!bg-card [&>button]:!text-foreground [&>button:hover]:!bg-accent [&>button>svg]:!fill-current"
+          className="diagram-stage-chrome !rounded-lg !border !shadow-md [&>button]:!border-b-border [&>button]:!bg-transparent [&>button]:!text-inherit [&>button:hover]:!brightness-105 [&>button>svg]:!fill-current"
         />
       </ReactFlow>
     </DiagramStage>

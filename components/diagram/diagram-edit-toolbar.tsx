@@ -103,7 +103,7 @@ export function DiagramEditToolbar({
           variant="outline"
           size="sm"
           onClick={() => setEditMode(true)}
-          className="gap-2 bg-card shadow-sm"
+          className="gap-2 diagram-stage-chrome shadow-sm"
         >
           <Move className="h-3.5 w-3.5" />
           Modifica posizione
@@ -116,7 +116,7 @@ export function DiagramEditToolbar({
             type="button"
             variant="outline"
             size="sm"
-            className="gap-2 bg-card shadow-sm"
+            className="gap-2 diagram-stage-chrome shadow-sm"
           >
             <Layers className="h-3.5 w-3.5" />
             Layout

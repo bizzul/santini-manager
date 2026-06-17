@@ -22,6 +22,7 @@ import { getModuleFaIcon } from "@/lib/module-fa-icons";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { DiagramStage } from "@/components/diagram/diagram-stage";
 import { DiagramEditToolbar } from "@/components/diagram/diagram-edit-toolbar";
+import { DiagramRefreshButton } from "@/components/diagram/diagram-refresh-button";
 import { useDiagramLayouts } from "@/components/diagram/use-diagram-layouts";
 import type { DiagramKey } from "@/lib/diagram-layouts";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
@@ -96,9 +97,13 @@ function RootNode({ data }: NodeProps<RootFlowNode>) {
         )}
       </div>
       <div className="text-center">
-        <p className="text-base font-semibold text-foreground">{data.label}</p>
+        <p className="diagram-node-floating-label text-base font-semibold">
+          {data.label}
+        </p>
         {data.sublabel ? (
-          <p className="text-sm text-muted-foreground">{data.sublabel}</p>
+          <p className="diagram-node-floating-label-muted text-sm">
+            {data.sublabel}
+          </p>
         ) : null}
       </div>
       <Handle
@@ -123,12 +128,13 @@ function ChildNode({ data }: NodeProps<ChildFlowNode>) {
       onClick={data.onClick}
       aria-label={interactive ? `Apri ${data.label}` : undefined}
       className={cn(
-        "flex items-center gap-2.5 border-2 border-foreground/20 bg-card px-3 py-2 text-sm font-medium text-foreground shadow-md rounded-md",
+        "diagram-node-surface flex items-center gap-2.5 border-[3px] px-3 py-2 text-sm font-medium rounded-md",
         interactive &&
-          "cursor-pointer transition-colors hover:border-primary hover:bg-accent/60",
+          "cursor-pointer transition-colors hover:brightness-110",
       )}
       style={{
         width: CHILD_W,
+        backgroundColor: "#000000",
         ...(data.color ? { borderColor: data.color } : {}),
       }}
     >
@@ -204,7 +210,8 @@ function FocusDiagramInner({
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const layout = useDiagramLayouts({ siteId, diagramKey });
-  const { editMode, positionOverrides, positionsRef, onNodesChange } = layout;
+  const { editMode, positionOverrides, positionsRef, onNodesChange, resetDiagram, setEditMode } =
+    layout;
 
   const { nodes, edges, childrenMap } = useMemo(() => {
     const flowNodes: FocusFlowNode[] = [];
@@ -241,7 +248,7 @@ function FocusDiagramInner({
         targetHandle: "top",
         type: "smoothstep",
         style: {
-          stroke: "hsl(var(--muted-foreground))",
+          stroke: "rgba(190, 225, 255, 0.55)",
           strokeWidth: 2,
         },
       });
@@ -283,6 +290,13 @@ function FocusDiagramInner({
     fitView({ padding: 0.15, duration: 200 });
   }, [fitView]);
 
+  const handleRefresh = useCallback(() => {
+    resetDiagram();
+    setEditMode(false);
+    requestAnimationFrame(fitDiagram);
+    window.setTimeout(fitDiagram, 120);
+  }, [fitDiagram, resetDiagram, setEditMode]);
+
   useEffect(() => {
     if (!nodesInitialized || nodes.length === 0) return;
     const frame = requestAnimationFrame(fitDiagram);
@@ -312,8 +326,9 @@ function FocusDiagramInner({
 
   return (
     <DiagramStage variant="full" className="min-h-[480px]" innerRef={wrapperRef}>
-      <div className="absolute right-3 top-3 z-20">
+      <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
         <DiagramEditToolbar controller={layout} />
+        <DiagramRefreshButton onRefresh={handleRefresh} />
       </div>
       <ReactFlow
         nodes={displayNodes}
@@ -334,12 +349,12 @@ function FocusDiagramInner({
         panOnDrag
         proOptions={{ hideAttribution: true }}
         className="!bg-transparent"
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", background: "transparent" }}
       >
         <Controls
           showInteractive={false}
           position="bottom-right"
-          className="!rounded-lg !border !border-border !bg-card !shadow-md [&>button]:!border-b-border [&>button]:!bg-card [&>button]:!text-foreground [&>button:hover]:!bg-accent [&>button>svg]:!fill-current"
+          className="diagram-stage-chrome !rounded-lg !border !shadow-md [&>button]:!border-b-border [&>button]:!bg-transparent [&>button]:!text-inherit [&>button:hover]:!brightness-105 [&>button>svg]:!fill-current"
         />
       </ReactFlow>
     </DiagramStage>

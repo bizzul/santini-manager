@@ -1,85 +1,49 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-
-const DiagramAmbientCanvas = dynamic(
-  () => import("@/components/diagram/diagram-ambient-canvas"),
-  { ssr: false },
-);
+import DiagramStarfieldCanvas from "@/components/diagram/diagram-starfield-canvas";
 
 export type DiagramStageVariant = "auto" | "fill" | "full";
 
 interface DiagramStageProps {
   children: React.ReactNode;
-  /**
-   * `auto`: height follows content (CSS org-chart in AreaTreeDiagram).
-   * `fill`: fixed viewport height for canvas-based diagrams (React Flow).
-   * `full`: fills the parent height (parent already constrains height).
-   */
   variant?: DiagramStageVariant;
-  /**
-   * Enable the WebGL ambient depth layer (phase 4). Self-guards for reduced
-   * motion / small screens / missing WebGL; falls back to the static stage.
-   */
   ambient?: boolean;
   className?: string;
-  /** Optional ref forwarded to the outer stage element. */
   innerRef?: React.Ref<HTMLDivElement>;
 }
 
-/** Detects whether the dynamic (parallax + WebGL) layers should run. */
-function useDynamicEnvironment(enabled: boolean) {
-  const [active, setActive] = useState(false);
+function useReducedMotion() {
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    if (!enabled || typeof window === "undefined") return;
+    if (typeof window === "undefined") return;
+    setReducedMotion(
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    );
+  }, []);
 
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    const smallScreen = window.matchMedia("(max-width: 768px)").matches;
-    let hasWebGL = false;
-    try {
-      const canvas = document.createElement("canvas");
-      hasWebGL = !!(
-        canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
-      );
-    } catch {
-      hasWebGL = false;
-    }
-
-    setActive(!reduceMotion && !smallScreen && hasWebGL);
-  }, [enabled]);
-
-  return active;
+  return reducedMotion;
 }
 
 /**
- * Shared layered "stage" background for every diagram screen.
- *
- * Architectural role: this is not mere decoration. It is the shell that today
- * hosts the 2D diagram (CSS / React Flow), today optionally hosts a WebGL
- * ambient layer (phase 4), and is designed to ultimately host a full 3D scene
- * behind the same slot (phase 5).
- *
- * All layers derive from theme tokens (`--page`, `--page-soft`, `--page-glow`,
- * `--page-shadow`, `--primary`) so the depth effect holds in light and dark.
+ * Galactic stage shell for every diagram screen: deep-space gradient, nebula,
+ * animated starfield, horizon glow and mountain silhouette. Designed to lift
+ * the 2D diagram nodes with strong contrast via `.diagram-node-surface`.
  */
 export function DiagramStage({
   children,
   variant = "auto",
-  ambient = true,
+  ambient: _ambient = true,
   className,
   innerRef,
 }: DiagramStageProps) {
-  const dynamicEnabled = useDynamicEnvironment(ambient);
+  const reducedMotion = useReducedMotion();
   const layersRef = useRef<HTMLDivElement>(null);
 
-  // Phase 3: subtle mouse parallax on the background layers (rAF throttled).
   useEffect(() => {
-    if (!dynamicEnabled) return;
+    if (reducedMotion) return;
     const element = layersRef.current;
     if (!element) return;
 
@@ -91,8 +55,8 @@ export function DiagramStage({
         const rect = element.getBoundingClientRect();
         const px = (event.clientX - rect.left) / rect.width - 0.5;
         const py = (event.clientY - rect.top) / rect.height - 0.5;
-        element.style.setProperty("--stage-parallax-x", `${px * -14}px`);
-        element.style.setProperty("--stage-parallax-y", `${py * -14}px`);
+        element.style.setProperty("--stage-parallax-x", `${px * -18}px`);
+        element.style.setProperty("--stage-parallax-y", `${py * -18}px`);
       });
     };
 
@@ -101,65 +65,74 @@ export function DiagramStage({
       window.removeEventListener("pointermove", onMove);
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [dynamicEnabled]);
+  }, [reducedMotion]);
 
   return (
     <div
       ref={innerRef}
       className={cn(
-        "diagram-stage relative isolate overflow-hidden rounded-xl border shadow-inner",
+        "diagram-stage diagram-stage--galactic relative overflow-hidden rounded-xl border shadow-inner",
         variant === "fill" && "h-[70vh] min-h-[480px] w-full",
         variant === "full" && "h-full w-full",
         variant === "auto" && "w-full overflow-x-auto p-6",
         className,
       )}
+      style={{
+        background:
+          "linear-gradient(180deg, #000510 0%, #001028 38%, #002244 72%, #003366 100%)",
+      }}
     >
-      {/* Parallax-able background layers. */}
       <div
         ref={layersRef}
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
+        className="pointer-events-none absolute inset-0 z-0"
         style={{
           transform:
             "translate3d(var(--stage-parallax-x, 0px), var(--stage-parallax-y, 0px), 0)",
-          transition: "transform 220ms ease-out",
+          transition: "transform 280ms ease-out",
         }}
       >
-        <div
-          className="absolute inset-[-6%]"
-          style={{
-            backgroundColor: "hsl(var(--page))",
-            backgroundImage: [
-              "radial-gradient(circle at 50% -12%, hsl(var(--page-glow) / 0.95), transparent 55%)",
-              "radial-gradient(60% 50% at 50% 38%, hsl(var(--primary) / 0.07), transparent 70%)",
-              "radial-gradient(120% 80% at 50% 120%, hsl(var(--page-shadow) / 0.55), transparent 60%)",
-              "linear-gradient(180deg, hsl(var(--page)) 0%, hsl(var(--page-shadow)) 100%)",
-            ].join(", "),
-          }}
-        />
-        {/* Perspective grid floor: soft depth cue. */}
-        <div className="diagram-stage__grid absolute inset-x-0 bottom-0 h-1/2" />
+        {/* Base sky gradient (opaque — always visible) */}
+        <div className="diagram-stage__sky absolute inset-[-8%]" />
+
+        {/* Nebula / milky-way wisps */}
+        <div className="diagram-stage__nebula absolute inset-[-4%]" />
+
+        {/* Animated 2D starfield (transparent canvas) */}
+        <DiagramStarfieldCanvas animated={!reducedMotion} />
+
+        {/* Horizon cyan glow */}
+        <div className="diagram-stage__horizon absolute inset-x-0 bottom-0 h-[42%]" />
+
+        {/* Mountain silhouette */}
+        <svg
+          className="diagram-stage__mountains absolute bottom-0 left-0 w-full"
+          viewBox="0 0 1200 90"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          <path
+            fill="url(#galactic-mountain-fill)"
+            d="M0,90 L0,52 L70,58 L140,38 L210,50 L290,28 L380,48 L470,22 L560,44 L650,30 L740,52 L830,36 L920,54 L1010,40 L1100,56 L1200,46 L1200,90 Z"
+          />
+          <defs>
+            <linearGradient id="galactic-mountain-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#001830" />
+              <stop offset="100%" stopColor="#000510" />
+            </linearGradient>
+          </defs>
+        </svg>
       </div>
 
-      {/* WebGL ambient depth layer (phase 4); only when guards pass. */}
-      {dynamicEnabled ? (
-        <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
-          <DiagramAmbientCanvas />
-        </div>
-      ) : null}
-
-      {/* Perimeter vignette to detach content from the edges. */}
+      {/* Edge vignette */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          boxShadow:
-            "inset 0 0 80px 24px hsl(var(--page-shadow) / 0.45), inset 0 0 200px 60px hsl(var(--page-shadow) / 0.25)",
-        }}
+        className="diagram-stage__vignette pointer-events-none absolute inset-0 z-0"
       />
 
-      {/* Content slot above all background layers. */}
-      <div className="relative z-10 h-full w-full">{children}</div>
+      <div className="diagram-stage__content relative z-[1] h-full w-full">
+        {children}
+      </div>
     </div>
   );
 }
