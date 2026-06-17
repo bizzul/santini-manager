@@ -618,6 +618,55 @@ export function buildSchedulePayload(
   }
 }
 
+/**
+ * Payload usato quando una card "Da definire" viene rilasciata su un giorno
+ * senza scegliere un orario: imposta la data ma azzera gli orari, così la card
+ * resta in stato "time-pending" (Orario da assegnare) ancorata al giorno scelto.
+ */
+export function buildDateOnlyPayload(
+  calendarType: ProjectCalendarType,
+  day: Date
+): Record<string, string | null> {
+  const date = formatDateForPayload(day);
+
+  switch (calendarType) {
+    case "production":
+      return {
+        produzione_data_inizio: date,
+        produzione_data_fine: date,
+        produzione_ora_inizio: null,
+        produzione_ora_fine: null,
+        termine_produzione: date,
+      };
+    case "installation":
+      return {
+        posa_data_inizio: date,
+        posa_data_fine: date,
+        posa_ora_inizio: null,
+        posa_ora_fine: null,
+        deliveryDate: date,
+        ora_inizio: null,
+        ora_fine: null,
+      };
+    case "service":
+      return {
+        service_data_inizio: date,
+        service_data_fine: date,
+        service_ora_inizio: null,
+        service_ora_fine: null,
+        deliveryDate: date,
+        ora_inizio: null,
+        ora_fine: null,
+      };
+    default:
+      return {
+        deliveryDate: date,
+        ora_inizio: null,
+        ora_fine: null,
+      };
+  }
+}
+
 function getTaskAccentColor(task: ProjectTaskSource): string {
   if (task.is_draft || task.isDraft) return "#f59e0b";
   if (task.display_mode === "small_green" || task.displayMode === "small_green") {
@@ -1071,6 +1120,87 @@ export function sortCalendarItemsForDay(
   return left.projectName.localeCompare(right.projectName, "it");
 }
 
+export interface LaneInterval<T> {
+  id: string;
+  start: Date;
+  end: Date;
+  data: T;
+}
+
+export interface LanePacked<T> extends LaneInterval<T> {
+  /** Indice della sotto-colonna (0-based) assegnata dall'algoritmo greedy. */
+  lane: number;
+  /** Numero totale di sotto-colonne del cluster a cui appartiene l'evento. */
+  totalLanes: number;
+  /** Id stabile del cluster di eventi che si sovrappongono nel tempo. */
+  clusterId: string;
+}
+
+/**
+ * Greedy lane packing su intervalli temporali.
+ *
+ * Gli intervalli vengono ordinati per inizio; eventi che si intersecano nel
+ * tempo formano un "cluster" e ciascuno riceve la prima sotto-colonna (lane)
+ * libera. `totalLanes` è il numero massimo di lane usate nel cluster, così il
+ * consumer può derivare la larghezza (Affianca: 1/totalLanes) o l'offset
+ * diagonale (Impila). Funzione pura e riusabile (giorno o lane collaboratore).
+ */
+export function packIntervalsIntoLanes<T>(
+  intervals: Array<LaneInterval<T>>
+): Array<LanePacked<T>> {
+  const sorted = [...intervals].sort(
+    (left, right) => left.start.getTime() - right.start.getTime()
+  );
+
+  const clusters: Array<Array<LaneInterval<T> & { lane: number }>> = [];
+  let currentCluster: Array<LaneInterval<T> & { lane: number }> = [];
+  let active: Array<{ end: Date; lane: number }> = [];
+
+  sorted.forEach((interval) => {
+    active = active.filter((entry) => isBefore(interval.start, entry.end));
+    if (active.length === 0 && currentCluster.length > 0) {
+      clusters.push(currentCluster);
+      currentCluster = [];
+    }
+
+    const usedLanes = new Set(active.map((entry) => entry.lane));
+    let lane = 0;
+    while (usedLanes.has(lane)) {
+      lane += 1;
+    }
+
+    active.push({ end: interval.end, lane });
+    currentCluster.push({ ...interval, lane });
+  });
+
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+
+  const packed: Array<LanePacked<T>> = [];
+  clusters.forEach((cluster) => {
+    const totalLanes = Math.max(
+      1,
+      cluster.reduce((maxLanes, item) => Math.max(maxLanes, item.lane + 1), 1)
+    );
+    const clusterId = cluster[0].id;
+
+    cluster.forEach((item) => {
+      packed.push({
+        id: item.id,
+        start: item.start,
+        end: item.end,
+        data: item.data,
+        lane: item.lane,
+        totalLanes,
+        clusterId,
+      });
+    });
+  });
+
+  return packed;
+}
+
 export function buildPositionedCalendarItems(
   items: WeeklyCalendarItem[],
   weekStart: Date,
@@ -1117,49 +1247,32 @@ export function buildPositionedCalendarItems(
       )
       .sort((left, right) => left.start.getTime() - right.start.getTime());
 
-    const clusters: Array<Array<(typeof dayItems)[number] & { column: number }>> = [];
-    let currentCluster: Array<(typeof dayItems)[number] & { column: number }> = [];
-    let active: Array<{ end: Date; column: number }> = [];
+    const packed = packIntervalsIntoLanes(
+      dayItems.map((item) => ({
+        id: item.id,
+        start: item.start,
+        end: item.end,
+        data: item,
+      }))
+    );
 
-    dayItems.forEach((item) => {
-      active = active.filter((entry) => isBefore(item.start, entry.end));
-      if (active.length === 0 && currentCluster.length > 0) {
-        clusters.push(currentCluster);
-        currentCluster = [];
-      }
-
-      const usedColumns = new Set(active.map((entry) => entry.column));
-      let column = 0;
-      while (usedColumns.has(column)) {
-        column += 1;
-      }
-
-      active.push({ end: item.end, column });
-      currentCluster.push({ ...item, column });
-    });
-
-    if (currentCluster.length > 0) {
-      clusters.push(currentCluster);
-    }
-
-    clusters.forEach((cluster) => {
-      const columnCount = Math.max(
-        1,
-        cluster.reduce((maxColumns, item) => Math.max(maxColumns, item.column + 1), 1)
+    packed.forEach((entry) => {
+      const item = entry.data;
+      const minutesFromStart = differenceInMinutes(entry.start, dayStart);
+      const durationMinutes = Math.max(
+        slotMinutes,
+        differenceInMinutes(entry.end, entry.start)
       );
 
-      cluster.forEach((item) => {
-        const minutesFromStart = differenceInMinutes(item.start, dayStart);
-        const durationMinutes = Math.max(slotMinutes, differenceInMinutes(item.end, item.start));
-
-        positionedItems.push({
-          ...item,
-          top: (minutesFromStart / slotMinutes) * slotHeight,
-          height: Math.max(slotHeight, (durationMinutes / slotMinutes) * slotHeight - 6),
-          column: item.column,
-          columnCount,
-          isConflict: columnCount > 1,
-        });
+      positionedItems.push({
+        ...item,
+        start: entry.start,
+        end: entry.end,
+        top: (minutesFromStart / slotMinutes) * slotHeight,
+        height: Math.max(slotHeight, (durationMinutes / slotMinutes) * slotHeight - 6),
+        column: entry.lane,
+        columnCount: entry.totalLanes,
+        isConflict: entry.totalLanes > 1,
       });
     });
   });

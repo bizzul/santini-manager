@@ -302,6 +302,13 @@ const getMenuItems = (
       moduleName: "attendance",
     },
     {
+      label: "Area Collaboratore",
+      icon: "faUser",
+      href: `${basePath}/area-collaboratore`,
+      alert: false,
+      moduleName: "area-collaboratore",
+    },
+    {
       label: "Contatti",
       icon: "faUsers",
       alert: false,

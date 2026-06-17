@@ -130,7 +130,9 @@ export default function CalendarComponent({
   const searchParams = useSearchParams();
   const domainFromPath = params?.domain as string | undefined;
   const effectiveDomain = domain ?? domainFromPath;
-  const [viewMode, setViewMode] = useState<"week" | "month">("week");
+  const [viewMode, setViewMode] = useState<"week" | "month" | "resource">(
+    "week"
+  );
   const editTaskId = searchParams.get("edit");
 
   const filteredTasks = tasks.filter((task) => {
@@ -193,9 +195,9 @@ export default function CalendarComponent({
   return (
     <div
       className={
-        viewMode === "week"
-          ? "relative z-20 flex h-full min-h-0 w-full flex-col"
-          : "relative z-20 w-full py-4"
+        viewMode === "month"
+          ? "relative z-20 w-full py-4"
+          : "relative z-20 flex h-full min-h-0 w-full flex-col"
       }
     >
       {effectiveDomain && (
@@ -205,18 +207,26 @@ export default function CalendarComponent({
           domain={effectiveDomain}
           view={viewMode}
           onViewChange={setViewMode}
-          title={`${CALENDAR_TYPE_NAMES[calendarType]} - ${viewMode === "week" ? "Settimana" : "Mese"}`}
+          title={`${CALENDAR_TYPE_NAMES[calendarType]} - ${
+            viewMode === "week"
+              ? "Settimana"
+              : viewMode === "resource"
+                ? "Per risorsa"
+                : "Mese"
+          }`}
           description={
-            isProductionCalendar
-              ? viewMode === "week"
-                ? "Planner operativo con card progetto trascinabili e ridimensionabili."
-                : "Vista mensile con finestre di produzione su più giorni."
-              : viewMode === "week"
-                ? "Planner operativo con card progetto trascinabili e ridimensionabili."
-                : "Vista mensile con card progetto e segnalazione per gli orari ancora da definire."
+            viewMode === "resource"
+              ? "Lane per collaboratore: ogni evento appare nella corsia delle risorse assegnate."
+              : viewMode === "month"
+                ? isProductionCalendar
+                  ? "Vista mensile con finestre di produzione su più giorni."
+                  : "Vista mensile con card progetto e segnalazione per gli orari ancora da definire."
+                : "Planner operativo con card progetto trascinabili e ridimensionabili."
           }
           emptyStateTitle={
-            viewMode === "week" ? "Nessun progetto in settimana" : "Nessun progetto nel mese"
+            viewMode === "month"
+              ? "Nessun progetto nel mese"
+              : "Nessun progetto in settimana"
           }
           emptyStateDescription={
             isProductionCalendar

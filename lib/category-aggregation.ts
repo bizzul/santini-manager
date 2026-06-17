@@ -223,11 +223,13 @@ export function filterInventoryByCategory(
   return inventoryRows.filter((row) => getRowCategoryId(row) === categoryId);
 }
 
-export function filterInventoryByCategoryAndSubcategory(
-  inventoryRows: InventoryRowForAggregation[],
+export function filterInventoryByCategoryAndSubcategory<
+  T extends InventoryRowForAggregation,
+>(
+  inventoryRows: T[],
   categoryId: string,
   subcategoryKey: string,
-): InventoryRowForAggregation[] {
+): T[] {
   return inventoryRows.filter((row) => {
     if (getRowCategoryId(row) !== categoryId) return false;
     const key = getSubcategoryKey(getRowSubcategory(row));

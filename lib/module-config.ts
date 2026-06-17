@@ -226,6 +226,16 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         enabledByDefault: false,
         category: "management",
     },
+    {
+        name: "area-collaboratore",
+        label: "Area Collaboratore",
+        description:
+            "Calendario personale e inserimento ore per il singolo collaboratore",
+        icon: "faUser",
+        href: "/area-collaboratore",
+        enabledByDefault: false,
+        category: "tools",
+    },
 ];
 
 export const getModuleByName = (name: string): ModuleConfig | undefined => {

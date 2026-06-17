@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  DayHeaderMountArg,
   EventClickArg,
   EventContentArg,
   EventDropArg,
@@ -17,15 +16,17 @@ import {
   LayoutGrid,
   ListFilter,
 } from "lucide-react";
-import { PendingProjectsCollapsible } from "./PendingProjectsCollapsible";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CalendarProjectCard } from "./CalendarProjectCard";
 import { DayProjectsDialog } from "./DayProjectsDialog";
+import { WeekCalendar } from "./week/WeekCalendar";
+import { ResourceView } from "./week/ResourceView";
 import {
   buildCalendarProjectEditHref,
+  buildDateOnlyPayload,
   buildSchedulePayload,
   getStatusLegend,
   parseDateValue,
@@ -43,15 +44,14 @@ type FullCalendarBundle = {
   itLocale: unknown;
 };
 
-/** Larghezza minima colonna giorno (scroll orizzontale via ScrollGrid) */
-const WEEK_DAY_MIN_WIDTH = 200;
+export type CalendarViewMode = "week" | "month" | "resource";
 
 interface ProjectSchedulerCalendarProps {
   items: WeeklyCalendarItem[];
   calendarType: ProjectCalendarType;
   domain: string;
-  view: "week" | "month";
-  onViewChange: (view: "week" | "month") => void;
+  view: CalendarViewMode;
+  onViewChange: (view: CalendarViewMode) => void;
   title: string;
   description?: string;
   emptyStateTitle?: string;
@@ -62,35 +62,32 @@ function CalendarViewSwitcher({
   view,
   onViewChange,
 }: {
-  view: "week" | "month";
-  onViewChange: (view: "week" | "month") => void;
+  view: CalendarViewMode;
+  onViewChange: (view: CalendarViewMode) => void;
 }) {
+  const options: Array<{ value: CalendarViewMode; label: string }> = [
+    { value: "week", label: "Settimana operativa" },
+    { value: "resource", label: "Per risorsa" },
+    { value: "month", label: "Mese" },
+  ];
+
   return (
     <div className="inline-flex shrink-0 rounded-lg border bg-muted/40 p-1">
-      <Button
-        type="button"
-        variant={view === "week" ? "default" : "ghost"}
-        size="sm"
-        className={cn(
-          "h-8 px-3 text-sm",
-          view !== "week" && "text-muted-foreground hover:text-foreground"
-        )}
-        onClick={() => onViewChange("week")}
-      >
-        Settimana operativa
-      </Button>
-      <Button
-        type="button"
-        variant={view === "month" ? "default" : "ghost"}
-        size="sm"
-        className={cn(
-          "h-8 px-3 text-sm",
-          view !== "month" && "text-muted-foreground hover:text-foreground"
-        )}
-        onClick={() => onViewChange("month")}
-      >
-        Mese
-      </Button>
+      {options.map((option) => (
+        <Button
+          key={option.value}
+          type="button"
+          variant={view === option.value ? "default" : "ghost"}
+          size="sm"
+          className={cn(
+            "h-8 px-3 text-sm",
+            view !== option.value && "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={() => onViewChange(option.value)}
+        >
+          {option.label}
+        </Button>
+      ))}
     </div>
   );
 }
@@ -145,6 +142,27 @@ function updateItemSchedule(
   );
 }
 
+function updateItemToDateOnly(
+  items: WeeklyCalendarItem[],
+  itemId: string,
+  day: Date
+): WeeklyCalendarItem[] {
+  const dayStart = new Date(day);
+  dayStart.setHours(8, 0, 0, 0);
+  const dayEnd = new Date(day);
+  dayEnd.setHours(8, 0, 0, 0);
+  return items.map((item) =>
+    item.id === itemId
+      ? {
+          ...item,
+          startDatetime: dayStart.toISOString(),
+          endDatetime: dayEnd.toISOString(),
+          scheduleDisplay: "time-pending" as const,
+        }
+      : item
+  );
+}
+
 export function ProjectSchedulerCalendar({
   items,
   calendarType,
@@ -160,16 +178,11 @@ export function ProjectSchedulerCalendar({
   const calendarRef = useRef<{
     getApi: () => { changeView: (view: string) => void; updateSize: () => void };
   } | null>(null);
-  const weekGridContainerRef = useRef<HTMLDivElement>(null);
-  const [isPendingPanelOpen, setIsPendingPanelOpen] = useState(false);
   const [bundle, setBundle] = useState<FullCalendarBundle | null>(null);
   const [calendarItems, setCalendarItems] = useState(items);
   const [isSaving, setIsSaving] = useState(false);
   const [conflictCount, setConflictCount] = useState(0);
   const [expandedDay, setExpandedDay] = useState<Date | null>(null);
-  const dayHeaderCleanupRef = useRef(
-    new WeakMap<HTMLElement, { handler: () => void }>()
-  );
 
   useEffect(() => {
     setCalendarItems(items);
@@ -223,40 +236,6 @@ export function ProjectSchedulerCalendar({
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    const api = calendarRef.current?.getApi?.();
-    if (!api) return;
-    api.changeView(view === "week" ? "timeGridWeek" : "dayGridMonth");
-  }, [view, bundle]);
-
-  useEffect(() => {
-    if (view !== "week" || !bundle) {
-      return;
-    }
-
-    const node = weekGridContainerRef.current;
-    if (!node) return;
-
-    const syncSize = () => {
-      requestAnimationFrame(() => {
-        calendarRef.current?.getApi()?.updateSize();
-      });
-    };
-
-    syncSize();
-    const observer = new ResizeObserver(syncSize);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [view, bundle, calendarItems.length, isPendingPanelOpen]);
-
-  const pendingItems = useMemo(
-    () =>
-      calendarItems.filter(
-        (item) => (item.scheduleDisplay ?? "timed") === "time-pending"
-      ),
-    [calendarItems]
-  );
 
   const handlePendingItemClick = useCallback(
     (item: WeeklyCalendarItem) => {
@@ -316,6 +295,61 @@ export function ProjectSchedulerCalendar({
       }
     },
     [calendarItems, calendarType, domain, router]
+  );
+
+  const persistDateOnly = useCallback(
+    async (item: WeeklyCalendarItem, day: Date) => {
+      if (!item.sourceId) return;
+
+      const previousItems = calendarItems;
+      setCalendarItems((current) =>
+        updateItemToDateOnly(current, item.id, day)
+      );
+      setIsSaving(true);
+
+      try {
+        const response = await fetch(`/api/kanban/tasks/${item.sourceId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-site-domain": domain,
+          },
+          body: JSON.stringify(buildDateOnlyPayload(calendarType, day)),
+        });
+
+        if (!response.ok) {
+          throw new Error("Aggiornamento non riuscito");
+        }
+
+        toast.success("Giorno assegnato", {
+          description: `${item.projectNumber || item.projectName}: orario ancora da definire.`,
+        });
+        router.refresh();
+      } catch (error) {
+        console.error("Calendar day-assign failed:", error);
+        setCalendarItems(previousItems);
+        toast.error("Impossibile assegnare il giorno", {
+          description: "Riprova o modifica la scheda progetto.",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [calendarItems, calendarType, domain, router]
+  );
+
+  const handleWeekReschedule = useCallback(
+    (item: WeeklyCalendarItem, start: Date, end: Date) => {
+      void persistSchedule(item, start, end);
+    },
+    [persistSchedule]
+  );
+
+  const handleWeekAssignDay = useCallback(
+    (item: WeeklyCalendarItem, day: Date) => {
+      void persistDateOnly(item, day);
+    },
+    [persistDateOnly]
   );
 
   const handleEventDrop = useCallback(
@@ -415,28 +449,11 @@ export function ProjectSchedulerCalendar({
     setConflictCount(overlaps.size);
   }, [calendarItems]);
 
-  const handleDayHeaderDidMount = useCallback((arg: DayHeaderMountArg) => {
-    const el = arg.el;
-    el.classList.add("cursor-pointer", "transition-colors", "hover:text-primary");
-    el.title = "Apri giornata in modalità estesa";
+  const isWeekView = view === "week";
+  const isResourceView = view === "resource";
+  const isGridView = isWeekView || isResourceView;
 
-    const handler = () => {
-      setExpandedDay(arg.date);
-    };
-
-    el.addEventListener("click", handler);
-    dayHeaderCleanupRef.current.set(el, { handler });
-  }, []);
-
-  const handleDayHeaderWillUnmount = useCallback((arg: DayHeaderMountArg) => {
-    const cleanup = dayHeaderCleanupRef.current.get(arg.el);
-    if (cleanup) {
-      arg.el.removeEventListener("click", cleanup.handler);
-      dayHeaderCleanupRef.current.delete(arg.el);
-    }
-  }, []);
-
-  if (!bundle) {
+  if (view === "month" && !bundle) {
     return (
       <Card>
         <CardContent className="py-12 text-center text-sm text-muted-foreground">
@@ -446,21 +463,17 @@ export function ProjectSchedulerCalendar({
     );
   }
 
-  const {
-    FullCalendar,
-    scrollGridPlugin,
-    timeGridPlugin,
-    dayGridPlugin,
-    interactionPlugin,
-    itLocale,
-  } = bundle;
-
-  const isWeekView = view === "week";
+  const FullCalendar = bundle?.FullCalendar;
+  const scrollGridPlugin = bundle?.scrollGridPlugin;
+  const timeGridPlugin = bundle?.timeGridPlugin;
+  const dayGridPlugin = bundle?.dayGridPlugin;
+  const interactionPlugin = bundle?.interactionPlugin;
+  const itLocale = bundle?.itLocale;
 
   return (
     <div
       className={cn(
-        isWeekView ? "flex h-full min-h-0 flex-col gap-2" : "space-y-4"
+        isGridView ? "flex h-full min-h-0 flex-col gap-2" : "space-y-4"
       )}
     >
       <style jsx global>{`
@@ -597,83 +610,73 @@ export function ProjectSchedulerCalendar({
       <Card
         className={cn(
           "project-scheduler-calendar min-w-0",
-          isWeekView && "project-scheduler-calendar--week flex min-h-0 flex-1 flex-col overflow-hidden"
+          isGridView && "project-scheduler-calendar--week flex min-h-0 flex-1 flex-col overflow-hidden"
         )}
       >
         <CardContent
           className={cn(
             "gap-3 p-3 sm:p-4",
-            isWeekView && "flex min-h-0 flex-1 flex-col"
+            isGridView && "flex min-h-0 flex-1 flex-col"
           )}
         >
-          {isWeekView && pendingItems.length > 0 && (
-            <PendingProjectsCollapsible
-              items={pendingItems}
-              open={isPendingPanelOpen}
-              onOpenChange={setIsPendingPanelOpen}
+          {isWeekView ? (
+            <WeekCalendar
+              items={calendarItems}
+              onItemClick={handlePendingItemClick}
+              onReschedule={handleWeekReschedule}
+              onAssignDay={handleWeekAssignDay}
+              onConflictCountChange={setConflictCount}
+            />
+          ) : isResourceView ? (
+            <ResourceView
+              items={calendarItems}
               onItemClick={handlePendingItemClick}
             />
-          )}
-
-          <div
-            ref={weekGridContainerRef}
-            className={cn(
-              isWeekView &&
-                "min-h-[280px] flex-1 rounded-lg border border-border/60 bg-card p-1 pb-2"
-            )}
-          >
-            <div className={cn(isWeekView && "h-full min-h-0")}>
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[
-              scrollGridPlugin,
-              timeGridPlugin,
-              dayGridPlugin,
-              interactionPlugin,
-            ]}
-            initialView={view === "week" ? "timeGridWeek" : "dayGridMonth"}
-            locale={itLocale || "it"}
-            firstDay={1}
-            weekends
-            allDaySlot={false}
-            dayHeaderDidMount={isWeekView ? handleDayHeaderDidMount : undefined}
-            dayHeaderWillUnmount={isWeekView ? handleDayHeaderWillUnmount : undefined}
-            stickyHeaderDates={isWeekView}
-            dayMinWidth={isWeekView ? WEEK_DAY_MIN_WIDTH : undefined}
-            eventMaxStack={isWeekView ? 3 : undefined}
-            slotMinTime="07:00:00"
-            slotMaxTime="18:00:00"
-            slotDuration="00:15:00"
-            slotLabelInterval="01:00:00"
-            snapDuration="00:15:00"
-            scrollTime="07:00:00"
-            expandRows={isWeekView}
-            nowIndicator
-            editable
-            eventDurationEditable
-            eventResizableFromStart
-            eventStartEditable
-            events={events}
-            eventContent={renderEventContent}
-            eventClick={handleEventClick}
-            eventDrop={handleEventDrop}
-            eventResize={handleEventResize}
-            datesSet={handleEventsSet}
-            headerToolbar={{
-              left: "prev,next today",
-              center: "title",
-              right: "",
-            }}
-            height={isWeekView ? "100%" : "auto"}
-            dayMaxEvents={view === "month" ? 4 : false}
-            moreLinkClick="popover"
-            eventOverlap
-            selectMirror={false}
-            longPressDelay={150}
-            eventLongPressDelay={150}
-          />
-            </div>
-          </div>
+          ) : FullCalendar ? (
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[
+                scrollGridPlugin,
+                timeGridPlugin,
+                dayGridPlugin,
+                interactionPlugin,
+              ]}
+              initialView="dayGridMonth"
+              locale={itLocale || "it"}
+              firstDay={1}
+              weekends
+              allDaySlot={false}
+              slotMinTime="07:00:00"
+              slotMaxTime="18:00:00"
+              slotDuration="00:15:00"
+              slotLabelInterval="01:00:00"
+              snapDuration="00:15:00"
+              scrollTime="07:00:00"
+              nowIndicator
+              editable
+              eventDurationEditable
+              eventResizableFromStart
+              eventStartEditable
+              events={events}
+              eventContent={renderEventContent}
+              eventClick={handleEventClick}
+              eventDrop={handleEventDrop}
+              eventResize={handleEventResize}
+              datesSet={handleEventsSet}
+              headerToolbar={{
+                left: "prev,next today",
+                center: "title",
+                right: "",
+              }}
+              height="auto"
+              dayMaxEvents={4}
+              moreLinkClick="popover"
+              eventOverlap
+              selectMirror={false}
+              longPressDelay={150}
+              eventLongPressDelay={150}
+            />
+          ) : null}
         </CardContent>
       </Card>
 
