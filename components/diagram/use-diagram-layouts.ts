@@ -143,18 +143,11 @@ export function useDiagramLayouts({
     setActiveId(null);
   }, []);
 
-  /** Restore node positions to the initial view: saved active layout or computed default. */
+  /** Reset to the algorithmic default layout (clears drag overrides and active preset). */
   const resetDiagram = useCallback(() => {
-    if (activeId) {
-      const active = layouts.find((l) => l.id === activeId);
-      if (active) {
-        setPositionOverrides({ ...active.positions });
-        return;
-      }
-    }
     setPositionOverrides({});
     setActiveId(null);
-  }, [activeId, layouts]);
+  }, []);
 
   const persist = useCallback(
     async (nextLayouts: DiagramLayout[], nextActiveId: string | null) => {

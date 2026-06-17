@@ -600,14 +600,15 @@ function WbsDiagramInner({
     fitView({ padding: 0.12, duration: 200 });
   }, [fitView]);
 
-  const handleRefresh = () => {
-    resetDiagram();
+  const handleRefresh = useCallback(() => {
     setEditMode(false);
+    resetDiagram();
     resetExpansionState();
+    // Re-fit after expansion + layout state settle (nodes are recomputed).
     requestAnimationFrame(fitDiagram);
-    window.setTimeout(fitDiagram, 120);
-    window.setTimeout(fitDiagram, 320);
-  };
+    window.setTimeout(fitDiagram, 150);
+    window.setTimeout(fitDiagram, 450);
+  }, [fitDiagram, resetDiagram, resetExpansionState, setEditMode]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((current) => {

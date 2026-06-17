@@ -400,10 +400,11 @@ function AreaTreeCanvasInner({
   }, [fitView]);
 
   const handleRefresh = useCallback(() => {
-    resetDiagram();
     setEditMode(false);
+    resetDiagram();
     requestAnimationFrame(fitDiagram);
-    window.setTimeout(fitDiagram, 120);
+    window.setTimeout(fitDiagram, 150);
+    window.setTimeout(fitDiagram, 450);
   }, [fitDiagram, resetDiagram, setEditMode]);
 
   useEffect(() => {
