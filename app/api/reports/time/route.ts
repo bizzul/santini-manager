@@ -336,6 +336,69 @@ function prepareTimetrackingsData(
   return data;
 }
 
+async function fetchTimeReportTimetrackings({
+  supabase,
+  from,
+  to,
+  siteId,
+  employeeId,
+  selectedUserIds,
+}: {
+  supabase: any;
+  from: Date;
+  to: Date;
+  siteId: string | null;
+  employeeId?: number | null;
+  selectedUserIds: number[];
+}) {
+  const pageSize = 1000;
+  const rows: any[] = [];
+  let page = 0;
+
+  while (true) {
+    const rangeFrom = page * pageSize;
+    const rangeTo = rangeFrom + pageSize - 1;
+
+    let query = supabase
+      .from("Timetracking")
+      .select(`
+        *,
+        task:task_id(*, site_id),
+        user:employee_id(id, given_name, family_name, email),
+        roles:_RolesToTimetracking(role:Roles(id, name))
+      `)
+      .gte("created_at", from.toISOString())
+      .lte("created_at", to.toISOString());
+
+    if (siteId) {
+      query = query.eq("site_id", siteId);
+    }
+
+    if (employeeId !== null && employeeId !== undefined) {
+      query = query.eq("employee_id", employeeId);
+    } else if (selectedUserIds.length > 0) {
+      query = query.in("employee_id", selectedUserIds);
+    }
+
+    const { data, error } = await query
+      .order("created_at", { ascending: false })
+      .range(rangeFrom, rangeTo);
+
+    if (error) throw error;
+
+    const batch = data || [];
+    rows.push(...batch);
+
+    if (batch.length < pageSize) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return rows;
+}
+
 export const POST = async (req: NextRequest) => {
   const requestBody = await req.json();
   const selection = buildTimeReportSelection(requestBody.data);
@@ -386,35 +449,17 @@ export const POST = async (req: NextRequest) => {
       regularUserInternalId = Number(regularUserRow.id);
     }
 
-    // Fetch timetracking data with proper relations. We apply date/site/user
-    // filters at the database layer so we don't rely on PostgREST returning
-    // the full table (default limit is 1000 rows, which previously cut off
-    // the oldest months when the dataset was large).
-    let query = supabase
-      .from("Timetracking")
-      .select(`
-        *,
-        task:task_id(*, site_id),
-        user:employee_id(id, given_name, family_name, email),
-        roles:_RolesToTimetracking(role:Roles(id, name))
-      `)
-      .gte("created_at", from.toISOString())
-      .lte("created_at", to.toISOString())
-      .order("created_at", { ascending: false });
-
-    if (siteId) {
-      query = query.eq("site_id", siteId);
-    }
-
-    if (isRegularUser && regularUserInternalId !== null) {
-      query = query.eq("employee_id", regularUserInternalId);
-    } else if (!isRegularUser && selectedUserIds.length > 0) {
-      query = query.in("employee_id", selectedUserIds);
-    }
-
-    const { data: timeTrackingsData, error: timeTrackingError } = await query;
-
-    if (timeTrackingError) throw timeTrackingError;
+    // Fetch timetracking data with proper relations. PostgREST caps SELECT
+    // results at 1000 rows by default, so the all-collaborators export must
+    // page through the full requested period instead of relying on one query.
+    const timeTrackingsData = await fetchTimeReportTimetrackings({
+      supabase,
+      from,
+      to,
+      siteId,
+      employeeId: isRegularUser ? regularUserInternalId : null,
+      selectedUserIds: !isRegularUser ? selectedUserIds : [],
+    });
 
     // Defensive in-memory filter: keeps the previous semantics for regular
     // users (entries must have a resolvable user) and is a safety net in case
