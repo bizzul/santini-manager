@@ -31,6 +31,7 @@ export async function updateSession(request: NextRequest) {
     "/",
     "/home",
     "/login",
+    "/quick-login",
     "/setup-organization",
     "/unauthorized",
     "/favicon.ico",
@@ -42,6 +43,7 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isPublic = publicRoutes.some((route) => pathname === route) ||
+    pathname.startsWith("/quick-login") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/static") ||
     pathname.startsWith("/api/auth") ||

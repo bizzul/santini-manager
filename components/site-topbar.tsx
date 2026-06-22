@@ -2,7 +2,10 @@
 
 import { useMemo } from "react";
 import { usePathname } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { useLogout } from "@/hooks/use-logout";
 
 const ROUTE_LABELS: Array<[string, string]> = [
   ["/dashboard", "Dashboard"],
@@ -23,6 +26,7 @@ const ROUTE_LABELS: Array<[string, string]> = [
 
 export function SiteTopbar({ siteName }: { siteName: string }) {
   const pathname = usePathname();
+  const { logout } = useLogout();
   const sectionLabel = useMemo(() => {
     const match = ROUTE_LABELS.find(([segment]) => pathname.includes(segment));
     return match?.[1] || "Spazio operativo";
@@ -38,8 +42,20 @@ export function SiteTopbar({ siteName }: { siteName: string }) {
           <span className="truncate text-muted-foreground">{siteName}</span>
         </div>
       </div>
-      <div className="hidden text-xs font-medium text-muted-foreground md:block">
-        Full Data Manager
+      <div className="flex items-center gap-3">
+        <span className="hidden text-xs font-medium text-muted-foreground md:block">
+          Full Data Manager
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={logout}
+          aria-label="Esci"
+          className="h-8 gap-2 px-2 text-muted-foreground hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+          <span className="hidden sm:inline">Logout</span>
+        </Button>
       </div>
     </header>
   );

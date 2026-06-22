@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { nukeCookies } from "@/utils/nukeCookie";
 
@@ -18,6 +19,11 @@ export async function signIn(formData: FormData) {
   if (error) {
     return { error: error.message || "Invalid credentials" };
   }
+
+  // A normal login is not a kiosk session: clear any stale quick-login marker
+  // so logout returns to /login (not to a previous site's quick-login screen).
+  const cookieStore = await cookies();
+  cookieStore.delete("ql-domain");
 
   // After successful login, always redirect to sites/select
   // The page will fetch the sites with the now-established session

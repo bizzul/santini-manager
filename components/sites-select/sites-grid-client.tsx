@@ -316,6 +316,26 @@ export function SitesGridClient({
     setDropTarget(null);
   };
 
+  // Regular users only see their own space(s): a simple centered list, without
+  // the category columns (those are a superadmin management tool).
+  if (!canManageGroups) {
+    return (
+      <div className="flex flex-wrap justify-center gap-6">
+        {sites.map((site) => (
+          <div key={site.id} className="w-full max-w-sm">
+            <SiteCard
+              site={site}
+              canDrag={false}
+              isDragging={false}
+              onDragStart={() => {}}
+              onDragEnd={() => {}}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-4">
       {SITE_GROUP_DEFINITIONS.map((group) => (
