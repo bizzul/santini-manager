@@ -14,7 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Calendar, CalendarDays, Plus, TableProperties } from "lucide-react";
+import { Calendar, CalendarDays, Clock, Plus, TableProperties } from "lucide-react";
+import Link from "next/link";
 import { MonthlyCalendarView } from "@/components/calendar/MonthlyCalendarView";
 import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import { buildTimetrackingCalendarItems } from "@/components/calendar/calendar-utils";
@@ -38,6 +39,7 @@ interface DataWrapperProps {
   internalActivities?: InternalActivity[];
   mode?: "personal" | "admin";
   currentUserId?: string;
+  currentEmployeeId?: string;
 }
 
 const DataWrapper = ({
@@ -49,6 +51,7 @@ const DataWrapper = ({
   internalActivities = [],
   mode = "admin",
   currentUserId,
+  currentEmployeeId,
 }: DataWrapperProps) => {
   const [activeView, setActiveView] = useState<"week" | "month" | "table">("table");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -89,6 +92,15 @@ const DataWrapper = ({
               Tabella
             </TabsTrigger>
           </TabsList>
+
+          {mode === "personal" && (
+            <Button asChild className="gap-2 md:ml-auto">
+              <Link href={`/sites/${domain}/timetracking/create`}>
+                <Clock className="h-4 w-4" />
+                Registra ore
+              </Link>
+            </Button>
+          )}
 
           {mode === "admin" && (
             <div className="flex flex-col items-start gap-1 md:items-end">
@@ -164,6 +176,7 @@ const DataWrapper = ({
             internalActivities={internalActivities}
             mode={mode}
             readOnly={!isEditableTable}
+            currentEmployeeId={currentEmployeeId}
           />
         </TabsContent>
       </Tabs>

@@ -6,9 +6,51 @@ import { validation } from "@/validation/timeTracking/createManual";
 import { getSiteData } from "@/lib/fetchers";
 import { z } from "zod";
 import { parseLocalDate } from "@/lib/utils";
+import { getUserContext } from "@/lib/auth-utils";
 
 export async function createItem(props: z.input<typeof validation>, domain?: string) {
   const result = validation.safeParse(props);
+
+  // Enforce ownership: regular users can only create their own hours.
+  const userContext = await getUserContext();
+  if (!userContext?.user) {
+    return { message: "Creazione elemento fallita!", error: "Non autenticato." };
+  }
+
+  const metadataRoleRaw = userContext.user?.app_metadata?.role;
+  const metadataRole =
+    typeof metadataRoleRaw === "string"
+      ? metadataRoleRaw.toLowerCase()
+      : undefined;
+  const effectiveRole =
+    userContext.role === "user" &&
+    (metadataRole === "admin" || metadataRole === "superadmin")
+      ? metadataRole
+      : userContext.role;
+  const isPrivileged = effectiveRole === "admin" || effectiveRole === "superadmin";
+
+  if (!isPrivileged) {
+    const authClient = await createClient();
+    const { data: ownRecord } = await authClient
+      .from("User")
+      .select("id")
+      .eq("authId", userContext.user.id)
+      .single();
+
+    if (!ownRecord) {
+      return {
+        message: "Creazione elemento fallita!",
+        error: "Utente non trovato.",
+      };
+    }
+
+    if (String(props.userId) !== String(ownRecord.id)) {
+      return {
+        message: "Operazione non consentita.",
+        error: "Puoi inserire solo le tue ore.",
+      };
+    }
+  }
 
   let siteId = null;
 

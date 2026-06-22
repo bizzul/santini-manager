@@ -6,6 +6,7 @@ import { LogOut } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-logout";
+import { useUserContext } from "@/hooks/use-user-context";
 
 const ROUTE_LABELS: Array<[string, string]> = [
   ["/dashboard", "Dashboard"],
@@ -27,10 +28,21 @@ const ROUTE_LABELS: Array<[string, string]> = [
 export function SiteTopbar({ siteName }: { siteName: string }) {
   const pathname = usePathname();
   const { logout } = useLogout();
+  const { userContext } = useUserContext();
   const sectionLabel = useMemo(() => {
     const match = ROUTE_LABELS.find(([segment]) => pathname.includes(segment));
     return match?.[1] || "Spazio operativo";
   }, [pathname]);
+
+  const displayName = useMemo(() => {
+    const profile = userContext?.user?.user_metadata;
+    return (
+      profile?.full_name ||
+      (profile?.name && profile?.last_name
+        ? `${profile.name} ${profile.last_name}`
+        : userContext?.user?.email || "")
+    );
+  }, [userContext]);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-600/70 bg-[hsl(var(--page)/0.96)] px-4 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)]">
@@ -40,6 +52,12 @@ export function SiteTopbar({ siteName }: { siteName: string }) {
           <span className="truncate font-semibold text-foreground">{sectionLabel}</span>
           <span className="text-muted-foreground">/</span>
           <span className="truncate text-muted-foreground">{siteName}</span>
+          {displayName && (
+            <>
+              <span className="text-muted-foreground">·</span>
+              <span className="truncate font-medium text-foreground">{displayName}</span>
+            </>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-3">

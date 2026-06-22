@@ -90,6 +90,7 @@ interface DataTableProps<TData, TValue> {
   internalActivities?: InternalActivity[];
   mode?: "personal" | "admin";
   readOnly?: boolean;
+  currentEmployeeId?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -102,6 +103,7 @@ export function DataTable<TData, TValue>({
   internalActivities = [],
   mode = "admin",
   readOnly = false,
+  currentEmployeeId,
 }: DataTableProps<TData, TValue>) {
   const { toast } = useToast();
   // Sorting State
@@ -498,13 +500,23 @@ export function DataTable<TData, TValue>({
               ))}
             </TableHeader>
             <TableBody>
-              {!readOnly && mode === "admin" && (
+              {mode === "admin" && !readOnly && (
                 <QuickCreateTimetrackingRow
                   colSpan={columns.length}
                   users={users}
                   tasks={tasks}
                   domain={domain}
                   internalActivities={internalActivities}
+                />
+              )}
+              {mode === "personal" && currentEmployeeId && (
+                <QuickCreateTimetrackingRow
+                  colSpan={columns.length}
+                  users={users}
+                  tasks={tasks}
+                  domain={domain}
+                  internalActivities={internalActivities}
+                  lockedUserId={currentEmployeeId}
                 />
               )}
               {table.getRowModel().rows?.length ? (
@@ -564,22 +576,25 @@ function QuickCreateTimetrackingRow({
   tasks,
   domain,
   internalActivities,
+  lockedUserId,
 }: {
   colSpan: number;
   users: any[];
   tasks: any[];
   domain?: string;
   internalActivities: InternalActivity[];
+  lockedUserId?: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const isPersonal = Boolean(lockedUserId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingUserRoles, setLoadingUserRoles] = useState(false);
   const [userAssignedRoles, setUserAssignedRoles] = useState<
     Array<{ id: string; name: string }>
   >([]);
   const [form, setForm] = useState({
-    userId: "",
+    userId: lockedUserId || "",
     roleId: "",
     activityType: "project" as "project" | "internal",
     taskId: "",
@@ -765,7 +780,9 @@ function QuickCreateTimetrackingRow({
               <Plus className="h-4 w-4 text-primary" />
               <p className="text-sm font-semibold leading-none">Nuovo report ore</p>
               <span className="text-xs text-muted-foreground">
-                Inserimento rapido per amministratori
+                {isPersonal
+                  ? "Inserisci le tue ore"
+                  : "Inserimento rapido per amministratori"}
               </span>
             </div>
 
@@ -830,30 +847,37 @@ function QuickCreateTimetrackingRow({
             </div>
           </div>
 
-          <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
-            <Select
-              value={form.userId}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, userId: value }))
-              }
-              disabled={isSubmitting}
-            >
-              <SelectTrigger className={inputCls} aria-label="Collaboratore">
-                <SelectValue placeholder="Collaboratore" />
-              </SelectTrigger>
-              <SelectContent>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={String(user.id)}>
-                    <span className="flex items-center gap-2">
-                      <UserInitialBadge user={user} />
-                      <span>
-                        {(user.given_name || "") + " " + (user.family_name || "")}
+          <div
+            className={cn(
+              "grid gap-2 grid-cols-1",
+              isPersonal ? "sm:grid-cols-2" : "sm:grid-cols-3"
+            )}
+          >
+            {!isPersonal && (
+              <Select
+                value={form.userId}
+                onValueChange={(value) =>
+                  setForm((current) => ({ ...current, userId: value }))
+                }
+                disabled={isSubmitting}
+              >
+                <SelectTrigger className={inputCls} aria-label="Collaboratore">
+                  <SelectValue placeholder="Collaboratore" />
+                </SelectTrigger>
+                <SelectContent>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={String(user.id)}>
+                      <span className="flex items-center gap-2">
+                        <UserInitialBadge user={user} />
+                        <span>
+                          {(user.given_name || "") + " " + (user.family_name || "")}
+                        </span>
                       </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             {form.activityType === "project" ? (
               <Select

@@ -64,6 +64,11 @@ export default async function Page({
           internalActivities={data.internalActivities}
           mode={isRegularUser ? "personal" : "admin"}
           currentUserId={userContext.user.id}
+          currentEmployeeId={
+            currentUserRecord?.id != null
+              ? String(currentUserRecord.id)
+              : undefined
+          }
         />
       </PageContent>
     </PageLayout>
