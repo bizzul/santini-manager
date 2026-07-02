@@ -21,7 +21,9 @@ import {
   Users,
   Box,
   Tag,
+  Share2,
 } from "lucide-react";
+import { useT } from "@/components/i18n/i18n-provider";
 
 export default function DashboardTabs({
   initialVerticalProfile,
@@ -29,6 +31,7 @@ export default function DashboardTabs({
   initialVerticalProfile?: SiteVerticalProfile;
 }) {
   const pathname = usePathname();
+  const t = useT();
 
   // Extract domain and base path from pathname
   const { domain, basePath } = useMemo(() => {
@@ -72,12 +75,13 @@ export default function DashboardTabs({
         { name: "Interni", href: "/interni", icon: Users },
         { name: verticalProfile.dashboardTabs.inventario, href: "/inventario", icon: Box },
         { name: verticalProfile.dashboardTabs.prodotti, href: "/prodotti", icon: Tag },
+        { name: t("dashboard.integrationTab"), href: "/integration", icon: Share2 },
       ].filter(Boolean) as Array<{
         name: string;
         href: string;
         icon: typeof LayoutDashboard;
       }>,
-    [verticalProfile, showForecastTab]
+    [verticalProfile, showForecastTab, t]
   );
 
   return (

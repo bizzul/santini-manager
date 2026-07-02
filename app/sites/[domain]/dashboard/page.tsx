@@ -6,6 +6,7 @@ import {
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
+import { getSiteHighlightCountries } from "@/lib/map-highlight.server";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import KPICards from "@/components/dashboard/KPICards";
 import ActiveProjectsMapCard from "@/components/dashboard/ActiveProjectsMapCard";
@@ -69,6 +70,7 @@ export default async function SiteDashboardPage({
 
   // Fetch real dashboard data
   const dashboardData = await fetchDashboardData(siteContext.siteId);
+  const highlightCountries = await getSiteHighlightCountries(siteContext.siteId);
 
   return (
     <PageLayout>
@@ -84,6 +86,7 @@ export default async function SiteDashboardPage({
             mapHeightClassName="h-[500px]"
             domain={domain}
             projects={dashboardData.activeProjectLocations}
+            highlightCountries={highlightCountries}
           />
           <div className="grid gap-4 md:grid-cols-2">
             <PipelineChart data={dashboardData} />

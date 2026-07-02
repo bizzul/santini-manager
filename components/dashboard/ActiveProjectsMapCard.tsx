@@ -6,6 +6,12 @@ import { Check, ChevronDown, Maximize2, Minimize2, X } from "lucide-react";
 import type { DashboardProjectLocation } from "@/lib/server-data";
 import { useActiveProjectMap } from "@/hooks/use-active-project-map";
 import { cn } from "@/lib/utils";
+import CountryDashboardOverlay from "@/components/dashboard/CountryDashboardOverlay";
+import {
+  COUNTRY_CAPITALS,
+  type SelectedCountry,
+} from "@/lib/map-capitals";
+import { useSearchParams } from "next/navigation";
 import {
   Popover,
   PopoverContent,
@@ -36,6 +42,8 @@ interface ActiveProjectsMapCardProps {
   domain: string;
   className?: string;
   mapHeightClassName?: string;
+  /** ISO alpha-3 codes of the countries to highlight on the map. */
+  highlightCountries?: string[];
 }
 
 interface CategoryOption {
@@ -49,8 +57,31 @@ export default function ActiveProjectsMapCard({
   domain,
   className,
   mapHeightClassName = "h-[520px]",
+  highlightCountries,
 }: ActiveProjectsMapCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<SelectedCountry | null>(
+    null,
+  );
+  const searchParams = useSearchParams();
+
+  // Deep-link: open the country overlay when ?country=ISO2 is present
+  // (used by the dashboard-integration graph nodes).
+  useEffect(() => {
+    const iso2 = (searchParams.get("country") || "").toUpperCase();
+    if (!iso2) return;
+    const entry = Object.entries(COUNTRY_CAPITALS).find(
+      ([, info]) => info.iso2 === iso2,
+    );
+    if (!entry) return;
+    const [iso3, info] = entry;
+    setSelectedCountry({
+      iso3,
+      iso2,
+      name: info.name,
+      capital: info.capital,
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isExpanded) return;
@@ -292,6 +323,8 @@ export default function ActiveProjectsMapCard({
           domain={domain}
           doubleClickZoom={isExpanded}
           onDoubleClick={!isExpanded ? () => setIsExpanded(true) : undefined}
+          highlightCountries={highlightCountries}
+          onCountrySelect={setSelectedCountry}
         />
 
         {visibleProjects.length === 0 && (
@@ -326,6 +359,13 @@ export default function ActiveProjectsMapCard({
           {filteredUnresolvedCount} progetto/i esclusi: indirizzo non valido o non geocodificabile.
         </p>
       )}
+
+      <CountryDashboardOverlay
+        country={selectedCountry}
+        domain={domain}
+        projects={visibleProjects}
+        onClose={() => setSelectedCountry(null)}
+      />
     </div>
   );
 }

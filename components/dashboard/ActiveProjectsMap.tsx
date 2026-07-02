@@ -2,36 +2,62 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NormalizedProjectLocation } from "@/utils/project-location-map";
+import {
+  DEFAULT_HIGHLIGHT_COUNTRIES,
+  HIGHLIGHT_BORDER_COLOR,
+  HIGHLIGHT_FALLBACK_CENTROIDS,
+  HIGHLIGHT_FILL_COLOR,
+  HIGHLIGHT_FILL_OPACITY,
+  WORLD_COUNTRIES_GEOJSON_URL,
+} from "@/lib/map-highlight";
+import { COUNTRY_CAPITALS, type SelectedCountry } from "@/lib/map-capitals";
+import { useLocale } from "@/components/i18n/i18n-provider";
 
 /** OpenStreetMap standard tile layer (usage policy: https://operations.osmfoundation.org/policies/tiles/) */
 const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-/** Confine semplificato della Svizzera (Polygon GeoJSON, ~6KB) usato per
- *  evidenziare il paese e sfumare i territori confinanti. */
-const SWISS_GEOJSON_URL = "/geo/switzerland.geojson";
-/** Colore del bordo che evidenzia la Svizzera. */
-const HIGHLIGHT_BORDER_COLOR = "#38bdf8";
-/** Velo applicato fuori dal confine svizzero (paesi confinanti). */
-const FADE_VEIL_COLOR = "#0f172a";
-const FADE_VEIL_OPACITY = 0.42;
-
-/** Bounding box "mondo" entro i limiti della proiezione Web Mercator. */
-const WORLD_RING: [number, number][] = [
-  [-85, -180],
-  [85, -180],
-  [85, 180],
-  [-85, 180],
-];
-
-type GeoJsonPolygonFeature = {
-  geometry: { type: "Polygon"; coordinates: number[][][] };
+type CountryProperties = {
+  ADM0_A3?: string;
+  ISO_A3?: string;
+  ISO_A3_EH?: string;
+  ISO_A2?: string;
+  [key: string]: unknown;
 };
 
-/** Converte un anello GeoJSON ([lng, lat]) in coordinate Leaflet ([lat, lng]). */
-function toLatLngRing(ring: number[][]): [number, number][] {
-  return ring.map(([lng, lat]) => [lat, lng] as [number, number]);
+/** Localized country name from Natural Earth props (NAME_DE, NAME_IT, ...). */
+function featureLocalizedName(
+  props: CountryProperties,
+  locale: string,
+): string | null {
+  const keys = [`NAME_${locale.toUpperCase()}`, "NAME_EN", "NAME"];
+  for (const key of keys) {
+    const value = props[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return null;
+}
+
+type CountryFeatureCollection = {
+  type: "FeatureCollection";
+  features: Array<{
+    type: "Feature";
+    properties: CountryProperties;
+    geometry: unknown;
+  }>;
+};
+
+/** Codice ISO alpha-3 robusto (in Natural Earth Francia/Norvegia hanno
+ *  ISO_A3 = "-99", ma ADM0_A3 e sempre valorizzato). */
+function featureIso(props: CountryProperties): string | null {
+  const candidates = [props.ADM0_A3, props.ISO_A3_EH, props.ISO_A3];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.length === 3 && c !== "-99") {
+      return c.toUpperCase();
+    }
+  }
+  return null;
 }
 
 interface ActiveProjectsMapProps {
@@ -39,6 +65,10 @@ interface ActiveProjectsMapProps {
   domain: string;
   doubleClickZoom?: boolean;
   onDoubleClick?: () => void;
+  /** ISO alpha-3 codes of the countries to highlight (default: Switzerland). */
+  highlightCountries?: string[];
+  /** Called when a capital "Dashboard point" is clicked. */
+  onCountrySelect?: (country: SelectedCountry) => void;
 }
 
 function escapeHtml(text: string): string {
@@ -112,13 +142,30 @@ export default function ActiveProjectsMap({
   domain,
   doubleClickZoom = true,
   onDoubleClick,
+  highlightCountries = DEFAULT_HIGHLIGHT_COUNTRIES,
+  onCountrySelect,
 }: ActiveProjectsMapProps) {
+  const locale = useLocale();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const highlightLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const capitalsLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const highlightBoundsRef = useRef<import("leaflet").LatLngBounds | null>(null);
   const hoverTooltipRef = useRef<import("leaflet").Tooltip | null>(null);
+  const pointsRef = useRef<[number, number][]>([]);
+  const onCountrySelectRef = useRef(onCountrySelect);
   const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    onCountrySelectRef.current = onCountrySelect;
+  }, [onCountrySelect]);
+
+  // Stable primitive so the highlight effect only re-runs on real changes.
+  const highlightKey = useMemo(
+    () => [...highlightCountries].map((c) => c.toUpperCase()).sort().join(","),
+    [highlightCountries],
+  );
 
   const geolocatedProjects = useMemo(
     () => projects.filter((project) => project.coordinates),
@@ -282,7 +329,19 @@ export default function ActiveProjectsMap({
       marker.addTo(layer);
     });
 
-    if (points.length > 0) {
+    pointsRef.current = points;
+
+    const highlightBounds = highlightBoundsRef.current;
+    if (highlightBounds && highlightBounds.isValid()) {
+      // Fit to the highlighted countries (worldwide for multi-country sites),
+      // extended with any project markers so they stay in view.
+      const bounds = L.latLngBounds(
+        highlightBounds.getSouthWest(),
+        highlightBounds.getNorthEast(),
+      );
+      points.forEach((p) => bounds.extend(p));
+      map.fitBounds(bounds, { padding: [24, 24], maxZoom: 12, animate: false });
+    } else if (points.length > 0) {
       const bounds = L.latLngBounds(points);
       map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14, animate: false });
     } else {
@@ -324,47 +383,15 @@ export default function ActiveProjectsMap({
 
       mapRef.current = map;
 
-      // Evidenziazione Svizzera: velo sui paesi confinanti + bordo del paese.
-      // Aggiunto prima del layer dei marker così i pin restano cliccabili sopra.
+      // Layer per l'evidenziazione delle nazioni: popolato da un effetto
+      // dedicato in base a `highlightCountries`. Aggiunto prima del layer dei
+      // marker così i pin restano cliccabili sopra.
       highlightLayerRef.current = L.layerGroup().addTo(map);
-      void (async () => {
-        try {
-          const res = await fetch(SWISS_GEOJSON_URL);
-          if (!res.ok) return;
-          const feature = (await res.json()) as GeoJsonPolygonFeature;
-          if (cancelled || !mapRef.current || !highlightLayerRef.current) return;
-
-          const swissRings = feature.geometry.coordinates.map(toLatLngRing);
-
-          // Maschera: poligono "mondo" con la Svizzera ritagliata (fill-rule
-          // even-odd), così l'interno del paese resta limpido.
-          const mask = L.polygon([WORLD_RING, ...swissRings], {
-            stroke: false,
-            fillColor: FADE_VEIL_COLOR,
-            fillOpacity: FADE_VEIL_OPACITY,
-            fillRule: "evenodd",
-            interactive: false,
-            className: "dashboard-map-fade-mask",
-          });
-
-          // Bordo che evidenzia il confine svizzero.
-          const border = L.polygon(swissRings, {
-            color: HIGHLIGHT_BORDER_COLOR,
-            weight: 2,
-            opacity: 0.9,
-            fill: false,
-            interactive: false,
-            className: "dashboard-map-highlight-border",
-          });
-
-          highlightLayerRef.current.addLayer(mask);
-          highlightLayerRef.current.addLayer(border);
-        } catch {
-          // Confine non disponibile: la mappa resta utilizzabile senza evidenziazione.
-        }
-      })();
 
       markersLayerRef.current = L.layerGroup().addTo(map);
+
+      // Capital "Dashboard points" sit on top so they stay clickable.
+      capitalsLayerRef.current = L.layerGroup().addTo(map);
 
       const invalidate = () => {
         map.invalidateSize({ pan: false, debounceMoveend: true });
@@ -395,6 +422,7 @@ export default function ActiveProjectsMap({
         mapRef.current = null;
         markersLayerRef.current = null;
         highlightLayerRef.current = null;
+        capitalsLayerRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,6 +434,152 @@ export default function ActiveProjectsMap({
     }
     void applyMarkers();
   }, [applyMarkers, mapReady]);
+
+  // Draw the highlighted countries (fill + border) and fit the view to them.
+  useEffect(() => {
+    if (!mapReady) {
+      return;
+    }
+    let cancelled = false;
+
+    void (async () => {
+      const map = mapRef.current;
+      const layer = highlightLayerRef.current;
+      if (!map || !layer) return;
+
+      const L = await import("leaflet");
+      const codes = new Set(highlightCountries.map((c) => c.toUpperCase()));
+
+      layer.clearLayers();
+      capitalsLayerRef.current?.clearLayers();
+      highlightBoundsRef.current = null;
+
+      try {
+        const res = await fetch(WORLD_COUNTRIES_GEOJSON_URL);
+        if (!res.ok || cancelled || !highlightLayerRef.current) return;
+        const fc = (await res.json()) as CountryFeatureCollection;
+        if (cancelled || !highlightLayerRef.current) return;
+
+        const matched = fc.features.filter((f) => {
+          const iso = featureIso(f.properties);
+          return iso ? codes.has(iso) : false;
+        });
+
+        // Feature per ISO3 per ricavare nome localizzato + ISO2 delle capitali.
+        const featureByIso = new Map<string, CountryFeatureCollection["features"][number]>();
+        matched.forEach((f) => {
+          const iso = featureIso(f.properties);
+          if (iso) featureByIso.set(iso, f);
+        });
+
+        const bounds = L.latLngBounds([]);
+
+        if (matched.length > 0) {
+          const gj = L.geoJSON(
+            { type: "FeatureCollection", features: matched } as unknown as import("geojson").FeatureCollection,
+            {
+              style: {
+                color: HIGHLIGHT_BORDER_COLOR,
+                weight: 1.5,
+                opacity: 0.9,
+                fillColor: HIGHLIGHT_FILL_COLOR,
+                fillOpacity: HIGHLIGHT_FILL_OPACITY,
+                interactive: false,
+              },
+            },
+          );
+          gj.addTo(highlightLayerRef.current);
+          const gjBounds = gj.getBounds();
+          if (gjBounds.isValid()) bounds.extend(gjBounds);
+        }
+
+        // Fallback: nazioni assenti dal dataset 110m (es. Singapore) come dot.
+        const foundIso = new Set(
+          matched
+            .map((f) => featureIso(f.properties))
+            .filter((v): v is string => Boolean(v)),
+        );
+        codes.forEach((code) => {
+          if (foundIso.has(code)) return;
+          const centroid = HIGHLIGHT_FALLBACK_CENTROIDS[code];
+          if (!centroid || !highlightLayerRef.current) return;
+          const [lng, lat] = centroid;
+          L.circleMarker([lat, lng], {
+            radius: 6,
+            color: HIGHLIGHT_BORDER_COLOR,
+            weight: 1.5,
+            opacity: 0.9,
+            fillColor: HIGHLIGHT_FILL_COLOR,
+            fillOpacity: Math.min(1, HIGHLIGHT_FILL_OPACITY + 0.3),
+            interactive: false,
+          }).addTo(highlightLayerRef.current);
+          bounds.extend([lat, lng]);
+        });
+
+        // "Dashboard point" cliccabile sulla capitale di ogni paese evidenziato.
+        const capitalsLayer = capitalsLayerRef.current;
+        if (capitalsLayer) {
+          codes.forEach((iso3) => {
+            const cap = COUNTRY_CAPITALS[iso3];
+            if (!cap) return;
+            const feature = featureByIso.get(iso3);
+            const name =
+              (feature && featureLocalizedName(feature.properties, locale)) ||
+              cap.name;
+            const iso2Raw = feature?.properties.ISO_A2;
+            const iso2 =
+              typeof iso2Raw === "string" && iso2Raw.length === 2
+                ? iso2Raw.toUpperCase()
+                : cap.iso2;
+
+            // Country flag as the clickable "Dashboard point".
+            const icon = L.divIcon({
+              className: "dashboard-map-capital",
+              html: `
+                <span style="display:block;width:34px;height:23px;border-radius:4px;border:2px solid #ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.45);overflow:hidden;cursor:pointer;background:${HIGHLIGHT_BORDER_COLOR};">
+                  <img src="https://flagcdn.com/w40/${iso2.toLowerCase()}.png" alt="${name}" style="display:block;width:100%;height:100%;object-fit:cover;" />
+                </span>
+              `,
+              iconSize: [34, 23],
+              iconAnchor: [17, 12],
+            });
+
+            const marker = L.marker([cap.lat, cap.lng], { icon, title: name });
+            marker.bindTooltip(name, { direction: "top", offset: [0, -12] });
+            marker.on("click", () => {
+              onCountrySelectRef.current?.({
+                iso3,
+                iso2,
+                name,
+                capital: cap.capital,
+              });
+            });
+            marker.addTo(capitalsLayer);
+            bounds.extend([cap.lat, cap.lng]);
+          });
+        }
+
+        highlightBoundsRef.current = bounds.isValid() ? bounds : null;
+
+        // Riadatta la vista alle nazioni evidenziate + eventuali marker.
+        if (highlightBoundsRef.current) {
+          const view = L.latLngBounds(
+            highlightBoundsRef.current.getSouthWest(),
+            highlightBoundsRef.current.getNorthEast(),
+          );
+          pointsRef.current.forEach((p) => view.extend(p));
+          map.fitBounds(view, { padding: [24, 24], maxZoom: 12, animate: false });
+        }
+      } catch {
+        // Dataset non disponibile: la mappa resta utilizzabile senza evidenziazione.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, highlightKey, locale]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -438,7 +612,7 @@ export default function ActiveProjectsMap({
       <iframe
         title="OpenStreetMap (fallback)"
         className="pointer-events-none absolute inset-0 z-0 h-full w-full border-0 opacity-25"
-        src="https://www.openstreetmap.org/export/embed.html?bbox=8.4,45.3,9.8,45.5&layer=mapnik"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=-170,-55,190,75&layer=mapnik"
         loading="lazy"
         referrerPolicy="no-referrer-when-downgrade"
       />

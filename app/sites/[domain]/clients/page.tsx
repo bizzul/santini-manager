@@ -18,10 +18,13 @@ import { Users } from "lucide-react";
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ domain: string }>;
+  searchParams?: Promise<{ country?: string }>;
 }) {
   const { domain } = await params;
+  const { country } = (await searchParams) ?? {};
 
   // Authentication
   const userContext = await getUserContext();
@@ -35,10 +38,19 @@ export default async function Page({
   const { t } = await getServerT(siteId);
 
   // Fetch data
-  const [clients, rowInsights] = await Promise.all([
+  const [allClients, rowInsights] = await Promise.all([
     fetchClients(siteId),
     fetchClientRowInsights(siteId),
   ]);
+
+  // Optional country filter (used by the dashboard map capital shortcuts).
+  const clients = country
+    ? allClients.filter(
+        (client: { countryCode?: string | null }) =>
+          String(client.countryCode || "").toUpperCase() ===
+          country.toUpperCase(),
+      )
+    : allClients;
 
   return (
     <PageLayout>

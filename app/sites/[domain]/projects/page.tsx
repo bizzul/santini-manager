@@ -24,10 +24,13 @@ export type Data = {
 
 export default async function Page({
   params,
+  searchParams,
 }: {
   params: Promise<{ domain: string }>;
+  searchParams?: Promise<{ country?: string }>;
 }) {
   const { domain } = await params;
+  const { country } = (await searchParams) ?? {};
 
   // Authentication
   const userContext = await getUserContext();
@@ -40,7 +43,26 @@ export default async function Page({
   const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch all project data
-  const data = await fetchProjectsData(siteId);
+  const rawData = await fetchProjectsData(siteId);
+
+  // Optional country filter (dashboard map / integration graph shortcuts):
+  // keep only tasks whose client is located in the given country.
+  const data = country
+    ? (() => {
+        const iso2 = country.toUpperCase();
+        const clientIdsInCountry = new Set(
+          (rawData.clients as Array<{ id: number; countryCode?: string | null }>)
+            .filter((c) => String(c.countryCode || "").toUpperCase() === iso2)
+            .map((c) => c.id),
+        );
+        return {
+          ...rawData,
+          tasks: rawData.tasks.filter((task: { clientId?: number | null }) =>
+            task.clientId ? clientIdsInCountry.has(task.clientId) : false,
+          ),
+        };
+      })()
+    : rawData;
 
   return (
     <PageLayout>
