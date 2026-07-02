@@ -7,32 +7,37 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-logout";
 import { useUserContext } from "@/hooks/use-user-context";
+import { useT } from "@/components/i18n/i18n-provider";
 
-const ROUTE_LABELS: Array<[string, string]> = [
-  ["/dashboard", "Dashboard"],
-  ["/kanban", "Kanban"],
-  ["/calendar", "Calendari"],
-  ["/attendance", "Presenze"],
-  ["/clients", "Clienti"],
-  ["/suppliers", "Fornitori"],
-  ["/inventory", "Magazzino"],
-  ["/factory", "Fabbrica"],
-  ["/products", "Prodotti"],
-  ["/projects", "Progetti"],
-  ["/reports", "Reports"],
-  ["/errortracking", "Errori"],
-  ["/timetracking", "Ore"],
-  ["/command-deck", "Command Deck"],
+// Maps a path segment to a translation key in the `nav` namespace.
+const ROUTE_LABEL_KEYS: Array<[string, string]> = [
+  ["/dashboard", "nav.dashboard"],
+  ["/kanban", "nav.kanban"],
+  ["/calendar", "nav.calendars"],
+  ["/attendance", "nav.attendance"],
+  ["/clients", "nav.clients"],
+  ["/suppliers", "nav.suppliers"],
+  ["/inventory", "nav.warehouse"],
+  ["/factory", "nav.factory"],
+  ["/products", "nav.products"],
+  ["/projects", "nav.projects"],
+  ["/reports", "nav.reports"],
+  ["/errortracking", "nav.errors"],
+  ["/timetracking", "nav.hours"],
+  ["/command-deck", "nav.home"],
 ];
 
 export function SiteTopbar({ siteName }: { siteName: string }) {
   const pathname = usePathname();
   const { logout } = useLogout();
   const { userContext } = useUserContext();
+  const t = useT();
   const sectionLabel = useMemo(() => {
-    const match = ROUTE_LABELS.find(([segment]) => pathname.includes(segment));
-    return match?.[1] || "Spazio operativo";
-  }, [pathname]);
+    const match = ROUTE_LABEL_KEYS.find(([segment]) =>
+      pathname.includes(segment),
+    );
+    return match ? t(match[1]) : t("topbar.fallbackSection");
+  }, [pathname, t]);
 
   const displayName = useMemo(() => {
     const profile = userContext?.user?.user_metadata;
@@ -62,17 +67,17 @@ export function SiteTopbar({ siteName }: { siteName: string }) {
       </div>
       <div className="flex items-center gap-3">
         <span className="hidden text-xs font-medium text-muted-foreground md:block">
-          Full Data Manager
+          {t("topbar.brand")}
         </span>
         <Button
           variant="ghost"
           size="sm"
           onClick={logout}
-          aria-label="Esci"
+          aria-label={t("topbar.exit")}
           className="h-8 gap-2 px-2 text-muted-foreground hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
-          <span className="hidden sm:inline">Logout</span>
+          <span className="hidden sm:inline">{t("topbar.logout")}</span>
         </Button>
       </div>
     </header>

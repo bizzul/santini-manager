@@ -39,6 +39,8 @@ import { useSiteModules } from "@/hooks/use-site-modules";
 import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
+import { useT } from "@/components/i18n/i18n-provider";
+import type { Translator } from "@/lib/i18n";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Settings } from "lucide-react";
 import {
@@ -176,6 +178,8 @@ async function fetchKanbanCategories(domain: string) {
 }
 
 type MenuItem = {
+  /** Stable identity for grouping/collapse, independent from the (translated) label. */
+  key?: string;
   label: string;
   icon: keyof typeof iconMap;
   href?: string;
@@ -201,28 +205,30 @@ const getMenuItems = (
   pathname: string,
   enabledModules: string[] = [],
   basePath: string = "",
-  labels?: {
-    kanban?: string;
-    projects?: string;
-    reports?: string;
+  t: Translator,
+  navLabels: {
+    kanban: string;
+    projects: string;
+    reports: string;
   }
 ): MenuItem[] => {
   const allSiteItems: MenuItem[] = [
     {
-      label: "Dashboard",
+      key: "dashboard",
+      label: t("nav.dashboard"),
       icon: "faWaveSquare",
       alert: true,
       moduleName: "dashboard",
       items: [
         {
-          label: "Overview",
+          label: t("nav.overview"),
           icon: "faWaveSquare",
           href: `${basePath}/dashboard`,
           alert: false,
           moduleName: "dashboard",
         },
         {
-          label: "Forecast",
+          label: t("nav.forecast"),
           icon: "faSquarePollVertical",
           href: `${basePath}/dashboard/forecast`,
           alert: false,
@@ -231,20 +237,21 @@ const getMenuItems = (
       ],
     },
     {
-      label: labels?.kanban || "Kanban",
+      key: "kanban",
+      label: navLabels.kanban,
       icon: "faTable",
       alert: true,
       moduleName: "kanban",
       items: [
         {
-          label: "Kanban Ufficio",
+          label: t("nav.kanbanOffice"),
           icon: "faBriefcase",
           href: `${basePath}/kanban?type=office`,
           alert: false,
           moduleName: "kanban",
         },
         {
-          label: "Kanban Produzione",
+          label: t("nav.kanbanProduction"),
           icon: "faIndustry",
           href: `${basePath}/kanban?type=production`,
           alert: false,
@@ -253,33 +260,35 @@ const getMenuItems = (
       ],
     },
     {
-      label: "Documenti",
+      key: "documents",
+      label: t("nav.documents"),
       icon: "faBriefcase",
       href: `${basePath}/documenti`,
       alert: false,
       moduleName: "projects",
     },
     {
-      label: "Calendari",
+      key: "calendars",
+      label: t("nav.calendars"),
       icon: "faCalendarDays",
       alert: false,
       items: [
         {
-          label: "Produzione",
+          label: t("nav.calendarProduction"),
           icon: "faCalendarCheck",
           href: `${basePath}/calendar`,
           alert: false,
           moduleName: "calendar",
         },
         {
-          label: "Posa",
+          label: t("nav.calendarInstallation"),
           icon: "faCalendarDays",
           href: `${basePath}/calendar-installation`,
           alert: false,
           moduleName: "calendar",
         },
         {
-          label: "Service",
+          label: t("nav.calendarService"),
           icon: "faCalendarDays",
           href: `${basePath}/calendar-service`,
           alert: false,
@@ -288,54 +297,58 @@ const getMenuItems = (
       ],
     },
     {
-      label: "Ore",
+      key: "hours",
+      label: t("nav.hours"),
       icon: "faClock",
       href: `${basePath}/timetracking`,
       alert: false,
       moduleName: "timetracking",
     },
     {
-      label: "Presenze",
+      key: "attendance",
+      label: t("nav.attendance"),
       icon: "faCalendarCheck",
       href: `${basePath}/attendance`,
       alert: false,
       moduleName: "attendance",
     },
     {
-      label: "Area Collaboratore",
+      key: "collaboratorArea",
+      label: t("nav.collaboratorArea"),
       icon: "faUser",
       href: `${basePath}/area-collaboratore`,
       alert: false,
       moduleName: "area-collaboratore",
     },
     {
-      label: "Contatti",
+      key: "contacts",
+      label: t("nav.contacts"),
       icon: "faUsers",
       alert: false,
       items: [
         {
-          label: "Clienti",
+          label: t("nav.clients"),
           icon: "faUser",
           href: `${basePath}/clients`,
           alert: false,
           moduleName: "clients",
         },
         {
-          label: "Fornitori",
+          label: t("nav.suppliers"),
           icon: "faHelmetSafety",
           href: `${basePath}/suppliers`,
           alert: false,
           moduleName: "suppliers",
         },
         {
-          label: "Produttori",
+          label: t("nav.manufacturers"),
           icon: "faIndustry",
           href: `${basePath}/manufacturers`,
           alert: false,
           moduleName: "manufacturers",
         },
         {
-          label: "Collaboratori",
+          label: t("nav.collaborators"),
           icon: "faUserTie",
           href: `${basePath}/collaborators`,
           alert: false,
@@ -344,61 +357,66 @@ const getMenuItems = (
       ],
     },
     {
-      label: "Magazzino",
+      key: "warehouse",
+      label: t("nav.warehouse"),
       icon: "faWarehouse",
       alert: false,
       moduleName: "inventory",
       href: `${basePath}/inventory`,
     },
     {
-      label: "Fabbrica",
+      key: "factory",
+      label: t("nav.factory"),
       icon: "faIndustry",
       alert: false,
       moduleName: "factory",
       href: `${basePath}/factory`,
     },
     {
-      label: "Prodotti",
+      key: "products",
+      label: t("nav.products"),
       icon: "faBox",
       href: `${basePath}/products`,
       alert: false,
       moduleName: "products",
     },
     {
-      label: labels?.projects || "Progetti",
+      key: "projects",
+      label: navLabels.projects,
       icon: "faTable",
       href: `${basePath}/projects`,
       alert: false,
       moduleName: "projects",
     },
     {
-      label: "Categorie",
+      key: "categories",
+      label: t("nav.categories"),
       icon: "faListUl",
       alert: false,
       items: [
         {
-          label: "Inventario",
+          label: t("nav.categoriesInventory"),
           icon: "faListUl",
           href: `${basePath}/categories`,
           alert: false,
           moduleName: "categories",
         },
         {
-          label: "Prodotti",
+          label: t("nav.categoriesProducts"),
           icon: "faListUl",
           href: `${basePath}/product-categories`,
           alert: false,
           moduleName: "products",
         },
         {
-          label: "Fornitori",
+          label: t("nav.categoriesSuppliers"),
           icon: "faListUl",
           href: `${basePath}/supplier-categories`,
           alert: false,
           moduleName: "suppliers",
         },
         {
-          label: "Produttori",
+          label: t("nav.categoriesManufacturers"),
           icon: "faListUl",
           href: `${basePath}/manufacturer-categories`,
           alert: false,
@@ -407,14 +425,16 @@ const getMenuItems = (
       ],
     },
     {
-      label: "Errori",
+      key: "errors",
+      label: t("nav.errors"),
       icon: "faExclamation",
       href: `${basePath}/errortracking`,
       alert: false,
       moduleName: "errortracking",
     },
     {
-      label: labels?.reports || "Reports",
+      key: "reports",
+      label: navLabels.reports,
       icon: "faSquarePollVertical",
       href: `${basePath}/reports`,
       alert: false,
@@ -422,63 +442,63 @@ const getMenuItems = (
       alternativeModules: ["report-time", "report-inventory", "report-projects", "report-errors", "report-imb"],
       items: [
         {
-          label: "Report Ore",
+          label: t("nav.reportTime"),
           icon: "faClock",
           href: `${basePath}/reports`,
           alert: false,
           moduleName: "report-time",
         },
         {
-          label: "Report Inventario",
+          label: t("nav.reportInventory"),
           icon: "faWarehouse",
           href: `${basePath}/reports`,
           alert: false,
           moduleName: "report-inventory",
         },
         {
-          label: "Report Progetti",
+          label: t("nav.reportProjects"),
           icon: "faTable",
           href: `${basePath}/reports`,
           alert: false,
           moduleName: "report-projects",
         },
         {
-          label: "Report Errori",
+          label: t("nav.reportErrors"),
           icon: "faExclamation",
           href: `${basePath}/reports`,
           alert: false,
           moduleName: "report-errors",
         },
         {
-          label: "Report Imballaggio",
+          label: t("nav.reportImb"),
           icon: "faBox",
           href: `${basePath}/reports`,
           alert: false,
           moduleName: "report-imb",
         },
         {
-          label: "Quality Control",
+          label: t("nav.qualityControl"),
           icon: "faCheckSquare",
           href: `${basePath}/qualityControl`,
           alert: false,
           moduleName: "qualitycontrol",
         },
         {
-          label: "Effettua QC",
+          label: t("nav.doQualityControl"),
           icon: "faCheckSquare",
           href: `${basePath}/qualityControl/edit`,
           alert: false,
           moduleName: "qualitycontrol",
         },
         {
-          label: "Imballaggio",
+          label: t("nav.boxing"),
           icon: "faBox",
           href: `${basePath}/boxing`,
           alert: false,
           moduleName: "boxing",
         },
         {
-          label: "Effettua imballaggio",
+          label: t("nav.doBoxing"),
           icon: "faBox",
           href: `${basePath}/boxing/edit`,
           alert: false,
@@ -539,13 +559,15 @@ const getMenuItems = (
   if (!basePath) {
     siteSpecificItems.push(
       {
-        label: "Utenti",
+        key: "users",
+        label: t("nav.users"),
         icon: "faUsers",
         href: "/administration/users",
         alert: false,
       },
       {
-        label: "Sites",
+        key: "sites",
+        label: t("nav.sites"),
         icon: "faTable",
         href: "/administration/sites",
         alert: false,
@@ -572,6 +594,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
+  const t = useT();
   // Server-safe defaults: localStorage is read only after mount, so the
   // first client render matches the SSR HTML (avoids hydration mismatch).
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
@@ -639,6 +662,27 @@ export function AppSidebar() {
   const verticalProfile = useMemo(
     () => resolveSiteVerticalProfile(siteData?.verticalProfile),
     [siteData]
+  );
+
+  // Navigation labels for the entries that a business vertical can rename
+  // (kanban / projects / reports). A non-default vertical profile keeps
+  // priority (e.g. Speedywood renames "Progetti" -> "Ordini"); the default
+  // profile falls back to the translated label so German spaces read in
+  // German. All other nav labels are always translated via `t`.
+  const navLabels = useMemo(
+    () =>
+      verticalProfile.key === "default"
+        ? {
+            kanban: t("nav.kanban"),
+            projects: t("nav.projects"),
+            reports: t("nav.reports"),
+          }
+        : {
+            kanban: verticalProfile.menuLabels.kanban,
+            projects: verticalProfile.menuLabels.projects,
+            reports: verticalProfile.menuLabels.reports,
+          },
+    [verticalProfile, t]
   );
 
   // OPTIMIZED: Lazy load kanbans - only fetch when section is expanded
@@ -716,11 +760,12 @@ export function AppSidebar() {
       pathname,
       enabledModules.map((m) => m.name),
       basePath,
-      verticalProfile.menuLabels
+      t,
+      navLabels
     );
 
     return items.map((item: MenuItem) => {
-      if (item.label === verticalProfile.menuLabels.kanban) {
+      if (item.key === "kanban") {
         const isSuperAdmin = userContext?.role === "superadmin";
 
         // Se non ci sono categorie, mostra tutte le kanban senza raggruppamento
@@ -729,7 +774,7 @@ export function AppSidebar() {
             ...(isLoadingKanbansLocal
               ? [
                   {
-                    label: "Caricamento...",
+                    label: t("common.loading"),
                     icon: "faWrench" as const,
                     href: "#",
                     alert: false,
@@ -739,8 +784,8 @@ export function AppSidebar() {
               ? [
                   {
                     label: isOnline
-                      ? "Nessun kanban disponibile"
-                      : "Dati non disponibili offline",
+                      ? t("nav.noKanban")
+                      : t("nav.offlineData"),
                     icon: "faTable" as const,
                     href: "#",
                     alert: false,
@@ -757,7 +802,7 @@ export function AppSidebar() {
             ...(isSuperAdmin
               ? [
                   {
-                    label: "Crea Kanban",
+                    label: t("nav.createKanban"),
                     icon: "faPlus" as const,
                     action: () => openCreateModal(null),
                     alert: false,
@@ -788,7 +833,7 @@ export function AppSidebar() {
               ...(isLoadingKanbansLocal
                 ? [
                     {
-                      label: "Caricamento...",
+                      label: t("common.loading"),
                       icon: "faWrench" as const,
                       href: "#",
                       alert: false,
@@ -798,8 +843,8 @@ export function AppSidebar() {
                 ? [
                     {
                       label: isOnline
-                        ? "Nessun kanban disponibile"
-                        : "Dati non disponibili offline",
+                        ? t("nav.noKanban")
+                        : t("nav.offlineData"),
                       icon: "faTable" as const,
                       href: "#",
                       alert: false,
@@ -816,7 +861,7 @@ export function AppSidebar() {
               ...(isSuperAdmin
                 ? [
                     {
-                      label: "Crea Kanban",
+                      label: t("nav.createKanban"),
                       icon: "faPlus" as const,
                       action: () => openCreateModal(category.id),
                       alert: false,
@@ -832,7 +877,7 @@ export function AppSidebar() {
 
         if (uncategorizedKanbans.length > 0 || isSuperAdmin) {
           kanbanSubItems.push({
-            label: "Senza Categoria",
+            label: t("nav.uncategorized"),
             icon: "faListUl" as const,
             lucideIcon: "Folder",
             color: "#6B7280",
@@ -841,7 +886,7 @@ export function AppSidebar() {
               ...(isLoadingKanbansLocal
                 ? [
                     {
-                      label: "Caricamento...",
+                      label: t("common.loading"),
                       icon: "faWrench" as const,
                       href: "#",
                       alert: false,
@@ -860,7 +905,7 @@ export function AppSidebar() {
               ...(isSuperAdmin
                 ? [
                     {
-                      label: "Crea Kanban",
+                      label: t("nav.createKanban"),
                       icon: "faPlus" as const,
                       action: () => openCreateModal(null),
                       alert: false,
@@ -882,7 +927,8 @@ export function AppSidebar() {
     pathname,
     enabledModules,
     basePath,
-    verticalProfile,
+    t,
+    navLabels,
     kanbansLocal,
     kanbanCategories,
     isLoadingKanbansLocal,
@@ -914,7 +960,7 @@ export function AppSidebar() {
     setCollapsedMenus((prev) => {
       const wasCollapsed = prev[label];
       // If opening Kanban section, mark it as opened for lazy loading
-      if (label === verticalProfile.menuLabels.kanban && wasCollapsed) {
+      if (label === navLabels.kanban && wasCollapsed) {
         setKanbanOpened(true);
       }
       return {
@@ -922,7 +968,7 @@ export function AppSidebar() {
         [label]: !wasCollapsed,
       };
     });
-  }, [verticalProfile]);
+  }, [navLabels]);
 
   // Optimized display values
   const displayTitle = useMemo(() => {
@@ -947,44 +993,40 @@ export function AppSidebar() {
     }
     return "/administration";
   }, [canManageSettings, domain, siteData?.id]);
-  const settingsTitle = domain ? "Impostazioni" : "Administration";
+  const settingsTitle = domain ? t("nav.settings") : t("nav.administration");
 
-  // Raggruppa i menu items per categoria
+  // Raggruppa i menu items per categoria (per chiave stabile, indipendente
+  // dalla lingua/label tradotta).
   const groupedMenuItems = useMemo(() => {
-    const kanbanLabel = verticalProfile.menuLabels.kanban;
-    const projectsLabel = verticalProfile.menuLabels.projects;
-    const reportsLabel = verticalProfile.menuLabels.reports;
-    const core = menuItems.filter((item) => item.label === "Dashboard");
-    const projects = menuItems.filter((item) => item.label === kanbanLabel);
-    const documenti = menuItems.filter((item) => item.label === "Documenti");
-    const calendars = menuItems.filter((item) => item.label === "Calendari");
-    const contacts = menuItems.filter((item) => item.label === "Contatti");
-    const warehouse = menuItems.filter((item) => item.label === "Magazzino");
-    const factory = menuItems.filter((item) => item.label === "Fabbrica");
-    const products = menuItems.filter((item) => item.label === "Prodotti");
-    const projectsSection = menuItems.filter(
-      (item) => item.label === projectsLabel
-    );
-    const categories = menuItems.filter((item) => item.label === "Categorie");
-    const attendance = menuItems.filter((item) => item.label === "Presenze");
+    const GROUPED_KEYS = [
+      "dashboard",
+      "kanban",
+      "calendars",
+      "hours",
+      "attendance",
+      "contacts",
+      "warehouse",
+      "factory",
+      "products",
+      "projects",
+      "documents",
+      "categories",
+      "errors",
+      "reports",
+    ];
+    const core = menuItems.filter((item) => item.key === "dashboard");
+    const projects = menuItems.filter((item) => item.key === "kanban");
+    const documenti = menuItems.filter((item) => item.key === "documents");
+    const calendars = menuItems.filter((item) => item.key === "calendars");
+    const contacts = menuItems.filter((item) => item.key === "contacts");
+    const warehouse = menuItems.filter((item) => item.key === "warehouse");
+    const factory = menuItems.filter((item) => item.key === "factory");
+    const products = menuItems.filter((item) => item.key === "products");
+    const projectsSection = menuItems.filter((item) => item.key === "projects");
+    const categories = menuItems.filter((item) => item.key === "categories");
+    const attendance = menuItems.filter((item) => item.key === "attendance");
     const others = menuItems.filter(
-      (item) =>
-        ![
-          "Dashboard",
-          kanbanLabel,
-          "Calendari",
-          "Ore",
-          "Presenze",
-          "Contatti",
-          "Magazzino",
-          "Fabbrica",
-          "Prodotti",
-          projectsLabel,
-          "Documenti",
-          "Categorie",
-          "Errori",
-          reportsLabel,
-        ].includes(item.label)
+      (item) => !item.key || !GROUPED_KEYS.includes(item.key)
     );
 
     return {
@@ -1001,7 +1043,7 @@ export function AppSidebar() {
       categories,
       others,
     };
-  }, [menuItems, verticalProfile]);
+  }, [menuItems]);
 
   // Progressive loading: separate loading states for different parts
   // Header/footer load from hydration, so usually instant
@@ -1205,7 +1247,7 @@ export function AppSidebar() {
     // If item has subitems, use Collapsible
     if (item.items) {
       // Check if this is the Kanban menu for prefetch on hover
-      const isKanbanMenu = item.label === verticalProfile.menuLabels.kanban;
+      const isKanbanMenu = item.key === "kanban";
 
       return (
         <Collapsible
@@ -1484,12 +1526,12 @@ export function AppSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
-                    tooltip="Home"
+                    tooltip={t("nav.home")}
                     isActive={isActive(`${basePath}/home`)}
                   >
                     <Link href={`${basePath}/home`}>
                       <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
-                      <span>Home</span>
+                      <span>{t("nav.home")}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -1701,8 +1743,8 @@ export function AppSidebar() {
               {enabledModules.some((m) => m.name === "timetracking") && (
                 <Link
                   href={`${basePath}/timetracking`}
-                  title="Ore"
-                  aria-label="Apri ore"
+                  title={t("nav.hours")}
+                  aria-label={t("nav.hours")}
                   className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
@@ -1714,8 +1756,8 @@ export function AppSidebar() {
               {enabledModules.some((m) => m.name === "errortracking") && (
                 <Link
                   href={`${basePath}/errortracking`}
-                  title="Errori"
-                  aria-label="Apri errori"
+                  title={t("nav.errors")}
+                  aria-label={t("nav.errors")}
                   className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon
@@ -1729,8 +1771,8 @@ export function AppSidebar() {
               ) && (
                 <Link
                   href={`${basePath}/reports`}
-                  title="Reports"
-                  aria-label="Apri reports"
+                  title={navLabels.reports}
+                  aria-label={navLabels.reports}
                   className="rounded-xl p-2 text-[hsl(var(--sidebar-foreground)/0.7)] transition-colors hover:bg-[hsl(var(--sidebar-card-strong))] hover:text-[hsl(var(--sidebar-foreground))] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                 >
                   <FontAwesomeIcon

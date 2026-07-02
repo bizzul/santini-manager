@@ -93,6 +93,13 @@ export const SITE_SETTINGS_GUIDES = {
       "I cerchi orbitanti attorno ai 7 nodi principali (Clienti, Fornitori, Prodotti, Progetti, Inventario, Fabbrica, Admin) sono popolati con i dati reali gia presenti nel sito.",
     ],
   },
+  language: {
+    summary: "Scegli la lingua dell'interfaccia per questo spazio.",
+    details: [
+      "La lingua selezionata si applica a tutto lo spazio: menu della sidebar, barra superiore e pagine tradotte.",
+      "Le parti non ancora tradotte ricadono automaticamente sull'italiano, quindi puoi attivare il tedesco in sicurezza durante il rilascio progressivo.",
+    ],
+  },
 } as const;
 
 export type SiteSettingsGuideKey = keyof typeof SITE_SETTINGS_GUIDES;

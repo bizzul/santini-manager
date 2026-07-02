@@ -7,6 +7,7 @@ import {
   FileText,
   GitBranch,
   Headset,
+  Languages,
   Layers,
   LayoutDashboard,
   Orbit,
@@ -92,6 +93,10 @@ interface SettingsOverviewCardsProps {
   flowchartAction: React.ReactNode;
   /** Current persisted state of the flowchart flag, used for the badge. */
   flowchartEnabled: boolean;
+  /** Trigger for the per-site language selection modal. */
+  languageAction: React.ReactNode;
+  /** Human readable label of the currently selected language, for the badge. */
+  languageLabel: string;
 }
 
 export default function SettingsOverviewCards({
@@ -112,6 +117,8 @@ export default function SettingsOverviewCards({
   commandDeckEnabled,
   flowchartAction,
   flowchartEnabled,
+  languageAction,
+  languageLabel,
 }: SettingsOverviewCardsProps) {
   // Contextual statuses, computed from real data when the summary is loaded.
   const factoryConfigured =
@@ -231,6 +238,19 @@ export default function SettingsOverviewCards({
       group: "system",
       status: "ok",
       className: "border-emerald-300/25 bg-emerald-500/10",
+    },
+    {
+      key: "language",
+      title: "Lingua",
+      description:
+        "Scegli la lingua dell'interfaccia (menu, barra superiore e pagine) per questo spazio.",
+      guideKey: "language",
+      icon: Languages,
+      badge: languageLabel,
+      action: languageAction,
+      group: "system",
+      status: "ok",
+      className: "border-indigo-300/25 bg-indigo-500/10",
     },
     {
       key: "dashboard",

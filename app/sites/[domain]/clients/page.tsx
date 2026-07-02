@@ -7,6 +7,7 @@ import {
   fetchClientRowInsights,
   fetchSiteVerticalProfile,
 } from "@/lib/server-data";
+import { getServerT } from "@/lib/i18n/server";
 import DialogCreate from "./dialogCreate";
 import DialogImportCSV from "./dialogImportCSV";
 import ButtonExportCSV from "./buttonExportCSV";
@@ -31,6 +32,7 @@ export default async function Page({
   // Get site context (required)
   const { siteId } = await requireServerSiteContext(domain);
   const verticalProfile = await fetchSiteVerticalProfile(siteId);
+  const { t } = await getServerT(siteId);
 
   // Fetch data
   const [clients, rowInsights] = await Promise.all([
@@ -62,8 +64,8 @@ export default async function Page({
         ) : (
           <EmptyState
             icon={<Users className="h-6 w-6" />}
-            title="Nessun cliente registrato"
-            description="Premi 'Aggiungi cliente' per aggiungere il tuo primo cliente."
+            title={t("clients.pageEmptyTitle")}
+            description={t("clients.pageEmptyDescription")}
           />
         )}
       </PageContent>

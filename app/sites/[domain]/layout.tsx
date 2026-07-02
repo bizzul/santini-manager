@@ -25,6 +25,8 @@ import {
 } from "@/lib/site-theme";
 import { SiteThemeStyle } from "@/components/site-theme-style";
 import { getCommandDeckEnabledForSite } from "@/lib/command-deck-settings.server";
+import { getSiteLocale } from "@/lib/i18n/server";
+import { I18nProvider } from "@/components/i18n/i18n-provider";
 
 /**
  * Check if user has access to a specific site
@@ -174,6 +176,10 @@ export default async function SiteLayout({
     // server component is free.
     const commandDeckEnabled = await getCommandDeckEnabledForSite(data.id);
 
+    // Per-site interface language (default `it`). Drives the shell + any
+    // translated page through the client I18nProvider.
+    const siteLocale = await getSiteLocale(data.id);
+
     return (
       <KanbanModalProvider>
         <QuickActionsProvider>
@@ -191,6 +197,7 @@ export default async function SiteLayout({
                   verticalProfile: data.verticalProfile || null,
                   organization: { name: data.organization?.name || "" },
                   commandDeckEnabled,
+                  siteLocale,
                 },
                 domain,
               }}
@@ -206,14 +213,16 @@ export default async function SiteLayout({
             <ManagerGuideProvider
               userId={userContext.userId || userContext.user.id}
             >
-              <AppSidebar />
-              <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
-                <SiteTopbar siteName={data.name || domain} />
-                <div className="flex-1 overflow-auto bg-[hsl(var(--page))]">{children}</div>
-              </SidebarInset>
+              <I18nProvider locale={siteLocale}>
+                <AppSidebar />
+                <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
+                  <SiteTopbar siteName={data.name || domain} />
+                  <div className="flex-1 overflow-auto bg-[hsl(var(--page))]">{children}</div>
+                </SidebarInset>
 
-              {/* Global Kanban Modal */}
-              <GlobalKanbanModal />
+                {/* Global Kanban Modal */}
+                <GlobalKanbanModal />
+              </I18nProvider>
             </ManagerGuideProvider>
           </SidebarProvider>
         </QuickActionsProvider>

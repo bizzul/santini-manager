@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { getUserContext } from "@/lib/auth-utils";
 import { FLOWCHART_SETTING_KEY } from "@/lib/flowchart-settings";
+import { SITE_LANGUAGE_SETTING_KEY } from "@/lib/i18n/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -84,6 +85,20 @@ export async function PUT(request: NextRequest) {
 
       if (site?.subdomain) {
         revalidatePath(`/sites/${site.subdomain}/home`);
+      }
+    }
+
+    // Changing the site language affects the whole space shell (sidebar,
+    // topbar, server-rendered pages), so revalidate the entire site tree.
+    if (settingKey === SITE_LANGUAGE_SETTING_KEY) {
+      const { data: site } = await supabase
+        .from("sites")
+        .select("subdomain")
+        .eq("id", siteId)
+        .maybeSingle();
+
+      if (site?.subdomain) {
+        revalidatePath(`/sites/${site.subdomain}`, "layout");
       }
     }
 

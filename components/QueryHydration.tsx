@@ -14,6 +14,8 @@ interface SiteDataForHydration {
   verticalProfile?: unknown;
   /** When `true`, the Command Deck page and launcher are available. */
   commandDeckEnabled?: boolean;
+  /** Per-site interface locale, resolved on the server. */
+  siteLocale?: unknown;
 }
 
 interface HydrationData {

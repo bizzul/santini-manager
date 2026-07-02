@@ -6,6 +6,10 @@ import {
     COMMAND_DECK_SETTING_KEY,
     parseCommandDeckEnabled,
 } from "@/lib/command-deck-settings";
+import {
+    resolveSiteLocale,
+    SITE_LANGUAGE_SETTING_KEY,
+} from "@/lib/i18n/config";
 
 export async function GET(
     request: NextRequest,
@@ -21,22 +25,31 @@ export async function GET(
         }
         const { id, name, organization_id, image, logo } = response.data;
         const supabase = createServiceClient();
-        // Batch the two site_settings reads so we never waterfall them.
-        const [{ data: siteVertical }, { data: commandDeckSetting }] =
-            await Promise.all([
-                supabase
-                    .from("site_settings")
-                    .select("setting_value")
-                    .eq("site_id", id)
-                    .eq("setting_key", "vertical_profile")
-                    .maybeSingle(),
-                supabase
-                    .from("site_settings")
-                    .select("setting_value")
-                    .eq("site_id", id)
-                    .eq("setting_key", COMMAND_DECK_SETTING_KEY)
-                    .maybeSingle(),
-            ]);
+        // Batch the site_settings reads so we never waterfall them.
+        const [
+            { data: siteVertical },
+            { data: commandDeckSetting },
+            { data: languageSetting },
+        ] = await Promise.all([
+            supabase
+                .from("site_settings")
+                .select("setting_value")
+                .eq("site_id", id)
+                .eq("setting_key", "vertical_profile")
+                .maybeSingle(),
+            supabase
+                .from("site_settings")
+                .select("setting_value")
+                .eq("site_id", id)
+                .eq("setting_key", COMMAND_DECK_SETTING_KEY)
+                .maybeSingle(),
+            supabase
+                .from("site_settings")
+                .select("setting_value")
+                .eq("site_id", id)
+                .eq("setting_key", SITE_LANGUAGE_SETTING_KEY)
+                .maybeSingle(),
+        ]);
 
         return NextResponse.json({
             id,
@@ -51,6 +64,7 @@ export async function GET(
             commandDeckEnabled: parseCommandDeckEnabled(
                 commandDeckSetting?.setting_value,
             ),
+            siteLocale: resolveSiteLocale(languageSetting?.setting_value),
         });
     } catch (error) {
         return NextResponse.json({ error: "Internal server error" }, {

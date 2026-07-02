@@ -42,6 +42,7 @@ import {
   Camera,
   LayoutDashboard,
   GitBranch,
+  Languages,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import CodeTemplatesModal from "@/components/site-settings/CodeTemplatesModal";
@@ -51,6 +52,8 @@ import SiteThemeSettingsModal from "@/components/site-settings/SiteThemeSettings
 import SiteSupportAndSubscriptionModal from "@/components/site-settings/SiteSupportAndSubscriptionModal";
 import { SiteCommandDeckModal } from "@/components/site-settings/SiteCommandDeckModal";
 import { SiteFlowchartModal } from "@/components/site-settings/SiteFlowchartModal";
+import { SiteLanguageModal } from "@/components/site-settings/SiteLanguageModal";
+import { LOCALE_LABELS, type AppLocale } from "@/lib/i18n/config";
 import SiteHealthBar, {
   type HealthItem,
 } from "@/components/site-settings/SiteHealthBar";
@@ -127,6 +130,7 @@ export default function EditSiteForm({
   initialSupportBotEnabled,
   initialCommandDeckEnabled,
   initialFlowchartSettings,
+  initialSiteLocale,
 }: {
   site: any;
   siteUsers: any[];
@@ -137,6 +141,7 @@ export default function EditSiteForm({
   initialSupportBotEnabled: boolean;
   initialCommandDeckEnabled: boolean;
   initialFlowchartSettings: SiteFlowchartSettings;
+  initialSiteLocale: AppLocale;
 }) {
   const [form, setForm] = useState({
     name: site.name || "",
@@ -1056,6 +1061,25 @@ export default function EditSiteForm({
                     >
                       <GitBranch className="h-4 w-4 mr-2" />
                       Configura vista diagramma
+                    </Button>
+                  }
+                />
+              }
+              languageLabel={LOCALE_LABELS[initialSiteLocale]}
+              languageAction={
+                <SiteLanguageModal
+                  siteId={site.id}
+                  siteName={site.name || site.subdomain}
+                  initialLocale={initialSiteLocale}
+                  canConfigure={userRole === "superadmin"}
+                  trigger={
+                    <Button
+                      variant="outline"
+                      type="button"
+                      className="border-indigo-300/35 bg-indigo-500/15 text-indigo-100 hover:bg-indigo-500/25"
+                    >
+                      <Languages className="h-4 w-4 mr-2" />
+                      Seleziona lingua
                     </Button>
                   }
                 />

@@ -13,6 +13,7 @@ import {
 import { useDiagramFocus } from "@/components/diagram/use-diagram-focus";
 import { cn } from "@/lib/utils";
 import type { RowVisualInsight } from "@/types/supabase";
+import { useT, useLocale } from "@/components/i18n/i18n-provider";
 
 interface ClientsPageClientProps {
   clients: any[];
@@ -27,9 +28,11 @@ export function ClientsPageClient({
   siteId,
   rowInsights,
 }: ClientsPageClientProps) {
+  const t = useT();
+  const locale = useLocale();
   const columns = useMemo(
-    () => createColumns(domain, rowInsights ?? {}),
-    [domain, rowInsights],
+    () => createColumns(domain, rowInsights ?? {}, t, locale),
+    [domain, rowInsights, t, locale],
   );
   const searchParams = useSearchParams();
   const router = useRouter();

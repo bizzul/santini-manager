@@ -29,6 +29,7 @@ import { Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { batchDeleteClients } from "./actions/delete-item.action";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/i18n/i18n-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +65,7 @@ export function DataTable<TData extends { id: number }, TValue>({
 
   const { toast } = useToast();
   const router = useRouter();
+  const t = useT();
 
   const table = useReactTable({
     data,
@@ -99,20 +101,20 @@ export function DataTable<TData extends { id: number }, TValue>({
 
       if (result.success) {
         toast({
-          description: `${result.deleted} clienti eliminati con successo!`,
+          description: t("clients.deletedSuccess", { count: result.deleted ?? 0 }),
         });
         setRowSelection({});
         router.refresh();
       } else {
         toast({
           variant: "destructive",
-          description: result.message || "Errore durante l'eliminazione",
+          description: result.message || t("clients.deleteError"),
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        description: "Errore durante l'eliminazione",
+        description: t("clients.deleteError"),
       });
     } finally {
       setIsDeleting(false);
@@ -127,7 +129,7 @@ export function DataTable<TData extends { id: number }, TValue>({
           value={globalFilter ?? ""}
           onChange={(value) => setGlobalFilter(String(value))}
           className="max-w-sm"
-          placeholder="Cerca clienti..."
+          placeholder={t("clients.searchPlaceholder")}
         />
 
         {selectedCount > 0 && (
@@ -142,7 +144,7 @@ export function DataTable<TData extends { id: number }, TValue>({
             ) : (
               <Trash2 className="mr-2 h-4 w-4" />
             )}
-            Elimina {selectedCount} selezionati
+            {t("clients.deleteSelected", { count: selectedCount })}
           </Button>
         )}
       </div>
@@ -150,14 +152,15 @@ export function DataTable<TData extends { id: number }, TValue>({
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogTitle>{t("clients.deleteConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Stai per eliminare {selectedCount} clienti. Questa azione è
-              irreversibile.
+              {t("clients.deleteConfirmDescription", { count: selectedCount })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBatchDelete}
               disabled={isDeleting}
@@ -166,10 +169,10 @@ export function DataTable<TData extends { id: number }, TValue>({
               {isDeleting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Eliminazione...
+                  {t("clients.deleting")}
                 </>
               ) : (
-                "Elimina"
+                t("common.delete")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -219,7 +222,7 @@ export function DataTable<TData extends { id: number }, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  Nessun risultato.
+                  {t("clients.noResults")}
                 </TableCell>
               </TableRow>
             )}

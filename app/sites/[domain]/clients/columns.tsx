@@ -12,12 +12,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
-import { it } from "date-fns/locale";
+import { it, de } from "date-fns/locale";
 import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
 import { User, Factory } from "lucide-react";
 import { ClientManagerSummaryTooltip } from "./client-manager-summary-tooltip";
 import { RowVisualHub } from "@/components/table/row-visual-hub";
+import { createTranslator, type Translator } from "@/lib/i18n";
+import { DEFAULT_LOCALE, type AppLocale } from "@/lib/i18n/config";
+import { toIntlLocale } from "@/lib/i18n/format";
 
 // Extended Client type with lastAction
 export type ClientWithAction = Client & {
@@ -90,9 +93,12 @@ const createClientEditHandler = (domain: string) => {
 
 export const createColumns = (
   domain: string,
-  rowInsights: Record<number, RowVisualInsight> = {}
+  rowInsights: Record<number, RowVisualInsight> = {},
+  t: Translator = createTranslator(DEFAULT_LOCALE),
+  locale: AppLocale = DEFAULT_LOCALE
 ): ColumnDef<ClientWithAction>[] => {
   const handleClientEdit = createClientEditHandler(domain);
+  const dateFnsLocale = locale === "de" ? de : it;
 
   return [
     {
@@ -101,7 +107,7 @@ export const createColumns = (
       cell: ({ row }) => (
         <RowVisualHub
           insight={rowInsights[row.original.id]}
-          label="Apri documenti e accordi cliente"
+          label={t("clients.openDocuments")}
           variant="isometric"
         />
       ),
@@ -117,14 +123,14 @@ export const createColumns = (
             (table.getIsSomePageRowsSelected() && "indeterminate")
           }
           onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Seleziona tutti"
+          aria-label={t("clients.selectAll")}
         />
       ),
       cell: ({ row }) => (
         <Checkbox
           checked={row.getIsSelected()}
           onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Seleziona riga"
+          aria-label={t("clients.selectRow")}
         />
       ),
       enableSorting: false,
@@ -133,7 +139,7 @@ export const createColumns = (
     {
       accessorKey: "clientType",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Tipo" />
+        <DataTableColumnHeader column={column} title={t("clients.columnType")} />
       ),
       cell: ({ row }) => {
         const clientType = row.original.clientType;
@@ -152,7 +158,7 @@ export const createColumns = (
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isBusiness ? "Azienda" : "Privato"}</p>
+                <p>{isBusiness ? t("clients.typeBusiness") : t("clients.typeIndividual")}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -170,7 +176,7 @@ export const createColumns = (
         }
       },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Cognome" />
+        <DataTableColumnHeader column={column} title={t("clients.columnSurname")} />
       ),
       cell: ({ row }) => {
         const value = row.getValue("surname") as string;
@@ -187,7 +193,7 @@ export const createColumns = (
         }
       },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Nome" />
+        <DataTableColumnHeader column={column} title={t("clients.columnName")} />
       ),
       cell: ({ row }) => {
         const value = row.getValue("name") as string;
@@ -205,7 +211,7 @@ export const createColumns = (
     {
       accessorKey: "address",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Indirizzo" />
+        <DataTableColumnHeader column={column} title={t("clients.columnAddress")} />
       ),
       cell: ({ row }) => (
         <EditableCell
@@ -220,7 +226,7 @@ export const createColumns = (
     {
       accessorKey: "zipCode",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="CAP" />
+        <DataTableColumnHeader column={column} title={t("clients.columnZip")} />
       ),
       cell: ({ row }) => (
         <EditableCell
@@ -235,7 +241,7 @@ export const createColumns = (
     {
       accessorKey: "city",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Citta" />
+        <DataTableColumnHeader column={column} title={t("clients.columnCity")} />
       ),
       cell: ({ row }) => (
         <EditableCell
@@ -250,7 +256,7 @@ export const createColumns = (
     {
       accessorKey: "mobilePhone",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Telefono" />
+        <DataTableColumnHeader column={column} title={t("clients.columnPhone")} />
       ),
       cell: ({ row }) => (
         <EditableCell
@@ -264,13 +270,13 @@ export const createColumns = (
     },
     {
       id: "actions",
-      header: "Azioni",
+      header: t("clients.columnActions"),
       cell: ({ row }) => <DataTableRowActions row={row} />,
     },
     {
       accessorKey: "lastAction.createdAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Modifica" />
+        <DataTableColumnHeader column={column} title={t("clients.columnModified")} />
       ),
       size: 100,
       cell: ({ row }) => {
@@ -280,9 +286,9 @@ export const createColumns = (
         const date = new Date(lastAction.createdAt);
         const timeAgo = formatDistanceToNow(date, {
           addSuffix: true,
-          locale: it,
+          locale: dateFnsLocale,
         });
-        const fullDate = date.toLocaleDateString("it-IT", {
+        const fullDate = date.toLocaleDateString(toIntlLocale(locale), {
           day: "2-digit",
           month: "2-digit",
           year: "numeric",
@@ -309,7 +315,7 @@ export const createColumns = (
     {
       accessorKey: "lastAction.User",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Da" />
+        <DataTableColumnHeader column={column} title={t("clients.columnBy")} />
       ),
       size: 60,
       cell: ({ row }) => {
@@ -321,7 +327,7 @@ export const createColumns = (
         const displayName =
           user.given_name && user.family_name
             ? `${user.given_name} ${user.family_name}`
-            : user.given_name || "Utente";
+            : user.given_name || t("clients.userFallback");
 
         // Generate initials from name
         const initials =
