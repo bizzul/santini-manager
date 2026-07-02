@@ -103,6 +103,14 @@ export const itMessages = {
     integrationTitle: "Integrazione Dashboard",
     integrationSubtitle:
       "Mappa di navigazione tra la dashboard principale, le dashboard operative e le dashboard paese.",
+    globalMarketTitle: "Copertura globale",
+    globalMarketSubtitle:
+      "Paesi in cui abbiamo un rappresentante e mercati emergenti per la nostra tipologia merceologica.",
+    countriesWithRepresentative: "Paesi con un rappresentante",
+    coverage: "Copertura",
+    emergingMarketsTitle: "Mercati emergenti",
+    emergingMarketsEmpty:
+      "Nessun mercato emergente: tutti i paesi con business hanno gia un rappresentante.",
   },
   clients: {
     pageEmptyTitle: "Nessun cliente registrato",

@@ -16,6 +16,9 @@ export const DEFAULT_HIGHLIGHT_COUNTRIES = ["CHE"];
 /** World countries polygons (Natural Earth 110m); matched via `ADM0_A3`. */
 export const WORLD_COUNTRIES_GEOJSON_URL = "/geo/world-countries.geojson";
 
+/** Sovereign countries in public/geo/world-countries.geojson (denominator for coverage). */
+export const WORLD_SOVEREIGN_COUNTRIES_COUNT = 177;
+
 export const HIGHLIGHT_BORDER_COLOR = "#38bdf8";
 export const HIGHLIGHT_FILL_COLOR = "#38bdf8";
 export const HIGHLIGHT_FILL_OPACITY = 0.28;

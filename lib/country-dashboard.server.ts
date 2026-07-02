@@ -6,8 +6,11 @@
  */
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
-import type { CountryDashboardStats } from "./map-capitals";
+import { COUNTRY_CAPITALS, type CountryDashboardStats } from "./map-capitals";
 import type { DashboardStats } from "./server-data";
+import { getSiteHighlightCountries } from "./map-highlight.server";
+import { WORLD_SOVEREIGN_COUNTRIES_COUNT } from "./map-highlight";
+import { countries as ISO2_COUNTRIES } from "@/components/clients/countries";
 
 export const getCountryDashboardStats = cache(
   async (siteId: string): Promise<Record<string, CountryDashboardStats>> => {
@@ -68,6 +71,84 @@ export const getCountryDashboardStats = cache(
       console.error("[country-dashboard] failed to aggregate", error);
       return result;
     }
+  },
+);
+
+/** A single emerging-market country in our pipeline without a representative. */
+export interface EmergingMarketCountry {
+  iso2: string;
+  name: string;
+  clients: number;
+  offers: number;
+  projects: number;
+  totalValue: number;
+}
+
+/** Global market coverage + emerging markets preview for the dashboard. */
+export interface GlobalMarketOverview {
+  representativeCount: number;
+  totalCountries: number;
+  representativeIso2: string[];
+  emergingMarkets: EmergingMarketCountry[];
+}
+
+const ISO2_NAME = new Map(
+  ISO2_COUNTRIES.map((c) => [c.code.toUpperCase(), c.label]),
+);
+
+/**
+ * Global market overview: how many countries have one of our representatives
+ * (`map_highlight_countries`) out of the world total, plus the top emerging
+ * markets - countries where we already have pipeline (clients/offers/projects)
+ * but no representative yet. Emerging markets are ranked by business value.
+ */
+export const getGlobalMarketOverview = cache(
+  async (siteId: string): Promise<GlobalMarketOverview> => {
+    const empty: GlobalMarketOverview = {
+      representativeCount: 0,
+      totalCountries: WORLD_SOVEREIGN_COUNTRIES_COUNT,
+      representativeIso2: [],
+      emergingMarkets: [],
+    };
+    if (!siteId) return empty;
+
+    const [highlight, stats] = await Promise.all([
+      getSiteHighlightCountries(siteId),
+      getCountryDashboardStats(siteId),
+    ]);
+
+    const representativeIso2 = new Set<string>();
+    highlight.forEach((iso3) => {
+      const iso2 = COUNTRY_CAPITALS[iso3]?.iso2;
+      if (iso2) representativeIso2.add(iso2.toUpperCase());
+    });
+
+    const emergingMarkets: EmergingMarketCountry[] = Object.entries(stats)
+      .filter(([iso2, s]) => {
+        const code = iso2.toUpperCase();
+        if (representativeIso2.has(code)) return false;
+        return s.clients > 0 || s.offers > 0 || s.projects > 0;
+      })
+      .map(([iso2, s]) => {
+        const code = iso2.toUpperCase();
+        return {
+          iso2: code,
+          name: ISO2_NAME.get(code) ?? code,
+          clients: s.clients,
+          offers: s.offers,
+          projects: s.projects,
+          totalValue: s.totalValue,
+        };
+      })
+      .sort((a, b) => b.totalValue - a.totalValue)
+      .slice(0, 8);
+
+    return {
+      representativeCount: highlight.length,
+      totalCountries: WORLD_SOVEREIGN_COUNTRIES_COUNT,
+      representativeIso2: Array.from(representativeIso2),
+      emergingMarkets,
+    };
   },
 );
 

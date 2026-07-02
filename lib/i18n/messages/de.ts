@@ -103,6 +103,14 @@ export const deMessages: DeepPartialWiden<Messages> = {
     integrationTitle: "Dashboard-Integration",
     integrationSubtitle:
       "Navigationskarte zwischen der Haupt-Dashboard, den operativen Dashboards und den Länder-Dashboards.",
+    globalMarketTitle: "Globale Abdeckung",
+    globalMarketSubtitle:
+      "Länder mit einer Vertretung und aufstrebende Märkte für unsere Warengruppe.",
+    countriesWithRepresentative: "Länder mit einer Vertretung",
+    coverage: "Abdeckung",
+    emergingMarketsTitle: "Aufstrebende Märkte",
+    emergingMarketsEmpty:
+      "Keine aufstrebenden Märkte: Alle Länder mit Geschäft haben bereits eine Vertretung.",
   },
   clients: {
     pageEmptyTitle: "Keine Kunden erfasst",
