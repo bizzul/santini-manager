@@ -265,6 +265,8 @@ export interface SellProduct {
     tipo?: string | null; // Tipo prodotto nativo
     product_type?: string; // Tipo prodotto
     description?: string; // Descrizione
+    diameter_mm?: number | null; // Diametro in millimetri (opzionale)
+    length_mm?: number | null; // Lunghezza in millimetri (opzionale)
     unit?: string | null; // Unita' di misura catalogo
     list_price?: number | null; // Prezzo listino
     price_list?: boolean; // Listino prezzi (checkbox)
@@ -277,6 +279,26 @@ export interface SellProduct {
     supplier_id?: number | null; // Riferimento al fornitore
     category?: SellProductCategory; // Relazione
     supplier?: Supplier; // Relazione opzionale
+    created_at?: string;
+    updated_at?: string;
+}
+
+// Reseller (rivenditore/distributore per paese)
+export interface Reseller {
+    id: number;
+    name: string;
+    contact_person?: string | null;
+    country?: string | null;
+    country_code?: string | null;
+    address?: string | null;
+    zip_city?: string | null;
+    phone?: string | null;
+    fax?: string | null;
+    mobile?: string | null;
+    email?: string | null;
+    website?: string | null;
+    notes?: string | null;
+    site_id?: string;
     created_at?: string;
     updated_at?: string;
 }

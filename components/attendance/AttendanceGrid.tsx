@@ -30,6 +30,7 @@ import { WeeklyCalendarView } from "@/components/calendar/WeeklyCalendarView";
 import {
     buildAttendanceCalendarItems,
 } from "@/components/calendar/calendar-utils";
+import { useT } from "@/components/i18n/i18n-provider";
 
 interface AttendanceGridProps {
     domain: string;
@@ -37,10 +38,10 @@ interface AttendanceGridProps {
     currentUserId?: string;
 }
 
-const MONTH_NAMES = [
-    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
-];
+const MONTH_KEYS = [
+    "m1", "m2", "m3", "m4", "m5", "m6",
+    "m7", "m8", "m9", "m10", "m11", "m12",
+] as const;
 
 async function fetchAttendance(domain: string, year: number, month: number | null) {
     const params = new URLSearchParams({ year: year.toString() });
@@ -58,6 +59,7 @@ async function fetchLeaveRequests(domain: string) {
 }
 
 export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGridProps) {
+    const t = useT();
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth() + 1);
@@ -220,9 +222,9 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {MONTH_NAMES.map((name, i) => (
+                                    {MONTH_KEYS.map((key, i) => (
                                         <SelectItem key={i} value={(i + 1).toString()}>
-                                            {name}
+                                            {t(`attendance.months.${key}`)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -256,15 +258,15 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                         <TabsList className="h-8">
                             <TabsTrigger value="weekly" className="text-xs h-7 gap-1.5 px-3">
                                 <Rows3 className="h-3.5 w-3.5" />
-                                Settimanale
+                                {t("attendance.viewWeekly")}
                             </TabsTrigger>
                             <TabsTrigger value="monthly" className="text-xs h-7 gap-1.5 px-3">
                                 <Calendar className="h-3.5 w-3.5" />
-                                Mensile
+                                {t("attendance.viewMonthly")}
                             </TabsTrigger>
                             <TabsTrigger value="annual" className="text-xs h-7 gap-1.5 px-3">
                                 <LayoutGrid className="h-3.5 w-3.5" />
-                                Annuale
+                                {t("attendance.viewAnnual")}
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
@@ -298,7 +300,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                         <div className="text-center py-12">
                             <Calendar className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                             <p className="text-sm text-muted-foreground">
-                                Nessun dipendente trovato per questo sito
+                                {t("attendance.noEmployees")}
                             </p>
                         </div>
                     ) : view === "weekly" ? (
@@ -314,10 +316,10 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                                     ? undefined
                                     : { weekdayMinutes: 540, fridayMinutes: 360 }
                             }
-                            title="Planner presenze"
-                            description="Vista settimanale di presenze e assenze."
-                            emptyStateTitle="Nessuna presenza trovata"
-                            emptyStateDescription="Cambia periodo o aggiorna i filtri per analizzare la settimana."
+                            title={t("attendance.plannerTitle")}
+                            description={t("attendance.plannerDescription")}
+                            emptyStateTitle={t("attendance.plannerEmptyTitle")}
+                            emptyStateDescription={t("attendance.plannerEmptyDescription")}
                         />
                     ) : view === "monthly" ? (
                         <AttendanceMonthlyView

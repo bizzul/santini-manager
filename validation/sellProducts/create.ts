@@ -25,6 +25,28 @@ export const validation = z.object({
     z.number().int().positive().optional(),
   ),
   description: z.string().optional(),
+  diameter_mm: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    },
+    z.number().positive().optional(),
+  ),
+  length_mm: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    },
+    z.number().positive().optional(),
+  ),
   price_list: z.boolean().default(false),
   image_url: z
     .string()

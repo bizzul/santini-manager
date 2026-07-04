@@ -72,6 +72,11 @@ import { CommandDeckLauncher } from "@/components/command-deck/CommandDeckLaunch
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { cn } from "@/lib/utils";
 
+// Sidebar-only display shortening: kanban titles containing "Tantal" are
+// abbreviated to "Ta" to keep the labels compact (data stays unchanged).
+const formatKanbanTitle = (title: string): string =>
+  title.replace(/Tantal/g, "Ta");
+
 // localStorage keys for sidebar state persistence
 const SIDEBAR_COLLAPSED_MENUS_KEY = "santini-sidebar-collapsed-menus";
 const SIDEBAR_KANBAN_OPENED_KEY = "santini-sidebar-kanban-opened";
@@ -346,6 +351,13 @@ const getMenuItems = (
           href: `${basePath}/manufacturers`,
           alert: false,
           moduleName: "manufacturers",
+        },
+        {
+          label: t("nav.resellers"),
+          icon: "faTruckField",
+          href: `${basePath}/resellers`,
+          alert: false,
+          moduleName: "resellers",
         },
         {
           label: t("nav.collaborators"),
@@ -792,7 +804,7 @@ export function AppSidebar() {
                   },
                 ]
               : kanbansLocal.map((kanban) => ({
-                  label: kanban.title,
+                  label: formatKanbanTitle(kanban.title),
                   icon: "faTable" as const,
                   lucideIcon: kanban.icon || "Folder",
                   href: `${basePath}/kanban?name=${kanban.identifier}`,
@@ -851,7 +863,7 @@ export function AppSidebar() {
                     },
                   ]
                 : categoryKanbans.map((kanban) => ({
-                    label: kanban.title,
+                    label: formatKanbanTitle(kanban.title),
                     icon: "faTable" as const,
                     lucideIcon: kanban.icon || "Folder",
                     href: `${basePath}/kanban?name=${kanban.identifier}&category=${category.identifier}`,
@@ -895,7 +907,7 @@ export function AppSidebar() {
                 : uncategorizedKanbans.length === 0
                 ? []
                 : uncategorizedKanbans.map((kanban) => ({
-                    label: kanban.title,
+                    label: formatKanbanTitle(kanban.title),
                     icon: "faTable" as const,
                     lucideIcon: kanban.icon || "Folder",
                     href: `${basePath}/kanban?name=${kanban.identifier}`,

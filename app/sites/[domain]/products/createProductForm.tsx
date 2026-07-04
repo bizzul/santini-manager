@@ -38,6 +38,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Plus, Loader2 } from "lucide-react";
 import { SellProductCategory, Supplier } from "@/types/supabase";
 import { DocumentUpload } from "@/components/ui/document-upload";
+import { useT } from "@/components/i18n/i18n-provider";
 
 type Props = {
   handleClose: any;
@@ -47,6 +48,7 @@ type Props = {
 
 const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
   const { toast } = useToast();
+  const t = useT();
   const [categories, setCategories] = useState<SellProductCategory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -324,6 +326,48 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="diameter_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("products.diameterLabel")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={t("products.diameterPlaceholder")}
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="length_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("products.lengthLabel")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={t("products.lengthPlaceholder")}
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <FormField
           control={form.control}
           name="supplier_id"

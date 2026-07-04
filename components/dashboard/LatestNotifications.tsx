@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { it } from "date-fns/locale";
+import { it, de } from "date-fns/locale";
+import type { Locale } from "date-fns";
+import { useLocale, useT } from "@/components/i18n/i18n-provider";
 
 interface Notification {
   id: number;
@@ -18,12 +20,14 @@ interface LatestNotificationsProps {
   siteId: string;
 }
 
-function formatTimeAgo(date: string | undefined): string {
-  if (!date) return "Sconosciuto";
+const DATE_LOCALES: Record<string, Locale> = { it, de };
+
+function formatTimeAgo(date: string | undefined, locale: Locale): string {
+  if (!date) return "-";
   try {
-    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: it });
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale });
   } catch {
-    return "Sconosciuto";
+    return "-";
   }
 }
 
@@ -47,6 +51,9 @@ function generateNotificationMessage(task: Notification): string {
 export default function LatestNotifications({
   siteId,
 }: LatestNotificationsProps) {
+  const t = useT();
+  const locale = useLocale();
+  const dateLocale = DATE_LOCALES[locale] || it;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -84,7 +91,7 @@ export default function LatestNotifications({
     return (
       <div className="dashboard-panel p-6">
         <div className="mb-6">
-          <h3 className="dashboard-panel-title mb-1">Ultime notifiche</h3>
+          <h3 className="dashboard-panel-title mb-1">{t("forecast.notificationsTitle")}</h3>
         </div>
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
@@ -102,9 +109,9 @@ export default function LatestNotifications({
     return (
       <div className="dashboard-panel p-6">
         <div className="mb-6">
-          <h3 className="dashboard-panel-title mb-1">Ultime notifiche</h3>
+          <h3 className="dashboard-panel-title mb-1">{t("forecast.notificationsTitle")}</h3>
         </div>
-        <p className="dashboard-panel-subtitle">Nessuna notifica disponibile</p>
+        <p className="dashboard-panel-subtitle">{t("forecast.notificationsEmpty")}</p>
       </div>
     );
   }
@@ -112,7 +119,7 @@ export default function LatestNotifications({
   return (
     <div className="dashboard-panel p-6">
       <div className="mb-6">
-        <h3 className="dashboard-panel-title mb-1">Ultime notifiche</h3>
+        <h3 className="dashboard-panel-title mb-1">{t("forecast.notificationsTitle")}</h3>
       </div>
       <div className="space-y-3">
         {notifications.map((notification) => (
@@ -128,7 +135,7 @@ export default function LatestNotifications({
                 {generateNotificationMessage(notification)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {formatTimeAgo(notification.created_at)}
+                {formatTimeAgo(notification.created_at, dateLocale)}
               </p>
             </div>
           </div>

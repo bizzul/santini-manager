@@ -114,6 +114,14 @@ export default function OfferMiniCard({
     return `${lastName} ${firstName}`.trim() || "-";
   }, [data.client]);
 
+  // Bandiera paese del cliente (ISO 3166-1 alpha-2 per flagcdn)
+  const clientCountryCode = useMemo(() => {
+    const code = data.client?.countryCode;
+    return typeof code === "string" && code.trim().length === 2
+      ? code.trim().toLowerCase()
+      : null;
+  }, [data.client?.countryCode]);
+
   // Format sent date
   const sentDateFormatted = useMemo(() => {
     const sentDate = data.sent_date || data.sentDate;
@@ -345,6 +353,16 @@ export default function OfferMiniCard({
             <div className="px-2 pt-2 pb-1 flex-1">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 min-w-0">
+                  {clientCountryCode && (
+                    <img
+                      src={`https://flagcdn.com/w40/${clientCountryCode}.png`}
+                      alt={clientCountryCode.toUpperCase()}
+                      title={clientCountryCode.toUpperCase()}
+                      className="h-4 w-4 shrink-0 rounded-[3px] border border-white/30 object-cover"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  )}
                   <span className="font-bold text-sm shrink-0">{data.unique_code}</span>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-white/80 shrink-0">

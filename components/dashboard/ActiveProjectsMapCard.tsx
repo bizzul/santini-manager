@@ -41,7 +41,8 @@ interface ActiveProjectsMapCardProps {
   projects: DashboardProjectLocation[];
   domain: string;
   className?: string;
-  mapHeightClassName?: string;
+  /** Map viewport height in px (applied inline to avoid JIT arbitrary-class flakiness). */
+  mapHeightPx?: number;
   /** ISO alpha-3 codes of the countries to highlight on the map. */
   highlightCountries?: string[];
 }
@@ -56,7 +57,7 @@ export default function ActiveProjectsMapCard({
   projects,
   domain,
   className,
-  mapHeightClassName = "h-[520px]",
+  mapHeightPx = 520,
   highlightCountries,
 }: ActiveProjectsMapCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -314,8 +315,9 @@ export default function ActiveProjectsMapCard({
       <div
         className={cn(
           "relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60",
-          isExpanded ? "flex-1 min-h-0" : mapHeightClassName,
+          isExpanded ? "flex-1 min-h-0" : "",
         )}
+        style={!isExpanded ? { height: mapHeightPx } : undefined}
       >
         <ActiveProjectsMap
           key={domain}

@@ -8,6 +8,7 @@ import {
     STATUS_CONFIG,
     AttendanceStatus,
 } from "./attendance-types";
+import { useT } from "@/components/i18n/i18n-provider";
 
 interface AttendanceStatsProps {
     users: AttendanceUser[];
@@ -15,6 +16,7 @@ interface AttendanceStatsProps {
 }
 
 export function AttendanceStats({ users, attendance }: AttendanceStatsProps) {
+    const t = useT();
     const statusCounts: Record<string, number> = {};
     const statusTypes = Object.keys(STATUS_CONFIG).filter((s) => s !== "weekend") as AttendanceStatus[];
 
@@ -44,7 +46,9 @@ export function AttendanceStats({ users, attendance }: AttendanceStatsProps) {
                         <CardContent className="p-3">
                             <div className="flex items-center gap-2 mb-1">
                                 <div className={`w-3 h-3 rounded-sm ${config.bgClass}`} />
-                                <span className="text-xs font-medium truncate">{config.label}</span>
+                                <span className="text-xs font-medium truncate">
+                                    {t(`attendance.status.${status}`)}
+                                </span>
                             </div>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-lg font-bold">{count}</span>

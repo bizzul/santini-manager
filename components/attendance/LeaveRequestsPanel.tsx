@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/card";
 import { Check, X, Clock, CalendarDays } from "lucide-react";
 import { format } from "date-fns";
-import { it } from "date-fns/locale";
-import {
-    LeaveRequest,
-    LEAVE_TYPE_LABELS,
-    LEAVE_STATUS_LABELS,
-} from "./attendance-types";
+import { it, de } from "date-fns/locale";
+import type { Locale } from "date-fns";
+import { LeaveRequest } from "./attendance-types";
+import { useLocale, useT } from "@/components/i18n/i18n-provider";
+
+const DATE_LOCALES: Record<string, Locale> = { it, de };
 
 interface LeaveRequestsPanelProps {
     requests: LeaveRequest[];
@@ -45,6 +45,9 @@ export function LeaveRequestsPanel({
     onApprove,
     onReject,
 }: LeaveRequestsPanelProps) {
+    const t = useT();
+    const locale = useLocale();
+    const dateLocale = DATE_LOCALES[locale] || it;
     const pendingRequests = requests.filter((r) => r.status === "pending");
     const pastRequests = requests.filter((r) => r.status !== "pending");
 
@@ -57,7 +60,7 @@ export function LeaveRequestsPanel({
                         <div className="flex items-center gap-2">
                             <Clock className="h-4 w-4 text-amber-500" />
                             <CardTitle className="text-base">
-                                Richieste in attesa
+                                {t("attendance.pendingRequests")}
                             </CardTitle>
                             <Badge variant="secondary" className="ml-auto">
                                 {pendingRequests.length}
@@ -76,20 +79,20 @@ export function LeaveRequestsPanel({
                                             {req.user_name}
                                         </span>
                                         <Badge variant="outline" className="text-xs">
-                                            {LEAVE_TYPE_LABELS[req.leave_type]}
+                                            {t(`attendance.leaveType.${req.leave_type}`)}
                                         </Badge>
                                     </div>
                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                         <CalendarDays className="h-3 w-3" />
-                                        {format(new Date(req.start_date), "d MMM", { locale: it })}
+                                        {format(new Date(req.start_date), "d MMM", { locale: dateLocale })}
                                         {req.start_date !== req.end_date && (
                                             <>
                                                 {" - "}
-                                                {format(new Date(req.end_date), "d MMM yyyy", { locale: it })}
+                                                {format(new Date(req.end_date), "d MMM yyyy", { locale: dateLocale })}
                                             </>
                                         )}
                                         {req.start_date === req.end_date && (
-                                            <> {format(new Date(req.start_date), "yyyy", { locale: it })}</>
+                                            <> {format(new Date(req.start_date), "yyyy", { locale: dateLocale })}</>
                                         )}
                                     </div>
                                     {req.notes && (
@@ -130,9 +133,9 @@ export function LeaveRequestsPanel({
             {pastRequests.length > 0 && (
                 <Card>
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-base">Storico richieste</CardTitle>
+                        <CardTitle className="text-base">{t("attendance.requestsHistory")}</CardTitle>
                         <CardDescription className="text-xs">
-                            Richieste approvate e rifiutate
+                            {t("attendance.requestsHistoryDescription")}
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -148,22 +151,22 @@ export function LeaveRequestsPanel({
                                                 {req.user_name}
                                             </span>
                                             <Badge variant="outline" className="text-xs">
-                                                {LEAVE_TYPE_LABELS[req.leave_type]}
+                                                {t(`attendance.leaveType.${req.leave_type}`)}
                                             </Badge>
                                             <Badge
                                                 variant={getStatusBadgeVariant(req.status)}
                                                 className="text-xs"
                                             >
-                                                {LEAVE_STATUS_LABELS[req.status]}
+                                                {t(`attendance.leaveStatus.${req.status}`)}
                                             </Badge>
                                         </div>
                                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                             <CalendarDays className="h-3 w-3" />
-                                            {format(new Date(req.start_date), "d MMM", { locale: it })}
+                                            {format(new Date(req.start_date), "d MMM", { locale: dateLocale })}
                                             {req.start_date !== req.end_date && (
                                                 <>
                                                     {" - "}
-                                                    {format(new Date(req.end_date), "d MMM yyyy", { locale: it })}
+                                                    {format(new Date(req.end_date), "d MMM yyyy", { locale: dateLocale })}
                                                 </>
                                             )}
                                         </div>
@@ -180,7 +183,7 @@ export function LeaveRequestsPanel({
                     <CardContent className="py-8 text-center">
                         <CalendarDays className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">
-                            Nessuna richiesta di ferie
+                            {t("attendance.noLeaveRequests")}
                         </p>
                     </CardContent>
                 </Card>

@@ -60,6 +60,8 @@ export async function createSellProduct(
       tipo: resolvedTipo,
       product_type: resolvedTipo,
       description: props.description || null,
+      diameter_mm: props.diameter_mm ?? null,
+      length_mm: props.length_mm ?? null,
       price_list: props.price_list ?? false,
       image_url: props.image_url || null,
       doc_url: props.doc_url || null,

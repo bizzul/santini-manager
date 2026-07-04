@@ -6,6 +6,7 @@ import {
   fetchSiteModules,
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
+import { getServerT } from "@/lib/i18n/server";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AggregatedKanbanStatus from "@/components/dashboard/AggregatedKanbanStatus";
@@ -73,13 +74,14 @@ export default async function SiteDashboardForecastPage({
   }
 
   const dashboardData = await fetchDashboardData(siteContext.siteId);
+  const { t } = await getServerT(siteContext.siteId);
 
   return (
     <PageLayout>
       <DashboardTabs />
       <PageHeader
-        title={`Forecast - ${verticalProfile.pageCopy.dashboardOverviewTitle}`}
-        subtitle="Dashboard previsionale con KPI conversione, capacita produttiva, fabbisogno ore e cash flow stimato."
+        title={`${t("forecast.pageTitle")} - ${verticalProfile.pageCopy.dashboardOverviewTitle}`}
+        subtitle={t("forecast.pageSubtitle")}
       />
       <PageContent>
         <div className="space-y-6">

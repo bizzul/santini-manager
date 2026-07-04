@@ -67,7 +67,9 @@ export default function DashboardTabs({
     () =>
       [
         { name: verticalProfile.dashboardTabs.overview, href: "", icon: LayoutDashboard },
-        showForecastTab ? { name: "Forecast", href: "/forecast", icon: BrainCircuit } : null,
+        showForecastTab
+          ? { name: t("nav.forecast"), href: "/forecast", icon: BrainCircuit }
+          : null,
         { name: verticalProfile.dashboardTabs.vendita, href: "/vendita", icon: ShoppingCart },
         { name: "AVOR", href: "/avor", icon: ClipboardList },
         { name: verticalProfile.dashboardTabs.produzione, href: "/produzione", icon: Factory },

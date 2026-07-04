@@ -4,6 +4,7 @@ import { CalendarCheck } from "lucide-react";
 
 import { getUserContext } from "@/lib/auth-utils";
 import { getSiteData } from "@/lib/fetchers";
+import { getServerT } from "@/lib/i18n/server";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
 import { AttendanceGrid } from "@/components/attendance/AttendanceGrid";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
@@ -26,6 +27,7 @@ export default async function AttendancePage({
     }
 
     const isAdmin = isAdminOrSuperadmin(userContext.role);
+    const { t } = await getServerT(siteResponse.data.id);
 
     return (
         <PageLayout>
@@ -36,11 +38,11 @@ export default async function AttendancePage({
                             <CalendarCheck className="h-6 w-6 text-primary" />
                         </div>
                         <span className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                            Presenze
+                            {t("attendance.pageTitle")}
                         </span>
                     </div>
                 }
-                subtitle="Registro presenze, ferie e assenze"
+                subtitle={t("attendance.pageSubtitle")}
             />
             <PageContent>
                 <AttendanceGrid

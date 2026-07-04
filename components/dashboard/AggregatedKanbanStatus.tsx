@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardStats } from "@/lib/server-data";
+import { useT } from "@/components/i18n/i18n-provider";
 
 interface AggregatedKanbanStatusProps {
   data: DashboardStats;
@@ -25,6 +26,7 @@ const COLOR_CLASSES = {
 export default function AggregatedKanbanStatus({
   data,
 }: AggregatedKanbanStatusProps) {
+  const t = useT();
   // Get status for each department
   const getDepartmentStatus = (department: string) => {
     const status = data.kanbanStatus.find((k) => k.department === department);
@@ -36,9 +38,9 @@ export default function AggregatedKanbanStatus({
   return (
     <div className="dashboard-panel p-6">
       <div className="mb-6">
-        <h3 className="dashboard-panel-title mb-1">Stato Kanban Aggregato</h3>
+        <h3 className="dashboard-panel-title mb-1">{t("forecast.kanbanStatusTitle")}</h3>
         <p className="dashboard-panel-subtitle">
-          Panoramica rapida reparti
+          {t("forecast.kanbanStatusSubtitle")}
         </p>
       </div>
 

@@ -695,6 +695,27 @@ export const fetchManufacturers = cache(async (siteId: string) => {
 });
 
 /**
+ * Fetch resellers for a site
+ */
+export const fetchResellers = cache(async (siteId: string) => {
+    const supabase = await createClient();
+
+    const { data: resellers, error } = await supabase
+        .from("Reseller")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("country", { ascending: true })
+        .order("name", { ascending: true });
+
+    if (error) {
+        log.error("Error fetching resellers:", error);
+        return [];
+    }
+
+    return resellers || [];
+});
+
+/**
  * Fetch manufacturer categories for a site
  */
 export const fetchManufacturerCategories = cache(async (siteId: string) => {

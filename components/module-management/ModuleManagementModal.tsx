@@ -32,6 +32,7 @@ import {
   ShoppingBag,
   Truck,
   Factory,
+  Store,
   UserCog,
   List,
   LucideIcon,
@@ -72,6 +73,7 @@ const getModuleIcon = (iconName: string): LucideIcon => {
     faShoppingBag: ShoppingBag,
     faHelmetSafety: Truck,
     faIndustry: Factory,
+    faTruckField: Store,
     faUserTie: UserCog,
     faListUl: List,
   };

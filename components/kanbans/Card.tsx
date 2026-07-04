@@ -26,6 +26,7 @@ import { Badge } from "../ui/badge";
 import { ManagerGuideButton } from "@/components/manager-guide";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useRouter } from "next/navigation";
+import { useT } from "@/components/i18n/i18n-provider";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
 
@@ -133,6 +134,7 @@ export default function Card({
   cardFieldConfig?: CardFieldConfig;
 }) {
   const router = useRouter();
+  const t = useT();
   const { userContext } = useUserContext();
   const shouldPersistVisualPreferences =
     process.env.NEXT_PUBLIC_ENABLE_CARD_PREFS === "true";
@@ -594,6 +596,26 @@ export default function Card({
     return `${lastName} ${firstName}`.trim() || "-";
   };
 
+  // Bandiera paese del cliente (quadratino prima del codice progetto).
+  // flagcdn richiede codici ISO 3166-1 alpha-2 minuscoli.
+  const clientCountryCode =
+    typeof data.client?.countryCode === "string" &&
+    data.client.countryCode.trim().length === 2
+      ? data.client.countryCode.trim().toLowerCase()
+      : null;
+
+  const renderCountryFlag = () =>
+    clientCountryCode ? (
+      <img
+        src={`https://flagcdn.com/w40/${clientCountryCode}.png`}
+        alt={clientCountryCode.toUpperCase()}
+        title={clientCountryCode.toUpperCase()}
+        className="h-4 w-4 shrink-0 rounded-[3px] border border-slate-300 object-cover dark:border-slate-600"
+        loading="lazy"
+        draggable={false}
+      />
+    ) : null;
+
   // Get pieces count
   const getPiecesDisplay = () => {
     if (data.numero_pezzi && data.numero_pezzi > 0) {
@@ -691,15 +713,19 @@ export default function Card({
     const label =
       timeState === "atRisk"
         ? daysDelta === 0
-          ? "Oggi"
+          ? t("kanbanCard.today")
           : `+${daysDelta}g`
         : `-${daysDelta}g`;
     const tooltip =
       timeState === "atRisk"
         ? daysDelta === 0
-          ? "Consegna in scadenza oggi"
-          : `Consegna tra ${daysDelta} ${daysDelta === 1 ? "giorno" : "giorni"}`
-        : `In ritardo di ${daysDelta} ${daysDelta === 1 ? "giorno" : "giorni"}`;
+          ? t("kanbanCard.deliveryDueToday")
+          : daysDelta === 1
+            ? t("kanbanCard.deliveryInOneDay")
+            : t("kanbanCard.deliveryInDays", { days: daysDelta })
+        : daysDelta === 1
+          ? t("kanbanCard.lateByOneDay")
+          : t("kanbanCard.lateByDays", { days: daysDelta });
     return (
       <Badge
         title={tooltip}
@@ -759,21 +785,24 @@ export default function Card({
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
                   {isFieldVisible("projectCode") ? (
-                    canAccessConsuntivo ? (
-                      <button
-                        type="button"
-                        onClick={handleOpenProjectConsuntivo}
-                        className="inline-flex min-h-8 items-center whitespace-nowrap rounded-md px-1.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
-                        title="Apri consuntivi progetto"
-                        aria-label={`Apri consuntivi progetto ${data.unique_code}`}
-                      >
-                        {data.unique_code}
-                      </button>
-                    ) : (
-                      <span className="whitespace-nowrap text-sm font-bold">
-                        {data.unique_code}
-                      </span>
-                    )
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      {renderCountryFlag()}
+                      {canAccessConsuntivo ? (
+                        <button
+                          type="button"
+                          onClick={handleOpenProjectConsuntivo}
+                          className="inline-flex min-h-8 items-center whitespace-nowrap rounded-md px-1.5 text-sm font-bold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
+                          title={t("kanbanCard.openProjectReports")}
+                          aria-label={`${t("kanbanCard.openProjectReports")} ${data.unique_code}`}
+                        >
+                          {data.unique_code}
+                        </button>
+                      ) : (
+                        <span className="whitespace-nowrap text-sm font-bold">
+                          {data.unique_code}
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <span />
                   )}
@@ -836,7 +865,7 @@ export default function Card({
                     ) : (
                       <div className="flex h-24 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
                         <ImageIcon className="h-3.5 w-3.5" />
-                        <span>Nessuna immagine</span>
+                        <span>{t("kanbanCard.noImage")}</span>
                       </div>
                     )}
                   </div>
@@ -848,8 +877,8 @@ export default function Card({
                     type="button"
                     onClick={handleOpenClientSheet}
                     className="mb-0.5 inline-flex w-full min-h-8 max-w-full items-start rounded-md px-1 text-left text-base font-semibold text-slate-900 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-50 dark:hover:bg-slate-800"
-                    title="Apri scheda cliente"
-                    aria-label={`Apri scheda cliente ${getClientName()}`}
+                    title={t("kanbanCard.openClientSheet")}
+                    aria-label={`${t("kanbanCard.openClientSheet")} ${getClientName()}`}
                   >
                     <span className="line-clamp-2 break-words leading-snug">
                       {getClientName()}
@@ -1059,14 +1088,15 @@ export default function Card({
                 {/* Riga 1: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
+                    {isFieldVisible("projectCode") && renderCountryFlag()}
                     {isFieldVisible("projectCode") && (
                       canAccessConsuntivo ? (
                         <button
                           type="button"
                           onClick={handleOpenProjectConsuntivo}
                           className="inline-flex min-h-8 items-center whitespace-nowrap rounded-md px-1.5 text-sm font-bold transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-slate-800"
-                          title="Apri consuntivi progetto"
-                          aria-label={`Apri consuntivi progetto ${data.unique_code}`}
+                          title={t("kanbanCard.openProjectReports")}
+                          aria-label={`${t("kanbanCard.openProjectReports")} ${data.unique_code}`}
                         >
                           {data.unique_code}
                         </button>
@@ -1119,7 +1149,7 @@ export default function Card({
                     ) : (
                       <div className="flex h-14 w-full items-center justify-center gap-1 rounded border border-dashed border-slate-300 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
                         <ImageIcon className="h-3 w-3" />
-                        <span>Nessuna immagine</span>
+                        <span>{t("kanbanCard.noImage")}</span>
                       </div>
                     )}
                   </div>
@@ -1131,8 +1161,8 @@ export default function Card({
                     type="button"
                     onClick={handleOpenClientSheet}
                     className="inline-flex w-full min-h-8 items-start rounded-md px-1 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-slate-200 dark:hover:bg-slate-800"
-                    title="Apri scheda cliente"
-                    aria-label={`Apri scheda cliente ${getClientName()}`}
+                    title={t("kanbanCard.openClientSheet")}
+                    aria-label={`${t("kanbanCard.openClientSheet")} ${getClientName()}`}
                   >
                     <span className="line-clamp-2 break-words leading-snug">
                       {getClientName()}
@@ -1322,7 +1352,7 @@ export default function Card({
             className="flex items-center gap-2"
           >
             <Copy className="h-4 w-4" />
-            {isDuplicating ? "Duplicando..." : "Duplica progetto"}
+            {isDuplicating ? t("kanbanCard.duplicating") : t("kanbanCard.duplicateProject")}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem
@@ -1333,7 +1363,7 @@ export default function Card({
             className="flex items-center gap-2"
           >
             <Archive className="h-4 w-4" />
-            {data.archived ? "Ripristina progetto" : "Archivia progetto"}
+            {data.archived ? t("kanbanCard.restoreProject") : t("kanbanCard.archiveProject")}
           </ContextMenuItem>
           <ContextMenuItem
             onClick={(e) => {

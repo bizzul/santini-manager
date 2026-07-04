@@ -46,11 +46,11 @@ export default function GlobalMarketOverviewCard({
       : `/sites/${domain}/clients?country=${iso2}`;
 
   return (
-    <div className="dashboard-panel space-y-5 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="dashboard-panel space-y-3 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <Globe2 className="h-5 w-5" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
+            <Globe2 className="h-4 w-4" />
           </span>
           <div>
             <h3 className="dashboard-panel-title">
@@ -62,7 +62,7 @@ export default function GlobalMarketOverviewCard({
           </div>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-bold text-foreground">
+          <p className="text-2xl font-bold text-foreground">
             {formatNumber(representativeCount, locale)}
             <span className="text-lg font-medium text-muted-foreground">
               {" "}
@@ -88,7 +88,7 @@ export default function GlobalMarketOverviewCard({
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
           <h4 className="text-sm font-semibold text-foreground">
@@ -97,7 +97,7 @@ export default function GlobalMarketOverviewCard({
         </div>
 
         {emergingMarkets.length === 0 ? (
-          <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border border-border bg-card/60 px-4 py-4 text-center text-sm text-muted-foreground">
             {t("dashboard.emergingMarketsEmpty")}
           </p>
         ) : (
@@ -106,7 +106,7 @@ export default function GlobalMarketOverviewCard({
               <Link
                 key={market.iso2}
                 href={tileHref(market.iso2)}
-                className="group flex flex-col gap-2 rounded-xl border border-border bg-card/60 p-3 transition-colors hover:border-primary/60 hover:bg-card"
+                className="group flex flex-col gap-1.5 rounded-xl border border-border bg-card/60 p-2.5 transition-colors hover:border-primary/60 hover:bg-card"
               >
                 <div className="flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductDocuments } from "@/components/product/product-documents";
 import { getUserContext } from "@/lib/auth-utils";
+import { getServerT } from "@/lib/i18n/server";
 import { requireServerSiteContext } from "@/lib/server-data";
 import { getSellProductDisplayCode } from "@/lib/sell-product-code";
 import type { File as ManagedFile } from "@/types/supabase";
@@ -73,6 +74,7 @@ export default async function ProductPage({
   }
 
   const { siteId } = await requireServerSiteContext(domain);
+  const { t } = await getServerT(siteId);
   const data = await getProductSheetData(productId, siteId);
 
   if (!data) {
@@ -203,6 +205,26 @@ export default async function ProductPage({
             }
           >
             <div className="space-y-3">
+              {product.diameter_mm != null && (
+                <div className="flex items-center justify-between gap-4 text-sm">
+                  <span className="text-muted-foreground">
+                    {t("products.diameterLabel")}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {product.diameter_mm}
+                  </span>
+                </div>
+              )}
+              {product.length_mm != null && (
+                <div className="flex items-center justify-between gap-4 text-sm">
+                  <span className="text-muted-foreground">
+                    {t("products.lengthLabel")}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {product.length_mm}
+                  </span>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-4 text-sm">
                 <span className="text-muted-foreground">Creato</span>
                 <span className="font-medium text-foreground">

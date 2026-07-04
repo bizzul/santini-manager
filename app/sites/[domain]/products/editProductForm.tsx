@@ -39,6 +39,7 @@ import { editSellProductAction } from "./actions/edit-item.action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
 import { DocumentUpload } from "@/components/ui/document-upload";
+import { useT } from "@/components/i18n/i18n-provider";
 
 type Props = {
   handleClose: any;
@@ -49,6 +50,7 @@ type Props = {
 
 const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
   const { toast } = useToast();
+  const t = useT();
   const router = useRouter();
   const [categories, setCategories] = useState<SellProductCategory[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -125,6 +127,8 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       tipo: resolvedTipo,
       name: data.name || "",
       description: data.description || "",
+      diameter_mm: data.diameter_mm ?? undefined,
+      length_mm: data.length_mm ?? undefined,
       supplier_id: data.supplier_id ?? undefined,
       price_list: data.price_list ?? false,
       image_url: data.image_url || "",
@@ -361,6 +365,49 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="diameter_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("products.diameterLabel")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={t("products.diameterPlaceholder")}
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="length_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t("products.lengthLabel")}</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder={t("products.lengthPlaceholder")}
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}

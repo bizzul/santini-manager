@@ -158,6 +158,31 @@ export async function GET(
                 .in("authId", candidateUserIds);
 
             userProfiles = authIdProfiles || [];
+
+            // Fallback: profili censiti solo con auth_id (es. collaboratori
+            // draft/demo), stesso comportamento di fetchCollaborators.
+            const foundAuthIds = new Set(
+                userProfiles.map((user: any) => user.authId).filter(Boolean)
+            );
+            const missingIds = candidateUserIds.filter(
+                (id) => id && !foundAuthIds.has(id)
+            );
+            if (missingIds.length > 0) {
+                const { data: altProfiles } = await supabase
+                    .from("User")
+                    .select("auth_id, given_name, family_name, email, picture, enabled, role")
+                    .in("auth_id", missingIds);
+
+                if (altProfiles?.length) {
+                    userProfiles = [
+                        ...userProfiles,
+                        ...altProfiles.map((user: any) => ({
+                            ...user,
+                            authId: user.auth_id,
+                        })),
+                    ];
+                }
+            }
         }
 
         const profiles: {
@@ -167,13 +192,24 @@ export async function GET(
             picture: string | null;
         }[] = userProfiles
             .filter((user: any) => {
-                if (!user?.enabled || user.role === "superadmin") {
+                if (!user || user.role === "superadmin") {
                     return false;
                 }
 
                 const authUserId = user.authId || "";
+
+                // I collaboratori assegnati direttamente al sito restano
+                // visibili anche se disabilitati (es. profili draft/demo),
+                // in linea con la pagina Collaboratori.
+                if (directSiteUserSet.has(authUserId)) {
+                    return true;
+                }
+
+                if (!user.enabled) {
+                    return false;
+                }
+
                 return (
-                    directSiteUserSet.has(authUserId) ||
                     (organizationUserSet.has(authUserId) && user.role === "admin") ||
                     attendanceUserIds.includes(authUserId) ||
                     timetrackingUserIds.includes(authUserId)

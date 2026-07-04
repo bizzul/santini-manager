@@ -191,6 +191,15 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         category: "management",
     },
     {
+        name: "resellers",
+        label: "Rivenditori",
+        description: "Anagrafica rivenditori e distributori per paese",
+        icon: "faTruckField",
+        href: "/resellers",
+        enabledByDefault: false,
+        category: "management",
+    },
+    {
         name: "collaborators",
         label: "Collaboratori",
         description: "Gestione collaboratori e accessi",

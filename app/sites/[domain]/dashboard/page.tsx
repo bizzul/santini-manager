@@ -92,7 +92,7 @@ export default async function SiteDashboardPage({
             emergingMarkets={marketOverview.emergingMarkets}
           />
           <ActiveProjectsMapCard
-            mapHeightClassName="h-[500px]"
+            mapHeightPx={640}
             domain={domain}
             projects={dashboardData.activeProjectLocations}
             highlightCountries={highlightCountries}

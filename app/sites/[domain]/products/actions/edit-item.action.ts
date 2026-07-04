@@ -71,6 +71,8 @@ export async function editSellProductAction(
         tipo: resolvedTipo,
         product_type: resolvedTipo,
         description: formData.description || null,
+        diameter_mm: formData.diameter_mm ?? null,
+        length_mm: formData.length_mm ?? null,
         price_list: formData.price_list ?? false,
         image_url: formData.image_url || null,
         doc_url: formData.doc_url || null,

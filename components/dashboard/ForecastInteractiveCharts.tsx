@@ -10,6 +10,7 @@ import {
   getChartGridColor,
 } from "@/lib/charts/theme";
 import { DashboardStats } from "@/lib/server-data";
+import { useT } from "@/components/i18n/i18n-provider";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -38,6 +39,7 @@ const clamp = (value: number, min: number, max: number) =>
 export default function ForecastInteractiveCharts({
   data,
 }: ForecastInteractiveChartsProps) {
+  const t = useT();
   const conversionData = useMemo(
     () => data.forecast?.conversion ?? [],
     [data.forecast?.conversion]
@@ -80,13 +82,13 @@ export default function ForecastInteractiveCharts({
 
   const occupancySeries = [
     {
-      name: "Reparti",
+      name: t("forecast.seriesDepartments"),
       data: occupancyCategories.map((category) =>
         Number(clamp(category.departmentLoad, 0, 100).toFixed(1))
       ),
     },
     {
-      name: "Macchinari",
+      name: t("forecast.seriesMachines"),
       data: occupancyCategories.map((category) =>
         Number(clamp(category.machineLoad, 0, 100).toFixed(1))
       ),
@@ -114,7 +116,7 @@ export default function ForecastInteractiveCharts({
     },
     yaxis: {
       max: 100,
-      title: { text: "% Carico", style: { color: getChartAxisColor() } },
+      title: { text: t("forecast.loadAxis"), style: { color: getChartAxisColor() } },
       labels: { style: { colors: getChartAxisColor(), fontSize: "12px" } },
     },
     grid: { borderColor: getChartGridColor(), strokeDashArray: 3 },
@@ -134,7 +136,7 @@ export default function ForecastInteractiveCharts({
 
   const workHoursSeries = [
     {
-      name: "Ore pianificate",
+      name: t("forecast.seriesPlannedHours"),
       data: (plannedHoursData?.byDepartment || []).map((item) => Math.round(item.hours)),
     },
   ];
@@ -173,7 +175,7 @@ export default function ForecastInteractiveCharts({
 
   const cashFlowTrendSeries = [
     {
-      name: "Cash flow stimato",
+      name: t("forecast.seriesCashFlow"),
       data: (cashFlowData?.monthlySeries || []).map((item) => Number(item.value.toFixed(0))),
     },
   ];
@@ -209,8 +211,7 @@ export default function ForecastInteractiveCharts({
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 text-sm text-blue-100">
-        KPI Forecast collegati ai dati reali del database, con calcolo periodale per
-        conversione commerciale e cash flow previsionale.
+        {t("forecast.intro")}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -220,9 +221,9 @@ export default function ForecastInteractiveCharts({
               <TrendingUp className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <h3 className="dashboard-panel-title">KPI Tasso di conversione</h3>
+              <h3 className="dashboard-panel-title">{t("forecast.conversionTitle")}</h3>
               <p className="dashboard-panel-subtitle">
-                Valore offerte inviate / commesse acquisite
+                {t("forecast.conversionSubtitle")}
               </p>
             </div>
           </div>
@@ -230,15 +231,20 @@ export default function ForecastInteractiveCharts({
             {selectedConversion.rate.toFixed(1)}%
           </h4>
           <p className="text-xs text-muted-foreground">
-            {formatCurrency(selectedConversion.acquiredValue)} acquisito su{" "}
-            {formatCurrency(selectedConversion.sentValue)} inviato
+            {t("forecast.acquiredOnSent", {
+              acquired: formatCurrency(selectedConversion.acquiredValue),
+              sent: formatCurrency(selectedConversion.sentValue),
+            })}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {selectedConversion.acquiredCount}/{selectedConversion.sentCount} commesse
+            {t("forecast.ordersCount", {
+              acquired: selectedConversion.acquiredCount,
+              sent: selectedConversion.sentCount,
+            })}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {[
-              { id: "month", label: "Mese" },
+              { id: "month", label: t("forecast.periodMonth") },
               { id: "q1", label: "Q1" },
               { id: "q2", label: "Q2" },
               { id: "q3", label: "Q3" },
@@ -282,9 +288,9 @@ export default function ForecastInteractiveCharts({
               <Factory className="h-5 w-5 text-blue-500" />
             </div>
             <div>
-              <h3 className="dashboard-panel-title">Occupazione reparti</h3>
+              <h3 className="dashboard-panel-title">{t("forecast.occupancyTitle")}</h3>
               <p className="dashboard-panel-subtitle">
-                Carico reparti e macchinari per prodotti/categorie
+                {t("forecast.occupancySubtitle")}
               </p>
             </div>
           </div>
@@ -292,7 +298,7 @@ export default function ForecastInteractiveCharts({
             {(data.forecast?.occupancy?.averageLoad || 0).toFixed(0)}%
           </h4>
           <p className="mb-2 text-xs text-muted-foreground">
-            Carico medio produttivo sulle commesse acquisite pianificate
+            {t("forecast.occupancyAverage")}
           </p>
           <ReactApexChart
             options={occupancyChartOptions}
@@ -308,9 +314,9 @@ export default function ForecastInteractiveCharts({
               <Clock3 className="h-5 w-5 text-violet-400" />
             </div>
             <div>
-              <h3 className="dashboard-panel-title">Ore lavoro pianificate</h3>
+              <h3 className="dashboard-panel-title">{t("forecast.plannedHoursTitle")}</h3>
               <p className="dashboard-panel-subtitle">
-                Personale necessario per commesse acquisite future
+                {t("forecast.plannedHoursSubtitle")}
               </p>
             </div>
           </div>
@@ -318,7 +324,9 @@ export default function ForecastInteractiveCharts({
             {Math.round(plannedHoursData?.totalHours || 0)} h
           </h4>
           <p className="text-xs text-muted-foreground">
-            Fabbisogno medio: {(plannedHoursData?.fte || 0).toFixed(1)} FTE
+            {t("forecast.fteAverage", {
+              fte: (plannedHoursData?.fte || 0).toFixed(1),
+            })}
           </p>
           <div className="mt-3">
             <ReactApexChart
@@ -347,9 +355,9 @@ export default function ForecastInteractiveCharts({
               <Wallet className="h-5 w-5 text-emerald-400" />
             </div>
             <div>
-              <h3 className="dashboard-panel-title">KPI Cash flow stimato</h3>
+              <h3 className="dashboard-panel-title">{t("forecast.cashFlowTitle")}</h3>
               <p className="dashboard-panel-subtitle">
-                In corso, commesse future e liquidita disponibile
+                {t("forecast.cashFlowSubtitle")}
               </p>
             </div>
           </div>
@@ -357,7 +365,9 @@ export default function ForecastInteractiveCharts({
             {formatCurrency(selectedHorizon.value)}
           </h4>
           <p className="text-xs text-muted-foreground">
-            Orizzonte a {cashFlowPeriod} {cashFlowPeriod === 1 ? "mese" : "mesi"}
+            {cashFlowPeriod === 1
+              ? t("forecast.horizonOne")
+              : t("forecast.horizonMany", { months: cashFlowPeriod })}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {[1, 3, 6, 12].map((period) => (
@@ -386,11 +396,11 @@ export default function ForecastInteractiveCharts({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="dashboard-panel p-6">
           <div className="mb-4 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-blue-300" />
-            <p className="text-sm font-semibold">Dettaglio occupazione categorie</p>
+            <p className="text-sm font-semibold">{t("forecast.occupancyDetailTitle")}</p>
           </div>
           <ReactApexChart
             options={occupancyChartOptions}
@@ -401,31 +411,9 @@ export default function ForecastInteractiveCharts({
         </div>
 
         <div className="dashboard-panel p-6">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-cyan-200">DNA Loop Centrale</p>
-            <span className="rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-200">
-              video loop
-            </span>
-          </div>
-          <div className="mx-auto w-full max-w-[340px]">
-            <div className="aspect-square overflow-hidden rounded-2xl border border-cyan-400/30 bg-slate-950/70 shadow-[0_0_35px_rgba(56,189,248,0.18)]">
-              <video
-                src="/video/dna-loop.mp4"
-                className="h-full w-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
-                preload="metadata"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="dashboard-panel p-6">
           <div className="mb-4 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-300" />
-            <p className="text-sm font-semibold">Proiezione cash flow</p>
+            <p className="text-sm font-semibold">{t("forecast.cashFlowProjectionTitle")}</p>
           </div>
           <ReactApexChart
             options={cashFlowTrendOptions}
