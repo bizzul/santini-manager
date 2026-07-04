@@ -89,7 +89,7 @@ export default async function SiteDashboardPage({
             domain={domain}
             representativeCount={marketOverview.representativeCount}
             totalCountries={marketOverview.totalCountries}
-            emergingMarkets={marketOverview.emergingMarkets}
+            activeMarkets={marketOverview.activeMarkets}
           />
           <ActiveProjectsMapCard
             mapHeightPx={640}

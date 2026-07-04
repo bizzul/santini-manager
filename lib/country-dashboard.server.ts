@@ -90,6 +90,8 @@ export interface GlobalMarketOverview {
   totalCountries: number;
   representativeIso2: string[];
   emergingMarkets: EmergingMarketCountry[];
+  /** Countries with real activity (offers and/or projects), ranked by value. */
+  activeMarkets: EmergingMarketCountry[];
 }
 
 const ISO2_NAME = new Map(
@@ -109,6 +111,7 @@ export const getGlobalMarketOverview = cache(
       totalCountries: WORLD_SOVEREIGN_COUNTRIES_COUNT,
       representativeIso2: [],
       emergingMarkets: [],
+      activeMarkets: [],
     };
     if (!siteId) return empty;
 
@@ -143,11 +146,30 @@ export const getGlobalMarketOverview = cache(
       .sort((a, b) => b.totalValue - a.totalValue)
       .slice(0, 8);
 
+    // Countries that actually have active business (offers and/or projects),
+    // regardless of whether they already have a representative.
+    const activeMarkets: EmergingMarketCountry[] = Object.entries(stats)
+      .filter(([, s]) => s.offers > 0 || s.projects > 0)
+      .map(([iso2, s]) => {
+        const code = iso2.toUpperCase();
+        return {
+          iso2: code,
+          name: ISO2_NAME.get(code) ?? code,
+          clients: s.clients,
+          offers: s.offers,
+          projects: s.projects,
+          totalValue: s.totalValue,
+        };
+      })
+      .sort((a, b) => b.totalValue - a.totalValue)
+      .slice(0, 12);
+
     return {
       representativeCount: highlight.length,
       totalCountries: WORLD_SOVEREIGN_COUNTRIES_COUNT,
       representativeIso2: Array.from(representativeIso2),
       emergingMarkets,
+      activeMarkets,
     };
   },
 );

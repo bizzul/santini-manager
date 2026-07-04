@@ -112,6 +112,9 @@ export const deMessages: DeepPartialWiden<Messages> = {
     emergingMarketsTitle: "Aufstrebende Märkte",
     emergingMarketsEmpty:
       "Keine aufstrebenden Märkte: Alle Länder mit Geschäft haben bereits eine Vertretung.",
+    activeMarketsTitle: "Aktive Länder",
+    activeMarketsEmpty:
+      "Derzeit keine Länder mit aktiven Angeboten oder Projekten.",
   },
   clients: {
     pageEmptyTitle: "Keine Kunden erfasst",
@@ -143,6 +146,12 @@ export const deMessages: DeepPartialWiden<Messages> = {
     selectAll: "Alle auswählen",
     selectRow: "Zeile auswählen",
     openDocuments: "Kundendokumente und Vereinbarungen öffnen",
+    logo: "Kundenlogo",
+    logoUpload: "Klicken, um das Kundenlogo hochzuladen",
+    logoUploaded: "Logo hochgeladen",
+    logoError: "Fehler beim Hochladen des Logos",
+    logoInvalidType: "Das Logo muss ein Bild sein (JPEG, PNG, GIF, WebP)",
+    logoTooLarge: "Logo zu groß (max. 5 MB)",
     userFallback: "Benutzer",
   },
   forecast: {

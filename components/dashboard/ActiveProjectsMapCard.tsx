@@ -6,7 +6,7 @@ import { Check, ChevronDown, Maximize2, Minimize2, X } from "lucide-react";
 import type { DashboardProjectLocation } from "@/lib/server-data";
 import { useActiveProjectMap } from "@/hooks/use-active-project-map";
 import { cn } from "@/lib/utils";
-import CountryDashboardOverlay from "@/components/dashboard/CountryDashboardOverlay";
+import CountryPresenceOverlay from "@/components/dashboard/CountryPresenceOverlay";
 import {
   COUNTRY_CAPITALS,
   type SelectedCountry,
@@ -61,7 +61,7 @@ export default function ActiveProjectsMapCard({
   highlightCountries,
 }: ActiveProjectsMapCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState<SelectedCountry | null>(
+  const [presenceCountry, setPresenceCountry] = useState<SelectedCountry | null>(
     null,
   );
   const searchParams = useSearchParams();
@@ -76,7 +76,7 @@ export default function ActiveProjectsMapCard({
     );
     if (!entry) return;
     const [iso3, info] = entry;
-    setSelectedCountry({
+    setPresenceCountry({
       iso3,
       iso2,
       name: info.name,
@@ -326,7 +326,8 @@ export default function ActiveProjectsMapCard({
           doubleClickZoom={isExpanded}
           onDoubleClick={!isExpanded ? () => setIsExpanded(true) : undefined}
           highlightCountries={highlightCountries}
-          onCountrySelect={setSelectedCountry}
+          onCountrySelect={setPresenceCountry}
+          onCountryClick={setPresenceCountry}
         />
 
         {visibleProjects.length === 0 && (
@@ -362,11 +363,10 @@ export default function ActiveProjectsMapCard({
         </p>
       )}
 
-      <CountryDashboardOverlay
-        country={selectedCountry}
+      <CountryPresenceOverlay
+        country={presenceCountry}
         domain={domain}
-        projects={visibleProjects}
-        onClose={() => setSelectedCountry(null)}
+        onClose={() => setPresenceCountry(null)}
       />
     </div>
   );

@@ -31,6 +31,20 @@ import { Search, X, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { bulkUnarchive } from "./actions/bulk-unarchive.action";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { countries as ISO2_COUNTRIES } from "@/components/clients/countries";
+
+const ALL_COUNTRIES = "__all__";
+
+const COUNTRY_LABEL = new Map(
+  ISO2_COUNTRIES.map((c) => [c.code.toUpperCase(), c.label]),
+);
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -55,6 +69,8 @@ export function DataTable<TData, TValue>({
   // Category filter state - now supports multiple selections
   const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
+  // Country filter state ("" = all countries)
+  const [selectedCountry, setSelectedCountry] = useState<string>("");
   // Row selection state
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   // Archived filter state
@@ -62,7 +78,21 @@ export function DataTable<TData, TValue>({
   // Loading state for bulk actions
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
-  // Filter data by selected categories, archived status, and global filter
+  // Distinct countries present in the data (for the country filter dropdown).
+  const availableCountries = useMemo(() => {
+    const set = new Set<string>();
+    (data as any[]).forEach((row) => {
+      const cc = row?.Client?.countryCode
+        ? String(row.Client.countryCode).toUpperCase()
+        : "";
+      if (cc) set.add(cc);
+    });
+    return Array.from(set).sort((a, b) =>
+      (COUNTRY_LABEL.get(a) || a).localeCompare(COUNTRY_LABEL.get(b) || b),
+    );
+  }, [data]);
+
+  // Filter data by selected categories, country, archived status, and global filter
   const filteredData = useMemo(() => {
     let filtered = data;
 
@@ -82,6 +112,15 @@ export function DataTable<TData, TValue>({
         const categoryId = row.SellProduct?.category_id;
         return categoryId && selectedCategories.includes(categoryId);
       });
+    }
+
+    // Country filter
+    if (selectedCountry) {
+      filtered = filtered.filter(
+        (row: any) =>
+          String(row.Client?.countryCode || "").toUpperCase() ===
+          selectedCountry,
+      );
     }
 
     // Global filter (searches in: codice, cliente, nome oggetto, CAP)
@@ -121,7 +160,7 @@ export function DataTable<TData, TValue>({
     }
 
     return filtered;
-  }, [data, selectedCategories, allCategoriesSelected, globalFilter, archivedFilter]);
+  }, [data, selectedCategories, allCategoriesSelected, selectedCountry, globalFilter, archivedFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -175,6 +214,7 @@ export function DataTable<TData, TValue>({
     setGlobalFilter("");
     setAllCategoriesSelected(true);
     setSelectedCategories([]);
+    setSelectedCountry("");
     setArchivedFilter("not_archived");
   }, []);
 
@@ -213,7 +253,11 @@ export function DataTable<TData, TValue>({
   const selectedCount = table.getFilteredSelectedRowModel().rows.length;
 
   // Check if any filters are active
-  const hasActiveFilters = globalFilter || !allCategoriesSelected || archivedFilter !== "not_archived";
+  const hasActiveFilters =
+    globalFilter ||
+    !allCategoriesSelected ||
+    !!selectedCountry ||
+    archivedFilter !== "not_archived";
 
   return (
     <>
@@ -344,6 +388,37 @@ export function DataTable<TData, TValue>({
               );
             })}
           </div>
+        </div>
+
+        {/* Country Filter Row */}
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <span className="text-sm font-medium">Paese:</span>
+          <Select
+            value={selectedCountry || ALL_COUNTRIES}
+            onValueChange={(value) =>
+              setSelectedCountry(value === ALL_COUNTRIES ? "" : value)
+            }
+          >
+            <SelectTrigger className="h-9 w-[220px]" aria-label="Filtra per paese">
+              <SelectValue placeholder="Tutti i paesi" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_COUNTRIES}>Tutti i paesi</SelectItem>
+              {availableCountries.map((cc) => (
+                <SelectItem key={cc} value={cc}>
+                  <span className="flex items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://flagcdn.com/w40/${cc.toLowerCase()}.png`}
+                      alt={cc}
+                      className="h-4 w-6 shrink-0 rounded-sm border border-border/60 object-cover"
+                    />
+                    {COUNTRY_LABEL.get(cc) || cc}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Search Row with Clear Button */}

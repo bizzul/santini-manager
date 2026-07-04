@@ -112,6 +112,9 @@ export const itMessages = {
     emergingMarketsTitle: "Mercati emergenti",
     emergingMarketsEmpty:
       "Nessun mercato emergente: tutti i paesi con business hanno gia un rappresentante.",
+    activeMarketsTitle: "Paesi attivi",
+    activeMarketsEmpty:
+      "Nessun paese con offerte o progetti attivi al momento.",
   },
   clients: {
     pageEmptyTitle: "Nessun cliente registrato",
@@ -143,6 +146,12 @@ export const itMessages = {
     selectAll: "Seleziona tutti",
     selectRow: "Seleziona riga",
     openDocuments: "Apri documenti e accordi cliente",
+    logo: "Logo cliente",
+    logoUpload: "Clicca per caricare il logo del cliente",
+    logoUploaded: "Logo caricato",
+    logoError: "Errore nel caricamento del logo",
+    logoInvalidType: "Il logo deve essere un'immagine (JPEG, PNG, GIF, WebP)",
+    logoTooLarge: "Logo troppo grande (max 5 MB)",
     userFallback: "Utente",
   },
   forecast: {

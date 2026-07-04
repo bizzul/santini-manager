@@ -164,6 +164,7 @@ export interface Client {
     mobilePhone?: string;
     email?: string;
     contactPeople?: ClientContactPerson[] | null;
+    logoUrl?: string | null;
     created_at?: string;
     updated_at?: string;
 }

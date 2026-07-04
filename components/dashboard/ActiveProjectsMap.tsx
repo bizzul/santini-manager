@@ -69,6 +69,11 @@ interface ActiveProjectsMapProps {
   highlightCountries?: string[];
   /** Called when a capital "Dashboard point" is clicked. */
   onCountrySelect?: (country: SelectedCountry) => void;
+  /**
+   * When provided, every country on the map becomes clickable (transparent
+   * interactive layer) and this is called with the clicked country.
+   */
+  onCountryClick?: (country: SelectedCountry) => void;
 }
 
 function escapeHtml(text: string): string {
@@ -144,6 +149,7 @@ export default function ActiveProjectsMap({
   onDoubleClick,
   highlightCountries = DEFAULT_HIGHLIGHT_COUNTRIES,
   onCountrySelect,
+  onCountryClick,
 }: ActiveProjectsMapProps) {
   const locale = useLocale();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -151,15 +157,21 @@ export default function ActiveProjectsMap({
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const highlightLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const capitalsLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const clickableLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
   const highlightBoundsRef = useRef<import("leaflet").LatLngBounds | null>(null);
   const hoverTooltipRef = useRef<import("leaflet").Tooltip | null>(null);
   const pointsRef = useRef<[number, number][]>([]);
   const onCountrySelectRef = useRef(onCountrySelect);
+  const onCountryClickRef = useRef(onCountryClick);
   const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     onCountrySelectRef.current = onCountrySelect;
   }, [onCountrySelect]);
+
+  useEffect(() => {
+    onCountryClickRef.current = onCountryClick;
+  }, [onCountryClick]);
 
   // Stable primitive so the highlight effect only re-runs on real changes.
   const highlightKey = useMemo(
@@ -423,6 +435,7 @@ export default function ActiveProjectsMap({
         markersLayerRef.current = null;
         highlightLayerRef.current = null;
         capitalsLayerRef.current = null;
+        clickableLayerRef.current = null;
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -580,6 +593,83 @@ export default function ActiveProjectsMap({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, highlightKey, locale]);
+
+  // Transparent, fully-interactive world layer so ANY country is clickable.
+  // Only mounted when `onCountryClick` is provided (dashboard map).
+  useEffect(() => {
+    if (!mapReady || !onCountryClick) return;
+    let cancelled = false;
+
+    void (async () => {
+      const map = mapRef.current;
+      if (!map) return;
+      const L = await import("leaflet");
+
+      try {
+        const res = await fetch(WORLD_COUNTRIES_GEOJSON_URL);
+        if (!res.ok || cancelled) return;
+        const fc = (await res.json()) as CountryFeatureCollection;
+        if (cancelled || !mapRef.current) return;
+
+        clickableLayerRef.current?.remove();
+        const layer = L.geoJSON(
+          fc as unknown as import("geojson").FeatureCollection,
+          {
+            style: {
+              // Invisible but still captures clicks over the country area.
+              color: "#000000",
+              weight: 0,
+              opacity: 0,
+              fillColor: "#000000",
+              fillOpacity: 0,
+              interactive: true,
+            },
+            onEachFeature: (feature, lyr) => {
+              lyr.on("mouseover", () => {
+                (lyr as import("leaflet").Path).setStyle?.({
+                  fillOpacity: 0.12,
+                  fillColor: HIGHLIGHT_BORDER_COLOR,
+                });
+              });
+              lyr.on("mouseout", () => {
+                (lyr as import("leaflet").Path).setStyle?.({ fillOpacity: 0 });
+              });
+              lyr.on("click", () => {
+                const props = feature.properties as CountryProperties;
+                const iso3 = featureIso(props);
+                if (!iso3) return;
+                const cap = COUNTRY_CAPITALS[iso3];
+                const iso2Raw = props.ISO_A2;
+                const iso2 =
+                  typeof iso2Raw === "string" && iso2Raw.length === 2
+                    ? iso2Raw.toUpperCase()
+                    : cap?.iso2 ?? "";
+                const name =
+                  featureLocalizedName(props, locale) || cap?.name || iso3;
+                onCountryClickRef.current?.({
+                  iso3,
+                  iso2,
+                  name,
+                  capital: cap?.capital ?? "",
+                });
+              });
+            },
+          },
+        );
+        layer.addTo(map);
+        clickableLayerRef.current = layer;
+      } catch {
+        // World dataset unavailable: map stays usable, just not clickable.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      clickableLayerRef.current?.remove();
+      clickableLayerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, Boolean(onCountryClick), locale]);
 
   useEffect(() => {
     const map = mapRef.current;

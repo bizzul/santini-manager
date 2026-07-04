@@ -1478,7 +1478,7 @@ export const fetchTasksWithRelations = cache(async (siteId: string) => {
             *,
             Kanban!kanbanId (id, title),
             KanbanColumn!kanbanColumnId (id, title),
-            Client!clientId (businessName, individualFirstName, individualLastName, zipCode, address, city),
+            Client!clientId (businessName, individualFirstName, individualLastName, zipCode, address, city, countryCode),
             SellProduct!sellProductId (name, type, category_id, category:sellproduct_categories(id, name, color)),
             Action (id, createdAt, User (picture, authId, given_name))
         `)

@@ -17,7 +17,7 @@ import { EditableCell } from "@/components/table/editable-cell";
 import { editItem } from "./actions/edit-item.action";
 import { User, Factory } from "lucide-react";
 import { ClientManagerSummaryTooltip } from "./client-manager-summary-tooltip";
-import { RowVisualHub } from "@/components/table/row-visual-hub";
+import { ClientLogoCell } from "./client-logo-cell";
 import { createTranslator, type Translator } from "@/lib/i18n";
 import { DEFAULT_LOCALE, type AppLocale } from "@/lib/i18n/config";
 import { toIntlLocale } from "@/lib/i18n/format";
@@ -93,7 +93,7 @@ const createClientEditHandler = (domain: string) => {
 
 export const createColumns = (
   domain: string,
-  rowInsights: Record<number, RowVisualInsight> = {},
+  _rowInsights: Record<number, RowVisualInsight> = {},
   t: Translator = createTranslator(DEFAULT_LOCALE),
   locale: AppLocale = DEFAULT_LOCALE
 ): ColumnDef<ClientWithAction>[] => {
@@ -102,15 +102,26 @@ export const createColumns = (
 
   return [
     {
-      id: "visualHub",
+      id: "logo",
       header: () => <div className="h-14 w-14" aria-hidden="true" />,
-      cell: ({ row }) => (
-        <RowVisualHub
-          insight={rowInsights[row.original.id]}
-          label={t("clients.openDocuments")}
-          variant="isometric"
-        />
-      ),
+      cell: ({ row }) => {
+        const client = row.original;
+        const displayName =
+          client.clientType === "BUSINESS"
+            ? client.businessName || ""
+            : `${client.individualFirstName || ""} ${
+                client.individualLastName || ""
+              }`.trim();
+
+        return (
+          <ClientLogoCell
+            domain={domain}
+            clientId={client.id}
+            logoUrl={client.logoUrl}
+            displayName={displayName}
+          />
+        );
+      },
       enableSorting: false,
       enableHiding: false,
     },
