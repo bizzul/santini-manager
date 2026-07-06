@@ -478,6 +478,7 @@ const Column = ({
                   onCardClick={onMiniCardClick}
                   domain={domain}
                   onTaskDeleted={onTaskDeleted}
+                  cardFieldConfig={cardFieldConfig}
                 />
               ) : (
                 <Card

@@ -3,6 +3,11 @@ import React, { useMemo, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, Client, KanbanColumn } from "@/types/supabase";
+import {
+  DEFAULT_CARD_FIELD_CONFIG,
+  type CardDisplayField,
+  type CardFieldConfig,
+} from "./card-display-config";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { ManagerGuideButton } from "@/components/manager-guide";
 import { getOfferFollowUpHighlightState } from "@/lib/offers";
@@ -43,6 +48,7 @@ interface OfferMiniCardProps {
   onCardClick: (task: Task) => void;
   domain?: string;
   onTaskDeleted?: () => void;
+  cardFieldConfig?: CardFieldConfig;
 }
 
 export default function OfferMiniCard({
@@ -51,8 +57,20 @@ export default function OfferMiniCard({
   onCardClick,
   domain,
   onTaskDeleted,
+  cardFieldConfig,
 }: OfferMiniCardProps) {
   const { toast } = useToast();
+
+  // La colonna Trattativa usa il layout compatto: applichiamo la config "small".
+  const resolvedFieldConfig = useMemo(
+    () => ({
+      ...DEFAULT_CARD_FIELD_CONFIG.small,
+      ...(cardFieldConfig?.small || {}),
+    }),
+    [cardFieldConfig],
+  );
+
+  const isFieldVisible = (field: CardDisplayField) => resolvedFieldConfig[field];
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
@@ -136,11 +154,13 @@ export default function OfferMiniCard({
   }, [data.sent_date, data.sentDate]);
 
   const projectSummary = useMemo(() => {
-    const details = [data.name, data.luogo].filter(
-      (value): value is string => Boolean(value && value.trim()),
-    );
+    const details = [
+      isFieldVisible("objectName") ? data.name : null,
+      isFieldVisible("location") ? data.luogo : null,
+    ].filter((value): value is string => Boolean(value && value.trim()));
     return details.join(" · ") || "-";
-  }, [data.name, data.luogo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.name, data.luogo, resolvedFieldConfig]);
 
   const followUpBadgeLabel = useMemo(() => {
     if (!followUpUntil) {
@@ -353,7 +373,7 @@ export default function OfferMiniCard({
             <div className="px-2 pt-2 pb-1 flex-1">
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  {clientCountryCode && (
+                  {isFieldVisible("countryFlag") && clientCountryCode && (
                     <img
                       src={`https://flagcdn.com/w40/${clientCountryCode}.png`}
                       alt={clientCountryCode.toUpperCase()}
@@ -363,7 +383,9 @@ export default function OfferMiniCard({
                       draggable={false}
                     />
                   )}
-                  <span className="font-bold text-sm shrink-0">{data.unique_code}</span>
+                  {isFieldVisible("projectCode") && (
+                    <span className="font-bold text-sm shrink-0">{data.unique_code}</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-xs text-white/80 shrink-0">
                   <ManagerGuideButton
@@ -374,20 +396,30 @@ export default function OfferMiniCard({
                     showMascot={false}
                     className="h-6 w-6 text-white/80 hover:bg-white/10 hover:text-white"
                   />
-                  <span>{sentDateFormatted}</span>
-                  {sentWeekNumber && <span className="font-semibold">S.{sentWeekNumber}</span>}
+                  {isFieldVisible("date") && (
+                    <>
+                      <span>{sentDateFormatted}</span>
+                      {sentWeekNumber && <span className="font-semibold">S.{sentWeekNumber}</span>}
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="text-sm truncate mb-1">
-                <span className="font-medium">{clientName}</span>
-                {projectSummary !== "-" && (
-                  <>
-                    <span className="mx-1 text-white/50">·</span>
-                    <span className="text-white/75">{projectSummary}</span>
-                  </>
-                )}
-              </div>
+              {(isFieldVisible("client") || projectSummary !== "-") && (
+                <div className="text-sm truncate mb-1">
+                  {isFieldVisible("client") && (
+                    <span className="font-medium">{clientName}</span>
+                  )}
+                  {projectSummary !== "-" && (
+                    <>
+                      {isFieldVisible("client") && (
+                        <span className="mx-1 text-white/50">·</span>
+                      )}
+                      <span className="text-white/75">{projectSummary}</span>
+                    </>
+                  )}
+                </div>
+              )}
 
               {followUpBadgeLabel && (
                 <div className="mb-1">
@@ -397,17 +429,25 @@ export default function OfferMiniCard({
                 </div>
               )}
 
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-white/85">
-                  {piecesOrPositions.value > 0
-                    ? `${piecesOrPositions.value} ${piecesOrPositions.label}`
-                    : "-"}
-                </span>
-                <span className="text-white/40">|</span>
-                <span className="font-semibold">
-                  {((data.sellPrice || 0) / 1000).toFixed(1)}K
-                </span>
-              </div>
+              {(isFieldVisible("pieces") || isFieldVisible("value")) && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  {isFieldVisible("pieces") && (
+                    <span className="text-white/85">
+                      {piecesOrPositions.value > 0
+                        ? `${piecesOrPositions.value} ${piecesOrPositions.label}`
+                        : "-"}
+                    </span>
+                  )}
+                  {isFieldVisible("pieces") && isFieldVisible("value") && (
+                    <span className="text-white/40">|</span>
+                  )}
+                  {isFieldVisible("value") && (
+                    <span className="font-semibold">
+                      {((data.sellPrice || 0) / 1000).toFixed(1)}K
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-2 py-1 border-t border-white/20 text-xs">

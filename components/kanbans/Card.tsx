@@ -786,7 +786,7 @@ export default function Card({
                 <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
                   {isFieldVisible("projectCode") ? (
                     <div className="flex min-w-0 items-center gap-1.5">
-                      {renderCountryFlag()}
+                      {isFieldVisible("countryFlag") && renderCountryFlag()}
                       {canAccessConsuntivo ? (
                         <button
                           type="button"
@@ -1088,7 +1088,9 @@ export default function Card({
                 {/* Riga 1: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    {isFieldVisible("projectCode") && renderCountryFlag()}
+                    {isFieldVisible("projectCode") &&
+                      isFieldVisible("countryFlag") &&
+                      renderCountryFlag()}
                     {isFieldVisible("projectCode") && (
                       canAccessConsuntivo ? (
                         <button

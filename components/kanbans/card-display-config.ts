@@ -1,5 +1,6 @@
 export type CardDisplayField =
   | "projectCode"
+  | "countryFlag"
   | "date"
   | "productCategory"
   | "image"
@@ -19,6 +20,7 @@ export type CardFieldConfig = Record<CardDisplayMode, Record<CardDisplayField, b
 export const DEFAULT_CARD_FIELD_CONFIG: CardFieldConfig = {
   normal: {
     projectCode: true,
+    countryFlag: true,
     date: true,
     productCategory: true,
     image: true,
@@ -33,6 +35,7 @@ export const DEFAULT_CARD_FIELD_CONFIG: CardFieldConfig = {
   },
   small: {
     projectCode: true,
+    countryFlag: true,
     date: true,
     productCategory: true,
     image: true,
@@ -49,6 +52,7 @@ export const DEFAULT_CARD_FIELD_CONFIG: CardFieldConfig = {
 
 export const CARD_FIELD_LABELS: Record<CardDisplayField, string> = {
   projectCode: "No progetto",
+  countryFlag: "Bandiera paese",
   date: "Data",
   productCategory: "Categoria",
   image: "Immagine",
