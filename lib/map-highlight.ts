@@ -13,7 +13,8 @@ export const MAP_HIGHLIGHT_SETTING_KEY = "map_highlight_countries";
 /** Default highlight when a site has no explicit configuration. */
 export const DEFAULT_HIGHLIGHT_COUNTRIES = ["CHE"];
 
-/** World countries polygons (Natural Earth 110m); matched via `ADM0_A3`. */
+/** World countries polygons (Natural Earth 50m, per-country borders that hug
+ *  the real geography); matched via `ADM0_A3`. */
 export const WORLD_COUNTRIES_GEOJSON_URL = "/geo/world-countries.geojson";
 
 /** Sovereign countries in public/geo/world-countries.geojson (denominator for coverage). */
@@ -25,7 +26,7 @@ export const HIGHLIGHT_FILL_OPACITY = 0.28;
 
 /**
  * Fallback centroids [lng, lat] for highlight countries missing from the
- * 110m dataset (e.g. tiny city-states such as Singapore), rendered as a
+ * bundled dataset (e.g. tiny city-states such as Singapore), rendered as a
  * small dot so they still appear highlighted.
  */
 export const HIGHLIGHT_FALLBACK_CENTROIDS: Record<string, [number, number]> = {
