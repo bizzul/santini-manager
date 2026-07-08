@@ -34,14 +34,14 @@ const BETA_KEYS = ["beta", "template", "demo"] as const;
 
 const SITE_GROUP_DEFINITIONS: SiteGroupDefinition[] = [
   {
+    key: "custom",
+    title: "Utenti da attivare",
+    description: "Spazi personalizzati per clienti e casi specifici.",
+  },
+  {
     key: "active",
     title: "Utenti attivi",
     description: "Spazi operativi principali con accesso diretto.",
-  },
-  {
-    key: "custom",
-    title: "Utenti custom",
-    description: "Spazi personalizzati per clienti e casi specifici.",
   },
   {
     key: "beta",

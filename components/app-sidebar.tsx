@@ -66,6 +66,7 @@ import {
   faIndustry,
   faListUl,
   faHouse,
+  faMusic,
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
 import { CommandDeckLauncher } from "@/components/command-deck/CommandDeckLauncher";
@@ -133,6 +134,7 @@ const iconMap = {
   faIndustry,
   faListUl,
   faHouse,
+  faMusic,
 };
 
 type SiteDataQueryResult = {
@@ -197,6 +199,7 @@ type MenuItem = {
   id?: string | number; // Add unique identifier for kanban items
   lucideIcon?: string; // Lucide icon name for kanban categories
   color?: string; // Color for category icons
+  logoSrc?: string; // Optional logo image shown instead of the FontAwesome icon
 };
 
 // Optimized domain extraction function
@@ -261,6 +264,51 @@ const getMenuItems = (
           href: `${basePath}/kanban?type=production`,
           alert: false,
           moduleName: "kanban",
+        },
+      ],
+    },
+    {
+      key: "momentum",
+      label: "Momentum",
+      icon: "faMusic",
+      logoSrc: "/momentum-logo.png",
+      alert: true,
+      moduleName: "momentum",
+      items: [
+        {
+          label: "Home",
+          icon: "faHouse",
+          href: `${basePath}/momentum`,
+          alert: false,
+          moduleName: "momentum",
+        },
+        {
+          label: "Vendita",
+          icon: "faBriefcase",
+          href: `${basePath}/momentum/vendita`,
+          alert: false,
+          moduleName: "momentum",
+        },
+        {
+          label: "Plan",
+          icon: "faTable",
+          href: `${basePath}/momentum/plan`,
+          alert: false,
+          moduleName: "momentum",
+        },
+        {
+          label: "Accounting",
+          icon: "faSquarePollVertical",
+          href: `${basePath}/momentum/accounting`,
+          alert: false,
+          moduleName: "momentum",
+        },
+        {
+          label: "Mappa",
+          icon: "faBuilding",
+          href: `${basePath}/momentum/mappa`,
+          alert: false,
+          moduleName: "momentum",
         },
       ],
     },
@@ -1276,10 +1324,22 @@ export function AppSidebar() {
                 // Prefetch kanban data on hover before user clicks
                 onMouseEnter={isKanbanMenu ? prefetchKanbanData : undefined}
               >
-                <FontAwesomeIcon
-                  icon={iconMap[item.icon]}
-                  className="w-4 h-4"
-                />
+                {item.logoSrc ? (
+                  <img
+                    src={item.logoSrc}
+                    alt={item.label}
+                    className="h-5 w-5 shrink-0 rounded object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display =
+                        "none";
+                    }}
+                  />
+                ) : (
+                  <FontAwesomeIcon
+                    icon={iconMap[item.icon]}
+                    className="w-4 h-4"
+                  />
+                )}
                 <span>{item.label}</span>
               </SidebarMenuButton>
             </CollapsibleTrigger>
