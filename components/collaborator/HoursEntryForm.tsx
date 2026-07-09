@@ -19,7 +19,7 @@ import { formatMinutesAsHours } from "@/components/calendar/calendar-utils";
 import type {
   AssignedTaskOption,
   CollaboratorRoleOption,
-} from "@/app/sites/[domain]/area-collaboratore/page";
+} from "@/components/collaborator/types";
 
 interface HoursEntryFormProps {
   domain: string;
@@ -27,6 +27,17 @@ interface HoursEntryFormProps {
   userAuthId: string;
   assignedTasks: AssignedTaskOption[];
   roles: CollaboratorRoleOption[];
+  /**
+   * Override opzionali per riuso fuori dall'area collaboratore (es. logging
+   * ore per progetto nel super-admin). I default replicano esattamente il
+   * comportamento storico del form.
+   */
+  createEndpoint?: string;
+  entriesEndpoint?: string;
+  formTitle?: string;
+  entriesTitle?: string;
+  emptyTasksMessage?: string;
+  onEntryCreated?: () => void;
 }
 
 interface MyEntry {
@@ -45,6 +56,12 @@ export function HoursEntryForm({
   userAuthId,
   assignedTasks,
   roles,
+  createEndpoint = "/api/time-tracking/create",
+  entriesEndpoint = "/api/time-tracking/my-entries",
+  formTitle = "Inserisci ore",
+  entriesTitle = "Le mie ore recenti",
+  emptyTasksMessage = "Non risultano progetti assegnati a te. Le ore possono essere registrate solo sui progetti a cui sei assegnato.",
+  onEntryCreated,
 }: HoursEntryFormProps) {
   const [taskCode, setTaskCode] = useState<string>("");
   const [roleId, setRoleId] = useState<string>("");
@@ -59,7 +76,7 @@ export function HoursEntryForm({
   const loadEntries = useCallback(async () => {
     setIsLoadingEntries(true);
     try {
-      const response = await fetch("/api/time-tracking/my-entries", {
+      const response = await fetch(entriesEndpoint, {
         headers: { "x-site-id": siteId },
       });
       const data = await response.json();
@@ -69,7 +86,7 @@ export function HoursEntryForm({
     } finally {
       setIsLoadingEntries(false);
     }
-  }, [siteId]);
+  }, [entriesEndpoint, siteId]);
 
   useEffect(() => {
     void loadEntries();
@@ -95,7 +112,7 @@ export function HoursEntryForm({
 
       setIsSubmitting(true);
       try {
-        const response = await fetch("/api/time-tracking/create", {
+        const response = await fetch(createEndpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -130,6 +147,7 @@ export function HoursEntryForm({
         setMinutes("0");
         setDescription("");
         void loadEntries();
+        onEntryCreated?.();
       } catch (error) {
         console.error("Failed to create time entry:", error);
         toast.error("Impossibile registrare le ore", {
@@ -142,11 +160,13 @@ export function HoursEntryForm({
     },
     [
       canSubmit,
+      createEndpoint,
       description,
       domain,
       hours,
       loadEntries,
       minutes,
+      onEntryCreated,
       roleId,
       roles,
       siteId,
@@ -159,14 +179,11 @@ export function HoursEntryForm({
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Inserisci ore</CardTitle>
+          <CardTitle className="text-base">{formTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {assignedTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Non risultano progetti assegnati a te. Le ore possono essere
-              registrate solo sui progetti a cui sei assegnato.
-            </p>
+            <p className="text-sm text-muted-foreground">{emptyTasksMessage}</p>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
@@ -255,7 +272,7 @@ export function HoursEntryForm({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Le mie ore recenti</CardTitle>
+          <CardTitle className="text-base">{entriesTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingEntries ? (

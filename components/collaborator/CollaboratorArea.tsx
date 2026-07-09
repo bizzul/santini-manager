@@ -7,7 +7,7 @@ import type { WeeklyCalendarItem } from "@/components/calendar/weekly-calendar-t
 import type {
   AssignedTaskOption,
   CollaboratorRoleOption,
-} from "@/app/sites/[domain]/area-collaboratore/page";
+} from "@/components/collaborator/types";
 import { CollaboratorCalendar } from "./CollaboratorCalendar";
 import { HoursEntryForm } from "./HoursEntryForm";
 

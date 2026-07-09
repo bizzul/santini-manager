@@ -9,17 +9,18 @@ import {
   type ProjectCalendarType,
 } from "@/components/calendar/calendar-utils";
 import type { WeeklyCalendarItem } from "@/components/calendar/weekly-calendar-types";
+import type {
+  AssignedTaskOption,
+  CollaboratorRoleOption,
+} from "@/components/collaborator/types";
 import { AreaCollaboratorePageClient } from "./area-collaboratore-page-client";
 
-export interface AssignedTaskOption {
-  uniqueCode: string;
-  label: string;
-}
-
-export interface CollaboratorRoleOption {
-  id: number;
-  name: string;
-}
+// Tipi spostati in components/collaborator/types.ts; re-export per
+// retrocompatibilità con gli import esistenti da questa route.
+export type {
+  AssignedTaskOption,
+  CollaboratorRoleOption,
+} from "@/components/collaborator/types";
 
 function toIdList(value: unknown): string[] {
   if (Array.isArray(value)) {
