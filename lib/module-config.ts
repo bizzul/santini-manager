@@ -255,6 +255,16 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         enabledByDefault: false,
         category: "management",
     },
+    {
+        name: "personal-manager",
+        label: "Manager Personale",
+        description:
+            "Spazio personale mobile-first organizzato per aree di vita (Wheel of Life)",
+        icon: "faUser",
+        href: "/personal-manager",
+        enabledByDefault: false,
+        category: "tools",
+    },
 ];
 
 export const getModuleByName = (name: string): ModuleConfig | undefined => {

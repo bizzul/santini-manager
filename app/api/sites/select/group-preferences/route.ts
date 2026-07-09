@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserContext, getUserSites } from "@/lib/auth-utils";
 import { createServiceClient } from "@/utils/supabase/server";
 
-type SiteGroupKey = "active" | "custom" | "beta" | "alpha";
+type SiteGroupKey = "active" | "custom" | "beta" | "alpha" | "personal";
 
-const VALID_GROUP_KEYS: SiteGroupKey[] = ["active", "custom", "beta", "alpha"];
+const VALID_GROUP_KEYS: SiteGroupKey[] = [
+  "active",
+  "custom",
+  "beta",
+  "alpha",
+  "personal",
+];
 
 const isSiteGroupKey = (value: string): value is SiteGroupKey =>
   VALID_GROUP_KEYS.includes(value as SiteGroupKey);

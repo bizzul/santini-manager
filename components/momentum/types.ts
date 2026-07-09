@@ -109,6 +109,9 @@ export interface EvEvento {
   note: string | null;
   lat: number | null;
   lng: number | null;
+  senza_data: boolean;
+  volo_brandizzato: boolean;
+  immagine_url: string | null;
   cliente?: EvCliente | null;
   location?: EvLocation | null;
 }

@@ -95,6 +95,9 @@ export async function fetchEventiPlan(
       taskDone: tc.done,
       artistaAlert,
       stato_plan: e.stato_plan,
+      senzaData: e.senza_data ?? false,
+      voloBrandizzato: e.volo_brandizzato ?? false,
+      immagineUrl: e.immagine_url ?? null,
     };
   });
 }
@@ -201,7 +204,7 @@ export interface MapData {
     Pick<
       EvEvento,
       "id" | "titolo" | "data_evento" | "stato_plan" | "lat" | "lng"
-    > & { locLat: number | null; locLng: number | null }
+    > & { locLat: number | null; locLng: number | null; senzaData: boolean }
   >;
   offerte: Array<
     Pick<EvOfferta, "id" | "titolo" | "data_evento_prevista" | "stato" | "lat" | "lng">
@@ -219,7 +222,7 @@ export async function fetchMapData(siteId: string): Promise<MapData> {
         .is(ACTIVE, null),
       supabase
         .from("ev_eventi")
-        .select("id, titolo, data_evento, stato_plan, lat, lng, location:ev_location(lat, lng)")
+        .select("id, titolo, data_evento, stato_plan, lat, lng, senza_data, location:ev_location(lat, lng)")
         .eq("site_id", siteId)
         .is(ACTIVE, null),
       supabase
@@ -240,6 +243,7 @@ export async function fetchMapData(siteId: string): Promise<MapData> {
       lng: e.lng,
       locLat: e.location?.lat ?? null,
       locLng: e.location?.lng ?? null,
+      senzaData: e.senza_data ?? false,
     })),
     offerte: (offerte as any[]) || [],
   };
@@ -272,6 +276,7 @@ export async function fetchCalendarEvents(
 
 export interface DashboardData {
   prossimiEventi: EventoCardData[];
+  daCalendarizzare: EventoCardData[];
   redditivita: {
     perCategoria: Array<{ categoria: string; ricavo: number; costi: number }>;
     perEvento: Array<{ titolo: string; margine: number }>;
@@ -284,9 +289,11 @@ export async function fetchDashboardData(
   const supabase = await createClient();
   const planEvents = await fetchEventiPlan(siteId);
 
-  // Prossimi eventi: futuri, ordinati per data, primi 6.
+  // Prossimi eventi: futuri con data, ordinati per data, primi 6.
+  // Gli eventi "senza data" sono esclusi dal countdown.
   const prossimiEventi = planEvents
     .filter((e) => {
+      if (e.senzaData) return false;
       const d = daysUntil(e.data_evento);
       return d != null && d >= 0;
     })
@@ -296,6 +303,9 @@ export async function fetchDashboardData(
       return da - db;
     })
     .slice(0, 6);
+
+  // Eventi flottanti da calendarizzare (senza data): fuori dal countdown.
+  const daCalendarizzare = planEvents.filter((e) => e.senzaData);
 
   // Redditivita: ricavo (fatture out) - costi (fatture in) per evento e categoria.
   const [{ data: eventi }, { data: fatture }] = await Promise.all([
@@ -338,6 +348,7 @@ export async function fetchDashboardData(
 
   return {
     prossimiEventi,
+    daCalendarizzare,
     redditivita: {
       perCategoria: Array.from(perCategoriaMap.entries()).map(
         ([categoria, v]) => ({ categoria, ...v })

@@ -62,7 +62,7 @@ export default async function SchedaEvento({
       backLabel="Torna a Plan"
       accentColor={accent}
       title={evento.titolo}
-      subtitle={`${formatEUDate(evento.data_evento)}${orari ? ` · ${orari}` : ""}`}
+      subtitle={`${evento.senza_data ? "Data da fissare" : formatEUDate(evento.data_evento)}${orari ? ` · ${orari}` : ""}`}
       meta={
         <>
           {evento.cliente ? (
@@ -79,9 +79,21 @@ export default async function SchedaEvento({
           {evento.stato_accounting ? (
             <Badge>Accounting: {ACCOUNTING_LABEL[evento.stato_accounting]}</Badge>
           ) : null}
+          {evento.senza_data ? <Badge>Data da fissare</Badge> : null}
+          {evento.volo_brandizzato ? <Badge>Volo brandizzato</Badge> : null}
         </>
       }
     >
+      {evento.immagine_url ? (
+        <div className="mb-4 h-48 w-full overflow-hidden rounded-xl border bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={evento.immagine_url}
+            alt={evento.titolo}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ) : null}
       <SchedaEventoClient
         domain={domain}
         eventoId={evento.id}

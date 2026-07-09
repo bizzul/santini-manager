@@ -34,6 +34,30 @@ export default async function MomentumHome({
               eventi={dashboard.prossimiEventi}
               domain={domain}
             />
+            {dashboard.daCalendarizzare.length > 0 ? (
+              <div className="mt-4 border-t pt-3">
+                <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
+                  Da calendarizzare (senza data)
+                </h3>
+                <ul className="space-y-1.5">
+                  {dashboard.daCalendarizzare.map((e) => (
+                    <li key={e.id}>
+                      <a
+                        href={`/sites/${domain}/momentum/eventi/${e.id}`}
+                        className="flex items-center justify-between gap-2 rounded-md border bg-card/60 px-3 py-2 text-sm transition-colors hover:bg-muted"
+                      >
+                        <span className="line-clamp-1 text-foreground">
+                          {e.titolo}
+                        </span>
+                        <span className="shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">
+                          Data da fissare
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </section>
           <section className="rounded-xl border bg-card p-4 shadow-sm">
             <h2 className="mb-3 text-lg font-semibold text-foreground">

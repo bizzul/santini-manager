@@ -141,6 +141,7 @@ export const VOICE_INTENT_REQUIREMENTS: Record<string, string[]> = {
 };
 
 export const ACTIVE_WORKSPACE_KEYS = ["matris-pro", "santini", "mb", "estrella"] as const;
+export const PERSONAL_SPACE_KEYS = ["personal", "paolocci"] as const;
 export const CUSTOM_DEMO_KEYS = [
   "dadesign",
   "car-detailing",

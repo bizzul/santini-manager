@@ -2,7 +2,15 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, CalendarDays, MapPin, User } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  CalendarDays,
+  MapPin,
+  Music,
+  PlaneTakeoff,
+  User,
+} from "lucide-react";
 import {
   CATEGORIA_PRODOTTO_LABEL,
   CLIENTE_TIPO_LABEL,
@@ -92,6 +100,9 @@ export interface EventoCardData {
   taskDone: number;
   /** True when a key artist supplier is not confirmed and event is <14 days out. */
   artistaAlert: boolean;
+  senzaData?: boolean;
+  voloBrandizzato?: boolean;
+  immagineUrl?: string | null;
 }
 
 export function EventoCard({
@@ -110,6 +121,30 @@ export function EventoCard({
 
   return (
     <CardShell accent={accent} onClick={onClick}>
+      {/* Cover immagine (placeholder dedicato) */}
+      <div className="relative mb-2 h-20 w-full overflow-hidden rounded-md bg-muted">
+        {evento.immagineUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={evento.immagineUrl}
+            alt={evento.titolo}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-muted to-card">
+            <Music className="h-6 w-6 text-muted-foreground/50" />
+          </div>
+        )}
+        {evento.voloBrandizzato ? (
+          <span
+            className="absolute right-1.5 top-1.5 inline-flex items-center gap-1 rounded-full bg-background/85 px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-sm"
+            title="Include add-on Volo brandizzato (parapendio + drone)"
+          >
+            <PlaneTakeoff className="h-3 w-3" />
+            Volo
+          </span>
+        ) : null}
+      </div>
       <div className="mb-1 flex items-start justify-between gap-2">
         <p className="line-clamp-2 text-sm font-semibold text-foreground">
           {evento.titolo}
@@ -121,26 +156,35 @@ export function EventoCard({
         ) : null}
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        {evento.data_evento ? (
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" />
-            {formatEUDate(evento.data_evento)}
+        {evento.senzaData ? (
+          <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-warning/15 text-warning">
+            <CalendarClock className="h-3 w-3" />
+            Data da fissare
           </span>
-        ) : null}
-        {dLeft != null ? (
-          <span
-            className={cn(
-              "rounded px-1.5 py-0.5",
-              dLeft < 0
-                ? "bg-muted text-muted-foreground"
-                : dLeft <= 14
-                  ? "bg-destructive/15 text-destructive"
-                  : "bg-muted text-muted-foreground"
-            )}
-          >
-            {dLeft < 0 ? `${Math.abs(dLeft)}g fa` : `tra ${dLeft}g`}
-          </span>
-        ) : null}
+        ) : (
+          <>
+            {evento.data_evento ? (
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                {formatEUDate(evento.data_evento)}
+              </span>
+            ) : null}
+            {dLeft != null ? (
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5",
+                  dLeft < 0
+                    ? "bg-muted text-muted-foreground"
+                    : dLeft <= 14
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-muted text-muted-foreground"
+                )}
+              >
+                {dLeft < 0 ? `${Math.abs(dLeft)}g fa` : `tra ${dLeft}g`}
+              </span>
+            ) : null}
+          </>
+        )}
       </div>
       {evento.locationNome ? (
         <div className="mb-2 flex items-center gap-1 text-xs text-muted-foreground">

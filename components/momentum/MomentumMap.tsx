@@ -93,9 +93,10 @@ export default function MomentumMap({
         ? new Date(e.data_evento) < today
         : false;
       const href = `/sites/${domain}/momentum/eventi/${e.id}`;
-      const html = `<strong>${escapeHtml(e.titolo)}</strong><br/>${
-        e.data_evento ? escapeHtml(formatEUDate(e.data_evento)) : ""
-      }<br/><a href="${href}">Apri scheda evento</a>`;
+      const dateLabel = e.data_evento
+        ? escapeHtml(formatEUDate(e.data_evento))
+        : "Data da definire";
+      const html = `<strong>${escapeHtml(e.titolo)}</strong><br/>${dateLabel}<br/><a href="${href}">Apri scheda evento</a>`;
       if (isPast) {
         passati.push({ lat, lng, color: LAYER_META.passati.color, html });
       } else if (PLANNING_STATI.includes(e.stato_plan)) {

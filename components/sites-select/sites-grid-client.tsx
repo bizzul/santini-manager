@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import {
   ACTIVE_WORKSPACE_KEYS,
   CUSTOM_DEMO_KEYS,
+  PERSONAL_SPACE_KEYS,
 } from "@/lib/site-settings-guides";
 
-type SiteGroupKey = "active" | "custom" | "beta" | "alpha";
+type SiteGroupKey = "active" | "custom" | "beta" | "alpha" | "personal";
 
 type Site = {
   id: string | number;
@@ -53,6 +54,11 @@ const SITE_GROUP_DEFINITIONS: SiteGroupDefinition[] = [
     title: "Demo alpha",
     description: "Ambienti sperimentali in fase iniziale.",
   },
+  {
+    key: "personal",
+    title: "Personal",
+    description: "Spazi Manager Personale (Wheel of Life).",
+  },
 ];
 
 const normalizeSiteKey = (value?: string | null) =>
@@ -64,13 +70,25 @@ const normalizeSiteKey = (value?: string | null) =>
     .replace(/^-+|-+$/g, "");
 
 const isSiteGroupKey = (value: unknown): value is SiteGroupKey =>
-  value === "active" || value === "custom" || value === "beta" || value === "alpha";
+  value === "active" ||
+  value === "custom" ||
+  value === "beta" ||
+  value === "alpha" ||
+  value === "personal";
 
 function resolveSiteGroup(site: Site): SiteGroupKey {
   const normalizedValues = [
     normalizeSiteKey(site.subdomain),
     normalizeSiteKey(site.name),
   ];
+
+  if (
+    normalizedValues.some((value) =>
+      PERSONAL_SPACE_KEYS.some((key) => value.includes(key))
+    )
+  ) {
+    return "personal";
+  }
 
   if (
     normalizedValues.some((value) =>
@@ -112,6 +130,7 @@ const createEmptyGroupedSites = (): GroupedSites => ({
   custom: [],
   beta: [],
   alpha: [],
+  personal: [],
 });
 
 const buildInitialGroups = (
@@ -225,6 +244,7 @@ export function SitesGridClient({
       custom: [...current.custom],
       beta: [...current.beta],
       alpha: [...current.alpha],
+      personal: [...current.personal],
     };
 
     let sourceGroup: SiteGroupKey | null = null;
@@ -337,7 +357,7 @@ export function SitesGridClient({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-4">
+    <div className="grid gap-6 lg:grid-cols-3 xl:grid-cols-5">
       {SITE_GROUP_DEFINITIONS.map((group) => (
         <section
           key={group.key}

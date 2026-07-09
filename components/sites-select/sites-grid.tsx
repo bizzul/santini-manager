@@ -2,10 +2,14 @@ import { getUserContext, getUserSites } from "@/lib/auth-utils";
 import { SitesGridClient } from "@/components/sites-select/sites-grid-client";
 import { createClient } from "@/utils/supabase/server";
 
-type SiteGroupKey = "active" | "custom" | "beta" | "alpha";
+type SiteGroupKey = "active" | "custom" | "beta" | "alpha" | "personal";
 
 const isSiteGroupKey = (value: unknown): value is SiteGroupKey =>
-  value === "active" || value === "custom" || value === "beta" || value === "alpha";
+  value === "active" ||
+  value === "custom" ||
+  value === "beta" ||
+  value === "alpha" ||
+  value === "personal";
 
 async function getSiteGroupOverrides(userId: string, siteIds: string[]) {
   if (!userId || siteIds.length === 0) {
@@ -66,8 +70,8 @@ export async function SitesGrid() {
 
 export function SitesGridSkeleton() {
   return (
-    <div className="grid gap-6 xl:grid-cols-4">
-      {[1, 2, 3, 4].map((column) => (
+    <div className="grid gap-6 lg:grid-cols-3 xl:grid-cols-5">
+      {[1, 2, 3, 4, 5].map((column) => (
         <div
           key={column}
           className="rounded-3xl border border-white/15 bg-white/5 p-4"

@@ -9,6 +9,7 @@ import {
   Plus,
   ExternalLink,
   QrCode,
+  UserCog,
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
@@ -154,6 +155,13 @@ export default async function AdminDashboardPage() {
               icon: <QrCode className="h-5 w-5" />,
               href: "/administration/demos",
             },
+            {
+              title: "Accesso App Beta",
+              description:
+                "Abilita il Manager Personale e i permessi per singolo utente",
+              icon: <UserCog className="h-5 w-5" />,
+              href: "/administration/personal-manager",
+            },
           ],
         };
 
@@ -183,6 +191,13 @@ export default async function AdminDashboardPage() {
               href: userOrganization
                 ? `/administration/organizations/${userOrganization.id}/edit`
                 : "/administration/organizations",
+            },
+            {
+              title: "Accesso App Beta",
+              description:
+                "Abilita il Manager Personale e i permessi per singolo utente",
+              icon: <UserCog className="h-5 w-5" />,
+              href: "/administration/personal-manager",
             },
           ],
         };
