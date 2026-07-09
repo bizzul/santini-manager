@@ -4,7 +4,6 @@
 
 import {
   Building,
-  Clock,
   Globe,
   KanbanSquare,
   LayoutDashboard,
@@ -63,13 +62,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     label: "Demo QR",
     href: "/administration/demos",
     icon: QrCode,
-    superadminOnly: true,
-  },
-  {
-    key: "hours",
-    label: "Ore progetti",
-    href: "/administration/projects/hours",
-    icon: Clock,
     superadminOnly: true,
   },
 ];

@@ -1,5 +1,19 @@
 # Manager dei Manager — Fase 0: Baseline e preparazione ambiente
 
+> **Stato fasi (2026-07-09):** Fasi 0–6 implementate. La 7 (cutover) è
+> un'operazione manuale documentata in fondo a questo file.
+>
+> | Fase | Stato | Contenuto |
+> | --- | --- | --- |
+> | 0 | ✅ | Baseline migrazioni + ambiente locale + questo documento |
+> | 1 | ✅ | `manager_projects` + storico + vista ore (in produzione) |
+> | 2 | ✅ | Componenti condivisi (HoursEntryForm parametrizzato, ProjectCard, nav config) |
+> | 3 | ✅ | Shell super-admin con sidebar, dietro `NEXT_PUBLIC_MANAGER_OF_MANAGERS` |
+> | 4 | ✅ | Board Kanban progetti con drag tra stage |
+> | 5 | ✅ | Ore per progetto (vista + registrazione come `internal_activity='gestione_progetto'`) |
+> | 6 | ✅ | Scheda progetto: gestione spazio (riuso pagine admin), note, storico |
+> | 7 | ⏳ | Cutover graduale (vedi sezione 6) |
+
 > **Aggiornamento 2026-07-09 — FASE 1 COMPLETATA.**
 > Migrazione `20260709130000_manager_projects.sql` validata in locale
 > (8 test: mapping stage, trigger eventi, RLS user/superadmin/anon, vista ore)
@@ -153,3 +167,32 @@ Fase 1 (serve un login reale sugli spazi).
   alcun backfill aggiuntivo.
 - Nuove RLS: usare il pattern `"User".role = 'superadmin'` via `authId`
   (mai `auth.role()`, mai la tabella `tenants`).
+
+---
+
+## 6. Fase 7 — Procedura di cutover graduale (manuale)
+
+La nuova shell è già deployabile: senza flag è invisibile a tutti. Il
+cutover consiste solo nell'attivazione del flag in produzione.
+
+1. **Pre-check:** smoke checklist (sezione 4) verde sull'ultimo deploy.
+2. **Attivazione:** su Vercel → Project → Settings → Environment Variables
+   aggiungi `NEXT_PUBLIC_MANAGER_OF_MANAGERS=true` (solo Production) e
+   ridistribuisci. Effetto: la shell nuova appare **solo ai superadmin**;
+   admin di org e spazi non cambiano in alcun caso.
+3. **Fallback immediato:** rimuovere la variabile (o impostarla a valore
+   diverso da `true`) e ridistribuire — ritorno completo alla dashboard a
+   card, nessun dato perso (stage/note/ore restano in `manager_projects`).
+4. **Osservazione:** 2–4 settimane di uso reale; smoke checklist
+   settimanale sugli spazi attivi; monitorare i log Vercel/Supabase.
+5. **Consolidamento (solo dopo validazione):**
+   - rimuovere il ramo legacy dal layout admin e il flag;
+   - opzionale: far leggere a `/sites/select` lo stage da
+     `manager_projects` al posto dell'euristica + `user_site_select_preferences`
+     (modifica additiva separata, con proprio rollback).
+
+Divergenza nota durante la transizione: il drag in `/sites/select`
+(vecchia pagina) aggiorna `user_site_select_preferences`, il drag nella
+board progetti aggiorna `manager_projects.stage`. Le due viste possono
+divergere finché il punto 5 non riconcilia; fonte di verità per la nuova
+UI è sempre `manager_projects`.

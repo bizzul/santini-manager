@@ -94,6 +94,23 @@ stato persistito (localStorage) o differenze di configurazione.
 - **Raccomandazione:** stesso valore in tutti gli ambienti (tipicamente
   `Europe/Zurich`).
 
+## Flag area Administration
+
+### `NEXT_PUBLIC_MANAGER_OF_MANAGERS`
+- **Tipo:** `"true" | undefined`
+- **Dove:** `lib/manager-projects/flag.ts` (`isManagerOfManagersEnabled`),
+  usato in `app/(administration)/administration/layout.tsx` e nelle pagine
+  `/administration/projects*`.
+- **Scopo:** abilita la nuova shell super-admin "Manager dei Manager"
+  (sidebar dedicata + board Kanban progetti). Vale solo per utenti con
+  `User.role = 'superadmin'`: gli admin di organizzazione e gli spazi
+  normali non vedono alcuna differenza, con qualsiasi valore del flag.
+- **Rollback:** rimuovere/impostare a valore diverso da `"true"` e
+  ridistribuire: l'area Administration torna identica alla versione a card.
+- **Raccomandazione:**
+  - `production`: `undefined` finché la nuova shell non è validata (Fase 7)
+  - `development`: `true` per lavorare sulle fasi 3–6
+
 ## Flag dominio/URL
 
 ### `NEXT_PUBLIC_ROOT_DOMAIN`

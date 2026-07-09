@@ -6,6 +6,9 @@ import Link from "next/link";
 import React from "react";
 import Image from "next/image";
 import { Home, LogOut, Settings } from "lucide-react";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { isManagerOfManagersEnabled } from "@/lib/manager-projects/flag";
 
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
@@ -50,6 +53,55 @@ export default async function AdministrationLayout({
 
   const user = userContext?.user;
   const role = userContext?.role;
+
+  // Nuova shell "Manager dei Manager": solo superadmin e solo con flag
+  // attivo. Con flag spento (o per gli admin di org) il layout storico
+  // sottostante resta identico.
+  if (isManagerOfManagersEnabled() && role === "superadmin") {
+    return (
+      <div className="dark relative min-h-screen bg-page text-foreground">
+        {isImpersonating && impersonatedUser && originalSuperadminId && (
+          <ImpersonationBanner
+            impersonatedUser={impersonatedUser}
+            originalSuperadminId={originalSuperadminId}
+          />
+        )}
+        <SidebarProvider>
+          <AdminSidebar isSuperadmin />
+          <SidebarInset className="bg-page">
+            <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border/60 bg-page/80 px-4 py-2.5 backdrop-blur">
+              <div className="flex items-center gap-2">
+                <SidebarTrigger />
+                <Link href="/sites/select">
+                  <Button variant="ghost" size="sm">
+                    <Home className="mr-2 h-4 w-4" />
+                    I miei spazi
+                  </Button>
+                </Link>
+              </div>
+              <div className="flex items-center gap-3">
+                {user && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span className="hidden sm:inline">{user.email}</span>
+                    <span className="rounded-full border border-border bg-surface px-2 py-0.5 text-xs font-medium">
+                      {role}
+                    </span>
+                  </div>
+                )}
+                <Link href="/logout">
+                  <Button variant="outline" size="sm">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </Button>
+                </Link>
+              </div>
+            </header>
+            <div className={isImpersonating ? "pt-12" : ""}>{children}</div>
+          </SidebarInset>
+        </SidebarProvider>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden">
