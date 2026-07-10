@@ -19,11 +19,13 @@ import { useToast } from "@/components/ui/use-toast";
 interface PasswordResetButtonProps {
   userEmail: string;
   userName: string;
+  compact?: boolean;
 }
 
 export default function PasswordResetButton({
   userEmail,
   userName,
+  compact = false,
 }: PasswordResetButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -69,10 +71,22 @@ export default function PasswordResetButton({
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogTrigger asChild>
-        <Button size="sm" variant="outline" className="flex items-center gap-2">
-          <Key className="h-4 w-4" />
-          Reset Password
-        </Button>
+        {compact ? (
+          <Button
+            size="sm"
+            variant="outline"
+            title="Reset Password"
+            aria-label="Reset Password"
+            className="h-8 w-8 p-0"
+          >
+            <Key className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            Reset Password
+          </Button>
+        )}
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

@@ -9,12 +9,14 @@ interface ToggleUserStatusButtonProps {
   userId: string;
   isActive: boolean;
   userEmail: string;
+  compact?: boolean;
 }
 
 export default function ToggleUserStatusButton({
   userId,
   isActive,
   userEmail,
+  compact = false,
 }: ToggleUserStatusButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -58,6 +60,32 @@ export default function ToggleUserStatusButton({
       setIsLoading(false);
     }
   };
+
+  if (compact) {
+    return (
+      <Button
+        size="sm"
+        variant={isActive ? "outline" : "secondary"}
+        onClick={handleToggleStatus}
+        disabled={isLoading}
+        title={isActive ? "Deactivate" : "Activate"}
+        aria-label={isActive ? "Deactivate" : "Activate"}
+        className={`h-8 w-8 p-0 ${
+          isActive
+            ? "text-red-600 border-red-600 hover:bg-red-50"
+            : "text-green-600 hover:bg-green-50"
+        }`}
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isActive ? (
+          <XCircle className="h-4 w-4" />
+        ) : (
+          <BadgeCheck className="h-4 w-4" />
+        )}
+      </Button>
+    );
+  }
 
   return (
     <Button
