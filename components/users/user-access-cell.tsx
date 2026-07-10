@@ -148,7 +148,14 @@ export default function UserAccessCell({
           if (!open && !removing) setPending(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !removing) {
+              e.preventDefault();
+              handleRemove();
+            }
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pending?.type === "organization"
