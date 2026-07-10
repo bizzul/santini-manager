@@ -26,6 +26,7 @@ interface UserAccessCellProps {
   organizations: AccessItem[];
   sites: AccessItem[];
   disabled?: boolean;
+  emptyLabel?: string;
 }
 
 type PendingRemoval = {
@@ -39,6 +40,7 @@ export default function UserAccessCell({
   organizations,
   sites,
   disabled = false,
+  emptyLabel = "Nessun accesso",
 }: UserAccessCellProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -87,9 +89,9 @@ export default function UserAccessCell({
 
   return (
     <>
-      <div className="flex flex-col gap-1.5 min-w-[180px]">
+      <div className="flex flex-col gap-1.5 min-w-[160px]">
         {!hasAccess && (
-          <span className="text-xs text-white/40 italic">Nessun accesso</span>
+          <span className="text-xs text-white/40 italic">{emptyLabel}</span>
         )}
 
         {organizations.map((org) => (
