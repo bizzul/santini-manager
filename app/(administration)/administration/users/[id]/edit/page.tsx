@@ -2,10 +2,12 @@ import React from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getUsers, getOrganizations, getUserOrganizations, getSites, getUserSites } from "../../../actions";
+import { getPersonalManagerState } from "../../personal-manager.actions";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/server";
 import { EditUserForm } from "./EditUserForm";
 import { CompanyRoleManagement } from "@/components/administration/CompanyRoleManagement";
+import { PersonalManagerCapabilityCard } from "@/components/administration/PersonalManagerCapabilityCard";
 import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { ArrowLeft, UserCog, Briefcase } from "lucide-react";
@@ -93,6 +95,12 @@ export default async function UserEditPage({
       ? userOrgs[0].organization_id
       : undefined;
 
+  const personalManagerState = await getPersonalManagerState(id);
+  const userDisplayName =
+    [userToEdit.given_name, userToEdit.family_name]
+      .filter(Boolean)
+      .join(" ") || userToEdit.email;
+
   return (
     <div className="relative z-10 flex flex-col items-center min-h-screen px-4 py-12">
       {/* Header */}
@@ -151,6 +159,18 @@ export default async function UserEditPage({
             />
           </div>
         </div>
+
+        {/* Manager Personale: capability per-utente, non uno spazio */}
+        {personalManagerState && (
+          <div className="mt-6">
+            <PersonalManagerCapabilityCard
+              userAuthId={id}
+              userDisplayName={userDisplayName}
+              initialState={personalManagerState}
+              isSuperadmin={role === "superadmin"}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -42,8 +42,7 @@ const TABS: TabDef[] = [
 ];
 
 export function MobileShell({ children }: { children: ReactNode }) {
-  const { domain } = usePmContext();
-  const base = `/sites/${domain}/personal-manager`;
+  const { base } = usePmContext();
   const pathname = usePathname() ?? base;
 
   return (

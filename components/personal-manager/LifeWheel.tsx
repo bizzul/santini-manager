@@ -40,8 +40,7 @@ function sectorPath(startAngle: number, endAngle: number, radius: number) {
  */
 export function LifeWheel({ data, size = SIZE }: LifeWheelProps) {
   const router = useRouter();
-  const { domain, areasVisible } = usePmContext();
-  const base = `/sites/${domain}/personal-manager`;
+  const { base, areasVisible } = usePmContext();
 
   return (
     <svg

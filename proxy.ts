@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
+import { isVista, LAST_SPACE_COOKIE, VISTA_COOKIE } from "@/lib/personale/vista";
 
 export const config = {
   matcher: ["/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)"],
 };
+
+/** Estrae il subdomain dello spazio da un path /sites/{sub}/... */
+function extractSpaceFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/sites\/([^/]+)/);
+  if (!match) return null;
+  const sub = match[1];
+  return sub === "select" ? null : sub;
+}
 
 function extractSubdomain(request: NextRequest): string | null {
   const url = request.url;
@@ -49,10 +58,29 @@ export default async function proxy(req: NextRequest) {
   const supabaseResponse = await updateSession(req);
   const subdomain = extractSubdomain(req);
 
+  // `?vista=spazi|personale` bypassa il redirect automatico e viene salvato
+  // come preferenza di sessione (l'automatismo non deve essere una gabbia).
+  const vistaParam = req.nextUrl.searchParams.get("vista");
+  // Ultimo spazio visitato: alimenta la landing "ultimo_spazio" e lo switcher.
+  const visitedSpace = subdomain ?? extractSpaceFromPath(pathname);
+
   // Ensure cookies are always set from Supabase response
   const ensureCookies = (response: NextResponse) => {
     const supacookies = supabaseResponse.cookies.getAll();
     supacookies.forEach((c) => response.cookies.set(c));
+    if (vistaParam && isVista(vistaParam)) {
+      response.cookies.set(VISTA_COOKIE, vistaParam, {
+        path: "/",
+        sameSite: "lax",
+      });
+    }
+    if (visitedSpace) {
+      response.cookies.set(LAST_SPACE_COOKIE, visitedSpace, {
+        path: "/",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 90, // 90 giorni
+      });
+    }
     return response;
   };
 

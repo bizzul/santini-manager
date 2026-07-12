@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-logout";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useT } from "@/components/i18n/i18n-provider";
+import { ViewSwitcher } from "@/components/personale/view-switcher";
 
 // Maps a path segment to a translation key in the `nav` namespace.
 const ROUTE_LABEL_KEYS: Array<[string, string]> = [
@@ -27,7 +28,14 @@ const ROUTE_LABEL_KEYS: Array<[string, string]> = [
   ["/command-deck", "nav.home"],
 ];
 
-export function SiteTopbar({ siteName }: { siteName: string }) {
+export function SiteTopbar({
+  siteName,
+  personalManagerEnabled = false,
+}: {
+  siteName: string;
+  /** Mostra lo switcher Personale ⇄ Spazi solo se la capability e' attiva. */
+  personalManagerEnabled?: boolean;
+}) {
   const pathname = usePathname();
   const { logout } = useLogout();
   const { userContext } = useUserContext();
@@ -66,6 +74,9 @@ export function SiteTopbar({ siteName }: { siteName: string }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {personalManagerEnabled && (
+          <ViewSwitcher current="spazi" lastSpaceHref={pathname} />
+        )}
         <span className="hidden text-xs font-medium text-muted-foreground md:block">
           {t("topbar.brand")}
         </span>

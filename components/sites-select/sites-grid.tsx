@@ -1,15 +1,18 @@
 import { getUserContext, getUserSites } from "@/lib/auth-utils";
 import { SitesGridClient } from "@/components/sites-select/sites-grid-client";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
+import {
+  isUtenteGenere,
+  type PersonalManagerUser,
+} from "@/lib/personal-manager/types";
 
-type SiteGroupKey = "active" | "custom" | "beta" | "alpha" | "personal";
+type SiteGroupKey = "active" | "custom" | "beta" | "alpha";
 
 const isSiteGroupKey = (value: unknown): value is SiteGroupKey =>
   value === "active" ||
   value === "custom" ||
   value === "beta" ||
-  value === "alpha" ||
-  value === "personal";
+  value === "alpha";
 
 async function getSiteGroupOverrides(userId: string, siteIds: string[]) {
   if (!userId || siteIds.length === 0) {
@@ -37,6 +40,38 @@ async function getSiteGroupOverrides(userId: string, siteIds: string[]) {
   return overrides;
 }
 
+/**
+ * Utenti con Manager Personale abilitato. Non sono spazi: sono persone
+ * con una capability attiva, mostrate nella sezione dedicata del pannello.
+ */
+async function getPersonalManagerUsers(): Promise<PersonalManagerUser[]> {
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("User")
+    .select(
+      "id, authId, email, given_name, family_name, initials, picture, genere, personal_manager_abilitato_at",
+    )
+    .eq("personal_manager_abilitato", true)
+    .order("email");
+  if (error) {
+    console.error("[sites-grid] getPersonalManagerUsers error:", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    authId: row.authId,
+    email: row.email ?? "(senza email)",
+    givenName: row.given_name,
+    familyName: row.family_name,
+    initials: row.initials,
+    picture: row.picture,
+    genere:
+      row.genere && isUtenteGenere(row.genere) ? row.genere : "non_specificato",
+    abilitatoAt: row.personal_manager_abilitato_at,
+  }));
+}
+
 export async function SitesGrid() {
   const userContext = await getUserContext();
   const isSuperadmin = userContext?.role === "superadmin";
@@ -58,12 +93,15 @@ export async function SitesGrid() {
     .filter((siteId: string) => Boolean(siteId));
   const initialOverrides =
     isSuperadmin && userId ? await getSiteGroupOverrides(userId, siteIds) : {};
+  const personalUsers = isSuperadmin ? await getPersonalManagerUsers() : [];
 
   return (
     <SitesGridClient
       sites={sites}
       initialOverrides={initialOverrides}
       canManageGroups={isSuperadmin}
+      personalUsers={personalUsers}
+      currentUserAuthId={userId ?? null}
     />
   );
 }
@@ -103,4 +141,3 @@ export function SitesGridSkeleton() {
     </div>
   );
 }
-

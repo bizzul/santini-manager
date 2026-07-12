@@ -20,7 +20,7 @@ import { CategoryChips } from "@/components/personal-manager/MobileShell";
 import {
   softDeleteItem,
   updateItem,
-} from "@/app/sites/[domain]/personal-manager/actions";
+} from "@/app/personale/actions";
 import {
   getAreaDef,
   ITEM_STATUS_LABELS,
@@ -40,10 +40,9 @@ const STATUSES: ItemStatus[] = ["open", "in_progress", "postponed", "done"];
 
 export function ItemDetail({ item, snapshots, canEdit, projection }: ItemDetailProps) {
   const router = useRouter();
-  const { domain } = usePmContext();
+  const { base } = usePmContext();
   const { toast } = useToast();
   const area = getAreaDef(item.area_slug);
-  const base = `/sites/${domain}/personal-manager`;
 
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState(item.notes ?? "");
@@ -55,7 +54,7 @@ export function ItemDetail({ item, snapshots, canEdit, projection }: ItemDetailP
   const save = () =>
     startTransition(async () => {
       try {
-        await updateItem(domain, item.id, {
+        await updateItem(item.id, {
           title,
           notes,
           priority: Number(priority),
@@ -76,7 +75,7 @@ export function ItemDetail({ item, snapshots, canEdit, projection }: ItemDetailP
   const remove = () =>
     startTransition(async () => {
       try {
-        await softDeleteItem(domain, item.id);
+        await softDeleteItem(item.id);
         toast({ title: "Elemento eliminato" });
         router.push(`${base}/area/${item.area_slug}`);
       } catch (err) {

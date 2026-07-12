@@ -3,8 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { recordAreaScore } from "@/app/sites/[domain]/personal-manager/actions";
-import { usePmContext } from "@/components/personal-manager/pm-context";
+import { recordAreaScore } from "@/app/personale/actions";
 import type { AreaSlug } from "@/lib/personal-manager/types";
 
 interface ScoreDialProps {
@@ -16,7 +15,6 @@ interface ScoreDialProps {
 
 /** Slider 0-10 per registrare l'autovalutazione dell'area (append-only). */
 export function ScoreDial({ area, accent, current, canEdit }: ScoreDialProps) {
-  const { domain } = usePmContext();
   const { toast } = useToast();
   const [value, setValue] = useState<number>(current ?? 5);
   const [isPending, startTransition] = useTransition();
@@ -57,7 +55,7 @@ export function ScoreDial({ area, accent, current, canEdit }: ScoreDialProps) {
           onClick={() =>
             startTransition(async () => {
               try {
-                await recordAreaScore(domain, area, value);
+                await recordAreaScore(area, value);
                 toast({ title: "Punteggio aggiornato" });
               } catch (err) {
                 toast({

@@ -22,8 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { usePmContext } from "@/components/personal-manager/pm-context";
-import { createItem } from "@/app/sites/[domain]/personal-manager/actions";
+import { createItem } from "@/app/personale/actions";
 import type { AreaSlug } from "@/lib/personal-manager/types";
 
 interface ItemCreateDialogProps {
@@ -33,7 +32,6 @@ interface ItemCreateDialogProps {
 }
 
 export function ItemCreateDialog({ area, label, accent }: ItemCreateDialogProps) {
-  const { domain } = usePmContext();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -115,7 +113,7 @@ export function ItemCreateDialog({ area, label, accent }: ItemCreateDialogProps)
             onClick={() =>
               startTransition(async () => {
                 try {
-                  await createItem(domain, {
+                  await createItem({
                     area_slug: area,
                     title,
                     notes,

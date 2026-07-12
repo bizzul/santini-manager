@@ -1,54 +1,77 @@
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
-import { requireServerSiteContext } from "@/lib/server-data";
-import { getPmAccess } from "@/lib/personal-manager/queries";
+import { createServiceClient } from "@/utils/supabase/server";
+import { getAreeVita } from "@/lib/personal-manager/queries";
 import {
-  AREA_SLUGS,
+  defaultPermissionsMatrix,
   resolveAreaPermissions,
   type AreaPermissions,
   type AreaSlug,
-  type PmAccess,
+  type AreaVita,
+  type PermissionsMatrix,
 } from "@/lib/personal-manager/types";
 
-export interface PmPageContext {
-  domain: string;
-  siteId: string;
+export interface PersonalPageContext {
   userId: string;
-  access: PmAccess;
+  aree: AreaVita[];
   areasVisible: AreaSlug[];
+  permissions: PermissionsMatrix;
 }
 
 /**
- * Contesto server per le pagine del Personal Manager. Ridondante con il gate
- * del layout, ma garantisce che ogni pagina abbia siteId/userId/permessi e che
- * i dati siano sempre filtrati sulle aree effettivamente visibili.
+ * Il Manager Personale e' una capability sull'utente, non uno spazio.
+ * Il flag NON allarga il perimetro dati: abilita solo le route /personale.
  */
-export async function requirePmContext(domain: string): Promise<PmPageContext> {
+export async function hasPersonalManagerCapability(
+  userAuthId: string,
+): Promise<boolean> {
+  const service = createServiceClient();
+  const { data, error } = await service
+    .from("User")
+    .select("personal_manager_abilitato")
+    .eq("authId", userAuthId)
+    .maybeSingle();
+  if (error) {
+    console.error("[personal-manager] capability check error:", error);
+    return false;
+  }
+  return Boolean(data?.personal_manager_abilitato);
+}
+
+/**
+ * Contesto server per le pagine del Manager Personale. Ridondante con il
+ * gate del layout, ma garantisce che ogni pagina verifichi la capability e
+ * abbia userId + aree visibili.
+ */
+export async function requirePersonalContext(): Promise<PersonalPageContext> {
   const userContext = await getUserContext();
   if (!userContext?.userId) {
     redirect("/login");
   }
-  const { siteId } = await requireServerSiteContext(domain);
-  const access = await getPmAccess(siteId, userContext.userId);
-  if (!access || !access.beta_app_enabled) {
-    // Il layout gia' mostra il BetaGate; qui evitiamo di renderizzare dati.
-    redirect(`/sites/${domain}/personal-manager`);
+  const enabled = await hasPersonalManagerCapability(userContext.userId);
+  if (!enabled) {
+    redirect("/sites/select");
   }
-  const areasVisible = (access.areas_visible ?? []).filter(
-    (slug): slug is AreaSlug => AREA_SLUGS.includes(slug as AreaSlug),
-  );
+
+  const aree = await getAreeVita(userContext.userId);
+  const areasVisible = aree.map((a) => a.slug);
+
   return {
-    domain,
-    siteId,
     userId: userContext.userId,
-    access,
+    aree,
     areasVisible,
+    // Il proprietario ha pieni permessi sulle proprie aree: il vecchio
+    // sistema di permessi granulari per-area (pm_access) e' superato.
+    permissions: defaultPermissionsMatrix(),
   };
 }
 
 export function areaPermissions(
-  ctx: PmPageContext,
+  ctx: PersonalPageContext,
   slug: AreaSlug,
 ): AreaPermissions {
-  return resolveAreaPermissions(ctx.access, slug);
+  return resolveAreaPermissions(
+    { areas_visible: ctx.areasVisible, permissions: ctx.permissions },
+    slug,
+  );
 }

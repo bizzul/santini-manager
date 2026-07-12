@@ -9,8 +9,8 @@ import {
 } from "@/lib/personal-manager/types";
 
 interface PmContextValue {
-  domain: string;
-  siteId: string;
+  /** Base URL delle schermate PM (es. "/personale"). */
+  base: string;
   userId: string;
   areasVisible: AreaSlug[];
   permissions: PermissionsMatrix;

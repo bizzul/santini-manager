@@ -25,11 +25,10 @@ export async function signIn(formData: FormData) {
   const cookieStore = await cookies();
   cookieStore.delete("ql-domain");
 
-  // After successful login, always redirect to sites/select
-  // The page will fetch the sites with the now-established session
-  // This avoids issues with trying to fetch data before cookies are committed
+  // After successful login, hand off to the landing resolver: it applies
+  // landing_preferita / mobile / last-space rules server-side.
   revalidatePath("/sites/select", "page");
-  return redirect("/sites/select");
+  return redirect("/launch");
 }
 
 export async function logout() {

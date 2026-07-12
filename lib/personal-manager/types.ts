@@ -1,5 +1,63 @@
 // Personal Manager (Wheel of Life) — tipi condivisi e tassonomia aree.
 
+// ---------------------------------------------------------------------------
+// Capability per-utente (il Manager Personale non e' uno spazio: e' un flag
+// su un utente esistente).
+// ---------------------------------------------------------------------------
+
+export type UtenteGenere = "maschio" | "femmina" | "altro" | "non_specificato";
+
+export type LandingPreferita = "auto" | "personale" | "ultimo_spazio";
+
+export const GENERE_LABELS: Record<UtenteGenere, string> = {
+  maschio: "Maschio",
+  femmina: "Femmina",
+  altro: "Altro",
+  non_specificato: "Non specificato",
+};
+
+export const LANDING_PREFERITA_LABELS: Record<LandingPreferita, string> = {
+  auto: "Automatica (mobile → personale)",
+  personale: "Sempre personale",
+  ultimo_spazio: "Sempre ultimo spazio",
+};
+
+export function isUtenteGenere(value: string): value is UtenteGenere {
+  return value in GENERE_LABELS;
+}
+
+export function isLandingPreferita(value: string): value is LandingPreferita {
+  return value in LANDING_PREFERITA_LABELS;
+}
+
+/** Utente con Manager Personale abilitato (colonna admin "I tuoi spazi"). */
+export interface PersonalManagerUser {
+  /** PK integer di public."User". */
+  id: number;
+  /** auth.users.id (uuid) — null se l'utente non ha ancora un login. */
+  authId: string | null;
+  email: string;
+  givenName: string | null;
+  familyName: string | null;
+  initials: string | null;
+  picture: string | null;
+  genere: UtenteGenere;
+  abilitatoAt: string | null;
+}
+
+/** Riga user-scoped della Wheel of Life (tabella aree_vita). */
+export interface AreaVita {
+  id: string;
+  utente_id: string;
+  slug: AreaSlug;
+  nome: string;
+  colore: string;
+  punteggio: number | null;
+  ordine: number;
+  deleted_at: string | null;
+  created_at: string;
+}
+
 export type AreaSlug =
   | "career"
   | "finance"

@@ -10,7 +10,6 @@ const VALID_STAGES: ProjectStage[] = [
   "beta",
   "client_demo",
   "active",
-  "personal",
 ];
 
 /**

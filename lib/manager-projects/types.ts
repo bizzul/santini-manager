@@ -7,8 +7,7 @@ export type ProjectStage =
   | "alpha"
   | "beta"
   | "client_demo"
-  | "active"
-  | "personal";
+  | "active";
 
 export interface ManagerProject {
   id: string;
@@ -59,12 +58,11 @@ export const PROJECT_STAGE_COLUMNS: KanbanColumnDef[] = [
 ];
 
 /** Stage non mostrati come colonna nella board principale. */
-export const HIDDEN_PROJECT_STAGES: ProjectStage[] = ["personal"];
+export const HIDDEN_PROJECT_STAGES: ProjectStage[] = [];
 
 export const PROJECT_STAGE_LABELS: Record<ProjectStage, string> = {
   alpha: "Demo alpha",
   beta: "Demo beta",
   client_demo: "Demo clienti",
   active: "Utenti attivi",
-  personal: "Personal",
 };

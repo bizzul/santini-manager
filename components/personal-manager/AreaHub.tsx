@@ -9,57 +9,25 @@ import {
   getAreaDef,
   type AreaPermissions,
   type LifeAreaDef,
-  type PmAreaScore,
   type PmItem,
 } from "@/lib/personal-manager/types";
 
 interface AreaHubProps {
   area: LifeAreaDef;
   currentScore?: number;
-  scoreHistory: PmAreaScore[];
   items: PmItem[];
   permissions: AreaPermissions;
-}
-
-/** Sparkline SVG minimale per il mini-trend dei punteggi (0-10). */
-function Sparkline({ values, accent }: { values: number[]; accent: string }) {
-  if (values.length < 2) {
-    return (
-      <span className="text-[11px] text-muted-foreground">Storico insufficiente</span>
-    );
-  }
-  const w = 96;
-  const h = 28;
-  const max = 10;
-  const step = w / (values.length - 1);
-  const points = values
-    .map((v, i) => `${i * step},${h - (v / max) * h}`)
-    .join(" ");
-  return (
-    <svg width={w} height={h} className="overflow-visible">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={accent}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 export function AreaHub({
   area,
   currentScore,
-  scoreHistory,
   items,
   permissions,
 }: AreaHubProps) {
   const config = AREA_HUB_CONFIG[area.slug];
   const openItems = items.filter((i) => i.status !== "done");
   const doneCount = items.length - openItems.length;
-  const trendValues = scoreHistory.map((s) => s.score);
 
   return (
     <div>
@@ -89,9 +57,6 @@ export function AreaHub({
             </div>
             <div className="text-[11px] text-white/80">/ 10</div>
           </div>
-        </div>
-        <div className="mt-3 rounded-lg bg-white/15 p-2">
-          <Sparkline values={trendValues} accent="#ffffff" />
         </div>
       </div>
 

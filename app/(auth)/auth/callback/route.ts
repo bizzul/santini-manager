@@ -163,9 +163,9 @@ export async function GET(request: NextRequest) {
         }
 
         console.log(
-            "[Auth Callback] User already enabled, redirecting to sites/select",
+            "[Auth Callback] User already enabled, redirecting to /launch",
         );
-        return NextResponse.redirect(`${origin}/sites/select`);
+        return NextResponse.redirect(`${origin}/launch`);
     }
 
     // If user profile exists but is not enabled, redirect to complete-signup

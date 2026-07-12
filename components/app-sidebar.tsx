@@ -328,14 +328,6 @@ const getMenuItems = (
       ],
     },
     {
-      key: "personalManager",
-      label: "Manager Personale",
-      icon: "faUser",
-      href: `${basePath}/personal-manager`,
-      alert: false,
-      moduleName: "personal-manager",
-    },
-    {
       key: "documents",
       label: t("nav.documents"),
       icon: "faBriefcase",

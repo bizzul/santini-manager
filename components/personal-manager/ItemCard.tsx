@@ -9,7 +9,7 @@ import { usePmContext } from "@/components/personal-manager/pm-context";
 import {
   postponeItem,
   setItemStatus,
-} from "@/app/sites/[domain]/personal-manager/actions";
+} from "@/app/personale/actions";
 import {
   getAreaDef,
   ITEM_STATUS_LABELS,
@@ -32,11 +32,10 @@ const PRIORITY_LABELS: Record<number, string> = {
 
 export function ItemCard({ item, showArea = false, canEdit = false }: ItemCardProps) {
   const router = useRouter();
-  const { domain } = usePmContext();
+  const { base } = usePmContext();
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const area = getAreaDef(item.area_slug);
-  const base = `/sites/${domain}/personal-manager`;
 
   const done = item.status === "done";
 
@@ -109,7 +108,7 @@ export function ItemCard({ item, showArea = false, canEdit = false }: ItemCardPr
             <button
               type="button"
               disabled={isPending}
-              onClick={() => run(() => setItemStatus(domain, item.id, "done"))}
+              onClick={() => run(() => setItemStatus(item.id, "done"))}
               className="inline-flex min-h-[36px] flex-1 items-center justify-center gap-1 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
             >
               <Check className="h-3.5 w-3.5" />
@@ -118,7 +117,7 @@ export function ItemCard({ item, showArea = false, canEdit = false }: ItemCardPr
             <button
               type="button"
               disabled={isPending}
-              onClick={() => run(() => postponeItem(domain, item.id, 1))}
+              onClick={() => run(() => postponeItem(item.id, 1))}
               className="inline-flex min-h-[36px] flex-1 items-center justify-center gap-1 rounded-lg border border-border bg-surface px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
             >
               <Clock3 className="h-3.5 w-3.5" />

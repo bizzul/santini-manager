@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import {
   ACTIVE_WORKSPACE_KEYS,
   CUSTOM_DEMO_KEYS,
-  PERSONAL_SPACE_KEYS,
 } from "@/lib/site-settings-guides";
+import { PersonalUserCard } from "@/components/sites-select/personal-user-card";
+import type { PersonalManagerUser } from "@/lib/personal-manager/types";
 
-type SiteGroupKey = "active" | "custom" | "beta" | "alpha" | "personal";
+type SiteGroupKey = "active" | "custom" | "beta" | "alpha";
 
 type Site = {
   id: string | number;
@@ -54,11 +55,6 @@ const SITE_GROUP_DEFINITIONS: SiteGroupDefinition[] = [
     title: "Demo alpha",
     description: "Ambienti sperimentali in fase iniziale.",
   },
-  {
-    key: "personal",
-    title: "Personal",
-    description: "Spazi Manager Personale (Wheel of Life).",
-  },
 ];
 
 const normalizeSiteKey = (value?: string | null) =>
@@ -73,22 +69,13 @@ const isSiteGroupKey = (value: unknown): value is SiteGroupKey =>
   value === "active" ||
   value === "custom" ||
   value === "beta" ||
-  value === "alpha" ||
-  value === "personal";
+  value === "alpha";
 
 function resolveSiteGroup(site: Site): SiteGroupKey {
   const normalizedValues = [
     normalizeSiteKey(site.subdomain),
     normalizeSiteKey(site.name),
   ];
-
-  if (
-    normalizedValues.some((value) =>
-      PERSONAL_SPACE_KEYS.some((key) => value.includes(key))
-    )
-  ) {
-    return "personal";
-  }
 
   if (
     normalizedValues.some((value) =>
@@ -130,7 +117,6 @@ const createEmptyGroupedSites = (): GroupedSites => ({
   custom: [],
   beta: [],
   alpha: [],
-  personal: [],
 });
 
 const buildInitialGroups = (
@@ -214,14 +200,66 @@ function SiteCard({
   );
 }
 
+/**
+ * Sezione "Manager Personale": utenti con la capability abilitata.
+ * NON e' una colonna di spazi — e' un'altra entita', separata visivamente
+ * da divider verticale e gap ampio.
+ */
+function PersonalManagerSection({
+  users,
+  currentUserAuthId,
+}: {
+  users: PersonalManagerUser[];
+  currentUserAuthId: string | null;
+}) {
+  return (
+    <section className="rounded-3xl border border-white/15 bg-white/5 p-4 backdrop-blur-xl">
+      <div className="mb-4 border-b border-white/10 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-white">Manager Personale</h2>
+          <span className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/60">
+            {users.length}
+          </span>
+        </div>
+        <p className="mt-2 text-sm text-white/55">
+          Utenti con vista personale abilitata
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {users.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
+            Nessun utente abilitato. Attiva il Manager Personale dalla scheda
+            utente.
+          </div>
+        ) : (
+          users.map((user) => (
+            <PersonalUserCard
+              key={user.id}
+              user={user}
+              isCurrentUser={
+                user.authId !== null && user.authId === currentUserAuthId
+              }
+            />
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function SitesGridClient({
   sites,
   initialOverrides = {},
   canManageGroups = false,
+  personalUsers = [],
+  currentUserAuthId = null,
 }: {
   sites: Site[];
   initialOverrides?: Record<string, SiteGroupKey>;
   canManageGroups?: boolean;
+  personalUsers?: PersonalManagerUser[];
+  currentUserAuthId?: string | null;
 }) {
   const [groupedSites, setGroupedSites] = useState<GroupedSites>(() =>
     buildInitialGroups(sites, initialOverrides)
@@ -244,7 +282,6 @@ export function SitesGridClient({
       custom: [...current.custom],
       beta: [...current.beta],
       alpha: [...current.alpha],
-      personal: [...current.personal],
     };
 
     let sourceGroup: SiteGroupKey | null = null;
@@ -357,68 +394,81 @@ export function SitesGridClient({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-3 xl:grid-cols-5">
-      {SITE_GROUP_DEFINITIONS.map((group) => (
-        <section
-          key={group.key}
-          onDragOver={(event) => {
-            if (!canManageGroups) {
-              return;
-            }
-            event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
-            setDropTarget(group.key);
-          }}
-          onDragLeave={() => {
-            if (!canManageGroups) {
-              return;
-            }
-            if (dropTarget === group.key) {
-              setDropTarget(null);
-            }
-          }}
-          onDrop={canManageGroups ? (event) => handleDrop(event, group.key) : undefined}
-          className={`rounded-3xl border bg-white/5 p-4 backdrop-blur-xl transition-colors ${
-            canManageGroups && dropTarget === group.key
-              ? "border-blue-400/70 ring-2 ring-blue-400/30"
-              : "border-white/15"
-          }`}
-        >
-          <div className="mb-4 border-b border-white/10 pb-4">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-white">{group.title}</h2>
-              <span className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/60">
-                {groupedSites[group.key].length}
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-white/55">{group.description}</p>
-          </div>
-
-          <div className="space-y-4">
-            {groupedSites[group.key].length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
-                {canManageGroups
-                  ? "Trascina qui uno spazio."
-                  : "Nessuno spazio in questa sezione."}
+    <div className="flex flex-col gap-10 xl:flex-row xl:items-start">
+      {/* Colonne spazi */}
+      <div className="grid flex-1 gap-6 lg:grid-cols-2 xl:grid-cols-4">
+        {SITE_GROUP_DEFINITIONS.map((group) => (
+          <section
+            key={group.key}
+            onDragOver={(event) => {
+              if (!canManageGroups) {
+                return;
+              }
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDropTarget(group.key);
+            }}
+            onDragLeave={() => {
+              if (!canManageGroups) {
+                return;
+              }
+              if (dropTarget === group.key) {
+                setDropTarget(null);
+              }
+            }}
+            onDrop={canManageGroups ? (event) => handleDrop(event, group.key) : undefined}
+            className={`rounded-3xl border bg-white/5 p-4 backdrop-blur-xl transition-colors ${
+              canManageGroups && dropTarget === group.key
+                ? "border-blue-400/70 ring-2 ring-blue-400/30"
+                : "border-white/15"
+            }`}
+          >
+            <div className="mb-4 border-b border-white/10 pb-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold text-white">{group.title}</h2>
+                <span className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/60">
+                  {groupedSites[group.key].length}
+                </span>
               </div>
-            ) : (
-              groupedSites[group.key].map((site) => (
-                <SiteCard
-                  key={site.id}
-                  site={site}
-                  canDrag={canManageGroups}
-                  isDragging={
-                    draggedSiteId === String(site.id) ||
-                    savingSiteId === String(site.id)
-                  }
-                  onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
-                />
-              ))
-            )}
-          </div>
-        </section>
-      ))}
+              <p className="mt-2 text-sm text-white/55">{group.description}</p>
+            </div>
+
+            <div className="space-y-4">
+              {groupedSites[group.key].length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
+                  {canManageGroups
+                    ? "Trascina qui uno spazio."
+                    : "Nessuno spazio in questa sezione."}
+                </div>
+              ) : (
+                groupedSites[group.key].map((site) => (
+                  <SiteCard
+                    key={site.id}
+                    site={site}
+                    canDrag={canManageGroups}
+                    isDragging={
+                      draggedSiteId === String(site.id) ||
+                      savingSiteId === String(site.id)
+                    }
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))
+              )}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {/* Divider verticale + sezione Manager Personale: un'altra entita',
+          non "la quinta colonna di cinque". */}
+      <div className="hidden self-stretch border-l border-white/20 xl:block" />
+      <div className="border-t border-white/20 pt-8 xl:w-72 xl:shrink-0 xl:border-t-0 xl:pt-0 xl:ml-4">
+        <PersonalManagerSection
+          users={personalUsers}
+          currentUserAuthId={currentUserAuthId}
+        />
+      </div>
     </div>
   );
 }
