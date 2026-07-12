@@ -220,6 +220,10 @@ const getMenuItems = (
     reports: string;
   }
 ): MenuItem[] => {
+  // Spazio Matris: la home ("/") E' la Overview Connector. La esponiamo come
+  // prima voce dedicata del gruppo Dashboard, senza rimuovere la dashboard
+  // analitica (/dashboard), che resta su "Overview".
+  const isMatrisHome = basePath === "/sites/matrispro";
   const allSiteItems: MenuItem[] = [
     {
       key: "dashboard",
@@ -228,6 +232,17 @@ const getMenuItems = (
       alert: true,
       moduleName: "dashboard",
       items: [
+        ...(isMatrisHome
+          ? [
+              {
+                label: "Overview Connector",
+                icon: "faWaveSquare",
+                href: `${basePath}`,
+                alert: false,
+                moduleName: "dashboard",
+              } as MenuItem,
+            ]
+          : []),
         {
           label: t("nav.overview"),
           icon: "faWaveSquare",
