@@ -14,11 +14,11 @@ import {
 /**
  * Resolver di landing post-login. Regole, in ordine di precedenza:
  *
- * 1. landing_preferita = 'personale'     -> /personale (mobile o desktop)
+ * 1. landing_preferita = 'personale'     -> /personale/focus (VOICE-FIRST v0.2)
  * 2. landing_preferita = 'ultimo_spazio' -> ultimo spazio (o selettore)
  * 3. landing_preferita = 'auto':
  *    - preferenza di sessione (cookie vista) gia' espressa -> rispettata
- *    - mobile + personal_manager_abilitato -> /personale
+ *    - mobile + personal_manager_abilitato -> /personale/focus
  *    - mobile senza flag / desktop        -> ultimo spazio (o selettore)
  *
  * Detection mobile SERVER-SIDE su User-Agent: mai window.innerWidth.
@@ -51,7 +51,9 @@ export async function GET(request: NextRequest) {
   const spacesTarget = lastSpace
     ? `${origin}/sites/${lastSpace}/dashboard`
     : `${origin}/sites/select`;
-  const personalTarget = `${origin}/personale`;
+  // VOICE-FIRST v0.2: reversibile rimuovendo questo blocco
+  // Landing personale → /personale/focus (hub Wheel resta raggiungibile).
+  const personalTarget = `${origin}/personale/focus`;
 
   // Il flag e la preferenza vivono su public."User" (una sola query).
   const service = createServiceClient();

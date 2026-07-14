@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Home, Settings, Workflow } from "lucide-react";
+import { CalendarCheck, Home, Mic, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { usePmContext } from "@/components/personal-manager/pm-context";
@@ -16,6 +16,12 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   {
+    label: "Focus",
+    href: (base) => `${base}/focus`,
+    match: (base, path) => path.startsWith(`${base}/focus`),
+    icon: <Mic className="h-5 w-5" />,
+  },
+  {
     label: "Home",
     href: (base) => base,
     match: (base, path) => path === base,
@@ -26,12 +32,6 @@ const TABS: TabDef[] = [
     href: (base) => `${base}/today`,
     match: (base, path) => path.startsWith(`${base}/today`),
     icon: <CalendarCheck className="h-5 w-5" />,
-  },
-  {
-    label: "Automazioni",
-    href: (base) => `${base}/automations`,
-    match: (base, path) => path.startsWith(`${base}/automations`),
-    icon: <Workflow className="h-5 w-5" />,
   },
   {
     label: "Impostazioni",
@@ -51,6 +51,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[420px] border-t border-border bg-card/95 backdrop-blur">
         <ul className="grid grid-cols-4">
+          {/* VOICE-FIRST v0.2: tab Focus in prima posizione */}
           {TABS.map((tab) => {
             const href = tab.href(base);
             const active = tab.match(base, pathname);

@@ -8,6 +8,7 @@ import {
   Contact,
   Home,
   LayoutDashboard,
+  Mic,
   PieChart,
   Settings,
   ShoppingBag,
@@ -34,6 +35,8 @@ interface NavItem {
  * mobile (MobileShell). Stessi componenti di destinazione, non duplicati.
  */
 const PM_ITEMS: NavItem[] = [
+  // VOICE-FIRST v0.2: Focus come voce primaria
+  { label: "Focus", href: `${BASE}/focus`, icon: <Mic className="h-4 w-4" /> },
   { label: "Wheel of Life", href: BASE, icon: <PieChart className="h-4 w-4" />, exact: true },
   { label: "Today", href: `${BASE}/today`, icon: <CalendarCheck className="h-4 w-4" /> },
   { label: "Automazioni", href: `${BASE}/automations`, icon: <Workflow className="h-4 w-4" /> },
