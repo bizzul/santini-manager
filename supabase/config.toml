@@ -307,6 +307,11 @@ deno_version = 1
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# VOICE-FIRST v0.2: Edge Function per l'elaborazione delle note vocali PM.
+# Invocata dal client autenticato (PmVoiceButton): il JWT resta obbligatorio.
+[functions.process-note]
+verify_jwt = true
+
 [analytics]
 enabled = true
 port = 54327
