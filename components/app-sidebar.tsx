@@ -66,7 +66,6 @@ import {
   faIndustry,
   faListUl,
   faHouse,
-  faMusic,
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
 import { CommandDeckLauncher } from "@/components/command-deck/CommandDeckLauncher";
@@ -134,7 +133,6 @@ const iconMap = {
   faIndustry,
   faListUl,
   faHouse,
-  faMusic,
 };
 
 type SiteDataQueryResult = {
@@ -279,51 +277,6 @@ const getMenuItems = (
           href: `${basePath}/kanban?type=production`,
           alert: false,
           moduleName: "kanban",
-        },
-      ],
-    },
-    {
-      key: "momentum",
-      label: "Momentum",
-      icon: "faMusic",
-      logoSrc: "/momentum-logo.png",
-      alert: true,
-      moduleName: "momentum",
-      items: [
-        {
-          label: "Home",
-          icon: "faHouse",
-          href: `${basePath}/momentum`,
-          alert: false,
-          moduleName: "momentum",
-        },
-        {
-          label: "Vendita",
-          icon: "faBriefcase",
-          href: `${basePath}/momentum/vendita`,
-          alert: false,
-          moduleName: "momentum",
-        },
-        {
-          label: "Plan",
-          icon: "faTable",
-          href: `${basePath}/momentum/plan`,
-          alert: false,
-          moduleName: "momentum",
-        },
-        {
-          label: "Accounting",
-          icon: "faSquarePollVertical",
-          href: `${basePath}/momentum/accounting`,
-          alert: false,
-          moduleName: "momentum",
-        },
-        {
-          label: "Mappa",
-          icon: "faBuilding",
-          href: `${basePath}/momentum/mappa`,
-          alert: false,
-          moduleName: "momentum",
         },
       ],
     },

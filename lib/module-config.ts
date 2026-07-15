@@ -245,16 +245,6 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         enabledByDefault: false,
         category: "tools",
     },
-    {
-        name: "momentum",
-        label: "Momentum",
-        description:
-            "Gestione eventi, feste e DJ set end-to-end: vendita, pianificazione e accounting",
-        icon: "faMusic",
-        href: "/momentum",
-        enabledByDefault: false,
-        category: "management",
-    },
 ];
 
 export const getModuleByName = (name: string): ModuleConfig | undefined => {
