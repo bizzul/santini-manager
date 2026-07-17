@@ -1105,8 +1105,11 @@ export const fetchKanbanWithTasks = cache(
                     : Promise.resolve(null),
                 supabase.from("Client").select("*").eq("site_id", siteId),
                 supabase
+                    // Only the category fields the card actually needs, mirroring
+                    // app/api/kanban/tasks/route.ts to avoid over-fetching the
+                    // full category row for every product.
                     .from("SellProduct")
-                    .select("*, category:sellproduct_categories(*)")
+                    .select("*, category:sellproduct_categories(id, name, color)")
                     .eq("site_id", siteId)
                     .eq("active", true),
                 supabase
@@ -1205,10 +1208,13 @@ export const fetchKanbanWithTasks = cache(
             supabase.from("File").select("*").in("taskId", taskIds),
             supabase.from("QualityControl").select("*").in("taskId", taskIds),
             supabase.from("PackingControl").select("*").in("taskId", taskIds),
+            // Filter history by the board's task IDs in SQL instead of loading
+            // every Action for the site and filtering in JS afterwards.
             supabase
                 .from("Action")
                 .select("*, User(id, picture, given_name, family_name)")
-                .eq("site_id", siteId),
+                .eq("site_id", siteId)
+                .in("taskId", taskIds),
             supabase
                 .from("TaskSupplier")
                 .select("*, supplier:Supplier(*)")

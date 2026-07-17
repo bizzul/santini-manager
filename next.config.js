@@ -171,4 +171,11 @@ const nextConfig = {
   serverExternalPackages: ["sharp", "pdfjs-dist", "@napi-rs/canvas"],
 };
 
-module.exports = nextConfig;
+// Wire @next/bundle-analyzer so we can inspect what drives the client bundle
+// (KanbanBoard/Card and the heavy libs like @dnd-kit, FullCalendar, three, ...).
+// Run with: `npm run analyze` (sets ANALYZE=true). No-op for normal builds.
+const withBundleAnalyzer = require("@next/bundle-analyzer")({
+  enabled: process.env.ANALYZE === "true",
+});
+
+module.exports = withBundleAnalyzer(nextConfig);

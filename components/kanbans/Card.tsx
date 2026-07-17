@@ -112,7 +112,7 @@ type CollaboratorTimeSummary = {
   entries: number;
 };
 
-export default function Card({
+function Card({
   id,
   title: _title,
   data,
@@ -1406,3 +1406,8 @@ export default function Card({
     </ContextMenu>
   );
 }
+
+// Memoized so unchanged cards do not re-render when the board updates (e.g. a
+// realtime refetch or a state change on a single card). Task references stay
+// stable thanks to the memoized filteredTasks in KanbanBoard.
+export default React.memo(Card);

@@ -592,6 +592,30 @@ function KanbanBoard({
     }
   }, [siteId, kanban?.id]);
 
+  // Debounce realtime-driven refetches: a burst of Task changes (a multi-card
+  // move, another user working the board, cascading updates) would otherwise
+  // trigger one full /api/kanban/tasks round-trip per event. Collapse them into
+  // a single refetch on the trailing edge.
+  const refetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedRefetchTasks = useCallback(() => {
+    if (refetchDebounceRef.current) {
+      clearTimeout(refetchDebounceRef.current);
+    }
+    refetchDebounceRef.current = setTimeout(() => {
+      refetchDebounceRef.current = null;
+      refetchTasks();
+    }, 400);
+  }, [refetchTasks]);
+
+  useEffect(() => {
+    return () => {
+      if (refetchDebounceRef.current) {
+        clearTimeout(refetchDebounceRef.current);
+        refetchDebounceRef.current = null;
+      }
+    };
+  }, []);
+
   // 🔄 Subscribe to realtime updates - when another user moves a card, we see it
   useRealtimeKanban(siteId, (payload) => {
     const currentKanbanId = Number(kanban?.id);
@@ -608,7 +632,7 @@ function KanbanBoard({
     }
 
     logger.debug("Received realtime update:", payload.eventType);
-    refetchTasks();
+    debouncedRefetchTasks();
   });
   const [openModal, setOpenModal] = useState<string | null>(null);
   const [setEditModalOpen] = useState<boolean>(false);
@@ -905,22 +929,26 @@ function KanbanBoard({
     [safeCategories]
   );
 
-  const filteredTasks = Array.isArray(tasks)
-    ? tasks.filter((task: any) => {
-        if (allCategoriesSelected) {
-          return true;
-        }
+  const filteredTasks = useMemo(
+    () =>
+      Array.isArray(tasks)
+        ? tasks.filter((task: any) => {
+            if (allCategoriesSelected) {
+              return true;
+            }
 
-        if (selectedCategories.length === 0) {
-          return false;
-        }
+            if (selectedCategories.length === 0) {
+              return false;
+            }
 
-        const taskCategoryIds = getTaskCategoryIds(task);
-        return taskCategoryIds.some((categoryId) =>
-          selectedCategories.includes(categoryId)
-        );
-      })
-    : [];
+            const taskCategoryIds = getTaskCategoryIds(task);
+            return taskCategoryIds.some((categoryId) =>
+              selectedCategories.includes(categoryId)
+            );
+          })
+        : [],
+    [tasks, allCategoriesSelected, selectedCategories]
+  );
 
   useEffect(() => {
     const key = kanban?.id ? `kanban-card-fields-${kanban.id}` : null;
