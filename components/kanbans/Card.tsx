@@ -21,6 +21,7 @@ import {
   Truck,
   Cog,
   AlertTriangle,
+  Clock,
 } from "lucide-react";
 import { useToast } from "../ui/use-toast";
 import { Badge } from "../ui/badge";
@@ -282,6 +283,116 @@ function Card({
 
   const timeState = deliveryTimeInfo.state;
   const daysDelta = deliveryTimeInfo.days;
+
+  // Badge dedicato alla kanban "Fatture OUT".
+  // Qui il badge temporale NON usa la data di consegna ma i giorni trascorsi
+  // dagli spostamenti tra le colonne (ricavati dallo storico "Action"):
+  // - To Do: giorni da quando la card e' entrata nella kanban Fatture OUT
+  //   (evento "move_task_kanban" verso questa kanban, fallback su created_at).
+  // - Inviata: giorni dallo spostamento To Do -> Inviata
+  //   (evento "move_task" con toColumn "Inviata"); verde 1-30, rosso oltre 30.
+  // - Pagata: nessun badge.
+  const fattureBadgeInfo = useMemo<
+    | {
+        hide: boolean;
+        state: "neutral" | "ok" | "late";
+        days: number;
+      }
+    | null
+  >(() => {
+    const columnIdentifier: string = data.column?.identifier || "";
+    const columnTitle: string = (data.column?.title || "").toLowerCase();
+    const kanbanIdentifier: string = data.kanban?.identifier || "";
+    const kanbanCategory: string =
+      data.kanban?.category?.identifier ||
+      data.kanban?.categoryIdentifier ||
+      "";
+    const isFattureKanban =
+      kanbanIdentifier === "fatture" ||
+      /_fatture$/.test(columnIdentifier) ||
+      kanbanCategory === "fatturazione";
+    if (!isFattureKanban) return null;
+
+    const position = Number(data.column?.position || 0);
+    const isInviata =
+      columnIdentifier.includes("inviat") ||
+      columnTitle.includes("inviat") ||
+      position === 2;
+    const isPagata =
+      columnIdentifier.includes("pagat") ||
+      columnTitle.includes("pagat") ||
+      position === 3;
+
+    if (isPagata) {
+      return { hide: true, state: "neutral", days: 0 };
+    }
+
+    const actions = Array.isArray(history) ? (history as any[]) : [];
+    const taskActions = actions.filter(
+      (a: any) => (a?.taskId ?? a?.task_id) === id
+    );
+
+    const daysSince = (value?: string | null): number | null => {
+      if (!value) return null;
+      try {
+        const start = startOfLocalDay(parseLocalDate(value));
+        const today = startOfLocalDay(new Date());
+        const diff = Math.round(
+          (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return diff < 0 ? 0 : diff;
+      } catch {
+        return null;
+      }
+    };
+
+    const latestTimestamp = (predicate: (a: any) => boolean): string | null => {
+      const timestamps = taskActions
+        .filter(predicate)
+        .map((a: any) => a?.createdAt || a?.created_at)
+        .filter(Boolean) as string[];
+      if (timestamps.length === 0) return null;
+      timestamps.sort();
+      return timestamps[timestamps.length - 1];
+    };
+
+    if (isInviata) {
+      const sentAt =
+        latestTimestamp(
+          (a) =>
+            a?.type === "move_task" &&
+            String(a?.data?.toColumn || "")
+              .toLowerCase()
+              .includes("inviat")
+        ) ||
+        data.sent_date ||
+        data.updated_at;
+      const days = daysSince(sentAt) ?? 0;
+      return { hide: false, state: days > 30 ? "late" : "ok", days };
+    }
+
+    // Colonna To Do (default)
+    const kanbanId = Number(data.kanbanId ?? data.kanban?.id);
+    const enteredAt =
+      latestTimestamp(
+        (a) =>
+          a?.type === "move_task_kanban" &&
+          Number(a?.data?.toKanban) === kanbanId
+      ) || data.created_at;
+    const days = daysSince(enteredAt) ?? 0;
+    return { hide: false, state: "neutral", days };
+  }, [
+    data.column?.identifier,
+    data.column?.title,
+    data.column?.position,
+    data.kanban,
+    data.kanbanId,
+    data.created_at,
+    data.updated_at,
+    data.sent_date,
+    history,
+    id,
+  ]);
 
   useEffect(() => {
     if (Array.isArray(data.taskSuppliers)) {
@@ -708,6 +819,43 @@ function Card({
   // Badge di stato temporale da mostrare inline nell'header
   // (visibile sia in modalita' normal che small)
   const renderTimeStatusBadge = (compact: boolean = false) => {
+    // Kanban Fatture OUT: logica badge dedicata (sostituisce quella consegna)
+    if (fattureBadgeInfo) {
+      if (fattureBadgeInfo.hide) return null; // colonna Pagata: nessun badge
+      const days = fattureBadgeInfo.days;
+      const baseClasses = compact
+        ? "h-4 px-1 text-[9px] gap-0.5"
+        : "h-5 px-1.5 text-[10px] gap-1";
+      const colorClasses =
+        fattureBadgeInfo.state === "late"
+          ? "bg-red-600 text-white hover:bg-red-700"
+          : fattureBadgeInfo.state === "ok"
+          ? "bg-green-600 text-white hover:bg-green-700"
+          : "bg-slate-600 text-white hover:bg-slate-700"; // neutral (To Do)
+      const label = `${days}g`;
+      const tooltip =
+        fattureBadgeInfo.state === "neutral"
+          ? days === 0
+            ? t("kanbanCard.queuedToday")
+            : days === 1
+            ? t("kanbanCard.queuedForOneDay")
+            : t("kanbanCard.queuedForDays", { days })
+          : days === 0
+          ? t("kanbanCard.sentToday")
+          : days === 1
+          ? t("kanbanCard.sentForOneDay")
+          : t("kanbanCard.sentForDays", { days });
+      const Icon = fattureBadgeInfo.state === "late" ? AlertTriangle : Clock;
+      return (
+        <Badge
+          title={tooltip}
+          className={`inline-flex items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+        >
+          <Icon className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
+          {label}
+        </Badge>
+      );
+    }
     if (timeState === "normal") return null;
     const baseClasses = compact
       ? "h-4 px-1 text-[9px] gap-0.5"
