@@ -38,7 +38,7 @@ function groupByEntity(items: PmChecklistItem[]): Group[] {
     }
     map.get(key)!.items.push(item);
   }
-  return [...map.values()].sort((a, b) => {
+  return Array.from(map.values()).sort((a, b) => {
     if (a.key === "generale") return 1;
     if (b.key === "generale") return -1;
     return a.title.localeCompare(b.title, "it");

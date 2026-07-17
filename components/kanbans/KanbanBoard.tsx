@@ -10,11 +10,19 @@ import {
   TouchSensor,
   pointerWithin,
 } from "@dnd-kit/core";
+import dynamic from "next/dynamic";
 import Card from "./Card";
 import OfferMiniCard from "./OfferMiniCard";
-import OfferFollowUpDialog from "./OfferFollowUpDialog";
-import OfferQuickAdd from "./OfferQuickAdd";
-import DraftCompletionWizard from "./DraftCompletionWizard";
+
+// Modal/dialog-only components: lazy-loaded so they stay out of the initial
+// kanban bundle and are fetched on first interaction (or only on offer boards).
+const OfferFollowUpDialog = dynamic(() => import("./OfferFollowUpDialog"), {
+  ssr: false,
+});
+const OfferQuickAdd = dynamic(() => import("./OfferQuickAdd"), { ssr: false });
+const DraftCompletionWizard = dynamic(() => import("./DraftCompletionWizard"), {
+  ssr: false,
+});
 import { Check, Plus, FileEdit, X, RotateCcw, Eraser } from "lucide-react";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 import { Action, KanbanColumn, Task } from "@/types/supabase";
@@ -28,7 +36,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../../components/ui/dialog";
-import CreateProductForm from "@/app/sites/[domain]/projects/createForm";
+const CreateProductForm = dynamic(
+  () => import("@/app/sites/[domain]/projects/createForm"),
+  { ssr: false }
+);
 import { useToast } from "../ui/use-toast";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useRealtimeKanban } from "@/hooks/use-realtime-kanban";

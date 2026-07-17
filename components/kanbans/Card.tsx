@@ -1,5 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -58,7 +59,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
-import EditTaskKanban from "./editKanbanTask";
+// Lazily loaded: this ~3k-line editor only renders inside the card modal, so
+// keep it out of the initial kanban bundle and fetch it on first open.
+const EditTaskKanban = dynamic(() => import("./editKanbanTask"), {
+  ssr: false,
+  loading: () => (
+    <div className="p-6 text-sm text-muted-foreground">Caricamento…</div>
+  ),
+});
 
 import {
   ContextMenu,
