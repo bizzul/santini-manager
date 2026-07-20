@@ -174,8 +174,14 @@ const nextConfig = {
 // Wire @next/bundle-analyzer so we can inspect what drives the client bundle
 // (KanbanBoard/Card and the heavy libs like @dnd-kit, FullCalendar, three, ...).
 // Run with: `npm run analyze` (sets ANALYZE=true). No-op for normal builds.
-const withBundleAnalyzer = require("@next/bundle-analyzer")({
-  enabled: process.env.ANALYZE === "true",
-});
+//
+// The analyzer lives in devDependencies, so we must NOT require it on normal
+// builds: environments that omit dev dependencies (e.g. Vercel with
+// NODE_ENV=production) would otherwise fail with MODULE_NOT_FOUND while loading
+// next.config.js. Guard the require behind the ANALYZE flag.
+const withBundleAnalyzer =
+  process.env.ANALYZE === "true"
+    ? require("@next/bundle-analyzer")({ enabled: true })
+    : (config) => config;
 
 module.exports = withBundleAnalyzer(nextConfig);
