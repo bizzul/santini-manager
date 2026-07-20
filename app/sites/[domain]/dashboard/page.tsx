@@ -4,6 +4,7 @@ import {
   fetchDashboardData,
   fetchSiteVerticalProfile,
 } from "@/lib/server-data";
+import { fetchMapData } from "@/lib/momentum-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import { getSiteHighlightCountries } from "@/lib/map-highlight.server";
@@ -74,6 +75,8 @@ export default async function SiteDashboardPage({
   const dashboardData = await fetchDashboardData(siteContext.siteId);
   const highlightCountries = await getSiteHighlightCountries(siteContext.siteId);
   const marketOverview = await getGlobalMarketOverview(siteContext.siteId);
+  // Momentum entities (eventi, fornitori, location, offerte) for the map layers.
+  const momentumMapData = await fetchMapData(siteContext.siteId);
 
   return (
     <PageLayout>
@@ -96,6 +99,7 @@ export default async function SiteDashboardPage({
             domain={domain}
             projects={dashboardData.activeProjectLocations}
             highlightCountries={highlightCountries}
+            momentumData={momentumMapData}
           />
           <div className="grid gap-4 md:grid-cols-2">
             <PipelineChart data={dashboardData} />

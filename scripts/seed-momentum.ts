@@ -337,24 +337,37 @@ async function main() {
   };
   console.log("✓ Location");
 
-  // ---- Fornitori (7 categorie) ----
+  // ---- Fornitori (7 categorie, con sede in Ticino) ----
   const forn = {
     djLuma: await getOrCreate("ev_fornitori", "nome", "DJ Luma", siteId, {
       nome: "DJ Luma",
       categoria: "artisti",
       costo_indicativo: 1800,
+      citta: "Lugano",
+      lat: 46.003,
+      lng: 8.951,
     }),
     djNero: await getOrCreate("ev_fornitori", "nome", "DJ Nero", siteId, {
       nome: "DJ Nero",
       categoria: "artisti",
       costo_indicativo: 2400,
+      citta: "Bellinzona",
+      lat: 46.195,
+      lng: 9.023,
     }),
     saxAndrea: await getOrCreate(
       "ev_fornitori",
       "nome",
       "Sax Live Andrea",
       siteId,
-      { nome: "Sax Live Andrea", categoria: "artisti", costo_indicativo: 900 }
+      {
+        nome: "Sax Live Andrea",
+        categoria: "artisti",
+        costo_indicativo: 900,
+        citta: "Locarno",
+        lat: 46.171,
+        lng: 8.795,
+      }
     ),
     audioluci: await getOrCreate(
       "ev_fornitori",
@@ -365,6 +378,9 @@ async function main() {
         nome: "AudioLuci Service SA",
         categoria: "materials",
         costo_indicativo: 3200,
+        citta: "Giubiasco",
+        lat: 46.172,
+        lng: 9.006,
       }
     ),
     catering: await getOrCreate(
@@ -376,6 +392,9 @@ async function main() {
         nome: "Catering Sapori Ticino",
         categoria: "food",
         costo_indicativo: 2600,
+        citta: "Mendrisio",
+        lat: 45.87,
+        lng: 8.981,
       }
     ),
     barMobile: await getOrCreate(
@@ -387,6 +406,9 @@ async function main() {
         nome: "Mobile Bar Spritz&Co",
         categoria: "beverage",
         costo_indicativo: 1500,
+        citta: "Chiasso",
+        lat: 45.833,
+        lng: 9.031,
       }
     ),
     security: await getOrCreate(
@@ -398,12 +420,18 @@ async function main() {
         nome: "SecurEvent Sagl",
         categoria: "staff_security",
         costo_indicativo: 1200,
+        citta: "Bellinzona",
+        lat: 46.19,
+        lng: 9.017,
       }
     ),
     social: await getOrCreate("ev_fornitori", "nome", "Social Studio TI", siteId, {
       nome: "Social Studio TI",
       categoria: "marketing",
       costo_indicativo: 700,
+      citta: "Lugano",
+      lat: 46.006,
+      lng: 8.96,
     }),
     locationPartner: await getOrCreate(
       "ev_fornitori",
@@ -414,6 +442,9 @@ async function main() {
         nome: "Location Partner Lugano",
         categoria: "location",
         costo_indicativo: 2000,
+        citta: "Paradiso",
+        lat: 45.997,
+        lng: 8.947,
       }
     ),
   };
@@ -437,6 +468,8 @@ async function main() {
       stato: "richiesta",
       data_evento_prevista: addDays(80),
       importo_offerto: 8500,
+      lat: 46.196,
+      lng: 9.026,
     },
     {
       titolo: "Festa 18esimo compleanno",
@@ -445,6 +478,8 @@ async function main() {
       stato: "in_elaborazione",
       data_evento_prevista: addDays(55),
       importo_offerto: 4200,
+      lat: 46.008,
+      lng: 8.955,
     },
     {
       titolo: "Serata inaugurazione flagship store",
@@ -453,6 +488,8 @@ async function main() {
       stato: "offerta_inviata",
       data_evento_prevista: addDays(48),
       importo_offerto: 12000,
+      lat: 45.871,
+      lng: 8.984,
     },
     {
       titolo: "Evento benefico comunale",

@@ -25,6 +25,17 @@ export async function fetchOfferte(siteId: string): Promise<EvOfferta[]> {
   return (data as EvOfferta[]) || [];
 }
 
+export async function fetchFornitori(siteId: string): Promise<EvFornitore[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ev_fornitori")
+    .select("*")
+    .eq("site_id", siteId)
+    .is(ACTIVE, null)
+    .order("nome", { ascending: true });
+  return (data as EvFornitore[]) || [];
+}
+
 interface EventoRaw extends EvEvento {
   location?: EvLocation | null;
 }
@@ -200,6 +211,12 @@ export async function fetchEventoDetail(
 
 export interface MapData {
   locations: EvLocation[];
+  fornitori: Array<
+    Pick<
+      EvFornitore,
+      "id" | "nome" | "categoria" | "indirizzo" | "citta" | "lat" | "lng"
+    >
+  >;
   eventi: Array<
     Pick<
       EvEvento,
@@ -213,11 +230,16 @@ export interface MapData {
 
 export async function fetchMapData(siteId: string): Promise<MapData> {
   const supabase = await createClient();
-  const [{ data: locations }, { data: eventi }, { data: offerte }] =
+  const [{ data: locations }, { data: fornitori }, { data: eventi }, { data: offerte }] =
     await Promise.all([
       supabase
         .from("ev_location")
         .select("*")
+        .eq("site_id", siteId)
+        .is(ACTIVE, null),
+      supabase
+        .from("ev_fornitori")
+        .select("id, nome, categoria, indirizzo, citta, lat, lng")
         .eq("site_id", siteId)
         .is(ACTIVE, null),
       supabase
@@ -234,6 +256,7 @@ export async function fetchMapData(siteId: string): Promise<MapData> {
 
   return {
     locations: (locations as EvLocation[]) || [],
+    fornitori: (fornitori as MapData["fornitori"]) || [],
     eventi: ((eventi as any[]) || []).map((e) => ({
       id: e.id,
       titolo: e.titolo,

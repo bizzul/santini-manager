@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { formatEUDate } from "./types";
+import { formatEUDate, FORNITORE_CATEGORIA_LABEL } from "./types";
 import type { MapData } from "@/lib/momentum-data";
+import { geocodeAddress } from "@/utils/project-location-map";
 
 const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTRIBUTION =
@@ -12,14 +13,16 @@ const OSM_ATTRIBUTION =
 const TICINO_CENTER: [number, number] = [46.19, 9.02];
 const TICINO_ZOOM = 10;
 
-type LayerKey = "location" | "passati" | "pianificazione" | "offerte";
+type LayerKey = "eventi" | "fornitori" | "location" | "offerte";
 
 const LAYER_META: Record<LayerKey, { label: string; color: string }> = {
+  eventi: { label: "Eventi", color: "#16a34a" },
+  fornitori: { label: "Fornitori", color: "#a855f7" },
   location: { label: "Location", color: "#2563eb" },
-  passati: { label: "Eventi passati", color: "#6b7280" },
-  pianificazione: { label: "Eventi in pianificazione", color: "#16a34a" },
-  offerte: { label: "Offerte attive", color: "#f59e0b" },
+  offerte: { label: "Offerte", color: "#f59e0b" },
 };
+
+const LAYER_ORDER: LayerKey[] = ["eventi", "fornitori", "location", "offerte"];
 
 interface MarkerPoint {
   lat: number;
@@ -42,13 +45,6 @@ const ACTIVE_OFFER_STATI = [
   "offerta_inviata",
   "in_trattativa",
 ];
-const PLANNING_STATI = [
-  "to_plan",
-  "planning",
-  "planned",
-  "confirmed",
-  "live",
-];
 
 export default function MomentumMap({
   data,
@@ -62,16 +58,44 @@ export default function MomentumMap({
   const layerGroupRef = React.useRef<import("leaflet").LayerGroup | null>(null);
   const [ready, setReady] = React.useState(false);
   const [enabled, setEnabled] = React.useState<Record<LayerKey, boolean>>({
+    eventi: true,
+    fornitori: true,
     location: true,
-    passati: true,
-    pianificazione: true,
     offerte: true,
   });
 
-  const pointsByLayer = React.useMemo<Record<LayerKey, MarkerPoint[]>>(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // Fornitori have no coordinates by default: geocode their address client-side
+  // (cached via localStorage) and merge the resolved points into the layer.
+  const [geocodedFornitori, setGeocodedFornitori] = React.useState<
+    Record<string, { lat: number; lng: number }>
+  >({});
 
+  React.useEffect(() => {
+    let cancelled = false;
+    const toGeocode = data.fornitori.filter(
+      (f) => (f.lat == null || f.lng == null) && (f.indirizzo || f.citta)
+    );
+    if (toGeocode.length === 0) return;
+    void (async () => {
+      for (const f of toGeocode) {
+        if (cancelled) return;
+        const address = [f.indirizzo, f.citta, "Svizzera"]
+          .filter(Boolean)
+          .join(", ");
+        const point = await geocodeAddress(address, "momentum:fornitore");
+        if (cancelled || !point) continue;
+        setGeocodedFornitori((cur) => ({
+          ...cur,
+          [f.id]: { lat: point.lat, lng: point.lng },
+        }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data.fornitori]);
+
+  const pointsByLayer = React.useMemo<Record<LayerKey, MarkerPoint[]>>(() => {
     const location: MarkerPoint[] = data.locations
       .filter((l) => l.lat != null && l.lng != null)
       .map((l) => ({
@@ -83,30 +107,44 @@ export default function MomentumMap({
         )}`,
       }));
 
-    const passati: MarkerPoint[] = [];
-    const pianificazione: MarkerPoint[] = [];
+    const fornitori: MarkerPoint[] = data.fornitori
+      .map((f) => {
+        const coords =
+          f.lat != null && f.lng != null
+            ? { lat: f.lat, lng: f.lng }
+            : geocodedFornitori[f.id];
+        if (!coords) return null;
+        const categoriaLabel =
+          FORNITORE_CATEGORIA_LABEL[f.categoria] ?? f.categoria;
+        const luogo = f.citta || f.indirizzo;
+        return {
+          lat: coords.lat,
+          lng: coords.lng,
+          color: LAYER_META.fornitori.color,
+          html: `<strong>${escapeHtml(f.nome)}</strong><br/>${escapeHtml(
+            categoriaLabel
+          )}${luogo ? `<br/>${escapeHtml(luogo)}` : ""}`,
+        } as MarkerPoint;
+      })
+      .filter((p): p is MarkerPoint => p !== null);
+
+    const eventi: MarkerPoint[] = [];
     for (const e of data.eventi) {
       const lat = e.lat ?? e.locLat;
       const lng = e.lng ?? e.locLng;
       if (lat == null || lng == null) continue;
-      const isPast = e.data_evento
-        ? new Date(e.data_evento) < today
-        : false;
       const href = `/sites/${domain}/momentum/eventi/${e.id}`;
       const dateLabel = e.data_evento
         ? escapeHtml(formatEUDate(e.data_evento))
         : "Data da definire";
-      const html = `<strong>${escapeHtml(e.titolo)}</strong><br/>${dateLabel}<br/><a href="${href}">Apri scheda evento</a>`;
-      if (isPast) {
-        passati.push({ lat, lng, color: LAYER_META.passati.color, html });
-      } else if (PLANNING_STATI.includes(e.stato_plan)) {
-        pianificazione.push({
-          lat,
-          lng,
-          color: LAYER_META.pianificazione.color,
-          html,
-        });
-      }
+      eventi.push({
+        lat,
+        lng,
+        color: LAYER_META.eventi.color,
+        html: `<strong>${escapeHtml(
+          e.titolo
+        )}</strong><br/>${dateLabel}<br/><a href="${href}">Apri scheda evento</a>`,
+      });
     }
 
     const offerte: MarkerPoint[] = data.offerte
@@ -127,8 +165,8 @@ export default function MomentumMap({
         }<br/><a href="/sites/${domain}/momentum/vendita">Vai a Vendita</a>`,
       }));
 
-    return { location, passati, pianificazione, offerte };
-  }, [data, domain]);
+    return { eventi, fornitori, location, offerte };
+  }, [data, domain, geocodedFornitori]);
 
   // Init map once.
   React.useEffect(() => {
@@ -172,7 +210,7 @@ export default function MomentumMap({
       const group = layerGroupRef.current;
       if (!group || cancelled) return;
       group.clearLayers();
-      (Object.keys(pointsByLayer) as LayerKey[]).forEach((key) => {
+      LAYER_ORDER.forEach((key) => {
         if (!enabled[key]) return;
         for (const p of pointsByLayer[key]) {
           L.circleMarker([p.lat, p.lng], {
@@ -195,7 +233,7 @@ export default function MomentumMap({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        {(Object.keys(LAYER_META) as LayerKey[]).map((key) => {
+        {LAYER_ORDER.map((key) => {
           const meta = LAYER_META[key];
           const isOn = enabled[key];
           const count = pointsByLayer[key].length;
@@ -203,6 +241,7 @@ export default function MomentumMap({
             <button
               key={key}
               type="button"
+              aria-pressed={isOn}
               onClick={() =>
                 setEnabled((cur) => ({ ...cur, [key]: !cur[key] }))
               }

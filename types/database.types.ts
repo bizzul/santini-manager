@@ -1654,11 +1654,15 @@ export type Database = {
       ev_fornitori: {
         Row: {
           categoria: string
+          citta: string | null
           costo_indicativo: number | null
           created_at: string
           deleted_at: string | null
           email: string | null
           id: string
+          indirizzo: string | null
+          lat: number | null
+          lng: number | null
           nome: string
           note: string | null
           site_id: string
@@ -1667,11 +1671,15 @@ export type Database = {
         }
         Insert: {
           categoria: string
+          citta?: string | null
           costo_indicativo?: number | null
           created_at?: string
           deleted_at?: string | null
           email?: string | null
           id?: string
+          indirizzo?: string | null
+          lat?: number | null
+          lng?: number | null
           nome: string
           note?: string | null
           site_id: string
@@ -1680,11 +1688,15 @@ export type Database = {
         }
         Update: {
           categoria?: string
+          citta?: string | null
           costo_indicativo?: number | null
           created_at?: string
           deleted_at?: string | null
           email?: string | null
           id?: string
+          indirizzo?: string | null
+          lat?: number | null
+          lng?: number | null
           nome?: string
           note?: string | null
           site_id?: string

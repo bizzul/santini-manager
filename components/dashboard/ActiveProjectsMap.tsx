@@ -60,11 +60,20 @@ function featureIso(props: CountryProperties): string | null {
   return null;
 }
 
+export interface MomentumMapPoint {
+  lat: number;
+  lng: number;
+  color: string;
+  html: string;
+}
+
 interface ActiveProjectsMapProps {
   projects: NormalizedProjectLocation[];
   domain: string;
   doubleClickZoom?: boolean;
   onDoubleClick?: () => void;
+  /** Extra colored markers for the Momentum layers (eventi/fornitori/location/offerte). */
+  momentumPoints?: MomentumMapPoint[];
   /** ISO alpha-3 codes of the countries to highlight (default: Switzerland). */
   highlightCountries?: string[];
   /** Called when a capital "Dashboard point" is clicked. */
@@ -147,6 +156,7 @@ export default function ActiveProjectsMap({
   domain,
   doubleClickZoom = true,
   onDoubleClick,
+  momentumPoints,
   highlightCountries = DEFAULT_HIGHLIGHT_COUNTRIES,
   onCountrySelect,
   onCountryClick,
@@ -155,6 +165,7 @@ export default function ActiveProjectsMap({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const momentumLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const highlightLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const capitalsLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const clickableLayerRef = useRef<import("leaflet").GeoJSON | null>(null);
@@ -402,6 +413,9 @@ export default function ActiveProjectsMap({
 
       markersLayerRef.current = L.layerGroup().addTo(map);
 
+      // Momentum entity markers (eventi/fornitori/location/offerte).
+      momentumLayerRef.current = L.layerGroup().addTo(map);
+
       // Capital "Dashboard points" sit on top so they stay clickable.
       capitalsLayerRef.current = L.layerGroup().addTo(map);
 
@@ -433,6 +447,7 @@ export default function ActiveProjectsMap({
         mapRef.current.remove();
         mapRef.current = null;
         markersLayerRef.current = null;
+        momentumLayerRef.current = null;
         highlightLayerRef.current = null;
         capitalsLayerRef.current = null;
         clickableLayerRef.current = null;
@@ -447,6 +462,36 @@ export default function ActiveProjectsMap({
     }
     void applyMarkers();
   }, [applyMarkers, mapReady]);
+
+  // Render the Momentum category markers as colored circle markers.
+  useEffect(() => {
+    if (!mapReady) {
+      return;
+    }
+    let cancelled = false;
+
+    void (async () => {
+      const L = await import("leaflet");
+      const layer = momentumLayerRef.current;
+      if (!layer || cancelled) return;
+      layer.clearLayers();
+      (momentumPoints ?? []).forEach((point) => {
+        L.circleMarker([point.lat, point.lng], {
+          radius: 8,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: point.color,
+          fillOpacity: 0.9,
+        })
+          .bindPopup(point.html)
+          .addTo(layer);
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapReady, momentumPoints]);
 
   // Draw the highlighted countries (fill + border) and fit the view to them.
   useEffect(() => {

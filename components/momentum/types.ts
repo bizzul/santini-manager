@@ -74,6 +74,10 @@ export interface EvFornitore {
   telefono: string | null;
   note: string | null;
   costo_indicativo: number | null;
+  indirizzo: string | null;
+  citta: string | null;
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface EvOfferta {

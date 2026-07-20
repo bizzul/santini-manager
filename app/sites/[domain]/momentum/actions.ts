@@ -161,6 +161,80 @@ export async function updateFornitoreIngaggio(
   return { ok: true };
 }
 
+async function geocodeViaNominatim(
+  address: string
+): Promise<{ lat: number; lng: number } | null> {
+  const params = new URLSearchParams({
+    q: address,
+    format: "jsonv2",
+    limit: "1",
+    addressdetails: "0",
+  });
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+      {
+        headers: {
+          "User-Agent": "santini-manager/1.0 (momentum-fornitori-geocoder)",
+        },
+      }
+    );
+    if (!response.ok) return null;
+    const payload = (await response.json()) as Array<{
+      lat?: string;
+      lon?: string;
+    }>;
+    const first = payload?.[0];
+    const lat = first?.lat ? Number(first.lat) : Number.NaN;
+    const lng = first?.lon ? Number(first.lon) : Number.NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
+
+export async function updateFornitoreLocation(
+  domain: string,
+  fornitoreId: string,
+  input: {
+    indirizzo: string | null;
+    citta: string | null;
+    lat: number | null;
+    lng: number | null;
+  }
+): Promise<{ ok: true; lat: number | null; lng: number | null; geocoded: boolean }> {
+  const supabase = await createClient();
+  const { siteId } = await requireServerSiteContext(domain);
+
+  let { lat, lng } = input;
+  const indirizzo = input.indirizzo?.trim() || null;
+  const citta = input.citta?.trim() || null;
+  let geocoded = false;
+
+  // Auto-geocode when coordinates are missing but we have an address.
+  if ((lat == null || lng == null) && (indirizzo || citta)) {
+    const address = [indirizzo, citta, "Svizzera"].filter(Boolean).join(", ");
+    const point = await geocodeViaNominatim(address);
+    if (point) {
+      lat = point.lat;
+      lng = point.lng;
+      geocoded = true;
+    }
+  }
+
+  const { error } = await supabase
+    .from("ev_fornitori")
+    .update({ indirizzo, citta, lat, lng })
+    .eq("id", fornitoreId)
+    .eq("site_id", siteId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`${basePath(domain)}/fornitori`);
+  revalidatePath(`${basePath(domain)}/mappa`);
+  return { ok: true, lat, lng, geocoded };
+}
+
 export async function addFattura(
   domain: string,
   eventoId: string,

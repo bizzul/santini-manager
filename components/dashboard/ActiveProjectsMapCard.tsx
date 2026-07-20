@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, Maximize2, Minimize2, X } from "lucide-react";
 import type { DashboardProjectLocation } from "@/lib/server-data";
+import type { MapData } from "@/lib/momentum-data";
+import type { MomentumMapPoint } from "@/components/dashboard/ActiveProjectsMap";
 import { useActiveProjectMap } from "@/hooks/use-active-project-map";
 import { cn } from "@/lib/utils";
 import CountryPresenceOverlay from "@/components/dashboard/CountryPresenceOverlay";
@@ -11,6 +13,10 @@ import {
   COUNTRY_CAPITALS,
   type SelectedCountry,
 } from "@/lib/map-capitals";
+import {
+  FORNITORE_CATEGORIA_LABEL,
+  formatEUDate,
+} from "@/components/momentum/types";
 import { useSearchParams } from "next/navigation";
 import {
   Popover,
@@ -24,6 +30,40 @@ const ActiveProjectsMap = dynamic(() => import("@/components/dashboard/ActivePro
 
 const DEFAULT_MARKER_COLOR = "#38bdf8";
 const NO_CATEGORY_VALUE = "__none__";
+
+type MomentumCategory = "eventi" | "fornitori" | "location" | "offerte";
+
+const MOMENTUM_LAYER_META: Record<
+  MomentumCategory,
+  { label: string; color: string }
+> = {
+  eventi: { label: "Eventi", color: "#16a34a" },
+  fornitori: { label: "Fornitori", color: "#a855f7" },
+  location: { label: "Location", color: "#2563eb" },
+  offerte: { label: "Offerte", color: "#f59e0b" },
+};
+
+const MOMENTUM_CATEGORY_ORDER: MomentumCategory[] = [
+  "eventi",
+  "fornitori",
+  "location",
+  "offerte",
+];
+
+const ACTIVE_OFFER_STATI = [
+  "richiesta",
+  "in_elaborazione",
+  "offerta_inviata",
+  "in_trattativa",
+];
+
+function escapeMapHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 type ProjectMapStatusFilter = "all" | DashboardProjectLocation["mapStatus"];
 
@@ -45,6 +85,8 @@ interface ActiveProjectsMapCardProps {
   mapHeightPx?: number;
   /** ISO alpha-3 codes of the countries to highlight on the map. */
   highlightCountries?: string[];
+  /** Momentum entities (eventi/fornitori/location/offerte) to plot as selectable layers. */
+  momentumData?: MapData;
 }
 
 interface CategoryOption {
@@ -59,6 +101,7 @@ export default function ActiveProjectsMapCard({
   className,
   mapHeightPx = 520,
   highlightCountries,
+  momentumData,
 }: ActiveProjectsMapCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [presenceCountry, setPresenceCountry] = useState<SelectedCountry | null>(
@@ -94,6 +137,99 @@ export default function ActiveProjectsMapCard({
   const [statusFilter, setStatusFilter] = useState<ProjectMapStatusFilter>("in_progress");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [momentumEnabled, setMomentumEnabled] = useState<
+    Record<MomentumCategory, boolean>
+  >({ eventi: true, fornitori: true, location: true, offerte: true });
+
+  const momentumPointsByCategory = useMemo<Record<MomentumCategory, MomentumMapPoint[]>>(() => {
+    const empty: Record<MomentumCategory, MomentumMapPoint[]> = {
+      eventi: [],
+      fornitori: [],
+      location: [],
+      offerte: [],
+    };
+    if (!momentumData) return empty;
+
+    empty.location = momentumData.locations
+      .filter((l) => l.lat != null && l.lng != null)
+      .map((l) => ({
+        lat: l.lat!,
+        lng: l.lng!,
+        color: MOMENTUM_LAYER_META.location.color,
+        html: `<strong>${escapeMapHtml(l.nome)}</strong><br/>${escapeMapHtml(
+          l.citta || l.indirizzo || "Location",
+        )}`,
+      }));
+
+    empty.fornitori = momentumData.fornitori
+      .filter((f) => f.lat != null && f.lng != null)
+      .map((f) => ({
+        lat: f.lat!,
+        lng: f.lng!,
+        color: MOMENTUM_LAYER_META.fornitori.color,
+        html: `<strong>${escapeMapHtml(f.nome)}</strong><br/>${escapeMapHtml(
+          FORNITORE_CATEGORIA_LABEL[f.categoria] ?? f.categoria,
+        )}${f.citta ? `<br/>${escapeMapHtml(f.citta)}` : ""}`,
+      }));
+
+    const eventi: MomentumMapPoint[] = [];
+    for (const e of momentumData.eventi) {
+      const lat = e.lat ?? e.locLat;
+      const lng = e.lng ?? e.locLng;
+      if (lat == null || lng == null) continue;
+      const href = `/sites/${domain}/momentum/eventi/${e.id}`;
+      const dateLabel = e.data_evento
+        ? escapeMapHtml(formatEUDate(e.data_evento))
+        : "Data da definire";
+      eventi.push({
+        lat,
+        lng,
+        color: MOMENTUM_LAYER_META.eventi.color,
+        html: `<strong>${escapeMapHtml(
+          e.titolo,
+        )}</strong><br/>${dateLabel}<br/><a href="${href}">Apri scheda evento</a>`,
+      });
+    }
+    empty.eventi = eventi;
+
+    empty.offerte = momentumData.offerte
+      .filter(
+        (o) =>
+          o.lat != null && o.lng != null && ACTIVE_OFFER_STATI.includes(o.stato),
+      )
+      .map((o) => ({
+        lat: o.lat!,
+        lng: o.lng!,
+        color: MOMENTUM_LAYER_META.offerte.color,
+        html: `<strong>${escapeMapHtml(o.titolo)}</strong>${
+          o.data_evento_prevista
+            ? `<br/>${escapeMapHtml(formatEUDate(o.data_evento_prevista))}`
+            : ""
+        }`,
+      }));
+
+    return empty;
+  }, [momentumData, domain]);
+
+  const hasMomentumData = useMemo(
+    () =>
+      MOMENTUM_CATEGORY_ORDER.some(
+        (key) => momentumPointsByCategory[key].length > 0,
+      ),
+    [momentumPointsByCategory],
+  );
+
+  const momentumPoints = useMemo<MomentumMapPoint[]>(
+    () =>
+      MOMENTUM_CATEGORY_ORDER.flatMap((key) =>
+        momentumEnabled[key] ? momentumPointsByCategory[key] : [],
+      ),
+    [momentumEnabled, momentumPointsByCategory],
+  );
+
+  const toggleMomentumCategory = (key: MomentumCategory) => {
+    setMomentumEnabled((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const statusFilteredProjects = useMemo(
     () =>
@@ -312,6 +448,35 @@ export default function ActiveProjectsMapCard({
         </div>
       </div>
 
+      {hasMomentumData && (
+        <div className="flex flex-wrap items-center gap-2">
+          {MOMENTUM_CATEGORY_ORDER.map((key) => {
+            const meta = MOMENTUM_LAYER_META[key];
+            const isOn = momentumEnabled[key];
+            const count = momentumPointsByCategory[key].length;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={isOn}
+                onClick={() => toggleMomentumCategory(key)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-slate-100 transition hover:border-slate-500",
+                  !isOn && "opacity-40",
+                )}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: meta.color }}
+                />
+                {meta.label}
+                <span className="text-slate-400">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div
         className={cn(
           "relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60",
@@ -326,11 +491,12 @@ export default function ActiveProjectsMapCard({
           doubleClickZoom={isExpanded}
           onDoubleClick={!isExpanded ? () => setIsExpanded(true) : undefined}
           highlightCountries={highlightCountries}
+          momentumPoints={momentumPoints}
           onCountrySelect={setPresenceCountry}
           onCountryClick={setPresenceCountry}
         />
 
-        {visibleProjects.length === 0 && (
+        {visibleProjects.length === 0 && momentumPoints.length === 0 && (
           <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 max-w-lg -translate-x-1/2 px-4 text-center">
             <div className="pointer-events-none space-y-2 rounded-lg border border-slate-700/70 bg-slate-950/80 px-4 py-3 shadow-lg backdrop-blur-sm">
               <p className="text-sm font-medium text-slate-100">

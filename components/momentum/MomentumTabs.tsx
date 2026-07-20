@@ -11,6 +11,7 @@ import {
   Receipt,
   Map as MapIcon,
   CalendarDays,
+  Truck,
 } from "lucide-react";
 
 const TABS = [
@@ -18,6 +19,7 @@ const TABS = [
   { name: "Vendita", href: "/vendita", icon: ShoppingCart },
   { name: "Plan", href: "/plan", icon: ClipboardList },
   { name: "Accounting", href: "/accounting", icon: Receipt },
+  { name: "Fornitori", href: "/fornitori", icon: Truck },
   { name: "Calendario", href: "/calendario", icon: CalendarDays },
   { name: "Mappa", href: "/mappa", icon: MapIcon },
 ];

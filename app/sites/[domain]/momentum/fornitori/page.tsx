@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { getUserContext } from "@/lib/auth-utils";
 import { requireServerSiteContext } from "@/lib/server-data";
-import { fetchMapData } from "@/lib/momentum-data";
+import { fetchFornitori } from "@/lib/momentum-data";
 import { PageLayout, PageContent } from "@/components/page-layout";
 import MomentumHeader from "@/components/momentum/MomentumHeader";
-import MomentumMap from "@/components/momentum/MomentumMap";
+import FornitoriClient from "@/components/momentum/FornitoriClient";
 
-export default async function MomentumMappa({
+export default async function MomentumFornitori({
   params,
 }: {
   params: Promise<{ domain: string }>;
@@ -16,15 +16,15 @@ export default async function MomentumMappa({
   if (!userContext?.user) return redirect("/login");
 
   const { siteId } = await requireServerSiteContext(domain);
-  const data = await fetchMapData(siteId);
+  const fornitori = await fetchFornitori(siteId);
 
   return (
     <PageLayout>
       <div className="border-b bg-page/95 px-4 py-4 md:px-6 lg:px-8">
-        <MomentumHeader subtitle="Mappa — eventi, fornitori, location e offerte in Ticino" />
+        <MomentumHeader subtitle="Fornitori — anagrafica e posizione sulla mappa" />
       </div>
       <PageContent>
-        <MomentumMap data={data} domain={domain} />
+        <FornitoriClient domain={domain} fornitori={fornitori} />
       </PageContent>
     </PageLayout>
   );
