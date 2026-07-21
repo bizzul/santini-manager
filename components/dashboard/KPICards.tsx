@@ -66,14 +66,21 @@ function SubMetric({
   count,
   value,
   href,
+  tone = "neutral",
 }: {
   label: string;
   count: number;
   value: number;
   href?: string | null;
+  tone?: "neutral" | "orange" | "green";
 }) {
-  const base =
-    "rounded-lg bg-foreground/[0.10] border border-foreground/40 p-3 flex flex-col min-h-[96px]";
+  const toneClass =
+    tone === "orange"
+      ? "bg-orange-500/15 border-orange-400/50"
+      : tone === "green"
+      ? "bg-emerald-500/15 border-emerald-400/50"
+      : "bg-foreground/[0.10] border-foreground/40";
+  const base = `rounded-lg border p-3 flex flex-col min-h-[96px] ${toneClass}`;
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2">
@@ -123,11 +130,13 @@ export default function KPICards({ data, domain }: KPICardsProps) {
             label="Inviate"
             count={offers.inviate.count}
             value={offers.inviate.value}
+            tone="orange"
           />
           <SubMetric
             label="In trattativa"
             count={offers.inTrattativa.count}
             value={offers.inTrattativa.value}
+            tone="green"
           />
         </div>
       </CardShell>
@@ -145,12 +154,14 @@ export default function KPICards({ data, domain }: KPICardsProps) {
             count={offers.vinte.count}
             value={offers.vinte.value}
             href={kanbanHref(links.offers)}
+            tone="orange"
           />
           <SubMetric
             label="Progetti"
             count={avor.projectCount}
             value={avor.totalValue}
             href={kanbanHref(links.avor)}
+            tone="green"
           />
         </div>
       </CardShell>
@@ -168,12 +179,14 @@ export default function KPICards({ data, domain }: KPICardsProps) {
             count={production.inProduzione.count}
             value={production.inProduzione.value}
             href={kanbanHref(links.production)}
+            tone="orange"
           />
           <SubMetric
             label="Posa"
             count={production.posa.count}
             value={production.posa.value}
             href={kanbanHref(links.posa)}
+            tone="green"
           />
         </div>
       </CardShell>
@@ -190,11 +203,13 @@ export default function KPICards({ data, domain }: KPICardsProps) {
             label="Da inviare"
             count={invoices.daInviare.count}
             value={invoices.daInviare.value}
+            tone="orange"
           />
           <SubMetric
             label="Inviate"
             count={invoices.inviate.count}
             value={invoices.inviate.value}
+            tone="green"
           />
         </div>
       </CardShell>

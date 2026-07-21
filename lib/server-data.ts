@@ -3417,15 +3417,24 @@ export const fetchDashboardData = cache(
                 .map((k) => k.id),
         );
 
-        const firstColumnByKanban = new Map<number, any>();
+        // Map invoice-kanban columns to the card buckets:
+        //  - column "Inviata/Inviate"  -> inviate
+        //  - column "Pagata/Pagate" (or won) -> excluded (not shown)
+        //  - any other column (e.g. "To Do") -> daInviare
+        const invoiceColumnStatusMap = new Map<
+            number,
+            "daInviare" | "inviate"
+        >();
         for (const col of columns) {
             if (!invoiceKanbanIds.has(col.kanbanId)) continue;
-            const existing = firstColumnByKanban.get(col.kanbanId);
-            if (
-                !existing ||
-                (col.position ?? 999) < (existing.position ?? 999)
-            ) {
-                firstColumnByKanban.set(col.kanbanId, col);
+            const t = normalizeWorkflowLabel(col.title);
+            const isPaidColumn = col.column_type === "won" ||
+                t.includes("pagat") || t.includes("paid");
+            if (isPaidColumn) continue; // paid invoices are not displayed
+            if (t.includes("inviat")) {
+                invoiceColumnStatusMap.set(col.id, "inviate");
+            } else {
+                invoiceColumnStatusMap.set(col.id, "daInviare");
             }
         }
 
@@ -3493,6 +3502,8 @@ export const fetchDashboardData = cache(
         };
         const avorProjects = new Set<string>();
         const posaProjects = new Set<string>();
+        const daInviareProjects = new Set<string>();
+        const inviateInvoiceProjects = new Set<string>();
         // Per-kanban project sets for the "fabbrica" boards, so we can both sum
         // the total and pick the board with the most projects for the link.
         const fabbricaProjectsByKanban = new Map<number, Set<string>>();
@@ -3553,28 +3564,25 @@ export const fetchDashboardData = cache(
             }
 
             if (invoiceKanbanIds.has(kanbanId)) {
-                const column = columnMap.get(task.kanbanColumnId);
-                const isPaid = task.display_mode === "small_green" ||
-                    column?.column_type === "won";
-                if (isPaid) return;
-
-                const firstCol = firstColumnByKanban.get(kanbanId);
-                const isFirstColumn = firstCol
-                    ? task.kanbanColumnId === firstCol.id
-                    : column?.position === 0;
-
-                if (isFirstColumn && !task.sent_date) {
-                    kpiInvoices.daInviare.count++;
+                // Route by column: "To Do" -> da inviare, "Inviata" -> inviate,
+                // "Pagata" (paid) -> excluded (not displayed).
+                const invStatus = invoiceColumnStatusMap.get(
+                    task.kanbanColumnId,
+                );
+                if (invStatus === "daInviare") {
                     kpiInvoices.daInviare.value += sellPrice;
-                } else {
-                    kpiInvoices.inviate.count++;
+                    daInviareProjects.add(projectKey);
+                } else if (invStatus === "inviate") {
                     kpiInvoices.inviate.value += sellPrice;
+                    inviateInvoiceProjects.add(projectKey);
                 }
                 return;
             }
         });
 
         kpiProduction.posa.count = posaProjects.size;
+        kpiInvoices.daInviare.count = daInviareProjects.size;
+        kpiInvoices.inviate.count = inviateInvoiceProjects.size;
         const avorProjectCount = avorProjects.size;
 
         // Total in-produzione projects + the fabbrica board with the most
