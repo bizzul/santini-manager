@@ -74,13 +74,22 @@ function SubMetric({
   href?: string | null;
   tone?: "neutral" | "orange" | "green";
 }) {
-  const toneClass =
+  // Inline colors (rgba) so the tints are not purged by Tailwind in production.
+  const toneStyle =
     tone === "orange"
-      ? "bg-orange-500/15 border-orange-400/50"
+      ? {
+          backgroundColor: "rgba(249, 115, 22, 0.35)",
+          borderColor: "rgba(251, 146, 60, 0.7)",
+        }
       : tone === "green"
-      ? "bg-emerald-500/15 border-emerald-400/50"
-      : "bg-foreground/[0.10] border-foreground/40";
-  const base = `rounded-lg border p-3 flex flex-col min-h-[96px] ${toneClass}`;
+      ? {
+          backgroundColor: "rgba(34, 197, 94, 0.35)",
+          borderColor: "rgba(74, 222, 128, 0.7)",
+        }
+      : undefined;
+  const base = `rounded-lg border p-3 flex flex-col min-h-[96px] ${
+    toneStyle ? "" : "bg-foreground/[0.10] border-foreground/40"
+  }`;
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2">
@@ -99,13 +108,18 @@ function SubMetric({
     return (
       <Link
         href={href}
-        className={`${base} transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        className={`${base} transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+        style={toneStyle}
       >
         {inner}
       </Link>
     );
   }
-  return <div className={base}>{inner}</div>;
+  return (
+    <div className={base} style={toneStyle}>
+      {inner}
+    </div>
+  );
 }
 
 export default function KPICards({ data, domain }: KPICardsProps) {

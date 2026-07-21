@@ -5,7 +5,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSiteModules } from "@/hooks/use-site-modules";
 import {
   DEFAULT_SITE_VERTICAL_PROFILE,
   resolveSiteVerticalProfile,
@@ -13,7 +12,6 @@ import {
 } from "@/lib/site-verticals";
 import {
   LayoutDashboard,
-  BrainCircuit,
   ShoppingCart,
   ClipboardList,
   Factory,
@@ -58,18 +56,10 @@ export default function DashboardTabs({
       return resolveSiteVerticalProfile(data.verticalProfile);
     },
   });
-  const { enabledModules, loading: loadingModules } = useSiteModules(domain || "");
-  const showForecastTab = useMemo(() => {
-    if (!domain || loadingModules) return false;
-    return enabledModules.some((module) => module.name === "dashboard-forecast");
-  }, [domain, loadingModules, enabledModules]);
   const tabs = useMemo(
     () =>
       [
         { name: verticalProfile.dashboardTabs.overview, href: "", icon: LayoutDashboard },
-        showForecastTab
-          ? { name: t("nav.forecast"), href: "/forecast", icon: BrainCircuit }
-          : null,
         { name: verticalProfile.dashboardTabs.vendita, href: "/vendita", icon: ShoppingCart },
         { name: "AVOR", href: "/avor", icon: ClipboardList },
         { name: verticalProfile.dashboardTabs.produzione, href: "/produzione", icon: Factory },
@@ -83,7 +73,7 @@ export default function DashboardTabs({
         href: string;
         icon: typeof LayoutDashboard;
       }>,
-    [verticalProfile, showForecastTab, t]
+    [verticalProfile, t]
   );
 
   return (

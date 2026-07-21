@@ -6,8 +6,7 @@ import {
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
-import AvorStatusCards from "@/components/dashboard/avor/AvorStatusCards";
-import AvorWorkloadChart from "@/components/dashboard/avor/AvorWorkloadChart";
+import AvorColumnCards from "@/components/dashboard/avor/AvorColumnCards";
 import AvorWeeklyTrendChart from "@/components/dashboard/avor/AvorWeeklyTrendChart";
 import AvorAlerts from "@/components/dashboard/avor/AvorAlerts";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
@@ -75,25 +74,18 @@ export default async function AvorDashboardPage({
       />
       <PageContent>
         <div className="space-y-6">
-          {/* Stato Pratiche AVOR - KPI per colonna */}
-          <AvorStatusCards
-            data={dashboardData.columnStatus}
-            avorKanbanId={dashboardData.avorKanbanId}
+          {/* Stato Pratiche AVOR - KPI per colonna + prodotti per categoria */}
+          <AvorColumnCards
+            columnStatus={dashboardData.columnStatus}
+            columnWorkload={dashboardData.columnWorkload}
+            avorKanbanIdentifier={dashboardData.avorKanbanIdentifier}
           />
 
-          {/* Charts Row */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Carico di lavoro per tipologia */}
-            <AvorWorkloadChart
-              data={dashboardData.workloadData}
-              columnNames={dashboardData.columnNames}
-            />
-            {/* Andamento settimanale */}
-            <AvorWeeklyTrendChart
-              data={dashboardData.weeklyTrend}
-              columnNames={dashboardData.columnNames}
-            />
-          </div>
+          {/* Andamento settimanale */}
+          <AvorWeeklyTrendChart
+            data={dashboardData.weeklyTrend}
+            columnNames={dashboardData.columnNames}
+          />
 
           {/* Alert & Criticità */}
           <AvorAlerts

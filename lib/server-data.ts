@@ -4080,7 +4080,13 @@ export interface VenditaDashboardStats {
     offerKanbanIdentifier: string | null;
     // Offer status counts with values
     offerStatus: {
-        todo: { count: number; value: number };
+        todo: {
+            count: number;
+            value: number;
+            ritardo: number;
+            oggi: number;
+            nonScadute: number;
+        };
         inviate: { count: number; value: number };
         inTrattativa: { count: number; value: number };
         vinte: { count: number; value: number };
@@ -4217,12 +4223,21 @@ export const fetchVenditaDashboardData = cache(
 
         // Initialize status counters
         const offerStatus = {
-            todo: { count: 0, value: 0 },
+            todo: { count: 0, value: 0, ritardo: 0, oggi: 0, nonScadute: 0 },
             inviate: { count: 0, value: 0 },
             inTrattativa: { count: 0, value: 0 },
             vinte: { count: 0, value: 0 },
             perse: { count: 0, value: 0 },
         };
+
+        // Today boundaries for the To Do deadline breakdown
+        const startOfToday = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+        );
+        const startOfTomorrow = new Date(startOfToday);
+        startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
         // Category stats
         const categoryStatsMap = new Map<
@@ -4313,6 +4328,20 @@ export const fetchVenditaDashboardData = cache(
 
             offerStatus[status].count++;
             offerStatus[status].value += sellPrice;
+
+            // To Do deadline breakdown: ritardo / oggi / non scadute
+            if (status === "todo") {
+                const dueDate = task.deliveryDate
+                    ? new Date(task.deliveryDate)
+                    : null;
+                if (dueDate && dueDate < startOfToday) {
+                    offerStatus.todo.ritardo++;
+                } else if (dueDate && dueDate < startOfTomorrow) {
+                    offerStatus.todo.oggi++;
+                } else {
+                    offerStatus.todo.nonScadute++;
+                }
+            }
         });
 
         // Only show categories that match production kanbans, in sidebar order
@@ -4561,8 +4590,21 @@ export interface AvorColumnStatus {
     columnId: number;
     columnName: string;
     count: number;
+    value: number;
     delayed: number;
     position: number;
+}
+
+export interface AvorColumnWorkload {
+    columnId: number;
+    columnName: string;
+    categories: Array<{
+        category: string;
+        color: string;
+        icon: string | null;
+        pratiche: number;
+        elementi: number;
+    }>;
 }
 
 export interface AvorWorkloadData {
@@ -4599,6 +4641,8 @@ export interface AvorDashboardStats {
     columnStatus: AvorColumnStatus[];
     // Workload by category and column
     workloadData: AvorWorkloadData[];
+    // Per-column category workload (pratiche + elementi within each column)
+    columnWorkload: AvorColumnWorkload[];
     // Column names for charts
     columnNames: string[];
     // Weekly trend data
@@ -4607,6 +4651,8 @@ export interface AvorDashboardStats {
     alerts: AvorAlert[];
     // AVOR Kanban ID for filtering
     avorKanbanId: number | null;
+    // AVOR Kanban identifier for navigation links
+    avorKanbanIdentifier: string | null;
 }
 
 export const fetchAvorDashboardData = cache(
@@ -4655,10 +4701,12 @@ export const fetchAvorDashboardData = cache(
             return {
                 columnStatus: [],
                 workloadData: [],
+                columnWorkload: [],
                 columnNames: [],
                 weeklyTrend: [],
                 alerts: [],
                 avorKanbanId: null,
+                avorKanbanIdentifier: null,
             };
         }
 
@@ -4688,6 +4736,7 @@ export const fetchAvorDashboardData = cache(
                     updated_at,
                     archived,
                     positions,
+                    sellPrice,
                     Client:clientId(id, businessName),
                     SellProduct:sellProductId(id, name, category:category_id(id, name, color))
                 `,
@@ -4727,12 +4776,17 @@ export const fetchAvorDashboardData = cache(
                 if (!t.deliveryDate) return false;
                 return new Date(t.deliveryDate) < now;
             }).length;
+            const value = columnTasks.reduce(
+                (sum: number, t: any) => sum + (t.sellPrice || 0),
+                0,
+            );
 
             return {
                 columnId: col.id,
                 columnName: col.title || col.identifier ||
                     `Col ${col.position}`,
                 count: columnTasks.length,
+                value,
                 delayed,
                 position: col.position,
             };
@@ -4820,6 +4874,62 @@ export const fetchAvorDashboardData = cache(
                 const orderB = categoryOrderMap.get(b.category.toLowerCase()) ?? 999;
                 return orderA - orderB;
             });
+
+        // 2b. Per-column category workload (pratiche + elementi within each column)
+        const columnWorkloadMap = new Map<
+            number,
+            Map<string, { color: string; pratiche: number; elementi: number }>
+        >();
+        columns.forEach((col) => columnWorkloadMap.set(col.id, new Map()));
+
+        tasks.forEach((task: any) => {
+            const colMap = columnWorkloadMap.get(task.kanbanColumnId);
+            if (!colMap) return;
+            const { label: categoryName, color: resolvedColor } =
+                getProductCategoryLabelAndColor(task, "Senza Categoria");
+            const categoryColor = resolvedColor || "#6b7280";
+            const positionsCount = task.positions?.length || 1;
+
+            const entry = colMap.get(categoryName) || {
+                color: categoryColor,
+                pratiche: 0,
+                elementi: 0,
+            };
+            entry.pratiche += 1;
+            entry.elementi += positionsCount;
+            if ((!entry.color || entry.color === "#6b7280") && categoryColor) {
+                entry.color = categoryColor;
+            }
+            colMap.set(categoryName, entry);
+        });
+
+        const columnWorkload: AvorColumnWorkload[] = columns.map((col) => {
+            const colMap = columnWorkloadMap.get(col.id) ?? new Map();
+            const cats = Array.from(colMap.entries())
+                .filter(([category, data]: [string, any]) =>
+                    data.pratiche > 0 &&
+                    categoryOrderMap.has(category.toLowerCase())
+                )
+                .map(([category, data]: [string, any]) => ({
+                    category,
+                    color: data.color,
+                    icon: categoryIconMap.get(category.toLowerCase()) || null,
+                    pratiche: data.pratiche,
+                    elementi: data.elementi,
+                }))
+                .sort((a, b) => {
+                    const orderA = categoryOrderMap.get(a.category.toLowerCase()) ??
+                        999;
+                    const orderB = categoryOrderMap.get(b.category.toLowerCase()) ??
+                        999;
+                    return orderA - orderB;
+                });
+            return {
+                columnId: col.id,
+                columnName: col.title || col.identifier || `Col ${col.position}`,
+                categories: cats,
+            };
+        });
 
         // 3. Calculate weekly trend (last 4 weeks)
         const weeklyTrend: AvorWeeklyTrend[] = [];
@@ -4949,10 +5059,12 @@ export const fetchAvorDashboardData = cache(
         return {
             columnStatus,
             workloadData,
+            columnWorkload,
             columnNames,
             weeklyTrend,
             alerts: limitedAlerts,
             avorKanbanId,
+            avorKanbanIdentifier: avorKanban.identifier ?? null,
         };
     },
 );

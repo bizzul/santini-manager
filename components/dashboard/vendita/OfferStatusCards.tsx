@@ -1,15 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  Layers,
-  ArrowDownWideNarrow,
-  Send,
-  Handshake,
-  Trophy,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react";
+import { Layers } from "lucide-react";
 import { VenditaDashboardStats } from "@/lib/server-data";
 
 interface OfferStatusCardsProps {
@@ -27,43 +20,137 @@ function formatCurrency(value: number): string {
   return `CHF ${value.toFixed(0)}`;
 }
 
-interface StatusCardProps {
+const boxBase =
+  "rounded-lg border p-3 flex flex-col min-h-[104px]";
+
+type Tone = "neutral" | "orange" | "yellow" | "green" | "red";
+
+// Inline colors (rgba) so the tints are not purged by Tailwind in production.
+const TONE_STYLE: Record<
+  Tone,
+  { backgroundColor: string; borderColor: string } | undefined
+> = {
+  neutral: undefined,
+  orange: {
+    backgroundColor: "rgba(249, 115, 22, 0.35)",
+    borderColor: "rgba(251, 146, 60, 0.7)",
+  },
+  yellow: {
+    backgroundColor: "rgba(234, 179, 8, 0.35)",
+    borderColor: "rgba(250, 204, 21, 0.7)",
+  },
+  green: {
+    backgroundColor: "rgba(34, 197, 94, 0.35)",
+    borderColor: "rgba(74, 222, 128, 0.7)",
+  },
+  red: {
+    backgroundColor: "rgba(239, 68, 68, 0.35)",
+    borderColor: "rgba(248, 113, 113, 0.7)",
+  },
+};
+
+function BoxShell({
+  href,
+  tone = "neutral",
+  children,
+}: {
+  href: string | null;
+  tone?: Tone;
+  children: ReactNode;
+}) {
+  const isNeutral = tone === "neutral";
+  const className = `${boxBase} ${
+    isNeutral ? "bg-foreground/[0.10] border-foreground/40" : ""
+  } transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`;
+  const style = TONE_STYLE[tone];
+
+  if (href) {
+    return (
+      <Link href={href} className={className} style={style}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <div className={className} style={style}>
+      {children}
+    </div>
+  );
+}
+
+function BoxHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <p className="text-base font-semibold text-foreground">{label}</p>
+      <span className="rounded-md border border-foreground/40 px-2 py-0.5 text-base font-semibold leading-none text-foreground">
+        {count}
+      </span>
+    </div>
+  );
+}
+
+function StatusBox({
+  label,
+  count,
+  value,
+  href,
+  tone = "neutral",
+}: {
   label: string;
   count: number;
   value: number;
-  color: string;
-  icon: LucideIcon;
   href: string | null;
+  tone?: Tone;
+}) {
+  return (
+    <BoxShell href={href} tone={tone}>
+      <BoxHeader label={label} count={count} />
+      <p className="mt-auto pt-2 text-center text-xl font-bold text-foreground">
+        {formatCurrency(value)}
+      </p>
+    </BoxShell>
+  );
 }
 
-function StatusCard({ label, count, value, color, icon: Icon, href }: StatusCardProps) {
-  const content = (
-    <div
-      className={`bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 transition-colors ${
-        href ? "hover:bg-slate-700/50 hover:border-slate-600/50 cursor-pointer" : ""
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-2">
+function TodoBox({
+  count,
+  ritardo,
+  oggi,
+  nonScadute,
+  href,
+}: {
+  count: number;
+  ritardo: number;
+  oggi: number;
+  nonScadute: number;
+  href: string | null;
+}) {
+  return (
+    <BoxShell href={href}>
+      <BoxHeader label="To Do" count={count} />
+      <div className="mt-auto grid grid-cols-3 gap-1.5 pt-2">
         <div
-          className="w-6 h-6 rounded-md flex items-center justify-center"
-          style={{ backgroundColor: `${color}20` }}
+          title="In ritardo"
+          className="rounded-md bg-red-500 py-1.5 text-center text-base font-bold text-white"
         >
-          <Icon className="w-3.5 h-3.5" style={{ color }} />
+          {ritardo}
         </div>
-        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-          {label}
-        </span>
+        <div
+          title="Da fare oggi"
+          className="rounded-md py-1.5 text-center text-base font-bold text-black"
+          style={{ backgroundColor: "#fde047" }}
+        >
+          {oggi}
+        </div>
+        <div
+          title="Non scadute"
+          className="rounded-md bg-emerald-500 py-1.5 text-center text-base font-bold text-white"
+        >
+          {nonScadute}
+        </div>
       </div>
-      <div className="text-3xl font-bold mb-1">{count}</div>
-      <div className="text-xs text-muted-foreground">
-        {formatCurrency(value)}
-      </div>
-    </div>
+    </BoxShell>
   );
-
-  if (!href) return content;
-
-  return <Link href={href}>{content}</Link>;
 }
 
 export default function OfferStatusCards({
@@ -72,7 +159,7 @@ export default function OfferStatusCards({
   domain,
 }: OfferStatusCardsProps) {
   const kanbanHref = kanbanIdentifier
-    ? `/sites/${domain}/kanban?name=${kanbanIdentifier}`
+    ? `/sites/${domain}/kanban?name=${encodeURIComponent(kanbanIdentifier)}`
     : null;
 
   return (
@@ -90,45 +177,40 @@ export default function OfferStatusCards({
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatusCard
-          label="To Do"
+        <TodoBox
           count={data.todo.count}
-          value={data.todo.value}
-          color="#3b82f6"
-          icon={ArrowDownWideNarrow}
+          ritardo={data.todo.ritardo}
+          oggi={data.todo.oggi}
+          nonScadute={data.todo.nonScadute}
           href={kanbanHref}
         />
-        <StatusCard
+        <StatusBox
           label="Inviate"
           count={data.inviate.count}
           value={data.inviate.value}
-          color="#eab308"
-          icon={Send}
           href={kanbanHref}
+          tone="orange"
         />
-        <StatusCard
+        <StatusBox
           label="In Trattativa"
           count={data.inTrattativa.count}
           value={data.inTrattativa.value}
-          color="#f97316"
-          icon={Handshake}
           href={kanbanHref}
+          tone="yellow"
         />
-        <StatusCard
+        <StatusBox
           label="Vinte"
           count={data.vinte.count}
           value={data.vinte.value}
-          color="#22c55e"
-          icon={Trophy}
           href={kanbanHref}
+          tone="green"
         />
-        <StatusCard
+        <StatusBox
           label="Perse"
           count={data.perse.count}
           value={data.perse.value}
-          color="#ef4444"
-          icon={XCircle}
           href={kanbanHref}
+          tone="red"
         />
       </div>
     </div>
