@@ -221,7 +221,7 @@ export default function CountryDashboardOverlay({
             </div>
           ) : (
             <>
-              <KPICards data={payload.dashboard} />
+              <KPICards data={payload.dashboard} domain={domain} />
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <PipelineChart data={payload.dashboard} />

@@ -2407,6 +2407,30 @@ export interface DashboardStats {
         percentage: number;
         status: string;
     };
+    // Overview KPI cards with split sub-metrics (offerte, avor, produzione, fatture)
+    overviewKpis: {
+        offers: {
+            inviate: { count: number; value: number };
+            inTrattativa: { count: number; value: number };
+            vinte: { count: number; value: number };
+        };
+        production: {
+            inProduzione: { count: number; value: number };
+            posa: { count: number; value: number };
+        };
+        invoices: {
+            daInviare: { count: number; value: number };
+            inviate: { count: number; value: number };
+        };
+        avor: { totalValue: number; projectCount: number };
+        links: {
+            offers: string | null;
+            avor: string | null;
+            production: string | null;
+            posa: string | null;
+            invoices: string | null;
+        };
+    };
     // Pipeline data for 6 months chart
     pipelineData: Array<{
         month: string;
@@ -3298,6 +3322,293 @@ export const fetchDashboardData = cache(
             ? "Carico elevato"
             : "Carico normale";
 
+        // ============================================
+        // Overview KPI cards with split sub-metrics
+        //
+        // These cards must mirror the totals shown on the kanban boards
+        // ("V. totale" per column = sum of card.sellPrice). The main `tasks`
+        // query above is capped by PostgREST at 1000 rows, so we run a
+        // dedicated, paginated fetch scoped to the relevant kanbans to keep the
+        // KPI sums accurate.
+        // ============================================
+
+        // --- Offerte: inviate vs in trattativa (per stato colonna offerte) ---
+        type OfferKpiStatus =
+            | "todo"
+            | "inviate"
+            | "inTrattativa"
+            | "vinte"
+            | "perse";
+        const offerColumnStatusMap = new Map<number, OfferKpiStatus>();
+        for (const col of columns) {
+            if (!offerKanbanIds.has(col.kanbanId)) continue;
+            const ct = col.column_type || "normal";
+            if (ct === "won") {
+                offerColumnStatusMap.set(col.id, "vinte");
+            } else if (ct === "lost") {
+                offerColumnStatusMap.set(col.id, "perse");
+            } else {
+                const t = normalizeWorkflowLabel(col.title);
+                if (t.includes("inviat")) {
+                    offerColumnStatusMap.set(col.id, "inviate");
+                } else if (
+                    t.includes("trattativa") || t.includes("negoziazione")
+                ) {
+                    offerColumnStatusMap.set(col.id, "inTrattativa");
+                } else {
+                    offerColumnStatusMap.set(col.id, "todo");
+                }
+            }
+        }
+
+        // --- Identify kanban groups (avor, invoice, production, posa) ---
+        const isPosaKanbanRecord = (k: any): boolean => {
+            const text = getKanbanSearchText(k.id);
+            return (
+                text.includes("posa") ||
+                text.includes("install") ||
+                text.includes("montaggio") ||
+                text.includes("cantiere")
+            );
+        };
+        const isProductionKanbanRecord = (k: any): boolean => {
+            if (k.is_production_kanban) return true;
+            const text = getKanbanSearchText(k.id);
+            return (
+                text.includes("arredamento") ||
+                text.includes("porte") ||
+                text.includes("serrament") ||
+                text.includes("accessori") ||
+                text.includes("produzione") ||
+                text.includes("officina") ||
+                text.includes("lavorazione")
+            );
+        };
+        const isAvorKanbanRecord = (k: any): boolean => {
+            if (k.is_work_kanban) return true;
+            const text = getKanbanSearchText(k.id);
+            return text.includes("avor") || text.includes("ufficio");
+        };
+        const isInvoiceKanbanRecord = (k: any): boolean => {
+            const text = getKanbanSearchText(k.id);
+            return (
+                text.includes("fattur") ||
+                text.includes("invoic") ||
+                text.includes("billing")
+            );
+        };
+
+        const avorKanbanIdSet = new Set(
+            kanbans.filter(isAvorKanbanRecord).map((k) => k.id),
+        );
+        const invoiceKanbanIds = new Set(
+            kanbans.filter(isInvoiceKanbanRecord).map((k) => k.id),
+        );
+        const posaKanbanIdSet = new Set(
+            kanbans.filter(isPosaKanbanRecord).map((k) => k.id),
+        );
+        const fabbricaKanbanIdSet = new Set(
+            kanbans
+                .filter(
+                    (k) =>
+                        isProductionKanbanRecord(k) &&
+                        !isPosaKanbanRecord(k),
+                )
+                .map((k) => k.id),
+        );
+
+        const firstColumnByKanban = new Map<number, any>();
+        for (const col of columns) {
+            if (!invoiceKanbanIds.has(col.kanbanId)) continue;
+            const existing = firstColumnByKanban.get(col.kanbanId);
+            if (
+                !existing ||
+                (col.position ?? 999) < (existing.position ?? 999)
+            ) {
+                firstColumnByKanban.set(col.kanbanId, col);
+            }
+        }
+
+        // Fetch every non-archived task on the KPI-relevant kanbans, paginated
+        // to bypass the default 1000-row cap.
+        const kpiKanbanIds = Array.from(
+            new Set<number>(
+                ([] as number[]).concat(
+                    Array.from(offerKanbanIds),
+                    Array.from(avorKanbanIdSet),
+                    Array.from(invoiceKanbanIds),
+                    Array.from(posaKanbanIdSet),
+                    Array.from(fabbricaKanbanIdSet),
+                ),
+            ),
+        );
+
+        const kpiTasks: any[] = [];
+        if (kpiKanbanIds.length > 0) {
+            const pageSize = 1000;
+            let page = 0;
+            while (true) {
+                const rangeFrom = page * pageSize;
+                const rangeTo = rangeFrom + pageSize - 1;
+                const { data: kpiBatch, error: kpiBatchError } = await supabase
+                    .from("Task")
+                    .select(
+                        "id, kanbanId, kanbanColumnId, sellPrice, display_mode, sent_date, unique_code",
+                    )
+                    .eq("site_id", siteId)
+                    .eq("archived", false)
+                    .in("kanbanId", kpiKanbanIds)
+                    .order("id", { ascending: true })
+                    .range(rangeFrom, rangeTo);
+
+                if (kpiBatchError) break;
+                const batch = kpiBatch || [];
+                kpiTasks.push(...batch);
+                if (batch.length < pageSize) break;
+                page += 1;
+            }
+        }
+
+        const kpiOffers = {
+            inviate: { count: 0, value: 0 },
+            inTrattativa: { count: 0, value: 0 },
+            vinte: { count: 0, value: 0 },
+        };
+        const kpiProduction = {
+            inProduzione: { count: 0, value: 0 },
+            posa: { count: 0, value: 0 },
+        };
+        const kpiInvoices = {
+            daInviare: { count: 0, value: 0 },
+            inviate: { count: 0, value: 0 },
+        };
+        let avorTotalValue = 0;
+
+        // Project counts mirror the kanban "PROGETTI" metric: unique base task
+        // number (NN-NNN) per column, summed across the boards' columns.
+        const getBaseProjectNumber = (code: unknown): string => {
+            const value = String(code || "");
+            const match = value.match(/^\d{2}-\d{3}/);
+            return match ? match[0] : value;
+        };
+        const avorProjects = new Set<string>();
+        const posaProjects = new Set<string>();
+        // Per-kanban project sets for the "fabbrica" boards, so we can both sum
+        // the total and pick the board with the most projects for the link.
+        const fabbricaProjectsByKanban = new Map<number, Set<string>>();
+
+        kpiTasks.forEach((task: any) => {
+            const sellPrice = task.sellPrice || 0;
+            const kanbanId = task.kanbanId;
+            const projectKey = `${task.kanbanColumnId}::${
+                getBaseProjectNumber(task.unique_code)
+            }`;
+
+            // Route strictly by kanban membership (task_type is unreliable on
+            // production/posa boards, where it can still be "OFFERTA").
+            if (avorKanbanIdSet.has(kanbanId)) {
+                avorTotalValue += sellPrice;
+                avorProjects.add(projectKey);
+                return;
+            }
+
+            if (posaKanbanIdSet.has(kanbanId)) {
+                kpiProduction.posa.value += sellPrice;
+                posaProjects.add(projectKey);
+                return;
+            }
+
+            if (fabbricaKanbanIdSet.has(kanbanId)) {
+                kpiProduction.inProduzione.value += sellPrice;
+                let set = fabbricaProjectsByKanban.get(kanbanId);
+                if (!set) {
+                    set = new Set<string>();
+                    fabbricaProjectsByKanban.set(kanbanId, set);
+                }
+                set.add(projectKey);
+                return;
+            }
+
+            if (offerKanbanIds.has(kanbanId)) {
+                let status: OfferKpiStatus;
+                if (task.display_mode === "small_green") {
+                    status = "vinte";
+                } else if (task.display_mode === "small_red") {
+                    status = "perse";
+                } else {
+                    status = offerColumnStatusMap.get(task.kanbanColumnId) ??
+                        "todo";
+                }
+                if (status === "inviate") {
+                    kpiOffers.inviate.count++;
+                    kpiOffers.inviate.value += sellPrice;
+                } else if (status === "inTrattativa") {
+                    kpiOffers.inTrattativa.count++;
+                    kpiOffers.inTrattativa.value += sellPrice;
+                } else if (status === "vinte") {
+                    kpiOffers.vinte.count++;
+                    kpiOffers.vinte.value += sellPrice;
+                }
+                return;
+            }
+
+            if (invoiceKanbanIds.has(kanbanId)) {
+                const column = columnMap.get(task.kanbanColumnId);
+                const isPaid = task.display_mode === "small_green" ||
+                    column?.column_type === "won";
+                if (isPaid) return;
+
+                const firstCol = firstColumnByKanban.get(kanbanId);
+                const isFirstColumn = firstCol
+                    ? task.kanbanColumnId === firstCol.id
+                    : column?.position === 0;
+
+                if (isFirstColumn && !task.sent_date) {
+                    kpiInvoices.daInviare.count++;
+                    kpiInvoices.daInviare.value += sellPrice;
+                } else {
+                    kpiInvoices.inviate.count++;
+                    kpiInvoices.inviate.value += sellPrice;
+                }
+                return;
+            }
+        });
+
+        kpiProduction.posa.count = posaProjects.size;
+        const avorProjectCount = avorProjects.size;
+
+        // Total in-produzione projects + the fabbrica board with the most
+        // projects (used for the card link target).
+        let inProduzioneCount = 0;
+        let topFabbricaKanbanId: number | null = null;
+        let topFabbricaProjects = -1;
+        fabbricaProjectsByKanban.forEach((set, kid) => {
+            inProduzioneCount += set.size;
+            if (set.size > topFabbricaProjects) {
+                topFabbricaProjects = set.size;
+                topFabbricaKanbanId = kid;
+            }
+        });
+        kpiProduction.inProduzione.count = inProduzioneCount;
+
+        // Resolve kanban identifiers for the card links.
+        const firstKanbanIdentifier = (ids: Set<number>): string | null => {
+            for (const id of Array.from(ids)) {
+                const k = kanbanMap.get(id);
+                if (k?.identifier) return k.identifier;
+            }
+            return null;
+        };
+        const kpiLinks = {
+            offers: firstKanbanIdentifier(offerKanbanIds as Set<number>),
+            avor: firstKanbanIdentifier(avorKanbanIdSet),
+            production: topFabbricaKanbanId !== null
+                ? (kanbanMap.get(topFabbricaKanbanId)?.identifier ?? null)
+                : firstKanbanIdentifier(fabbricaKanbanIdSet),
+            posa: firstKanbanIdentifier(posaKanbanIdSet),
+            invoices: firstKanbanIdentifier(invoiceKanbanIds),
+        };
+
         // Calculate Pipeline Data (6 months)
         const pipelineDataMap = new Map<string, number>();
         const monthNames = [
@@ -3734,6 +4045,16 @@ export const fetchDashboardData = cache(
             avorWorkload: {
                 percentage: avorPercentage,
                 status: avorStatus,
+            },
+            overviewKpis: {
+                offers: kpiOffers,
+                production: kpiProduction,
+                invoices: kpiInvoices,
+                avor: {
+                    totalValue: avorTotalValue,
+                    projectCount: avorProjectCount,
+                },
+                links: kpiLinks,
             },
             pipelineData,
             departmentWorkload,

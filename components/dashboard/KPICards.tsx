@@ -1,17 +1,13 @@
 "use client";
 
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  FileText,
-  Factory,
-  Receipt,
-  TrendingUp,
-} from "lucide-react";
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { FileText, Factory, Receipt, TrendingUp } from "lucide-react";
 import { DashboardStats } from "@/lib/server-data";
 
 interface KPICardsProps {
   data: DashboardStats;
+  domain: string;
 }
 
 function formatCurrency(value: number): string {
@@ -23,133 +19,185 @@ function formatCurrency(value: number): string {
   return `CHF ${value.toFixed(0)}`;
 }
 
-function getChangeTone(change: number, invertColor = false) {
-  if (change === 0) {
-    return {
-      textClass: "text-slate-300",
-      bgClass: "bg-slate-700/40",
-      icon: null,
-    };
-  }
-
-  const positiveIsGood = !invertColor;
-  const isPositive = change > 0;
-  const isGood = isPositive ? positiveIsGood : !positiveIsGood;
-
-  return {
-    textClass: isGood ? "text-emerald-300" : "text-rose-300",
-    bgClass: isGood ? "bg-emerald-500/15" : "bg-rose-500/15",
-    icon: isPositive ? ArrowUpRight : ArrowDownRight,
-  };
-}
-
-function renderChangeBadge(
-  change: number,
-  options?: { unit?: string; invertColor?: boolean; suffix?: string }
-) {
-  const { unit = "%", invertColor = false, suffix = "vs mese scorso" } = options || {};
-  const tone = getChangeTone(change, invertColor);
-  const Icon = tone.icon;
-  const valueLabel = `${change > 0 ? "+" : ""}${change.toFixed(0)}${unit}`;
-
+function CardHeader({
+  icon,
+  iconWrapperClass,
+  title,
+}: {
+  icon: ReactNode;
+  iconWrapperClass: string;
+  title: string;
+}) {
   return (
-    <div className="mt-2 flex items-center gap-2">
-      <span
-        className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold ${tone.bgClass} ${tone.textClass}`}
+    <div className="flex items-center gap-3 mb-4">
+      <div
+        className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconWrapperClass}`}
       >
-        {Icon ? <Icon className="h-3.5 w-3.5" /> : null}
-        {valueLabel}
-      </span>
-      <span className="text-xs text-muted-foreground">{suffix}</span>
+        {icon}
+      </div>
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
     </div>
   );
 }
 
-export default function KPICards({ data }: KPICardsProps) {
-  const panelClassName =
-    "dashboard-panel p-5 relative overflow-hidden";
+function CardShell({
+  href,
+  children,
+}: {
+  href: string | null;
+  children: ReactNode;
+}) {
+  const panelClassName = "dashboard-panel p-5 relative overflow-hidden";
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`${panelClassName} block transition hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return <div className={panelClassName}>{children}</div>;
+}
+
+function SubMetric({
+  label,
+  count,
+  value,
+  href,
+}: {
+  label: string;
+  count: number;
+  value: number;
+  href?: string | null;
+}) {
+  const base =
+    "rounded-lg bg-foreground/[0.10] border border-foreground/40 p-3 flex flex-col min-h-[96px]";
+  const inner = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-base font-semibold text-foreground">{label}</p>
+        <span className="rounded-md border border-foreground/40 px-2 py-0.5 text-base font-semibold leading-none text-foreground">
+          {count}
+        </span>
+      </div>
+      <p className="mt-auto pt-2 text-center text-xl font-bold text-foreground">
+        {formatCurrency(value)}
+      </p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`${base} transition hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={base}>{inner}</div>;
+}
+
+export default function KPICards({ data, domain }: KPICardsProps) {
+  const { offers, production, invoices, avor, links } = data.overviewKpis;
+
+  const kanbanHref = (identifier: string | null): string | null =>
+    identifier
+      ? `/sites/${domain}/kanban?name=${encodeURIComponent(identifier)}`
+      : null;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {/* Offerte Attive */}
-      <div className={panelClassName}>
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-            <FileText className="w-5 h-5 text-blue-500" />
-          </div>
+      {/* Offerte */}
+      <CardShell href={kanbanHref(links.offers)}>
+        <CardHeader
+          icon={<FileText className="w-5 h-5 text-blue-500" />}
+          iconWrapperClass="bg-blue-500/20"
+          title="Offerte"
+        />
+        <div className="grid grid-cols-2 gap-2.5">
+          <SubMetric
+            label="Inviate"
+            count={offers.inviate.count}
+            value={offers.inviate.value}
+          />
+          <SubMetric
+            label="In trattativa"
+            count={offers.inTrattativa.count}
+            value={offers.inTrattativa.value}
+          />
         </div>
-        <p className="text-xs text-muted-foreground font-medium mb-2">
-          Offerte Attive
-        </p>
-        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">{data.activeOffers.count}</h3>
-        <p className="text-xs text-muted-foreground mb-2">
-          {formatCurrency(data.activeOffers.totalValue)} totali
-        </p>
-        {renderChangeBadge(data.activeOffers.changePercent)}
-      </div>
+      </CardShell>
 
-      {/* Ordini in Produzione */}
-      <div className={panelClassName}>
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center">
-            <Factory className="w-5 h-5 text-white" />
-          </div>
+      {/* AVOR */}
+      <CardShell href={null}>
+        <CardHeader
+          icon={<TrendingUp className="w-5 h-5 text-orange-500" />}
+          iconWrapperClass="bg-orange-500/20"
+          title="AVOR"
+        />
+        <div className="grid grid-cols-2 gap-2.5">
+          <SubMetric
+            label="Vinte"
+            count={offers.vinte.count}
+            value={offers.vinte.value}
+            href={kanbanHref(links.offers)}
+          />
+          <SubMetric
+            label="Progetti"
+            count={avor.projectCount}
+            value={avor.totalValue}
+            href={kanbanHref(links.avor)}
+          />
         </div>
-        <p className="text-xs text-muted-foreground font-medium mb-2">
-          Ordini in Produzione
-        </p>
-        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">
-          {data.productionOrders.total}
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          {data.productionOrders.delayed} in ritardo
-        </p>
-        {renderChangeBadge(data.productionOrders.delayedChange, {
-          unit: "",
-          invertColor: true,
-          suffix: "ritardi vs mese scorso",
-        })}
-      </div>
+      </CardShell>
 
-      {/* Fatture Aperte */}
-      <div className={panelClassName}>
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-            <Receipt className="w-5 h-5 text-green-500" />
-          </div>
+      {/* Produzione */}
+      <CardShell href={null}>
+        <CardHeader
+          icon={<Factory className="w-5 h-5 text-white" />}
+          iconWrapperClass="bg-white/20"
+          title="Produzione"
+        />
+        <div className="grid grid-cols-2 gap-2.5">
+          <SubMetric
+            label="In produzione"
+            count={production.inProduzione.count}
+            value={production.inProduzione.value}
+            href={kanbanHref(links.production)}
+          />
+          <SubMetric
+            label="Posa"
+            count={production.posa.count}
+            value={production.posa.value}
+            href={kanbanHref(links.posa)}
+          />
         </div>
-        <p className="text-xs text-muted-foreground font-medium mb-2">
-          Fatture Aperte
-        </p>
-        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">
-          {formatCurrency(data.openInvoices.totalValue)}
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          {data.openInvoices.expiredCount} scadute
-        </p>
-        {renderChangeBadge(data.openInvoices.changePercent)}
-      </div>
+      </CardShell>
 
-      {/* Carico AVOR */}
-      <div className={panelClassName}>
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-orange-500" />
-          </div>
+      {/* Fatture */}
+      <CardShell href={kanbanHref(links.invoices)}>
+        <CardHeader
+          icon={<Receipt className="w-5 h-5 text-green-500" />}
+          iconWrapperClass="bg-green-500/20"
+          title="Fatture"
+        />
+        <div className="grid grid-cols-2 gap-2.5">
+          <SubMetric
+            label="Da inviare"
+            count={invoices.daInviare.count}
+            value={invoices.daInviare.value}
+          />
+          <SubMetric
+            label="Inviate"
+            count={invoices.inviate.count}
+            value={invoices.inviate.value}
+          />
         </div>
-        <p className="text-xs text-muted-foreground font-medium mb-2">
-          Carico AVOR
-        </p>
-        <h3 className="text-[1.7rem] leading-tight font-bold mb-1">
-          {data.avorWorkload.percentage.toFixed(0)}%
-        </h3>
-        <p className="text-xs text-muted-foreground">
-          {data.avorWorkload.status}
-        </p>
-        <span className="mt-2 inline-flex rounded-full bg-orange-500/15 px-2 py-1 text-sm font-semibold text-orange-200">
-          Focus carico operativo
-        </span>
-      </div>
+      </CardShell>
     </div>
   );
 }

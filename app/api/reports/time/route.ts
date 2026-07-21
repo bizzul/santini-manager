@@ -10,6 +10,10 @@ import {
   setWorkbookDefaults,
   styleWorkbookTable,
 } from "@/lib/workbook-report-branding";
+import {
+  type AttendanceStatus,
+  STATUS_CONFIG,
+} from "@/components/attendance/attendance-types";
 
 export const dynamic = "force-dynamic";
 
@@ -237,33 +241,148 @@ function getWorkSchedule(date: Date | string) {
   };
 }
 
-function buildDailyRows(dailyTotal: Map<string, number>) {
-  const dailyEntries = Array.from(dailyTotal.entries()).sort(
-    ([dateA], [dateB]) =>
-      new Date(dateA).getTime() - new Date(dateB).getTime(),
+// Contractual daily hours: Mon-Thu = 9h, Fri = 6h, weekend = 0h.
+function getContractualHours(dayOfWeek: number) {
+  if (dayOfWeek >= 1 && dayOfWeek <= 4) return 9;
+  if (dayOfWeek === 5) return 6;
+  return 0;
+}
+
+// Convert a "#rrggbb" hex color into an ExcelJS ARGB string ("FFrrggbb").
+function hexToArgb(hex: string) {
+  return `FF${hex.replace("#", "").toUpperCase()}`;
+}
+
+// Attendance types that count as an absence with contractual hours.
+const ABSENCE_STATUSES = new Set<AttendanceStatus>([
+  "vacanze",
+  "malattia",
+  "infortunio",
+  "smart_working",
+  "assenza_privata",
+  "ipg",
+]);
+
+type DailyResolution = {
+  hours: number;
+  tipologia: string;
+  colorArgb?: string;
+};
+
+// Decide hours + tipologia for a single calendar day, combining logged
+// Timetracking hours with the manual attendance status (which overrides
+// the auto "presente" detection).
+function resolveDailyAttendance(
+  dayOfWeek: number,
+  loggedHours: number,
+  status: AttendanceStatus | undefined,
+): DailyResolution {
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const contractual = getContractualHours(dayOfWeek);
+
+  if (status && ABSENCE_STATUSES.has(status)) {
+    const cfg = STATUS_CONFIG[status];
+    return {
+      hours: contractual,
+      tipologia: cfg.label,
+      colorArgb: hexToArgb(cfg.color),
+    };
+  }
+
+  if (status === "formazione") {
+    const cfg = STATUS_CONFIG.formazione;
+    return {
+      hours: loggedHours > 0 ? loggedHours : contractual,
+      tipologia: cfg.label,
+      colorArgb: hexToArgb(cfg.color),
+    };
+  }
+
+  if (status === "presente" || loggedHours > 0) {
+    const cfg = STATUS_CONFIG.presente;
+    return {
+      hours: loggedHours,
+      tipologia: cfg.label,
+      colorArgb: hexToArgb(cfg.color),
+    };
+  }
+
+  if (isWeekend) {
+    const cfg = STATUS_CONFIG.weekend;
+    return { hours: 0, tipologia: cfg.label, colorArgb: hexToArgb(cfg.color) };
+  }
+
+  return { hours: 0, tipologia: "" };
+}
+
+type DailyReportRow = {
+  Data: string;
+  Totale: number | string;
+  Tipologia: string;
+  colorArgb?: string;
+  isSubtotal?: boolean;
+};
+
+// Build one row per calendar day within the selection (including weekends and
+// days without any timetracking) plus weekly/monthly subtotals. Each daily row
+// carries a Tipologia and its legend color.
+function buildCalendarDailyRows(
+  selection: TimeReportSelection,
+  dailyTotal: Map<string, number>,
+  attendanceByDate: Map<string, AttendanceStatus>,
+): DailyReportRow[] {
+  const start = new Date(
+    selection.from.getFullYear(),
+    selection.from.getMonth(),
+    selection.from.getDate(),
+  );
+  const end = new Date(
+    selection.to.getFullYear(),
+    selection.to.getMonth(),
+    selection.to.getDate(),
   );
 
-  const rows: Array<{ Data: string; Totale: number | string }> = [];
+  const days: Date[] = [];
+  for (
+    let d = new Date(start);
+    d <= end;
+    d.setDate(d.getDate() + 1)
+  ) {
+    if (!isDateInSelection(d, selection)) continue;
+    days.push(new Date(d));
+  }
 
+  const rows: DailyReportRow[] = [];
   let weekTotal = 0;
   let monthTotal = 0;
-  let weekStartDate: string | null = dailyEntries[0]?.[0] || null;
+  let weekStartDate: Date | null = days[0] || null;
 
-  dailyEntries.forEach(([date, hours], index) => {
+  days.forEach((date, index) => {
+    const dayOfWeek = date.getDay();
+    const loggedHours = Number(dailyTotal.get(date.toDateString()) || 0);
+    const status = attendanceByDate.get(getDateKey(date));
+    const { hours, tipologia, colorArgb } = resolveDailyAttendance(
+      dayOfWeek,
+      loggedHours,
+      status,
+    );
     const roundedHours = Number(hours.toFixed(2));
-    const nextDate = dailyEntries[index + 1]?.[0] || null;
-    const currentWeekKey = getWeekKey(date);
-    const nextWeekKey = nextDate ? getWeekKey(nextDate) : null;
-    const currentMonthKey = getMonthKey(date);
-    const nextMonthKey = nextDate ? getMonthKey(nextDate) : null;
 
     rows.push({
       Data: formatDate(date),
       Totale: roundedHours,
+      Tipologia: tipologia,
+      colorArgb,
     });
 
     weekTotal += roundedHours;
     monthTotal += roundedHours;
+
+    const nextDate = days[index + 1] || null;
+    const currentWeekKey = getWeekKey(date);
+    const nextWeekKey = nextDate ? getWeekKey(nextDate) : null;
+    const currentMonthKey = getMonthKey(date);
+    const nextMonthKey = nextDate ? getMonthKey(nextDate) : null;
 
     const shouldCloseWeek = nextWeekKey !== currentWeekKey ||
       nextMonthKey !== currentMonthKey;
@@ -273,6 +392,8 @@ function buildDailyRows(dailyTotal: Map<string, number>) {
       rows.push({
         Data: `Totale settimana ${formatDate(weekStartDate)} - ${formatDate(date)}`,
         Totale: Number(weekTotal.toFixed(2)),
+        Tipologia: "",
+        isSubtotal: true,
       });
       weekTotal = 0;
       weekStartDate = nextDate;
@@ -282,6 +403,8 @@ function buildDailyRows(dailyTotal: Map<string, number>) {
       rows.push({
         Data: `Totale mese ${formatMonthKey(currentMonthKey)}`,
         Totale: Number(monthTotal.toFixed(2)),
+        Tipologia: "",
+        isSubtotal: true,
       });
       monthTotal = 0;
     }
@@ -289,6 +412,11 @@ function buildDailyRows(dailyTotal: Map<string, number>) {
 
   return rows;
 }
+
+// Legend label -> ARGB fill, used to color daily rows after table styling.
+const TIPOLOGIA_COLOR_BY_LABEL: Map<string, string> = new Map(
+  Object.values(STATUS_CONFIG).map((cfg) => [cfg.label, hexToArgb(cfg.color)]),
+);
 
 function prepareTimetrackingsData(
   timeTrackingsData: any[],
@@ -520,11 +648,50 @@ export const POST = async (req: NextRequest) => {
       const userEntries = getUserEntries(userTimetrackings);
       return {
         user: user.family_name || user.given_name || "Utente",
+        authId: user.authId || null,
         entries: userEntries.entries,
         dailyTotal: userEntries.totalHoursPerDay,
         total: userTotalHours,
       };
     });
+
+    // Fetch manual attendance entries (Presenze) for the reported users, so the
+    // daily report can reflect vacation/sickness/etc. per calendar day.
+    // attendance_entries.user_id stores the auth UUID, while Timetracking uses
+    // the internal User.id, so we key attendance by authId.
+    const reportAuthIds = Array.from(
+      new Set(
+        userEnabled
+          .map((user: any) => user.authId)
+          .filter((authId: any): authId is string => Boolean(authId)),
+      ),
+    );
+
+    const attendanceByAuth = new Map<string, Map<string, AttendanceStatus>>();
+    if (siteId && reportAuthIds.length > 0) {
+      const { data: attendanceRows, error: attendanceError } = await supabase
+        .from("attendance_entries")
+        .select("user_id, date, status")
+        .eq("site_id", siteId)
+        .in("user_id", reportAuthIds)
+        .gte("date", getDateKey(from))
+        .lte("date", getDateKey(to));
+
+      if (attendanceError) throw attendanceError;
+
+      (attendanceRows || []).forEach((entry: any) => {
+        if (!entry.user_id || !entry.date || !entry.status) return;
+        let byDate = attendanceByAuth.get(entry.user_id);
+        if (!byDate) {
+          byDate = new Map<string, AttendanceStatus>();
+          attendanceByAuth.set(entry.user_id, byDate);
+        }
+        byDate.set(
+          String(entry.date).slice(0, 10),
+          entry.status as AttendanceStatus,
+        );
+      });
+    }
 
     const projectData = new Map(); // Holds data organized by project
 
@@ -573,12 +740,32 @@ export const POST = async (req: NextRequest) => {
       }
     });
 
-    const fileName = formatSelectedMonthsForFileName(selection) ||
-      `Report_ore_dal_${from.getFullYear()}-${
-        ("0" + (from.getMonth() + 1)).slice(-2)
-      }-${("0" + from.getDate()).slice(-2)}_al_${to.getFullYear()}-${
-        ("0" + (to.getMonth() + 1)).slice(-2)
-      }-${("0" + to.getDate()).slice(-2)}.xlsx`;
+    // Single-collaborator export -> "Nome_Cognome_Report_Ore.xlsx"
+    const sanitizeNamePart = (value: unknown) =>
+      String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+
+    let fileName: string;
+    if (userEnabled.length === 1) {
+      const singleUser = userEnabled[0];
+      const namePart = [
+        sanitizeNamePart(singleUser.given_name),
+        sanitizeNamePart(singleUser.family_name),
+      ]
+        .filter(Boolean)
+        .join("_");
+      fileName = `${namePart || "Collaboratore"}_Report_Ore.xlsx`;
+    } else {
+      fileName = formatSelectedMonthsForFileName(selection) ||
+        `Report_ore_dal_${from.getFullYear()}-${
+          ("0" + (from.getMonth() + 1)).slice(-2)
+        }-${("0" + from.getDate()).slice(-2)}_al_${to.getFullYear()}-${
+          ("0" + (to.getMonth() + 1)).slice(-2)
+        }-${("0" + to.getDate()).slice(-2)}.xlsx`;
+    }
 
     const workbook = new ExcelJS.Workbook();
     setWorkbookDefaults(workbook, "Report ore");
@@ -717,10 +904,24 @@ export const POST = async (req: NextRequest) => {
       totalHoursSheet.columns = [
         { header: "Data", key: "Data", width: 15 },
         { header: "Totale ore giornaliero", key: "Totale", width: 25 },
+        { header: "Tipologia", key: "Tipologia", width: 20 },
       ];
 
-      buildDailyRows(item.dailyTotal).forEach((row) => {
-        totalHoursSheet.addRow(row);
+      const attendanceForUser = item.authId
+        ? attendanceByAuth.get(item.authId) ??
+          new Map<string, AttendanceStatus>()
+        : new Map<string, AttendanceStatus>();
+
+      buildCalendarDailyRows(
+        selection,
+        item.dailyTotal,
+        attendanceForUser,
+      ).forEach((row) => {
+        totalHoursSheet.addRow({
+          Data: row.Data,
+          Totale: row.Totale,
+          Tipologia: row.Tipologia,
+        });
       });
       addWorkbookReportHeader(totalHoursSheet, {
         title: `Report giornaliero - ${item.user}`,
@@ -730,6 +931,34 @@ export const POST = async (req: NextRequest) => {
       styleWorkbookTable(totalHoursSheet, {
         headerRowNumber: 5,
         numericColumns: ["Totale"],
+      });
+
+      // Color daily rows by tipologia (legend colors), overriding the default
+      // alternating-row fill. Subtotal rows keep their week/month styling.
+      totalHoursSheet.eachRow((row, rowNumber) => {
+        if (rowNumber <= 5) return;
+        const firstCell = row.getCell(1).value;
+        const firstText = typeof firstCell === "string" ? firstCell : "";
+        if (firstText.startsWith("Totale")) return;
+
+        const tipologia = row.getCell(3).value;
+        const label = typeof tipologia === "string" ? tipologia : "";
+        const colorArgb = TIPOLOGIA_COLOR_BY_LABEL.get(label);
+        if (!colorArgb || !label) return;
+
+        const isWeekend = label === STATUS_CONFIG.weekend.label;
+        [2, 3].forEach((columnIndex) => {
+          const cell = row.getCell(columnIndex);
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: colorArgb },
+          };
+          cell.font = {
+            bold: !isWeekend,
+            color: { argb: isWeekend ? "FF586678" : "FFFFFFFF" },
+          };
+        });
       });
     });
 

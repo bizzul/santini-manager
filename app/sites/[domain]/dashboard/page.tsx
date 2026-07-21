@@ -8,10 +8,8 @@ import { fetchMapData } from "@/lib/momentum-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import { getSiteHighlightCountries } from "@/lib/map-highlight.server";
-import { getGlobalMarketOverview } from "@/lib/country-dashboard.server";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import KPICards from "@/components/dashboard/KPICards";
-import GlobalMarketOverviewCard from "@/components/dashboard/GlobalMarketOverviewCard";
 import ActiveProjectsMapCard from "@/components/dashboard/ActiveProjectsMapCard";
 import PipelineChart from "@/components/dashboard/PipelineChart";
 import DepartmentWorkloadChart from "@/components/dashboard/DepartmentWorkloadChart";
@@ -74,7 +72,6 @@ export default async function SiteDashboardPage({
   // Fetch real dashboard data
   const dashboardData = await fetchDashboardData(siteContext.siteId);
   const highlightCountries = await getSiteHighlightCountries(siteContext.siteId);
-  const marketOverview = await getGlobalMarketOverview(siteContext.siteId);
   // Momentum entities (eventi, fornitori, location, offerte) for the map layers.
   const momentumMapData = await fetchMapData(siteContext.siteId);
 
@@ -87,13 +84,7 @@ export default async function SiteDashboardPage({
       />
       <PageContent>
         <div className="space-y-6">
-          <KPICards data={dashboardData} />
-          <GlobalMarketOverviewCard
-            domain={domain}
-            representativeCount={marketOverview.representativeCount}
-            totalCountries={marketOverview.totalCountries}
-            activeMarkets={marketOverview.activeMarkets}
-          />
+          <KPICards data={dashboardData} domain={domain} />
           <ActiveProjectsMapCard
             mapHeightPx={640}
             domain={domain}

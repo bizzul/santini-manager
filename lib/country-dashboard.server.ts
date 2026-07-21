@@ -186,6 +186,29 @@ function createEmptyDashboardStats(): DashboardStats {
     productionOrders: { total: 0, delayed: 0, delayedChange: 0 },
     openInvoices: { totalValue: 0, expiredCount: 0, changePercent: 0 },
     avorWorkload: { percentage: 0, status: "Nessun dato" },
+    overviewKpis: {
+      offers: {
+        inviate: { count: 0, value: 0 },
+        inTrattativa: { count: 0, value: 0 },
+        vinte: { count: 0, value: 0 },
+      },
+      production: {
+        inProduzione: { count: 0, value: 0 },
+        posa: { count: 0, value: 0 },
+      },
+      invoices: {
+        daInviare: { count: 0, value: 0 },
+        inviate: { count: 0, value: 0 },
+      },
+      avor: { totalValue: 0, projectCount: 0 },
+      links: {
+        offers: null,
+        avor: null,
+        production: null,
+        posa: null,
+        invoices: null,
+      },
+    },
     pipelineData: [],
     departmentWorkload: [],
     kanbanStatus: [],
