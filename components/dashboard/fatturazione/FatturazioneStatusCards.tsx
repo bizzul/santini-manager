@@ -5,7 +5,6 @@ import {
   Receipt,
   FileText,
   Send,
-  Clock,
   CheckCircle,
   AlertTriangle,
   type LucideIcon,
@@ -38,26 +37,26 @@ interface StatusCardProps {
 
 function StatusCard({ label, count, value, color, icon: Icon, href }: StatusCardProps) {
   const content = (
-    <div
-      className={`bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 transition-colors ${
-        href ? "hover:bg-slate-700/50 hover:border-slate-600/50 cursor-pointer" : ""
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <div
-          className="w-6 h-6 rounded-md flex items-center justify-center"
-          style={{ backgroundColor: `${color}20` }}
-        >
-          <Icon className="w-3.5 h-3.5" style={{ color }} />
+    <div className="rounded-lg bg-foreground/[0.10] border border-foreground/40 p-3 flex flex-col min-h-[104px] transition hover:border-primary/60">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="w-6 h-6 rounded-md flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `${color}20` }}
+          >
+            <Icon className="w-3.5 h-3.5" style={{ color }} />
+          </div>
+          <span className="text-sm font-semibold text-foreground truncate">
+            {label}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
-          {label}
+        <span className="rounded-md border border-foreground/40 px-2 py-0.5 text-base font-semibold leading-none text-foreground shrink-0">
+          {count}
         </span>
       </div>
-      <div className="text-3xl font-bold mb-1">{count}</div>
-      <div className="text-xs text-muted-foreground">
+      <p className="mt-auto pt-2 text-center text-xl font-bold text-foreground">
         {formatCurrency(value)}
-      </div>
+      </p>
     </div>
   );
 
@@ -72,7 +71,7 @@ export default function FatturazioneStatusCards({
   domain,
 }: FatturazioneStatusCardsProps) {
   const kanbanHref = kanbanIdentifier
-    ? `/sites/${domain}/kanban?name=${kanbanIdentifier}`
+    ? `/sites/${domain}/kanban?name=${encodeURIComponent(kanbanIdentifier)}`
     : null;
 
   return (
@@ -89,7 +88,7 @@ export default function FatturazioneStatusCards({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatusCard
           label="Da Emettere"
           count={data.daEmettere.count}
@@ -107,11 +106,11 @@ export default function FatturazioneStatusCards({
           href={kanbanHref}
         />
         <StatusCard
-          label="In Scadenza"
-          count={data.inScadenza.count}
-          value={data.inScadenza.value}
-          color="#f97316"
-          icon={Clock}
+          label="Scadute"
+          count={data.scadute.count}
+          value={data.scadute.value}
+          color="#ef4444"
+          icon={AlertTriangle}
           href={kanbanHref}
         />
         <StatusCard
@@ -120,14 +119,6 @@ export default function FatturazioneStatusCards({
           value={data.pagate.value}
           color="#22c55e"
           icon={CheckCircle}
-          href={kanbanHref}
-        />
-        <StatusCard
-          label="Scadute"
-          count={data.scadute.count}
-          value={data.scadute.value}
-          color="#ef4444"
-          icon={AlertTriangle}
           href={kanbanHref}
         />
       </div>

@@ -9,6 +9,7 @@ import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import {
   OreInterneChart,
   TrendOreInterneChart,
+  InterniKanbanSummary,
 } from "@/components/dashboard/interni";
 import { PageLayout, PageHeader, PageContent } from "@/components/page-layout";
 
@@ -72,6 +73,12 @@ export default async function InterniDashboardPage({
       />
       <PageContent>
         <div className="space-y-6">
+          {/* Riepilogo kanban interni */}
+          <InterniKanbanSummary
+            data={dashboardData.kanbanSummary}
+            domain={domain}
+          />
+
           {/* Charts Row */}
           <div className="grid gap-4 md:grid-cols-2">
             {/* Ore interne per categoria */}

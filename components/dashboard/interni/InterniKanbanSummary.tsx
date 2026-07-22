@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Factory } from "lucide-react";
-import { ProduzioneDashboardStats } from "@/lib/server-data";
+import { Layers } from "lucide-react";
+import { InterniDashboardStats } from "@/lib/server-data";
 import { getKanbanIcon } from "@/lib/kanban-icons";
 
-interface ProduzioneStatusCardsProps {
-  data: ProduzioneDashboardStats["kanbanStatus"];
+interface InterniKanbanSummaryProps {
+  data: InterniDashboardStats["kanbanSummary"];
   domain: string;
 }
 
@@ -75,10 +75,10 @@ function StatusCard({
   );
 }
 
-export default function ProduzioneStatusCards({
+export default function InterniKanbanSummary({
   data,
   domain,
-}: ProduzioneStatusCardsProps) {
+}: InterniKanbanSummaryProps) {
   if (data.length === 0) {
     return null;
   }
@@ -86,18 +86,26 @@ export default function ProduzioneStatusCards({
   return (
     <div className="dashboard-panel p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
-          <Factory className="w-5 h-5 text-orange-500" />
+        <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+          <Layers className="w-5 h-5 text-purple-500" />
         </div>
         <div>
-          <h3 className="text-lg font-bold">Stato Produzione</h3>
+          <h3 className="text-lg font-bold">Riepilogo Kanban Interni</h3>
           <p className="text-xs text-muted-foreground">
-            Lavori ed elementi per reparto
+            Progetti, elementi e valore per bacheca
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div
+        className="grid gap-3"
+        style={{
+          gridTemplateColumns: `repeat(${Math.min(
+            data.length,
+            5
+          )}, minmax(0, 1fr))`,
+        }}
+      >
         {data.map((kanban) => (
           <StatusCard
             key={kanban.kanbanId}
