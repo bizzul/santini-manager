@@ -1,4 +1,4 @@
-export type SiteVerticalKey = "default" | "speedywood";
+export type SiteVerticalKey = "default" | "speedywood" | "benicchio";
 
 export interface SiteVerticalProfile {
     key: SiteVerticalKey;
@@ -11,6 +11,7 @@ export interface SiteVerticalProfile {
     dashboardTabs: {
         overview: string;
         vendita: string;
+        avor: string;
         produzione: string;
         inventario: string;
         prodotti: string;
@@ -18,6 +19,9 @@ export interface SiteVerticalProfile {
     pageCopy: {
         dashboardOverviewTitle: string;
         dashboardOverviewSubtitle: string;
+        avorTitle: string;
+        avorSubtitle: string;
+        avorSectionTitle: string;
         salesTitle: string;
         salesSubtitle: string;
         inventoryTitle: string;
@@ -54,6 +58,7 @@ export const DEFAULT_SITE_VERTICAL_PROFILE: SiteVerticalProfile = {
     dashboardTabs: {
         overview: "Overview",
         vendita: "Vendita",
+        avor: "AVOR",
         produzione: "Produzione",
         inventario: "Inventario",
         prodotti: "Prodotti",
@@ -61,6 +66,9 @@ export const DEFAULT_SITE_VERTICAL_PROFILE: SiteVerticalProfile = {
     pageCopy: {
         dashboardOverviewTitle: "Dashboard - Overview",
         dashboardOverviewSubtitle: "Panoramica generale dell'azienda e KPI principali",
+        avorTitle: "Dashboard – AVOR",
+        avorSubtitle: "Gestione pratiche ufficio tecnico e stato lavorazioni",
+        avorSectionTitle: "Stato Pratiche AVOR",
         salesTitle: "Dashboard - Vendita",
         salesSubtitle: "Pipeline commerciale, gestione offerte e analisi conversioni",
         inventoryTitle: "Dashboard - Inventario",
@@ -97,6 +105,7 @@ export const SPEEDYWOOD_SITE_VERTICAL_PROFILE: SiteVerticalProfile = {
     dashboardTabs: {
         overview: "Generale",
         vendita: "Commerciale",
+        avor: "AVOR",
         produzione: "Ordini",
         inventario: "Operativa",
         prodotti: "Catalogo",
@@ -105,6 +114,9 @@ export const SPEEDYWOOD_SITE_VERTICAL_PROFILE: SiteVerticalProfile = {
         dashboardOverviewTitle: "Dashboard - Speedywood",
         dashboardOverviewSubtitle:
             "Panoramica commerciale e operativa della rivendita di prodotti in legno.",
+        avorTitle: "Dashboard – AVOR",
+        avorSubtitle: "Gestione pratiche ufficio tecnico e stato lavorazioni",
+        avorSectionTitle: "Stato Pratiche AVOR",
         salesTitle: "Dashboard - Analisi Commerciale",
         salesSubtitle:
             "Richieste offerta, conversioni, mix clienti e tempi di consegna promessi.",
@@ -140,9 +152,63 @@ export const SPEEDYWOOD_SITE_VERTICAL_PROFILE: SiteVerticalProfile = {
     },
 };
 
+export const BENICCHIO_SITE_VERTICAL_PROFILE: SiteVerticalProfile = {
+    key: "benicchio",
+    displayName: "Benicchio",
+    menuLabels: {
+        kanban: "Kanban",
+        projects: "Progetti",
+        reports: "Reports",
+    },
+    dashboardTabs: {
+        overview: "Overview",
+        vendita: "Vendita",
+        avor: "Progettazione",
+        produzione: "Produzione",
+        inventario: "Inventario",
+        prodotti: "Prodotti",
+    },
+    pageCopy: {
+        dashboardOverviewTitle: "Dashboard - Overview",
+        dashboardOverviewSubtitle:
+            "Panoramica generale dell'azienda e KPI principali",
+        avorTitle: "Dashboard – Progettazione",
+        avorSubtitle:
+            "Gestione pratiche di progettazione e stato lavorazioni",
+        avorSectionTitle: "Stato pratiche progettazione",
+        salesTitle: "Dashboard - Vendita",
+        salesSubtitle: "Pipeline commerciale, gestione offerte e analisi conversioni",
+        inventoryTitle: "Dashboard - Inventario",
+        inventorySubtitle: "Valore stock, categorie e criticita",
+        productsTitle: "Dashboard - Prodotti",
+        productsSubtitle: "Catalogo rivendita e produzione in elementi",
+        productionTitle: "Dashboard - Produzione",
+        productionSubtitle: "Monitoraggio lavori in produzione e carico reparti",
+        clientsTitle: "Clienti",
+        clientsSubtitle: "Anagrafica clienti e contatti commerciali",
+        productsPageTitle: "Prodotti in vendita",
+        productsPageSubtitle:
+            "Catalogo articoli e listini pronti per offerte e ordini",
+        inventoryPageTitle: "Magazzino",
+        inventoryPageSubtitle:
+            "Giacenze, articoli e disponibilita per la gestione operativa",
+        suppliersTitle: "Fornitori",
+        suppliersSubtitle: "Anagrafica e gestione fornitori",
+        projectsTitle: "Gestione Progetti",
+        projectsSubtitle:
+            "Gestione operativa progetti, stato avanzamento e documentazione",
+        reportsTitle: "Crea i documenti di reportistica",
+        reportsSubtitle: "Report operativi e documenti PDF disponibili per il sito",
+        offerCreateTitle: "Crea Nuova Offerta",
+        offerCreateSubtitle:
+            "Configura cliente, prodotti e condizioni della nuova offerta",
+    },
+};
+
 const SITE_VERTICALS: Record<SiteVerticalKey, SiteVerticalProfile> = {
     default: DEFAULT_SITE_VERTICAL_PROFILE,
     speedywood: SPEEDYWOOD_SITE_VERTICAL_PROFILE,
+    benicchio: BENICCHIO_SITE_VERTICAL_PROFILE,
 };
 
 export function resolveSiteVerticalProfile(value?: unknown): SiteVerticalProfile {

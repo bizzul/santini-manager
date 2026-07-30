@@ -61,7 +61,7 @@ export default function DashboardTabs({
       [
         { name: verticalProfile.dashboardTabs.overview, href: "", icon: LayoutDashboard },
         { name: verticalProfile.dashboardTabs.vendita, href: "/vendita", icon: ShoppingCart },
-        { name: "AVOR", href: "/avor", icon: ClipboardList },
+        { name: verticalProfile.dashboardTabs.avor, href: "/avor", icon: ClipboardList },
         { name: verticalProfile.dashboardTabs.produzione, href: "/produzione", icon: Factory },
         { name: "Fatturazione", href: "/fatturazione", icon: Receipt },
         { name: "Interni", href: "/interni", icon: Users },

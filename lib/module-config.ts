@@ -236,6 +236,15 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         category: "management",
     },
     {
+        name: "treemap",
+        label: "Treemap",
+        description: "Monitoraggio alberi urbani con sensori IoT e mappa Ticino",
+        icon: "faListUl",
+        href: "/treemap",
+        enabledByDefault: false,
+        category: "tools",
+    },
+    {
         name: "area-collaboratore",
         label: "Area Collaboratore",
         description:

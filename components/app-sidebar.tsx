@@ -401,6 +401,15 @@ const getMenuItems = (
       href: `${basePath}/factory`,
     },
     {
+      key: "treemap",
+      label: "Treemap",
+      icon: "faListUl",
+      lucideIcon: "TreeDeciduous",
+      href: `${basePath}/treemap`,
+      alert: false,
+      moduleName: "treemap",
+    },
+    {
       key: "products",
       label: t("nav.products"),
       icon: "faBox",

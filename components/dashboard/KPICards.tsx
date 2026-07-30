@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { FileText, Factory, Receipt, TrendingUp } from "lucide-react";
 import { DashboardStats } from "@/lib/server-data";
+import { useSiteVerticalProfile } from "@/hooks/use-site-vertical-profile";
+import { DEFAULT_SITE_VERTICAL_PROFILE } from "@/lib/site-verticals";
 
 interface KPICardsProps {
   data: DashboardStats;
@@ -124,6 +126,9 @@ function SubMetric({
 
 export default function KPICards({ data, domain }: KPICardsProps) {
   const { offers, production, invoices, avor, links } = data.overviewKpis;
+  const { data: verticalProfile = DEFAULT_SITE_VERTICAL_PROFILE } =
+    useSiteVerticalProfile(domain);
+  const avorLabel = verticalProfile.dashboardTabs.avor;
 
   const kanbanHref = (identifier: string | null): string | null =>
     identifier
@@ -155,12 +160,12 @@ export default function KPICards({ data, domain }: KPICardsProps) {
         </div>
       </CardShell>
 
-      {/* AVOR */}
+      {/* AVOR / Progettazione */}
       <CardShell href={null}>
         <CardHeader
           icon={<TrendingUp className="w-5 h-5 text-orange-500" />}
           iconWrapperClass="bg-orange-500/20"
-          title="AVOR"
+          title={avorLabel}
         />
         <div className="grid grid-cols-2 gap-2.5">
           <SubMetric

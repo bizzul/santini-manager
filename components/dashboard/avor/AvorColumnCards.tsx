@@ -10,6 +10,8 @@ interface AvorColumnCardsProps {
   columnStatus: AvorDashboardStats["columnStatus"];
   columnWorkload: AvorDashboardStats["columnWorkload"];
   avorKanbanIdentifier: string | null;
+  sectionTitle?: string;
+  avorLabel?: string;
 }
 
 function formatCurrency(value: number): string {
@@ -107,6 +109,8 @@ export default function AvorColumnCards({
   columnStatus,
   columnWorkload,
   avorKanbanIdentifier,
+  sectionTitle = "Stato Pratiche AVOR",
+  avorLabel = "AVOR",
 }: AvorColumnCardsProps) {
   const params = useParams();
   const domain = params.domain as string;
@@ -149,9 +153,9 @@ export default function AvorColumnCards({
             <Layers className="w-5 h-5 text-orange-500" />
           </div>
           <div>
-            <h3 className="text-lg font-bold">Stato Pratiche AVOR</h3>
+            <h3 className="text-lg font-bold">{sectionTitle}</h3>
             <p className="text-xs text-muted-foreground">
-              Nessuna Kanban AVOR configurata
+              Nessuna Kanban {avorLabel} configurata
             </p>
           </div>
         </div>
@@ -166,7 +170,7 @@ export default function AvorColumnCards({
           <Layers className="w-5 h-5 text-orange-500" />
         </div>
         <div>
-          <h3 className="text-lg font-bold">Stato Pratiche AVOR</h3>
+          <h3 className="text-lg font-bold">{sectionTitle}</h3>
           <p className="text-xs text-muted-foreground">
             Pratiche per colonna Kanban con prodotti per categoria
           </p>

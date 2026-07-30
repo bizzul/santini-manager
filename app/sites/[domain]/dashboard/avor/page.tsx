@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import {
   requireServerSiteContext,
   fetchAvorDashboardData,
+  fetchSiteVerticalProfile,
 } from "@/lib/server-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
@@ -20,8 +21,9 @@ export async function generateMetadata({
 
   try {
     const siteContext = await requireServerSiteContext(domain);
+    const verticalProfile = await fetchSiteVerticalProfile(siteContext.siteId);
     return {
-      title: `${siteContext.siteData?.name || "Site"} - Dashboard AVOR`,
+      title: `${siteContext.siteData?.name || "Site"} - ${verticalProfile.pageCopy.avorTitle}`,
     };
   } catch (error) {
     console.log(
@@ -64,21 +66,24 @@ export default async function AvorDashboardPage({
 
   // Fetch AVOR dashboard data
   const dashboardData = await fetchAvorDashboardData(siteContext.siteId);
+  const verticalProfile = await fetchSiteVerticalProfile(siteContext.siteId);
 
   return (
     <PageLayout>
-      <DashboardTabs />
+      <DashboardTabs initialVerticalProfile={verticalProfile} />
       <PageHeader
-        title="Dashboard – AVOR"
-        subtitle="Gestione pratiche ufficio tecnico e stato lavorazioni"
+        title={verticalProfile.pageCopy.avorTitle}
+        subtitle={verticalProfile.pageCopy.avorSubtitle}
       />
       <PageContent>
         <div className="space-y-6">
-          {/* Stato Pratiche AVOR - KPI per colonna + prodotti per categoria */}
+          {/* Stato pratiche — KPI per colonna + prodotti per categoria */}
           <AvorColumnCards
             columnStatus={dashboardData.columnStatus}
             columnWorkload={dashboardData.columnWorkload}
             avorKanbanIdentifier={dashboardData.avorKanbanIdentifier}
+            sectionTitle={verticalProfile.pageCopy.avorSectionTitle}
+            avorLabel={verticalProfile.dashboardTabs.avor}
           />
 
           {/* Andamento settimanale */}
