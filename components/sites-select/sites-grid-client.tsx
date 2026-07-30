@@ -157,15 +157,15 @@ function SiteCard({
         canDrag ? (event) => onDragStart(event, String(site.id)) : undefined
       }
       onDragEnd={canDrag ? onDragEnd : undefined}
-      className={`group rounded-2xl border border-white/20 bg-white/8 p-5 transition-all duration-200 hover:border-white/40 hover:bg-white/12 ${
+      className={`group rounded-2xl border border-white/20 bg-white/8 p-3.5 transition-all duration-200 hover:border-white/40 hover:bg-white/12 ${
         canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-default"
       } ${
         isDragging ? "opacity-60" : "opacity-100"
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         {visual ? (
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/10">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/10 ring-1 ring-white/10">
             <img
               src={String(visual)}
               alt={site.name}
@@ -174,24 +174,29 @@ function SiteCard({
             />
           </div>
         ) : (
-          <div className="rounded-xl bg-white/10 p-3 ring-1 ring-white/10">
-            <Building2 className="h-6 w-6 text-white" strokeWidth={2} />
+          <div className="shrink-0 rounded-lg bg-white/10 p-2 ring-1 ring-white/10">
+            <Building2 className="h-5 w-5 text-white" strokeWidth={2} />
           </div>
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-lg font-semibold text-white">{site.name}</h3>
-          {site.subdomain && <p className="text-sm text-white/55">{site.subdomain}</p>}
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-white">
+            {site.name}
+          </h3>
+          {site.subdomain && (
+            <p className="mt-0.5 truncate text-xs text-white/55">{site.subdomain}</p>
+          )}
         </div>
       </div>
 
-      <p className="mt-4 min-h-[40px] text-sm text-white/70">
+      <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-white/70">
         {site.description || "Spazio disponibile per accesso e gestione operativa."}
       </p>
 
-      <Link href={`/sites/${site.subdomain}/dashboard`} className="mt-4 block">
+      <Link href={`/sites/${site.subdomain}/dashboard`} className="mt-3 block">
         <Button
           variant="outline"
-          className="w-full border-white/25 text-white hover:bg-white/10 hover:border-white/40"
+          size="sm"
+          className="w-full border-white/25 text-xs text-white hover:bg-white/10 hover:border-white/40"
         >
           Entra nel tuo spazio
         </Button>
@@ -213,22 +218,22 @@ function PersonalManagerSection({
   currentUserAuthId: string | null;
 }) {
   return (
-    <section className="rounded-3xl border border-white/15 bg-white/5 p-4 backdrop-blur-xl">
-      <div className="mb-4 border-b border-white/10 pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-white">Manager Personale</h2>
-          <span className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/60">
+    <section className="rounded-2xl border border-white/15 bg-white/5 p-3 backdrop-blur-xl">
+      <div className="mb-3 border-b border-white/10 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold leading-snug text-white">Manager Personale</h2>
+          <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] text-white/60">
             {users.length}
           </span>
         </div>
-        <p className="mt-2 text-sm text-white/55">
+        <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-white/55">
           Utenti con vista personale abilitata
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {users.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
+          <div className="rounded-xl border border-dashed border-white/15 px-3 py-6 text-center text-xs text-white/45">
             Nessun utente abilitato. Attiva il Manager Personale dalla scheda
             utente.
           </div>
@@ -394,10 +399,8 @@ export function SitesGridClient({
   }
 
   return (
-    <div className="flex flex-col gap-10 xl:flex-row xl:items-start">
-      {/* Colonne spazi */}
-      <div className="grid flex-1 gap-6 lg:grid-cols-2 xl:grid-cols-4">
-        {SITE_GROUP_DEFINITIONS.map((group) => (
+    <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
+      {SITE_GROUP_DEFINITIONS.map((group) => (
           <section
             key={group.key}
             onDragOver={(event) => {
@@ -417,25 +420,27 @@ export function SitesGridClient({
               }
             }}
             onDrop={canManageGroups ? (event) => handleDrop(event, group.key) : undefined}
-            className={`rounded-3xl border bg-white/5 p-4 backdrop-blur-xl transition-colors ${
+            className={`rounded-2xl border bg-white/5 p-3 backdrop-blur-xl transition-colors ${
               canManageGroups && dropTarget === group.key
                 ? "border-blue-400/70 ring-2 ring-blue-400/30"
                 : "border-white/15"
             }`}
           >
-            <div className="mb-4 border-b border-white/10 pb-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold text-white">{group.title}</h2>
-                <span className="rounded-full border border-white/15 px-2.5 py-1 text-xs text-white/60">
+            <div className="mb-3 border-b border-white/10 pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold leading-snug text-white">{group.title}</h2>
+                <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-[11px] text-white/60">
                   {groupedSites[group.key].length}
                 </span>
               </div>
-              <p className="mt-2 text-sm text-white/55">{group.description}</p>
+              <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-white/55">
+                {group.description}
+              </p>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               {groupedSites[group.key].length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-white/45">
+                <div className="rounded-xl border border-dashed border-white/15 px-3 py-6 text-center text-xs text-white/45">
                   {canManageGroups
                     ? "Trascina qui uno spazio."
                     : "Nessuno spazio in questa sezione."}
@@ -458,17 +463,11 @@ export function SitesGridClient({
             </div>
           </section>
         ))}
-      </div>
 
-      {/* Divider verticale + sezione Manager Personale: un'altra entita',
-          non "la quinta colonna di cinque". */}
-      <div className="hidden self-stretch border-l border-white/20 xl:block" />
-      <div className="border-t border-white/20 pt-8 xl:w-72 xl:shrink-0 xl:border-t-0 xl:pt-0 xl:ml-4">
-        <PersonalManagerSection
-          users={personalUsers}
-          currentUserAuthId={currentUserAuthId}
-        />
-      </div>
+      <PersonalManagerSection
+        users={personalUsers}
+        currentUserAuthId={currentUserAuthId}
+      />
     </div>
   );
 }

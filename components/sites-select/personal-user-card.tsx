@@ -56,48 +56,50 @@ export function PersonalUserCard({
 
   return (
     <div
-      className={`relative flex aspect-square flex-col items-center justify-between rounded-2xl border p-5 text-center transition-all duration-200 hover:brightness-110 ${GENERE_CARD_CLASSES[user.genere]}`}
+      className={`relative flex flex-col items-center justify-between rounded-xl border p-3 text-center transition-all duration-200 hover:brightness-110 ${GENERE_CARD_CLASSES[user.genere]}`}
     >
       {user.genere === "non_specificato" && (
         <span
           title="Genere non impostato"
-          className="absolute right-3 top-3 text-white/50"
+          className="absolute right-2 top-2 text-white/50"
         >
-          <AlertTriangle className="h-4 w-4" strokeWidth={2} />
+          <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} />
         </span>
       )}
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-2">
+      <div className="flex w-full flex-col items-center gap-1.5">
         {user.picture ? (
           <img
             src={user.picture}
             alt={displayName(user)}
-            className="h-14 w-14 rounded-full object-cover ring-1 ring-white/20"
+            className="h-10 w-10 rounded-full object-cover ring-1 ring-white/20"
             loading="lazy"
           />
         ) : (
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20">
             {computedInitials(user) ? (
-              <span className="text-lg font-semibold text-white">
+              <span className="text-sm font-semibold text-white">
                 {computedInitials(user)}
               </span>
             ) : (
-              <UserRound className="h-7 w-7 text-white" strokeWidth={2} />
+              <UserRound className="h-5 w-5 text-white" strokeWidth={2} />
             )}
           </div>
         )}
 
-        <h3 className="max-w-full truncate text-base font-semibold text-white">
+        <h3 className="line-clamp-2 w-full text-sm font-semibold leading-snug text-white">
           {displayName(user)}
         </h3>
-        <p className="max-w-full truncate text-xs text-white/60">{user.email}</p>
+        <p className="line-clamp-2 w-full text-[11px] leading-relaxed text-white/60">
+          {user.email}
+        </p>
 
-        <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-0.5 text-[11px] font-medium text-white/80">
+        <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/80">
           Manager Personale
         </span>
       </div>
 
-      <Link href={cta.href} className="mt-3 block w-full">
+      <Link href={cta.href} className="mt-2.5 block w-full">
         <Button
           variant="outline"
           size="sm"

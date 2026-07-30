@@ -108,7 +108,7 @@ export async function SitesGrid() {
 
 export function SitesGridSkeleton() {
   return (
-    <div className="grid gap-6 lg:grid-cols-3 xl:grid-cols-5">
+    <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-5">
       {[1, 2, 3, 4, 5].map((column) => (
         <div
           key={column}
