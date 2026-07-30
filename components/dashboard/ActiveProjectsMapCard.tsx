@@ -31,6 +31,30 @@ const ActiveProjectsMap = dynamic(() => import("@/components/dashboard/ActivePro
 const DEFAULT_MARKER_COLOR = "#38bdf8";
 const NO_CATEGORY_VALUE = "__none__";
 
+function resolveProjectCategoryIds(project: DashboardProjectLocation): number[] {
+  if (project.categoryIds?.length) {
+    return project.categoryIds;
+  }
+  if (project.categoryId != null) {
+    return [project.categoryId];
+  }
+  return [];
+}
+
+function projectMatchesCategoryFilter(
+  project: DashboardProjectLocation,
+  categoryFilter: string[],
+): boolean {
+  if (categoryFilter.length === 0) return true;
+
+  const ids = resolveProjectCategoryIds(project);
+  if (ids.length === 0) {
+    return categoryFilter.includes(NO_CATEGORY_VALUE);
+  }
+
+  return ids.some((id) => categoryFilter.includes(String(id)));
+}
+
 type MomentumCategory = "eventi" | "fornitori" | "location" | "offerte";
 
 const MOMENTUM_LAYER_META: Record<
@@ -247,21 +271,39 @@ export default function ActiveProjectsMapCard({
     let hasNone = false;
 
     normalizedProjects.forEach((project) => {
-      if (project.categoryId != null) {
-        const key = String(project.categoryId);
-        const existing = map.get(key);
-        if (!existing) {
-          map.set(key, {
-            value: key,
-            label: project.categoryName || `Categoria #${project.categoryId}`,
-            color: project.categoryColor || DEFAULT_MARKER_COLOR,
-          });
-        } else if ((!existing.color || existing.color === DEFAULT_MARKER_COLOR) && project.categoryColor) {
-          existing.color = project.categoryColor;
-        }
-      } else {
+      const ids = resolveProjectCategoryIds(project);
+      if (ids.length === 0) {
         hasNone = true;
+        return;
       }
+
+      ids.forEach((id) => {
+        const key = String(id);
+        const existing = map.get(key);
+        const label =
+          project.categoryId === id
+            ? project.categoryName || `Categoria #${id}`
+            : existing?.label || `Categoria #${id}`;
+        const color =
+          project.categoryId === id && project.categoryColor
+            ? project.categoryColor
+            : existing?.color || DEFAULT_MARKER_COLOR;
+
+        if (!existing) {
+          map.set(key, { value: key, label, color });
+        } else {
+          if (project.categoryId === id && project.categoryName) {
+            existing.label = project.categoryName;
+          }
+          if (
+            project.categoryId === id &&
+            project.categoryColor &&
+            (!existing.color || existing.color === DEFAULT_MARKER_COLOR)
+          ) {
+            existing.color = project.categoryColor;
+          }
+        }
+      });
     });
 
     const options = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
@@ -277,15 +319,9 @@ export default function ActiveProjectsMapCard({
 
   const filteredProjects = useMemo(
     () =>
-      normalizedProjects.filter((project) => {
-        const categoryMatch =
-          categoryFilter.length === 0 ||
-          categoryFilter.includes(
-            project.categoryId != null ? String(project.categoryId) : NO_CATEGORY_VALUE,
-          );
-
-        return categoryMatch;
-      }),
+      normalizedProjects.filter((project) =>
+        projectMatchesCategoryFilter(project, categoryFilter),
+      ),
     [normalizedProjects, categoryFilter],
   );
 

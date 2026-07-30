@@ -83,42 +83,7 @@ import {
   type CardFieldConfig,
 } from "./card-display-config";
 
-const getTaskCategoryIds = (task: any): number[] => {
-  const ids = new Set<number>();
-  const sellProduct = task?.sellProduct || task?.SellProduct;
-  const rawCategory = sellProduct?.category;
-  const categories = Array.isArray(rawCategory)
-    ? rawCategory
-    : rawCategory
-      ? [rawCategory]
-      : [];
-
-  categories.forEach((category: any) => {
-    const categoryId = Number(category?.id);
-    if (Number.isFinite(categoryId)) {
-      ids.add(categoryId);
-    }
-  });
-
-  const directCategoryId = Number(
-    sellProduct?.category_id ?? sellProduct?.categoryId
-  );
-  if (Number.isFinite(directCategoryId)) {
-    ids.add(directCategoryId);
-  }
-
-  const draftCategoryIds = task?.draft_category_ids || task?.draftCategoryIds;
-  if (Array.isArray(draftCategoryIds)) {
-    draftCategoryIds.forEach((categoryId: any) => {
-      const normalizedCategoryId = Number(categoryId);
-      if (Number.isFinite(normalizedCategoryId)) {
-        ids.add(normalizedCategoryId);
-      }
-    });
-  }
-
-  return Array.from(ids);
-};
+import { getTaskCategoryIds } from "@/lib/task-category-ids";
 
 const normalizeCardFieldConfig = (
   rawConfig: unknown

@@ -20,6 +20,7 @@ import {
     getProductCategoryLabelAndColor,
     normalizeSupabaseRelation,
 } from "@/lib/product-category-label";
+import { getTaskCategoryIds } from "@/lib/task-category-ids";
 import { assertDashboardQuery } from "@/lib/dashboard-query-guard";
 import { syncRegisteredSuppliersIntoInventorySuppliers } from "@/lib/inventory-suppliers";
 import {
@@ -2515,6 +2516,8 @@ export interface DashboardProjectLocation {
     categoryId?: number | null;
     categoryName?: string | null;
     categoryColor?: string | null;
+    /** Tutte le categorie articolo del task (SellProduct + draft_category_ids). */
+    categoryIds?: number[];
 }
 
 /**
@@ -2618,6 +2621,7 @@ export const fetchDashboardData = cache(
                 posa_collaborator_ids,
                 clientId,
                 sellProductId,
+                draft_category_ids,
                 archived
             `)
                 .eq("site_id", siteId),
@@ -3146,9 +3150,13 @@ export const fetchDashboardData = cache(
                 );
 
                 const sellProduct = sellProductsById.get(task.sellProductId) as any;
-                const productCategoryId = sellProduct?.category_id ?? null;
-                const productCategory = productCategoryId
-                    ? (categoriesById.get(productCategoryId) as any)
+                const taskCategoryIds = getTaskCategoryIds({
+                    ...task,
+                    sellProduct,
+                });
+                const primaryCategoryId = taskCategoryIds[0] ?? null;
+                const primaryCategory = primaryCategoryId
+                    ? (categoriesById.get(primaryCategoryId) as any)
                     : null;
 
                 return {
@@ -3168,9 +3176,10 @@ export const fetchDashboardData = cache(
                     technicianCount: technicianNames.length,
                     productId: sellProduct?.id ?? null,
                     productName: sellProduct?.name ?? null,
-                    categoryId: productCategoryId,
-                    categoryName: productCategory?.name ?? null,
-                    categoryColor: productCategory?.color ?? null,
+                    categoryIds: taskCategoryIds,
+                    categoryId: primaryCategoryId,
+                    categoryName: primaryCategory?.name ?? null,
+                    categoryColor: primaryCategory?.color ?? null,
                 };
             });
 
