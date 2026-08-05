@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
-import { cn, isWeekend } from "@/lib/utils";
+import { cn, disableWeekendUnlessAllowed } from "@/lib/utils";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
@@ -59,6 +59,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
   const [isLoadingColumns, setIsLoadingColumns] = useState(false);
   const params = useParams();
   const domain = params?.domain as string;
+  const weekendDisabled = disableWeekendUnlessAllowed(domain);
   const isKanbanEmbeddedCreation = Boolean(kanbanId);
 
   const form = useForm<z.infer<typeof validation>>({
@@ -443,7 +444,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       selected={field.value || undefined}
                       captionLayout="dropdown"
                       onSelect={field.onChange}
-                      disabled={isWeekend}
+                      disabled={weekendDisabled}
                       startMonth={new Date(new Date().getFullYear(), 0)}
                       endMonth={new Date(new Date().getFullYear() + 5, 11)}
                     />
@@ -487,7 +488,7 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                       selected={field.value || undefined}
                       captionLayout="dropdown"
                       onSelect={field.onChange}
-                      disabled={isWeekend}
+                      disabled={weekendDisabled}
                       startMonth={new Date(new Date().getFullYear(), 0)}
                       endMonth={new Date(new Date().getFullYear() + 5, 11)}
                     />

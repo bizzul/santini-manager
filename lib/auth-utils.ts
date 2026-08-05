@@ -21,6 +21,8 @@ export interface UserContext {
     impersonatedUser?: any;
 }
 
+export { getUserDisplayName } from "@/lib/user-display-name";
+
 export interface OrganizationAccess {
     organizationId: string;
     role: UserRole;

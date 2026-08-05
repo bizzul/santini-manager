@@ -39,7 +39,12 @@ import {
 } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { cn, isWeekend, toDateString, parseLocalDate } from "@/lib/utils";
+import {
+  cn,
+  disableWeekendUnlessAllowed,
+  toDateString,
+  parseLocalDate,
+} from "@/lib/utils";
 import {
   Client,
   SellProduct,
@@ -96,6 +101,7 @@ export default function DraftCompletionWizard({
   domain,
 }: DraftCompletionWizardProps) {
   const { toast } = useToast();
+  const weekendDisabled = disableWeekendUnlessAllowed(domain);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingCode, setIsLoadingCode] = useState(false);
 
@@ -467,7 +473,7 @@ export default function DraftCompletionWizard({
                           mode="single"
                           selected={field.value || undefined}
                           onSelect={field.onChange}
-                          disabled={isWeekend}
+                          disabled={weekendDisabled}
                         />
                       </PopoverContent>
                     </Popover>
@@ -508,7 +514,7 @@ export default function DraftCompletionWizard({
                           mode="single"
                           selected={field.value || undefined}
                           onSelect={field.onChange}
-                          disabled={isWeekend}
+                          disabled={weekendDisabled}
                         />
                       </PopoverContent>
                     </Popover>

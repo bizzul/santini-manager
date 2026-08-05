@@ -7,7 +7,14 @@ import { CaricoPanel } from "./CaricoPanel";
 import { ContenitoriFisiciPanel } from "./ContenitoriFisiciPanel";
 import { OverviewRealtime } from "./OverviewRealtime";
 
-export function OverviewConnector({ data }: { data: OverviewData }) {
+export function OverviewConnector({
+  data,
+  highlightPersona,
+}: {
+  data: OverviewData;
+  /** Nome persona da evidenziare nel carico (utente loggato). */
+  highlightPersona?: string;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 sm:p-6">
       <OverviewHeader domain={data.domain} filters={data.filters} />
@@ -39,7 +46,7 @@ export function OverviewConnector({ data }: { data: OverviewData }) {
           colonna="Persona"
           rows={data.caricoPersone}
           filterKey="persona"
-          highlightNome="Matteo Paolocci"
+          highlightNome={highlightPersona}
         />
       </div>
 

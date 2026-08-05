@@ -33,6 +33,7 @@ import {
 import { DateManager } from "../../package/utils/dates/date-manager";
 import {
   cn,
+  disableWeekendUnlessAllowed,
   formatLocalDate,
   isWeekend,
   parseLocalDate,
@@ -273,6 +274,7 @@ const EditTaskKanban = ({
   const router = useRouter();
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
+  const weekendDisabled = disableWeekendUnlessAllowed(domain);
   const [isLoading, setIsLoading] = useState(true);
   const newOrderDateInputRef = useRef<HTMLInputElement>(null);
   const newDeliveryDateInputRef = useRef<HTMLInputElement>(null);
@@ -2119,7 +2121,7 @@ const EditTaskKanban = ({
                               mode="single"
                               selected={field.value || undefined}
                               onSelect={(date) => productionRequired && field.onChange(date)}
-                              disabled={isWeekend}
+                              disabled={weekendDisabled}
                               captionLayout="dropdown"
                               startMonth={new Date(new Date().getFullYear(), 0)}
                               endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -2180,7 +2182,7 @@ const EditTaskKanban = ({
                               mode="single"
                               selected={field.value || undefined}
                               onSelect={(date) => productionRequired && field.onChange(date)}
-                              disabled={isWeekend}
+                              disabled={weekendDisabled}
                               captionLayout="dropdown"
                               startMonth={new Date(new Date().getFullYear(), 0)}
                               endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -2311,7 +2313,7 @@ const EditTaskKanban = ({
                               mode="single"
                               selected={field.value || undefined}
                               onSelect={field.onChange}
-                              disabled={isWeekend}
+                              disabled={weekendDisabled}
                               captionLayout="dropdown"
                               startMonth={new Date(new Date().getFullYear(), 0)}
                               endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -2370,7 +2372,7 @@ const EditTaskKanban = ({
                               mode="single"
                               selected={field.value || undefined}
                               onSelect={field.onChange}
-                              disabled={isWeekend}
+                              disabled={weekendDisabled}
                               captionLayout="dropdown"
                               startMonth={new Date(new Date().getFullYear(), 0)}
                               endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -2501,7 +2503,7 @@ const EditTaskKanban = ({
                               mode="single"
                               selected={field.value || undefined}
                               onSelect={field.onChange}
-                              disabled={isWeekend}
+                              disabled={weekendDisabled}
                               captionLayout="dropdown"
                               startMonth={new Date(new Date().getFullYear(), 0)}
                               endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -2560,7 +2562,7 @@ const EditTaskKanban = ({
                               mode="single"
                               selected={field.value || undefined}
                               onSelect={field.onChange}
-                              disabled={isWeekend}
+                              disabled={weekendDisabled}
                               captionLayout="dropdown"
                               startMonth={new Date(new Date().getFullYear(), 0)}
                               endMonth={new Date(new Date().getFullYear() + 5, 11)}

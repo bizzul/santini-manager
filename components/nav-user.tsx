@@ -27,7 +27,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { UserContext } from "@/lib/auth-utils";
+import type { UserContext } from "@/lib/auth-utils";
+import { getUserDisplayName } from "@/lib/user-display-name";
 import Link from "next/link";
 import { useLogout } from "@/hooks/use-logout";
 import { useSiteId } from "@/hooks/use-site-id";
@@ -50,14 +51,10 @@ export const NavUser = memo(function NavUser({
 
   // Extract user information from the context
   const userData = user.user;
-  const userProfile = user.user?.user_metadata;
 
   // Get display name (first name + last name) or fallback to email
-  const displayName =
-    userProfile?.full_name ||
-    (userProfile?.name && userProfile?.last_name
-      ? `${userProfile.name} ${userProfile.last_name}`
-      : userData?.email || "User");
+  const displayName = getUserDisplayName(user) || "User";
+  const userProfile = user.user?.user_metadata;
 
   // Get role for display
   const roleDisplay = user.role

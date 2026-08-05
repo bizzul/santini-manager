@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getServerSiteContext } from "@/lib/server-data";
-import { getUserContext } from "@/lib/auth-utils";
+import { getUserContext, getUserDisplayName } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin, getUserPermissions } from "@/lib/permissions";
 import { UserHomeMinimal } from "@/components/user-home-minimal";
 import { OverviewConnector } from "@/components/overview/OverviewConnector";
@@ -66,7 +66,12 @@ export default async function SiteHomePage({
   if (siteContext.siteData?.subdomain === MATRIS_SUBDOMAIN) {
     const filters = parseFilters(await searchParams);
     const data = await getOverviewData(siteContext.siteId, domain, filters);
-    return <OverviewConnector data={data} />;
+    return (
+      <OverviewConnector
+        data={data}
+        highlightPersona={getUserDisplayName(userContext) || undefined}
+      />
+    );
   }
 
   // Admin/superadmin always have access to dashboard

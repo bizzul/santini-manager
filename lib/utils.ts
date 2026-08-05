@@ -43,6 +43,23 @@ export function isWeekend(date: Date): boolean {
 }
 
 /**
+ * Spazi eventi (es. Momentum) devono poter pianificare anche sabato/domenica.
+ * Negli altri spazi i weekend restano disabilitati su date di posa/produzione.
+ */
+export function allowsWeekendDates(domain?: string | null): boolean {
+  if (!domain) return false;
+  return domain.toLowerCase() === "momentum";
+}
+
+/** Matcher per `Calendar` disabled: blocca i weekend solo fuori dagli spazi eventi. */
+export function disableWeekendUnlessAllowed(
+  domain?: string | null
+): ((date: Date) => boolean) | undefined {
+  if (allowsWeekendDates(domain)) return undefined;
+  return isWeekend;
+}
+
+/**
  * Convert any date input (Date object, string, null) to YYYY-MM-DD string for database storage.
  * This ensures dates are always stored correctly regardless of timezone.
  *

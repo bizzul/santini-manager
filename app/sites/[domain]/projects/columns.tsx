@@ -26,7 +26,7 @@ import {
   Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { isWeekend } from "@/lib/utils";
+import { disableWeekendUnlessAllowed } from "@/lib/utils";
 
 function extractCAP(text: string | null | undefined): number | null {
   if (!text) return null;
@@ -179,6 +179,7 @@ function getClientLabel(c: {
 export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] => {
   const { domain, clients = [], products = [], kanbans = [] } = config;
   const handleProjectEdit = createProjectEditHandler(domain);
+  const weekendDisabled = disableWeekendUnlessAllowed(domain);
   const resolveDomain = () => {
     if (domain && domain.trim().length > 0) {
       return domain;
@@ -742,7 +743,7 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
           row={row}
           field="deliveryDate"
           onSave={handleProjectEdit}
-          disabled={isWeekend}
+          disabled={weekendDisabled}
         />
       ),
     },

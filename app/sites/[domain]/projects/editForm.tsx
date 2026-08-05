@@ -20,7 +20,7 @@ import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
 import { Client, SellProduct, Action } from "@/types/supabase";
 import { DateManager } from "@/package/utils/dates/date-manager";
-import { isWeekend, parseLocalDate } from "@/lib/utils";
+import { disableWeekendUnlessAllowed, parseLocalDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -122,6 +122,7 @@ function formatSiteAddress(street: string, town: string) {
 const EditForm = ({ handleClose, resource, domain }: Props) => {
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
+  const weekendDisabled = disableWeekendUnlessAllowed(domain);
   const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<z.infer<typeof validation>>({
@@ -927,7 +928,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
                         mode="single"
                         selected={field.value || undefined}
                         onSelect={field.onChange}
-                        disabled={isWeekend}
+                        disabled={weekendDisabled}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
                         endMonth={new Date(new Date().getFullYear() + 5, 11)}
@@ -971,7 +972,7 @@ const EditForm = ({ handleClose, resource, domain }: Props) => {
                         mode="single"
                         selected={field.value || undefined}
                         onSelect={field.onChange}
-                        disabled={isWeekend}
+                        disabled={weekendDisabled}
                         captionLayout="dropdown"
                         startMonth={new Date(new Date().getFullYear(), 0)}
                         endMonth={new Date(new Date().getFullYear() + 5, 11)}

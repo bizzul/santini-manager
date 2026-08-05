@@ -7,6 +7,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/hooks/use-logout";
 import { useUserContext } from "@/hooks/use-user-context";
+import { getUserDisplayName } from "@/lib/user-display-name";
 import { useT } from "@/components/i18n/i18n-provider";
 import { ViewSwitcher } from "@/components/personale/view-switcher";
 
@@ -47,15 +48,10 @@ export function SiteTopbar({
     return match ? t(match[1]) : t("topbar.fallbackSection");
   }, [pathname, t]);
 
-  const displayName = useMemo(() => {
-    const profile = userContext?.user?.user_metadata;
-    return (
-      profile?.full_name ||
-      (profile?.name && profile?.last_name
-        ? `${profile.name} ${profile.last_name}`
-        : userContext?.user?.email || "")
-    );
-  }, [userContext]);
+  const displayName = useMemo(
+    () => getUserDisplayName(userContext),
+    [userContext]
+  );
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-600/70 bg-[hsl(var(--page)/0.96)] px-4 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)]">

@@ -274,7 +274,7 @@ export default function CalendarTimeView({
         slotMaxTime="20:00"
         slotDuration="01:00"
         slotLabelInterval="02:00"
-        weekends={false}
+        weekends={true}
         locale={components.itLocale || undefined}
         headerToolbar={{ left: "prev,next today", center: "", right: "" }}
         datesSet={handleDatesSet}
