@@ -34,6 +34,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { cn, toDateString } from "@/lib/utils";
 import { addDaysToToday, OFFER_SEND_OPTIONS } from "@/lib/offers";
+import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
 import { Client, SellProductCategory } from "@/types/supabase";
 
 // Validation schema for quick add form
@@ -76,7 +77,9 @@ export default function OfferQuickAdd({
 
   // Ensure arrays are always safe
   const safeClients = Array.isArray(clients) ? clients : [];
-  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeCategories = (Array.isArray(categories) ? categories : []).filter(
+    (category) => !isArchivedSellCategoryName(category?.name),
+  );
 
   const form = useForm<QuickAddFormData>({
     resolver: zodResolver(quickAddSchema),

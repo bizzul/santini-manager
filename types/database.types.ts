@@ -4275,6 +4275,7 @@ export type Database = {
           logo: string | null
           name: string
           organization_id: string | null
+          site_type: string
           subdomain: string
           updated_at: string | null
         }
@@ -4289,6 +4290,7 @@ export type Database = {
           logo?: string | null
           name: string
           organization_id?: string | null
+          site_type?: string
           subdomain: string
           updated_at?: string | null
         }
@@ -4303,6 +4305,7 @@ export type Database = {
           logo?: string | null
           name?: string
           organization_id?: string | null
+          site_type?: string
           subdomain?: string
           updated_at?: string | null
         }

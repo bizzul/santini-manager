@@ -274,6 +274,8 @@ export interface SellProduct {
     image_url?: string; // Immagine
     doc_url?: string; // DOC (link a cartella documenti)
     internal_code?: string; // Codice interno per import CSV
+    cod_materiale?: string | null; // Codice materiale (import CSV: COD_MATERIALE)
+    cod_vetro_telaio?: string | null; // Codice vetro/telaio (import CSV: COD_VETRO_TELAIO)
     active?: boolean;
     site_id?: string;
     category_id?: number; // Riferimento a sellproduct_categories

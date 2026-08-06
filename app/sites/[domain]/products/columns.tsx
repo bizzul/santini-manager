@@ -19,6 +19,11 @@ import { EditableCell } from "@/components/table/editable-cell";
 import { editSellProductAction } from "./actions/edit-item.action";
 import Link from "next/link";
 import { getSellProductDisplayCode } from "@/lib/sell-product-code";
+import { Badge } from "@/components/ui/badge";
+import {
+  deriveGlassLabel,
+  deriveMaterialLabel,
+} from "@/lib/sell-product-variant-display";
 
 // Extended SellProduct type with lastAction
 export type SellProductWithAction = SellProduct & {
@@ -213,7 +218,7 @@ export const createColumns = (
     {
       accessorKey: "internal_code",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Cod." />
+        <DataTableColumnHeader column={column} title="Codice" />
       ),
       cell: ({ row }) => (
         <Link
@@ -269,6 +274,38 @@ export const createColumns = (
           onSave={handleProductEdit}
         />
       ),
+      size: 150,
+    },
+    {
+      id: "material",
+      accessorFn: (row) => deriveMaterialLabel(row) || "",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Materiale" />
+      ),
+      cell: ({ row }) => {
+        const material = deriveMaterialLabel(row.original);
+        return material ? (
+          <span>{material}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+      size: 120,
+    },
+    {
+      id: "vetro_telaio",
+      accessorFn: (row) => deriveGlassLabel(row) || "",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Vetro/Telaio" />
+      ),
+      cell: ({ row }) => {
+        const glass = deriveGlassLabel(row.original);
+        return glass ? (
+          <span>{glass}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
       size: 150,
     },
     {
@@ -328,18 +365,19 @@ export const createColumns = (
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Listino" />
       ),
-      cell: ({ row }) => (
-        <EditableCell
-          value={row.original.price_list}
-          row={row}
-          field="price_list"
-          type="number"
-          min={0}
-          step={0.01}
-          onSave={handleProductEdit}
-          className="min-w-0 justify-center text-center"
-        />
-      ),
+      cell: ({ row }) => {
+        const inListino = Boolean(row.original.price_list);
+        return (
+          <div className="flex justify-center">
+            <Badge
+              variant={inListino ? "success" : "destructive"}
+              title={inListino ? "A listino" : "Listino da definire"}
+            >
+              {inListino ? "Sì" : "No"}
+            </Badge>
+          </div>
+        );
+      },
       size: 100,
     },
     {

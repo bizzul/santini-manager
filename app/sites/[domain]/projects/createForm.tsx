@@ -27,6 +27,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Loader2, RefreshCw } from "lucide-react";
 import { cn, disableWeekendUnlessAllowed } from "@/lib/utils";
+import { isSelectableSellProduct } from "@/lib/sell-product-active";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/task/create";
 import { useToast } from "@/components/ui/use-toast";
@@ -395,12 +396,12 @@ const CreateProductForm = ({ handleClose, data, kanbanId }: Props) => {
                     onValueChange={(value) => field.onChange(Number(value))}
                     placeholder="Cerca prodotto..."
                     disabled={isSubmitting}
-                    options={(data.activeProducts || data.products || []).map(
-                      (p: SellProduct) => ({
+                    options={(data.activeProducts || data.products || [])
+                      .filter((p: SellProduct) => isSelectableSellProduct(p))
+                      .map((p: SellProduct) => ({
                         value: p.id,
                         label: `${p.name} - ${p.type}`,
-                      })
-                    )}
+                      }))}
                     emptyMessage="Nessun prodotto trovato."
                   />
                 </FormControl>

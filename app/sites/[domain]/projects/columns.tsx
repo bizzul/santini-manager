@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { disableWeekendUnlessAllowed } from "@/lib/utils";
+import { isSelectableSellProduct } from "@/lib/sell-product-active";
 
 function extractCAP(text: string | null | undefined): number | null {
   if (!text) return null;
@@ -212,10 +213,12 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
     label: getClientLabel(c),
   }));
 
-  const productOptions: SelectOption[] = products.map((p) => ({
-    value: p.id,
-    label: [p.name, p.type].filter(Boolean).join(" "),
-  }));
+  const productOptions: SelectOption[] = products
+    .filter((p) => isSelectableSellProduct(p as { active?: boolean | null }))
+    .map((p) => ({
+      value: p.id,
+      label: [p.name, p.type].filter(Boolean).join(" "),
+    }));
 
   const kanbanOptions: SelectOption[] = kanbans.map((k) => ({
     value: k.id,

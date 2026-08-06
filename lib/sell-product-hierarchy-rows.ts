@@ -16,8 +16,15 @@ import type {
   SellProductHierarchyRow,
   SellProductHierarchyRowType,
 } from "@/types/sell-product-hierarchy";
-import { getSellSubcategoryExpansionKey } from "@/types/sell-product-hierarchy";
+import {
+  getSellSubcategoryExpansionKey,
+  SELL_PRODUCT_PREVIEW_LIMIT,
+} from "@/types/sell-product-hierarchy";
 import type { SellProductWithAction } from "@/app/sites/[domain]/products/columns";
+import {
+  deriveGlassLabel,
+  deriveMaterialLabel,
+} from "@/lib/sell-product-variant-display";
 
 export interface BuildSellHierarchyRowsInput {
   categoryCards: SellCategoryCardData[];
@@ -112,7 +119,12 @@ export function buildVisibleSellHierarchyRows(
         subcategory.key,
       ) as SellProductWithAction[];
 
-      for (const product of categoryProducts) {
+      const previewProducts = categoryProducts.slice(
+        0,
+        SELL_PRODUCT_PREVIEW_LIMIT,
+      );
+
+      for (const product of previewProducts) {
         rows.push({
           rowId: `product:${product.id}`,
           type: "product",
@@ -125,6 +137,25 @@ export function buildVisibleSellHierarchyRows(
           subcategoryName: subcategory.name,
           totalValue: 0,
           product,
+        });
+      }
+
+      if (categoryProducts.length > SELL_PRODUCT_PREVIEW_LIMIT) {
+        rows.push({
+          rowId: `products-more:${getSellSubcategoryExpansionKey(
+            categoryId,
+            subcategory.key,
+          )}`,
+          type: "productsMore",
+          depth: 2,
+          categoryId,
+          categoryIdNum: card.id,
+          categoryName: card.name,
+          categoryColor: card.color,
+          subcategoryKey: subcategory.key,
+          subcategoryName: subcategory.name,
+          itemCount: categoryProducts.length,
+          totalValue: 0,
         });
       }
     }
@@ -165,6 +196,10 @@ export function matchesSellHierarchySearch(
     product.tipo,
     product.product_type,
     product.category?.name,
+    product.cod_materiale,
+    product.cod_vetro_telaio,
+    deriveMaterialLabel(product),
+    deriveGlassLabel(product),
   ]
     .filter(Boolean)
     .some((value) => String(value).toLowerCase().includes(normalized));
@@ -287,5 +322,53 @@ export function getSellHierarchyRowLabel(
       return "Sottocategoria";
     case "product":
       return "Prodotto";
+    case "productsMore":
+      return "Altri prodotti";
   }
+}
+
+/**
+ * Mantiene solo le sottocategorie con prezzi mancanti (e le categorie che le
+ * contengono). I prodotti restano visibili sotto le sottocategorie tenute.
+ */
+export function filterSellHierarchyRowsByMissingPrices(
+  rows: SellProductHierarchyRow[],
+): SellProductHierarchyRow[] {
+  const keptCategoryIds = new Set<string>();
+  const keptSubcategoryKeys = new Set<string>();
+
+  for (const row of rows) {
+    if (row.type === "category") {
+      const missing = row.categoryCard?.missingPriceCount ?? 0;
+      if (missing > 0) keptCategoryIds.add(row.categoryId);
+    } else if (row.type === "subcategory" && row.subcategoryKey) {
+      const missing = row.subcategoryCard?.missingPriceCount ?? 0;
+      if (missing > 0) {
+        keptCategoryIds.add(row.categoryId);
+        keptSubcategoryKeys.add(
+          getSellSubcategoryExpansionKey(row.categoryId, row.subcategoryKey),
+        );
+      }
+    }
+  }
+
+  return rows.filter((row) => {
+    if (row.type === "category") {
+      return keptCategoryIds.has(row.categoryId);
+    }
+    if (row.type === "subcategory" && row.subcategoryKey) {
+      return keptSubcategoryKeys.has(
+        getSellSubcategoryExpansionKey(row.categoryId, row.subcategoryKey),
+      );
+    }
+    if (
+      (row.type === "product" || row.type === "productsMore") &&
+      row.subcategoryKey
+    ) {
+      return keptSubcategoryKeys.has(
+        getSellSubcategoryExpansionKey(row.categoryId, row.subcategoryKey),
+      );
+    }
+    return false;
+  });
 }

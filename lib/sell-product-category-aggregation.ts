@@ -8,12 +8,55 @@ import type {
   SellSubcategoryCardData,
 } from "@/types/sell-product-category-cards";
 import type { SellProduct, SellProductCategory } from "@/types/supabase";
+import {
+  deriveMaterialLabel,
+  getVariantLabel,
+} from "@/lib/sell-product-variant-display";
 
 export interface SellProductRowForAggregation {
   category_id?: number | null;
   category?: { id?: number } | null;
   subcategory?: string | null;
   type?: string | null;
+  name?: string | null;
+  internal_code?: string | null;
+  tipo?: string | null;
+  product_type?: string | null;
+  price_list?: boolean | null;
+  cod_materiale?: string | null;
+  cod_vetro_telaio?: string | null;
+}
+
+/** Statistiche derivate (prezzi mancanti, varianti, materiali) accumulate. */
+interface DerivedStats {
+  missingPriceCount: number;
+  variants: Set<string>;
+  materials: Set<string>;
+}
+
+function createDerivedStats(): DerivedStats {
+  return {
+    missingPriceCount: 0,
+    variants: new Set<string>(),
+    materials: new Set<string>(),
+  };
+}
+
+function accumulateDerivedStats(
+  stats: DerivedStats,
+  row: SellProductRowForAggregation,
+): void {
+  if (!row.price_list) {
+    stats.missingPriceCount += 1;
+  }
+  const variant = getVariantLabel(row);
+  if (variant) stats.variants.add(variant);
+  const material = deriveMaterialLabel(row);
+  if (material) stats.materials.add(material);
+}
+
+function sortLabels(values: Set<string>): string[] {
+  return Array.from(values).sort((a, b) => a.localeCompare(b, "it"));
 }
 
 function getRowCategoryId(row: SellProductRowForAggregation): number | null {
@@ -68,6 +111,10 @@ export function mergeSellSubcategoryRecords(
         image_url: record.image_url ?? null,
         description: record.description ?? null,
         sort_order: record.sort_order,
+        missingPriceCount: 0,
+        variantCount: 0,
+        materialLabels: [],
+        variantLabels: [],
       });
     }
   }
@@ -81,7 +128,7 @@ export function aggregateSellCategoryCards(
 ): SellCategoryCardData[] {
   const aggregates = new Map<
     number,
-    { itemCount: number; subcategories: Set<string> }
+    { itemCount: number; subcategories: Set<string>; derived: DerivedStats }
   >();
 
   for (const row of products) {
@@ -92,10 +139,12 @@ export function aggregateSellCategoryCards(
     const current = aggregates.get(categoryId) ?? {
       itemCount: 0,
       subcategories: new Set<string>(),
+      derived: createDerivedStats(),
     };
 
     current.itemCount += 1;
     current.subcategories.add(subcategory);
+    accumulateDerivedStats(current.derived, row);
     aggregates.set(categoryId, current);
   }
 
@@ -113,6 +162,10 @@ export function aggregateSellCategoryCards(
       subcategoryCount: stats?.subcategories.size ?? 0,
       pieces: itemCount,
       totalValue: 0,
+      missingPriceCount: stats?.derived.missingPriceCount ?? 0,
+      variantCount: stats?.derived.variants.size ?? 0,
+      materialLabels: stats ? sortLabels(stats.derived.materials) : [],
+      variantLabels: stats ? sortLabels(stats.derived.variants) : [],
     };
   });
 }
@@ -140,7 +193,7 @@ export function aggregateSellSubcategoryCards(
 ): SellSubcategoryCardData[] {
   const aggregates = new Map<
     string,
-    { name: string; itemCount: number }
+    { name: string; itemCount: number; derived: DerivedStats }
   >();
 
   for (const row of products) {
@@ -151,8 +204,10 @@ export function aggregateSellSubcategoryCards(
     const current = aggregates.get(key) ?? {
       name: subcategoryName,
       itemCount: 0,
+      derived: createDerivedStats(),
     };
     current.itemCount += 1;
+    accumulateDerivedStats(current.derived, row);
     aggregates.set(key, current);
   }
 
@@ -163,6 +218,10 @@ export function aggregateSellSubcategoryCards(
       pieces: stats.itemCount,
       totalValue: 0,
       itemCount: stats.itemCount,
+      missingPriceCount: stats.derived.missingPriceCount,
+      variantCount: stats.derived.variants.size,
+      materialLabels: sortLabels(stats.derived.materials),
+      variantLabels: sortLabels(stats.derived.variants),
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "it"));
 }

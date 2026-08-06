@@ -39,6 +39,7 @@ import { useSiteModules } from "@/hooks/use-site-modules";
 import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
+import { isCampagnaElettorale } from "@/lib/campagna/config";
 import { useT } from "@/components/i18n/i18n-provider";
 import type { Translator } from "@/lib/i18n";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -144,6 +145,8 @@ type SiteDataQueryResult = {
   organization: { name: string };
   /** Per-site Command Deck toggle, persisted in `site_settings`. */
   commandDeckEnabled?: boolean;
+  /** 'azienda' (default) | 'campagna_elettorale'. Drives the campaign menu. */
+  siteType?: string;
 };
 
 // Fetch functions for React Query
@@ -159,6 +162,7 @@ async function fetchSiteData(domain: string): Promise<SiteDataQueryResult> {
     verticalProfile: data.verticalProfile || null,
     organization: { name: data.organization?.name || "" },
     commandDeckEnabled: Boolean(data.commandDeckEnabled),
+    siteType: data.site_type || "azienda",
   };
 }
 
@@ -700,6 +704,64 @@ export function AppSidebar() {
     () => resolveSiteVerticalProfile(siteData?.verticalProfile),
     [siteData]
   );
+
+  // Campaign sites (Campagna 2027, Fabio Kaeppeli) swap the whole business menu
+  // for a dedicated electoral menu. Business sites are entirely untouched.
+  const isCampagna = isCampagnaElettorale(siteData?.siteType);
+
+  const campagnaMenuItems = useMemo<MenuItem[]>(() => {
+    if (!basePath) return [];
+    return [
+      {
+        key: "campagna-dashboard",
+        label: "Dashboard",
+        icon: "faWaveSquare",
+        href: `${basePath}/dashboard`,
+        alert: false,
+      },
+      {
+        key: "campagna-crm",
+        label: "CRM",
+        icon: "faUsers",
+        alert: false,
+        items: [
+          {
+            label: "Contatti",
+            icon: "faUser",
+            href: `${basePath}/crm/contatti`,
+            alert: false,
+          },
+          {
+            label: "Interazioni",
+            icon: "faTable",
+            href: `${basePath}/crm/interazioni`,
+            alert: false,
+          },
+        ],
+      },
+      {
+        key: "campagna-contenuti",
+        label: "Contenuti",
+        icon: "faBriefcase",
+        href: `${basePath}/contenuti`,
+        alert: false,
+      },
+      {
+        key: "campagna-calendario",
+        label: "Calendario",
+        icon: "faCalendarDays",
+        href: `${basePath}/calendario`,
+        alert: false,
+      },
+      {
+        key: "campagna-analisi",
+        label: "Analisi",
+        icon: "faSquarePollVertical",
+        href: `${basePath}/analisi`,
+        alert: false,
+      },
+    ];
+  }, [basePath]);
 
   // Navigation labels for the entries that a business vertical can rename
   // (kanban / projects / reports). A non-default vertical profile keeps
@@ -1592,6 +1654,10 @@ export function AppSidebar() {
                     <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
                   </div>
                 </SidebarMenuItem>
+              ) : isCampagna ? (
+                campagnaMenuItems
+                  .filter((item) => item.key === "campagna-dashboard")
+                  .map(renderMenuItem)
               ) : (
                 groupedMenuItems.core.map(renderMenuItem)
               )}
@@ -1599,8 +1665,46 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Show menu sections - with skeleton if loading */}
-        {isLoadingMenuItems ? (
+        {/* Campaign sites render a fixed electoral menu; business sites keep
+            their existing module-driven sections untouched. */}
+        {isCampagna ? (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {campagnaMenuItems
+                    .filter((item) => item.key !== "campagna-dashboard")
+                    .map(renderMenuItem)}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            {canManageSettings && settingsHref && (
+              <>
+                <SidebarSeparator />
+                <SidebarGroup className="mt-auto">
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      <SidebarMenuItem>
+                        <SidebarMenuButton
+                          asChild
+                          tooltip={settingsTitle}
+                          isActive={isActive(settingsHref)}
+                        >
+                          <Link href={settingsHref}>
+                            <Settings className="h-4 w-4" />
+                            <span>{settingsTitle}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              </>
+            )}
+          </>
+        ) : isLoadingMenuItems ? (
           <>
             <SidebarSeparator />
             <SidebarGroup>
@@ -1780,7 +1884,7 @@ export function AppSidebar() {
         {/* Footer loads progressively - theme switcher always visible */}
         <div className="flex flex-col gap-3">
           {/* Quick access icons for Ore, Errori, Reports */}
-          {domain && (
+          {domain && !isCampagna && (
             <div
               className={cn(
                 "rounded-2xl border border-slate-600/70 bg-[hsl(var(--sidebar-card)/0.5)] py-2 shadow-[0_8px_20px_hsl(var(--sidebar-card-shadow)/0.1)] dark:bg-black/10 dark:shadow-none",

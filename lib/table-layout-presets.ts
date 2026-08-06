@@ -5,13 +5,17 @@ export type TableColumnRole =
   | "code"
   | "name"
   | "nameNarrow"
+  | "nameWrap"
+  | "nameWrapFixed"
   | "descriptionFlex"
   | "metric"
   | "metricWide"
+  | "badge"
   | "currency"
   | "actions"
   | "actionsCompact"
   | "textFixed"
+  | "textFixedWrap"
   | "dimension";
 
 export interface TableColumnDef {
@@ -50,6 +54,14 @@ const ROLE_CELL_CLASSES: Record<TableColumnRole, string> = {
     DENSE_BASE,
     "w-[8rem] max-w-[8rem] shrink-0 px-2 py-2 align-middle truncate font-medium",
   ),
+  nameWrap: cn(
+    DENSE_BASE,
+    "w-[11rem] max-w-[11rem] shrink-0 px-2 py-2 align-middle whitespace-normal break-words font-medium",
+  ),
+  nameWrapFixed: cn(
+    DENSE_BASE,
+    "shrink-0 px-2 py-2 align-middle whitespace-normal break-words font-medium",
+  ),
   descriptionFlex: cn(
     DENSE_BASE,
     "min-w-[8rem] max-w-[42rem] px-2 py-2 align-middle whitespace-normal break-words",
@@ -61,6 +73,10 @@ const ROLE_CELL_CLASSES: Record<TableColumnRole, string> = {
   metricWide: cn(
     DENSE_BASE,
     "w-[4rem] max-w-[4rem] shrink-0 px-1.5 py-2 text-center align-middle tabular-nums",
+  ),
+  badge: cn(
+    DENSE_BASE,
+    "w-[7rem] max-w-[7rem] shrink-0 px-1.5 py-2 text-center align-middle",
   ),
   currency: cn(
     DENSE_BASE,
@@ -77,6 +93,10 @@ const ROLE_CELL_CLASSES: Record<TableColumnRole, string> = {
   textFixed: cn(
     DENSE_BASE,
     "shrink-0 px-2 py-2 align-middle truncate",
+  ),
+  textFixedWrap: cn(
+    DENSE_BASE,
+    "shrink-0 px-2 py-2 align-middle whitespace-normal break-words",
   ),
   dimension: cn(
     DENSE_BASE,
@@ -101,6 +121,11 @@ const ROLE_HEAD_CLASSES: Record<TableColumnRole, string> = {
     DENSE_BASE,
     "w-[8rem] max-w-[8rem] shrink-0 px-2 py-2 h-auto",
   ),
+  nameWrap: cn(
+    DENSE_BASE,
+    "w-[11rem] max-w-[11rem] shrink-0 px-2 py-2 h-auto",
+  ),
+  nameWrapFixed: cn(DENSE_BASE, "shrink-0 px-2 py-2 h-auto"),
   descriptionFlex: cn(
     DENSE_BASE,
     "min-w-[8rem] max-w-[42rem] px-2 py-2 h-auto",
@@ -112,6 +137,10 @@ const ROLE_HEAD_CLASSES: Record<TableColumnRole, string> = {
   metricWide: cn(
     DENSE_BASE,
     "w-[4rem] max-w-[4rem] shrink-0 px-1.5 py-2 h-auto text-center",
+  ),
+  badge: cn(
+    DENSE_BASE,
+    "w-[7rem] max-w-[7rem] shrink-0 px-1.5 py-2 h-auto text-center",
   ),
   currency: cn(
     DENSE_BASE,
@@ -126,6 +155,7 @@ const ROLE_HEAD_CLASSES: Record<TableColumnRole, string> = {
     "w-[3rem] max-w-[3rem] shrink-0 px-1 py-2 h-auto text-center",
   ),
   textFixed: cn(DENSE_BASE, "shrink-0 px-2 py-2 h-auto"),
+  textFixedWrap: cn(DENSE_BASE, "shrink-0 px-2 py-2 h-auto"),
   dimension: cn(
     DENSE_BASE,
     "w-[3.25rem] max-w-[3.25rem] shrink-0 px-1 py-2 h-auto text-center",
@@ -134,7 +164,8 @@ const ROLE_HEAD_CLASSES: Record<TableColumnRole, string> = {
 
 export const SELL_HIERARCHY_SUMMARY_COLUMNS: TableColumnDef[] = [
   { id: "leading", header: "", role: "leading", width: HIERARCHY_LEADING_WIDTH },
-  { id: "name", header: "Categoria", role: "name", width: HIERARCHY_NAME_WIDTH },
+  { id: "name", header: "Categoria", role: "nameWrap", width: "11rem" },
+  { id: "code", header: "Codice", role: "textFixed", width: "8rem" },
   {
     id: "description",
     header: "Descrizione",
@@ -142,6 +173,14 @@ export const SELL_HIERARCHY_SUMMARY_COLUMNS: TableColumnDef[] = [
     width: HIERARCHY_DESCRIPTION_MAX_WIDTH,
   },
   { id: "products", header: "Art.", role: "metric", width: "3rem" },
+  { id: "variants", header: "Var.", role: "metricWide", width: "4rem" },
+  {
+    id: "missingPrices",
+    header: "Prezzi da definire",
+    role: "badge",
+    width: "7rem",
+    headerClassName: "whitespace-normal break-words leading-tight",
+  },
   { id: "subcategories", header: "S.cat", role: "metric", width: "3rem" },
   { id: "pieces", header: "Pz.", role: "metricWide", width: "4rem" },
   { id: "actions", header: "Azioni", role: "actions", width: "5.5rem" },
@@ -216,28 +255,36 @@ const SELL_PRODUCTS_DRILLDOWN_EXTRA_COLUMNS: TableColumnDef[] = [
 ];
 
 export const SELL_PRODUCTS_DENSE_COLUMNS: TableColumnDef[] = [
-  { id: "internal_code", header: "Cod.", role: "code", width: "3.5rem" },
-  { id: "tipo", header: "Tipo", role: "textFixed", width: "5rem" },
-  { id: "name", header: "Nome", role: "nameNarrow", width: "8rem" },
+  { id: "internal_code", header: "Codice", role: "textFixed", width: "8rem" },
+  { id: "tipo", header: "Tipo", role: "textFixed", width: "12rem" },
+  { id: "material", header: "Materiale", role: "textFixed", width: "12rem" },
   {
+    id: "vetro_telaio",
+    header: "Vetro/Telaio",
+    role: "textFixedWrap",
+    width: "12rem",
+  },
+  { id: "name", header: "Nome", role: "nameWrapFixed", width: "14rem" },
+  {
+    // Colonna flessibile: senza width fissa assorbe lo spazio residuo (evita
+    // lo spazio vuoto a destra) quando la tabella è w-full + table-fixed.
     id: "description",
     header: "Descrizione",
     role: "descriptionFlex",
-    width: HIERARCHY_DESCRIPTION_MAX_WIDTH,
   },
-  { id: "supplier", header: "Fornitore", role: "textFixed", width: "8rem" },
+  { id: "supplier", header: "Fornitore", role: "textFixedWrap", width: "10rem" },
   {
     id: "price_list",
     header: "Listino",
-    role: "currency",
-    width: "5.5rem",
+    role: "badge",
+    width: "7.5rem",
   },
   { id: "doc_url", header: "Scheda", role: "actionsCompact", width: "3rem" },
   { id: "actions", header: "Azioni", role: "actionsCompact", width: "3rem" },
 ];
 
 export const SELL_PRODUCTS_DRILLDOWN_COLUMNS: TableColumnDef[] = [
-  { id: "internal_code", header: "Cod.", role: "code", width: "3.5rem" },
+  { id: "internal_code", header: "Codice", role: "textFixed", width: "8rem" },
   ...SELL_PRODUCTS_DRILLDOWN_EXTRA_COLUMNS,
   ...SELL_PRODUCTS_DENSE_COLUMNS.filter(
     (column) => column.id !== "internal_code",
@@ -246,9 +293,13 @@ export const SELL_PRODUCTS_DRILLDOWN_COLUMNS: TableColumnDef[] = [
 
 const TEXT_FIXED_WIDTH_CLASSES: Record<string, string> = {
   color: "w-[4.5rem] max-w-[4.5rem]",
-  supplier: "w-[8rem] max-w-[8rem]",
+  supplier: "w-[10rem] max-w-[10rem]",
   subcategory: "w-[7.5rem] max-w-[7.5rem]",
-  tipo: "w-[5rem] max-w-[5rem]",
+  internal_code: "w-[8rem] max-w-[8rem]",
+  name: "w-[14rem] max-w-[14rem]",
+  tipo: "w-[12rem] max-w-[12rem]",
+  material: "w-[12rem] max-w-[12rem]",
+  vetro_telaio: "w-[12rem] max-w-[12rem]",
   description: "w-[10rem] max-w-[10rem]",
 };
 
@@ -290,7 +341,9 @@ export function getColumnClassesById(
   if (!column) return null;
 
   const widthClass =
-    column.role === "textFixed"
+    column.role === "textFixed" ||
+    column.role === "textFixedWrap" ||
+    column.role === "nameWrapFixed"
       ? getTextFixedWidthClass(columnId)
       : column.role === "currency"
         ? getCurrencyWidthClass(columnId)
@@ -454,9 +507,15 @@ export function getSellProductsCellClassName(
   } else if (role === "nameNarrow" || role === "name") {
     editableOverrides =
       "h-auto min-h-9 [&>div]:justify-start [&_button]:h-7 [&_button]:px-1 [&_span]:truncate [&_span]:text-left";
+  } else if (role === "nameWrapFixed") {
+    editableOverrides =
+      "h-auto min-h-9 [&>div]:justify-start [&_button]:h-7 [&_button]:px-1 [&_span]:whitespace-normal [&_span]:break-words [&_span]:text-left";
   } else if (role === "textFixed" || role === "code") {
     editableOverrides =
       "h-auto min-h-9 [&>div]:justify-center [&_span]:truncate [&_span]:text-center";
+  } else if (role === "textFixedWrap") {
+    editableOverrides =
+      "h-auto min-h-9 [&>div]:justify-start [&_span]:whitespace-normal [&_span]:break-words [&_span]:text-left";
   }
 
   return cn(classes.cell, editableOverrides);

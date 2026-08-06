@@ -8,6 +8,9 @@ import { fetchMapData } from "@/lib/momentum-data";
 import { getUserContext } from "@/lib/auth-utils";
 import { canAccessModule, isAdminOrSuperadmin } from "@/lib/permissions";
 import { getSiteHighlightCountries } from "@/lib/map-highlight.server";
+import { isCampagnaElettorale } from "@/lib/campagna/config";
+import { fetchCampagnaDashboardData } from "@/lib/campagna/server-data";
+import CampagnaOverview from "@/components/campagna/CampagnaOverview";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import KPICards from "@/components/dashboard/KPICards";
 import ActiveProjectsMapCard from "@/components/dashboard/ActiveProjectsMapCard";
@@ -67,6 +70,23 @@ export default async function SiteDashboardPage({
     if (!hasDashboardAccess) {
       redirect(`/sites/${domain}`);
     }
+  }
+
+  // Campaign sites get a dedicated electoral Overview (no business widgets,
+  // no DashboardTabs). Business sites keep the industrial dashboard untouched.
+  if (isCampagnaElettorale(siteContext.siteData?.site_type)) {
+    const campagnaData = await fetchCampagnaDashboardData(siteContext.siteId);
+    return (
+      <PageLayout>
+        <PageHeader
+          title="Dashboard - Campagna"
+          subtitle="Panoramica CRM, contenuti, eventi e ripartizione territoriale"
+        />
+        <PageContent>
+          <CampagnaOverview data={campagnaData} domain={domain} />
+        </PageContent>
+      </PageLayout>
+    );
   }
 
   // Fetch real dashboard data

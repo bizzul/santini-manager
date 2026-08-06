@@ -23,7 +23,8 @@ export async function GET(
                 status: 404,
             });
         }
-        const { id, name, organization_id, image, logo } = response.data;
+        const { id, name, organization_id, image, logo, site_type } =
+            response.data;
         const supabase = createServiceClient();
         // Batch the site_settings reads so we never waterfall them.
         const [
@@ -57,6 +58,7 @@ export async function GET(
             organization_id,
             image,
             logo,
+            site_type: site_type ?? "azienda",
             verticalProfile: resolveSiteVerticalProfile(siteVertical?.setting_value),
             organization: {
                 name: response.data.organization?.name || "",

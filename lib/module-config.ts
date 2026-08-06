@@ -254,6 +254,45 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         enabledByDefault: false,
         category: "tools",
     },
+    // Electoral campaign modules. Enabled only for `site_type =
+    // 'campagna_elettorale'` sites via `site_modules`; never on by default so
+    // business sites are unaffected.
+    {
+        name: "campagna_crm",
+        label: "CRM Campagna",
+        description: "Contatti, volontari e interazioni della campagna",
+        icon: "faUsers",
+        href: "/crm/contatti",
+        enabledByDefault: false,
+        category: "management",
+    },
+    {
+        name: "campagna_contenuti",
+        label: "Contenuti Campagna",
+        description: "Coda editoriale di post, comunicati e grafiche",
+        icon: "faBriefcase",
+        href: "/contenuti",
+        enabledByDefault: false,
+        category: "management",
+    },
+    {
+        name: "campagna_calendario",
+        label: "Calendario Campagna",
+        description: "Eventi, comizi e scadenze legali della campagna",
+        icon: "faCalendarDays",
+        href: "/calendario",
+        enabledByDefault: false,
+        category: "management",
+    },
+    {
+        name: "campagna_analisi",
+        label: "Analisi Campagna",
+        description: "Metriche aggregate e ripartizione per comune",
+        icon: "faSquarePollVertical",
+        href: "/analisi",
+        enabledByDefault: false,
+        category: "reports",
+    },
 ];
 
 export const getModuleByName = (name: string): ModuleConfig | undefined => {

@@ -13,6 +13,14 @@ export interface SellCategoryCardData extends Pick<
   subcategoryCount: number;
   pieces: number;
   totalValue: number;
+  /** Prodotti senza listino prezzi (price_list !== true). */
+  missingPriceCount?: number;
+  /** Numero di varianti distinte (tipo/product_type). */
+  variantCount?: number;
+  /** Materiali distinti ricavati dai nomi prodotto. */
+  materialLabels?: string[];
+  /** Varianti distinte (tipo) per il riepilogo Descrizione. */
+  variantLabels?: string[];
 }
 
 export interface SellSubcategoryCardData {
@@ -24,6 +32,14 @@ export interface SellSubcategoryCardData {
   image_url?: string | null;
   description?: string | null;
   sort_order?: number;
+  /** Prodotti senza listino prezzi (price_list !== true). */
+  missingPriceCount?: number;
+  /** Numero di varianti distinte (tipo/product_type). */
+  variantCount?: number;
+  /** Materiali distinti ricavati dai nomi prodotto. */
+  materialLabels?: string[];
+  /** Varianti distinte (tipo) per il riepilogo Descrizione. */
+  variantLabels?: string[];
 }
 
 export interface SellSubcategoryImageRecord {

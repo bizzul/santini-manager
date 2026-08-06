@@ -13,6 +13,7 @@ import {
   RowSelectionState,
   ColumnSizingState,
   VisibilityState,
+  ColumnOrderState,
 } from "@tanstack/react-table";
 
 import {
@@ -58,14 +59,31 @@ type EmbeddedColumnPreset = "categoryDrilldown";
 const CATEGORY_DRILLDOWN_COLUMN_IDS = new Set([
   "internal_code",
   "subcategory",
-  "tipo",
   "name",
+  "material",
   "description",
+  "vetro_telaio",
   "supplier",
   "price_list",
   "doc_url",
   "actions",
 ]);
+
+// Ordine visivo colonne nella vista drilldown (Categoria = subcategory):
+// Codice, Categoria, Nome, Materiale, Descrizione, Vetro/Telaio, Fornitore,
+// Listino, Scheda, Azioni.
+const CATEGORY_DRILLDOWN_COLUMN_ORDER = [
+  "internal_code",
+  "subcategory",
+  "name",
+  "material",
+  "description",
+  "vetro_telaio",
+  "supplier",
+  "price_list",
+  "doc_url",
+  "actions",
+];
 
 function getColumnId(column: ColumnDef<any, any>): string | undefined {
   return (
@@ -132,6 +150,12 @@ export function DataTable<TData extends { id: number }, TValue>({
   const [allCategoriesSelected, setAllCategoriesSelected] = useState(true);
   // Column sizing state
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  // Column order state (only reordered in the category drilldown preset)
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(() =>
+    embeddedColumnPreset === "categoryDrilldown"
+      ? CATEGORY_DRILLDOWN_COLUMN_ORDER
+      : [],
+  );
 
   const { toast } = useToast();
   const router = useRouter();
@@ -143,6 +167,14 @@ export function DataTable<TData extends { id: number }, TValue>({
       );
     }
   }, [columns, embeddedColumnPreset]);
+
+  useEffect(() => {
+    setColumnOrder(
+      embeddedColumnPreset === "categoryDrilldown"
+        ? CATEGORY_DRILLDOWN_COLUMN_ORDER
+        : [],
+    );
+  }, [embeddedColumnPreset]);
 
   const denseLayout = embeddedMode && Boolean(embeddedColumnPreset);
   const isDrilldown = embeddedColumnPreset === "categoryDrilldown";
@@ -219,6 +251,7 @@ export function DataTable<TData extends { id: number }, TValue>({
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     onColumnSizingChange: setColumnSizing,
+    onColumnOrderChange: setColumnOrder,
     columnResizeMode: "onChange",
     enableColumnResizing: !denseLayout,
     state: {
@@ -228,6 +261,7 @@ export function DataTable<TData extends { id: number }, TValue>({
       globalFilter,
       rowSelection,
       columnSizing,
+      columnOrder,
     },
     enableGlobalFilter: true,
     enableRowSelection: true,
@@ -242,7 +276,7 @@ export function DataTable<TData extends { id: number }, TValue>({
           .filter(Boolean),
         isDrilldown ? "sellProductsDrilldown" : "sellProductsDense",
       ),
-    [table, columnVisibility, isDrilldown],
+    [table, columnVisibility, columnOrder, isDrilldown],
   );
 
   const selectedRows = table.getFilteredSelectedRowModel().rows;
@@ -458,7 +492,7 @@ export function DataTable<TData extends { id: number }, TValue>({
       >
         <Table
           className={
-            denseLayout ? "w-max max-w-full table-fixed text-xs" : undefined
+            denseLayout ? "w-full table-fixed text-xs" : undefined
           }
           style={denseLayout ? undefined : { width: table.getCenterTotalSize() }}
         >

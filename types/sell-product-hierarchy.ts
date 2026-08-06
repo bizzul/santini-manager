@@ -4,7 +4,14 @@ import type {
 } from "@/types/sell-product-category-cards";
 import type { SellProductWithAction } from "@/app/sites/[domain]/products/columns";
 
-export type SellProductHierarchyRowType = "category" | "subcategory" | "product";
+export type SellProductHierarchyRowType =
+  | "category"
+  | "subcategory"
+  | "product"
+  | "productsMore";
+
+/** Numero massimo di prodotti mostrati inline sotto una sottocategoria. */
+export const SELL_PRODUCT_PREVIEW_LIMIT = 8;
 
 export interface SellProductHierarchyRow {
   rowId: string;
