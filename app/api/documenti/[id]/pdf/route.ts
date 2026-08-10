@@ -96,6 +96,7 @@ export async function GET(
       corpoTesto: doc.corpo_testo,
       righe: (righe ?? []).map((r) => ({
         descrizione: r.descrizione,
+        descrizioneEstesa: r.descrizione_estesa ?? null,
         misure: r.misure,
         unita: r.unita,
         quantita: Number(r.quantita),

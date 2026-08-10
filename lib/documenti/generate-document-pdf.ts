@@ -34,6 +34,7 @@ import {
 interface RigheRow {
   art?: string | null;
   descrizione: string;
+  descrizione_estesa?: string | null;
   misure?: string | null;
   unita?: string | null;
   quantita?: number | null;
@@ -68,6 +69,13 @@ function getRigaTotale(riga: RigaPdfInput): number | null | undefined {
 function getRigaImmagineUrl(riga: RigaPdfInput): string | null | undefined {
   if ("immagineUrl" in riga) return riga.immagineUrl;
   return (riga as RigheRow).immagine_url;
+}
+
+function getRigaDescrizioneEstesa(
+  riga: RigaPdfInput,
+): string | null | undefined {
+  if ("descrizioneEstesa" in riga) return riga.descrizioneEstesa;
+  return (riga as RigheRow).descrizione_estesa;
 }
 
 function formatMoney(value?: number | null): string {
@@ -242,10 +250,13 @@ export async function generateDocumentPdfBytes(
         y = PAGE_HEIGHT - PAGE_MARGIN - 20;
       }
 
+      const estesa = getRigaDescrizioneEstesa(riga);
       const desc =
-        riga.misure && riga.misure.trim()
-          ? `${riga.descrizione}\nMisure: ${riga.misure}`
-          : riga.descrizione;
+        estesa && estesa.trim()
+          ? `${riga.descrizione}\n${estesa}`
+          : riga.misure && riga.misure.trim()
+            ? `${riga.descrizione}\nMisure: ${riga.misure}`
+            : riga.descrizione;
 
       const imageUrl = getRigaImmagineUrl(riga);
       const embeddedImage = await embedCatalogImage(pdfDoc, imageUrl);
