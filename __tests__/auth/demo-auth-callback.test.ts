@@ -100,7 +100,7 @@ describe("auth callback - demo flow", () => {
     );
   });
 
-  it("keeps the legacy redirect for non-demo enabled users", async () => {
+  it("redirects non-demo enabled users to the /launch landing resolver", async () => {
     mockExchangeCodeForSession.mockResolvedValue({ error: null });
     mockGetUser.mockResolvedValue({
       data: {
@@ -140,7 +140,7 @@ describe("auth callback - demo flow", () => {
 
     expect(recordDemoLoginFromTokenMock).not.toHaveBeenCalled();
     expect(response.headers.get("location")).toBe(
-      "https://app.example.com/sites/select",
+      "https://app.example.com/launch",
     );
   });
 });
