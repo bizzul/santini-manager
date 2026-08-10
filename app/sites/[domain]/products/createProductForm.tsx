@@ -291,12 +291,12 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
         />
         <FormField
           control={form.control}
-          name="tipo"
+          name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Tipo</FormLabel>
+              <FormLabel>Nome Prodotto</FormLabel>
               <FormControl>
-                <Input placeholder="Inserisci tipo" {...field} />
+                <Input placeholder="Armadio" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -304,12 +304,12 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
         />
         <FormField
           control={form.control}
-          name="name"
+          name="tipo"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nome Prodotto</FormLabel>
+              <FormLabel>Materiale</FormLabel>
               <FormControl>
-                <Input placeholder="Armadio" {...field} />
+                <Input placeholder="Inserisci materiale" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
