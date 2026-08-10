@@ -61,16 +61,32 @@ interface ProdottoConfig {
     famigliaAperturaCod: string | null;
     codMateriale: string | null;
     codVetroTelaio: string | null;
+    codTipoCassone: string | null;
     imageUrl: string | null;
+    larghezzaDefaultMm: number | null;
+    altezzaDefaultMm: number | null;
+    profonditaDefaultMm: number | null;
     categoria: string | null;
   };
-  coefficienti: { materiale: Coefficiente[]; vetroTelaio: Coefficiente[] };
+  coefficienti: {
+    materiale: Coefficiente[];
+    vetroTelaio: Coefficiente[];
+    esecuzioneAnte: Coefficiente[];
+    tipoCassone: Coefficiente[];
+  };
+  dimensioniIncremento: string[];
   supplementi: SupplementoOpt[];
 }
 
 interface Breakdown {
   modalitaPrezzo: ModalitaPrezzo;
   prezzoBase: number;
+  incrementiDimensionali?: {
+    dimensione: string;
+    valoreMm: number;
+    importo: number;
+  }[];
+  prezzoBaseConIncrementi?: number;
   coefficienti: {
     categoria: string;
     codice: string;
@@ -132,6 +148,7 @@ export function CatalogLineConfigurator({
   const [profonditaMm, setProfonditaMm] = useState("");
   const [codMateriale, setCodMateriale] = useState<string>("");
   const [codVetroTelaio, setCodVetroTelaio] = useState<string>("");
+  const [codEsecuzioneAnte, setCodEsecuzioneAnte] = useState<string>("");
   const [supplementoIds, setSupplementoIds] = useState<string[]>([]);
   const [quantita, setQuantita] = useState("1");
 
@@ -154,6 +171,7 @@ export function CatalogLineConfigurator({
     setProfonditaMm("");
     setCodMateriale("");
     setCodVetroTelaio("");
+    setCodEsecuzioneAnte("");
     setSupplementoIds([]);
     setQuantita("1");
     setBreakdown(null);
@@ -212,6 +230,16 @@ export function CatalogLineConfigurator({
       setConfig(data);
       setCodMateriale(data.prodotto.codMateriale ?? "");
       setCodVetroTelaio(data.prodotto.codVetroTelaio ?? "");
+      // Pre-compila le misure con i default del prodotto (se presenti).
+      if (data.prodotto.larghezzaDefaultMm != null) {
+        setLarghezzaMm(String(data.prodotto.larghezzaDefaultMm));
+      }
+      if (data.prodotto.altezzaDefaultMm != null) {
+        setAltezzaMm(String(data.prodotto.altezzaDefaultMm));
+      }
+      if (data.prodotto.profonditaDefaultMm != null) {
+        setProfonditaMm(String(data.prodotto.profonditaDefaultMm));
+      }
     } catch {
       setCalcError("Impossibile caricare la configurazione del prodotto.");
     } finally {
@@ -220,6 +248,9 @@ export function CatalogLineConfigurator({
   };
 
   const modalita = config?.prodotto.modalitaPrezzo ?? null;
+  const mostraProfondita =
+    modalita === "mc" ||
+    (config?.dimensioniIncremento ?? []).includes("profondita");
 
   const canCalc = useMemo(() => {
     if (!config || !modalita) return false;
@@ -250,6 +281,7 @@ export function CatalogLineConfigurator({
             profonditaMm: profonditaMm || undefined,
             codMateriale: codMateriale || null,
             codVetroTelaio: codVetroTelaio || null,
+            codEsecuzioneAnte: codEsecuzioneAnte || null,
             supplementoIds,
             quantita: quantita || 1,
           }),
@@ -284,6 +316,7 @@ export function CatalogLineConfigurator({
     profonditaMm,
     codMateriale,
     codVetroTelaio,
+    codEsecuzioneAnte,
     supplementoIds,
     quantita,
     headers,
@@ -316,6 +349,7 @@ export function CatalogLineConfigurator({
       profonditaMm: profonditaMm ? Number(profonditaMm) : null,
       codMateriale: codMateriale || null,
       codVetroTelaio: codVetroTelaio || null,
+      codEsecuzioneAnte: codEsecuzioneAnte || null,
       supplementiNomi,
       quantita: Number(quantita) || 1,
       prezzoUnitario: Number(prezzoUnitario),
@@ -449,7 +483,7 @@ export function CatalogLineConfigurator({
                     onChange={(e) => setAltezzaMm(e.target.value)}
                   />
                 </div>
-                {modalita === "mc" ? (
+                {mostraProfondita ? (
                   <div className="space-y-1">
                     <Label className="text-xs">Profondita (mm)</Label>
                     <Input
@@ -513,6 +547,42 @@ export function CatalogLineConfigurator({
                   </SelectContent>
                 </Select>
               </div>
+            ) : null}
+
+            {(config.coefficienti.esecuzioneAnte ?? []).length > 0 ? (
+              <div className="space-y-1">
+                <Label className="text-xs">Esecuzione ante</Label>
+                <Select
+                  value={codEsecuzioneAnte || "__none__"}
+                  onValueChange={(v) =>
+                    setCodEsecuzioneAnte(v === "__none__" ? "" : v)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Nessuna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nessuna</SelectItem>
+                    {(config.coefficienti.esecuzioneAnte ?? []).map((c) => (
+                      <SelectItem key={c.codice} value={c.codice}>
+                        {c.codice}
+                        {c.descrizione ? ` — ${c.descrizione}` : ""} (x
+                        {c.moltiplicatore})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
+            {config.prodotto.codTipoCassone ? (
+              <p className="text-xs text-muted-foreground">
+                Tipo cassone:{" "}
+                <Badge variant="secondary">
+                  {config.prodotto.codTipoCassone}
+                </Badge>{" "}
+                (coefficiente applicato automaticamente)
+              </p>
             ) : null}
 
             {config.supplementi.length > 0 ? (
@@ -593,6 +663,17 @@ export function CatalogLineConfigurator({
                   <span className="text-muted-foreground">Prezzo base</span>
                   <span>{CHF(breakdown.prezzoBase)}</span>
                 </div>
+                {(breakdown.incrementiDimensionali ?? []).map((i) => (
+                  <div
+                    key={`inc-${i.dimensione}`}
+                    className="flex justify-between text-muted-foreground"
+                  >
+                    <span>
+                      + Extra {i.dimensione} ({i.valoreMm} mm)
+                    </span>
+                    <span>{CHF(i.importo)}</span>
+                  </div>
+                ))}
                 {breakdown.coefficienti.map((c) => (
                   <div
                     key={`${c.categoria}-${c.codice}`}

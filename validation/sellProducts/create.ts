@@ -55,6 +55,39 @@ export const validation = z.object({
     },
     z.number().positive().optional(),
   ),
+  width_mm: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    },
+    z.number().positive().optional(),
+  ),
+  height_mm: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    },
+    z.number().positive().optional(),
+  ),
+  depth_mm: z.preprocess(
+    (value) => {
+      if (value === "" || value === null || value === undefined) {
+        return undefined;
+      }
+
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    },
+    z.number().positive().optional(),
+  ),
   modalita_prezzo: z
     .preprocess(
       (value) => (value === "" || value === null ? undefined : value),
@@ -63,6 +96,11 @@ export const validation = z.object({
     .nullable()
     .optional(),
   famiglia_apertura_cod: z
+    .string()
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  cod_tipo_cassone: z
     .string()
     .optional()
     .nullable()

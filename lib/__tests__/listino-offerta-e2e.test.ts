@@ -89,6 +89,9 @@ const fakeDataSource: ListinoDataSource = {
     );
     return match ? match.moltiplicatore : null;
   },
+  async getIncrementiDimensionali() {
+    return [];
+  },
   async getSupplementi(ids) {
     return ids.map((id) => SUPPLEMENTI[id]).filter(Boolean) as Supplemento[];
   },

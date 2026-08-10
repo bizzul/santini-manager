@@ -67,8 +67,12 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
       description: "",
       supplier_id: undefined,
       price_list: false,
+      width_mm: undefined,
+      height_mm: undefined,
+      depth_mm: undefined,
       modalita_prezzo: undefined,
       famiglia_apertura_cod: "",
+      cod_tipo_cassone: "",
       image_url: "",
       doc_url: "",
     },
@@ -328,6 +332,68 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="width_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Larghezza (mm)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="es. 800"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="height_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Altezza (mm)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="es. 1400"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="depth_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Profondità (mm)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="es. 600"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}

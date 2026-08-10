@@ -30,16 +30,25 @@ const CONFIG = {
     famigliaAperturaCod: "FIN_SING",
     codMateriale: null,
     codVetroTelaio: null,
+    codTipoCassone: null,
     imageUrl: null,
     categoria: "Serramenti",
   },
-  coefficienti: { materiale: [], vetroTelaio: [] },
+  coefficienti: {
+    materiale: [],
+    vetroTelaio: [],
+    esecuzioneAnte: [],
+    tipoCassone: [],
+  },
+  dimensioniIncremento: [],
   supplementi: [],
 };
 
 const BREAKDOWN = {
   modalitaPrezzo: "griglia",
   prezzoBase: 450,
+  incrementiDimensionali: [],
+  prezzoBaseConIncrementi: 450,
   coefficienti: [],
   prezzoDopoCoefficienti: 450,
   supplementiFissi: [],

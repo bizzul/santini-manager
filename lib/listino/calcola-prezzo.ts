@@ -1,6 +1,8 @@
 import { roundCurrency } from "@/lib/documenti/calcolo-totali";
 import type {
   CoefficienteCategoria,
+  DimensioneIncremento,
+  ListinoIncrementoDimensionale,
   ModalitaPrezzo,
   Supplemento,
   SupplementoTipoCalcolo,
@@ -53,6 +55,7 @@ export interface ProdottoListino {
   famiglia_apertura_cod: string | null;
   cod_materiale?: string | null;
   cod_vetro_telaio?: string | null;
+  cod_tipo_cassone?: string | null;
 }
 
 /**
@@ -90,6 +93,11 @@ export interface ListinoDataSource {
     codice: string,
   ): Promise<number | null>;
 
+  /** Righe di incremento dimensionale attive per una famiglia prodotto. */
+  getIncrementiDimensionali(
+    famigliaProdottoCod: string,
+  ): Promise<ListinoIncrementoDimensionale[]>;
+
   /** Supplementi corrispondenti agli id passati (anche non attivi). */
   getSupplementi(ids: string[]): Promise<Supplemento[]>;
 }
@@ -103,15 +111,33 @@ export interface PricingInput {
   profonditaMm?: number;
   codMateriale?: string | null;
   codVetroTelaio?: string | null;
+  /** Codice esecuzione ante (Armadi): scelto in offerta. */
+  codEsecuzioneAnte?: string | null;
+  /** Codice tipo cassone (Armadi): normalmente dal prodotto. */
+  codTipoCassone?: string | null;
   supplementoIds?: string[];
   /** Quantita di righe. Default 1. */
   quantita?: number;
 }
 
 export interface CoefficienteApplicato {
-  categoria: CoefficienteCategoria | "materiale" | "vetro_telaio";
+  categoria:
+    | CoefficienteCategoria
+    | "materiale"
+    | "vetro_telaio"
+    | "esecuzione_ante"
+    | "tipo_cassone";
   codice: string;
   moltiplicatore: number;
+}
+
+export interface IncrementoApplicato {
+  dimensione: DimensioneIncremento;
+  valoreMm: number;
+  valoreRiferimentoMm: number;
+  incrementoMm: number;
+  prezzoPerIncrementoChf: number;
+  importo: number;
 }
 
 export interface SupplementoApplicato {
@@ -127,6 +153,10 @@ export interface SupplementoApplicato {
 export interface PriceBreakdown {
   modalitaPrezzo: ModalitaPrezzo;
   prezzoBase: number;
+  /** Incrementi dimensionali additivi applicati alla base. */
+  incrementiDimensionali: IncrementoApplicato[];
+  /** prezzoBase + somma incrementi dimensionali. */
+  prezzoBaseConIncrementi: number;
   coefficienti: CoefficienteApplicato[];
   prezzoDopoCoefficienti: number;
   supplementiFissi: SupplementoApplicato[];
@@ -273,6 +303,63 @@ async function risolviPrezzoBase(
   }
 }
 
+/** Mappa una dimensione di incremento al valore in input (mm). */
+function valorePerDimensione(
+  dimensione: DimensioneIncremento,
+  input: PricingInput,
+): number | null {
+  switch (dimensione) {
+    case "larghezza":
+      return typeof input.larghezzaMm === "number" ? input.larghezzaMm : null;
+    case "altezza":
+      return typeof input.altezzaMm === "number" ? input.altezzaMm : null;
+    case "profondita":
+      return typeof input.profonditaMm === "number" ? input.profonditaMm : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Termine additivo di prezzo per scostamento dimensionale. Si somma alla base
+ * PRIMA dei coefficienti moltiplicativi. Gli scostamenti negativi (misura sotto
+ * il valore di riferimento) sono limitati a 0: nessuno sconto sotto il riferimento.
+ */
+async function risolviIncrementiDimensionali(
+  prodotto: ProdottoListino,
+  input: PricingInput,
+  dataSource: ListinoDataSource,
+): Promise<IncrementoApplicato[]> {
+  const famiglia = prodotto.famiglia_apertura_cod;
+  if (!famiglia) return [];
+
+  const righe = await dataSource.getIncrementiDimensionali(famiglia);
+  if (!righe || righe.length === 0) return [];
+
+  const applicati: IncrementoApplicato[] = [];
+  for (const riga of righe) {
+    if (!riga.attivo) continue;
+    const valoreMm = valorePerDimensione(riga.dimensione, input);
+    if (valoreMm == null || riga.incremento_mm <= 0) continue;
+
+    const rawSteps =
+      (valoreMm - riga.valore_riferimento_mm) / riga.incremento_mm;
+    const steps = Math.max(0, rawSteps);
+    const importo = roundCurrency(steps * Number(riga.prezzo_per_incremento_chf));
+    if (importo === 0) continue;
+
+    applicati.push({
+      dimensione: riga.dimensione,
+      valoreMm,
+      valoreRiferimentoMm: riga.valore_riferimento_mm,
+      incrementoMm: riga.incremento_mm,
+      prezzoPerIncrementoChf: Number(riga.prezzo_per_incremento_chf),
+      importo,
+    });
+  }
+  return applicati;
+}
+
 async function risolviCoefficienti(
   prodotto: ProdottoListino,
   input: PricingInput,
@@ -306,6 +393,39 @@ async function risolviCoefficienti(
       applicati.push({
         categoria: "vetro_telaio",
         codice: codVetroTelaio,
+        moltiplicatore,
+      });
+    }
+  }
+
+  // Esecuzione ante (Armadi): scelta in offerta, si applica solo alle ante.
+  const codEsecuzioneAnte = input.codEsecuzioneAnte ?? null;
+  if (codEsecuzioneAnte) {
+    const moltiplicatore = await dataSource.getCoefficiente(
+      ["esecuzione_ante"],
+      codEsecuzioneAnte,
+    );
+    if (moltiplicatore != null) {
+      applicati.push({
+        categoria: "esecuzione_ante",
+        codice: codEsecuzioneAnte,
+        moltiplicatore,
+      });
+    }
+  }
+
+  // Tipo cassone (Armadi): normalmente attributo fisso del prodotto.
+  const codTipoCassone =
+    input.codTipoCassone ?? prodotto.cod_tipo_cassone ?? null;
+  if (codTipoCassone) {
+    const moltiplicatore = await dataSource.getCoefficiente(
+      ["tipo_cassone"],
+      codTipoCassone,
+    );
+    if (moltiplicatore != null) {
+      applicati.push({
+        categoria: "tipo_cassone",
+        codice: codTipoCassone,
         moltiplicatore,
       });
     }
@@ -356,11 +476,25 @@ export async function calcolaPrezzo(
   );
   const prezzoBase = roundCurrency(prezzoBaseRaw);
 
+  // Termine additivo (incrementi dimensionali) applicato alla base PRIMA dei
+  // coefficienti moltiplicativi.
+  const incrementiDimensionali = await risolviIncrementiDimensionali(
+    prodotto,
+    input,
+    dataSource,
+  );
+  const incrementiTotale = incrementiDimensionali.reduce(
+    (acc, i) => acc + i.importo,
+    0,
+  );
+  const prezzoBaseConIncrementiRaw = prezzoBaseRaw + incrementiTotale;
+  const prezzoBaseConIncrementi = roundCurrency(prezzoBaseConIncrementiRaw);
+
   const coefficienti = await risolviCoefficienti(prodotto, input, dataSource);
   const prezzoDopoCoefficienti = roundCurrency(
     coefficienti.reduce(
       (acc, c) => acc * c.moltiplicatore,
-      prezzoBaseRaw,
+      prezzoBaseConIncrementiRaw,
     ),
   );
 
@@ -459,6 +593,8 @@ export async function calcolaPrezzo(
   return {
     modalitaPrezzo: modalita,
     prezzoBase,
+    incrementiDimensionali,
+    prezzoBaseConIncrementi,
     coefficienti,
     prezzoDopoCoefficienti,
     supplementiFissi,

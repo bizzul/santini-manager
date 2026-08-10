@@ -40,6 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Loader2 } from "lucide-react";
 import { DocumentUpload } from "@/components/ui/document-upload";
 import { useT } from "@/components/i18n/i18n-provider";
+import { ListinoProdottoEditor } from "./listino-prodotto-editor";
 
 type Props = {
   handleClose: any;
@@ -72,6 +73,7 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       price_list: false,
       modalita_prezzo: undefined,
       famiglia_apertura_cod: "",
+      cod_tipo_cassone: "",
       image_url: "",
       doc_url: "",
       active: true,
@@ -79,6 +81,8 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
   });
 
   const { isSubmitting } = form.formState;
+  const modalitaWatch = form.watch("modalita_prezzo");
+  const famigliaWatch = form.watch("famiglia_apertura_cod");
   const resolvedCategory = Array.isArray(data.category)
     ? data.category[0]
     : data.category;
@@ -131,10 +135,14 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
       description: data.description || "",
       diameter_mm: data.diameter_mm ?? undefined,
       length_mm: data.length_mm ?? undefined,
+      width_mm: data.width_mm ?? undefined,
+      height_mm: data.height_mm ?? undefined,
+      depth_mm: data.depth_mm ?? undefined,
       supplier_id: data.supplier_id ?? undefined,
       price_list: data.price_list ?? false,
       modalita_prezzo: data.modalita_prezzo ?? undefined,
       famiglia_apertura_cod: data.famiglia_apertura_cod ?? "",
+      cod_tipo_cassone: data.cod_tipo_cassone ?? "",
       image_url: data.image_url || "",
       doc_url: data.doc_url || "",
       active: data.active ?? true,
@@ -370,6 +378,69 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
           )}
         />
 
+        <div className="grid grid-cols-3 gap-4">
+          <FormField
+            control={form.control}
+            name="width_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Larghezza (mm)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="es. 800"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="height_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Altezza (mm)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="es. 1400"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="depth_mm"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Profondità (mm)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="es. 600"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -465,6 +536,40 @@ const EditProductForm = ({ handleClose, data, domain, siteId }: Props) => {
             )}
           />
         </div>
+
+        {famigliaWatch === "ARM_CASSONE" || form.watch("cod_tipo_cassone") ? (
+          <FormField
+            control={form.control}
+            name="cod_tipo_cassone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Codice tipo cassone (Armadi)</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="es. ARM_MURO"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Collega al coefficiente listino di categoria &quot;tipo
+                  cassone&quot;.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
+
+        {data?.id ? (
+          <ListinoProdottoEditor
+            productId={data.id}
+            domain={domain}
+            siteId={siteId}
+            modalita={modalitaWatch as any}
+            famiglia={famigliaWatch}
+          />
+        ) : null}
 
         <FormField
           control={form.control}

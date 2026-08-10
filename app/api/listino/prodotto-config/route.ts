@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const { data: prodotto, error: prodErr } = await supabase
       .from("SellProduct")
       .select(
-        "id, name, internal_code, modalita_prezzo, famiglia_apertura_cod, cod_materiale, cod_vetro_telaio, image_url, category:sellproduct_categories(name)",
+        "id, name, internal_code, modalita_prezzo, famiglia_apertura_cod, cod_materiale, cod_vetro_telaio, cod_tipo_cassone, image_url, width_mm, height_mm, depth_mm, category:sellproduct_categories(name)",
       )
       .eq("site_id", siteId)
       .eq("id", sellProductId)
@@ -68,6 +68,31 @@ export async function GET(req: NextRequest) {
     );
     const vetroTelaio = (coeffData ?? []).filter((c) =>
       ["vetro", "telaio"].includes(c.categoria),
+    );
+    const esecuzioneAnte = (coeffData ?? []).filter(
+      (c) => c.categoria === "esecuzione_ante",
+    );
+    const tipoCassone = (coeffData ?? []).filter(
+      (c) => c.categoria === "tipo_cassone",
+    );
+
+    // Incrementi dimensionali applicabili (per la famiglia del prodotto).
+    let incrementi: { dimensione: string }[] = [];
+    if (prodotto.famiglia_apertura_cod) {
+      const { data: incData, error: incErr } = await supabase
+        .from("listino_incrementi_dimensionali")
+        .select("dimensione")
+        .eq("site_id", siteId)
+        .eq("famiglia_prodotto_cod", prodotto.famiglia_apertura_cod)
+        .eq("attivo", true);
+      if (incErr) {
+        log.error("prodotto-config incrementi error:", incErr);
+      } else {
+        incrementi = incData ?? [];
+      }
+    }
+    const dimensioniIncremento = Array.from(
+      new Set(incrementi.map((i) => i.dimensione)),
     );
 
     // Supplementi applicabili: quelli con categoria = categoria prodotto o 'tutte'.
@@ -111,10 +136,15 @@ export async function GET(req: NextRequest) {
         famigliaAperturaCod: prodotto.famiglia_apertura_cod ?? null,
         codMateriale: prodotto.cod_materiale ?? null,
         codVetroTelaio: prodotto.cod_vetro_telaio ?? null,
+        codTipoCassone: prodotto.cod_tipo_cassone ?? null,
         imageUrl: prodotto.image_url ?? null,
+        larghezzaDefaultMm: prodotto.width_mm ?? null,
+        altezzaDefaultMm: prodotto.height_mm ?? null,
+        profonditaDefaultMm: prodotto.depth_mm ?? null,
         categoria,
       },
-      coefficienti: { materiale, vetroTelaio },
+      coefficienti: { materiale, vetroTelaio, esecuzioneAnte, tipoCassone },
+      dimensioniIncremento,
       supplementi,
     });
   } catch (err: unknown) {

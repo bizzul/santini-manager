@@ -268,6 +268,9 @@ export interface SellProduct {
     description?: string; // Descrizione
     diameter_mm?: number | null; // Diametro in millimetri (opzionale)
     length_mm?: number | null; // Lunghezza in millimetri (opzionale)
+    width_mm?: number | null; // Larghezza in millimetri (default configuratore)
+    height_mm?: number | null; // Altezza in millimetri (default configuratore)
+    depth_mm?: number | null; // Profondita in millimetri (modalita mc)
     unit?: string | null; // Unita' di misura catalogo
     list_price?: number | null; // Prezzo listino
     price_list?: boolean; // Listino prezzi (checkbox)
@@ -278,6 +281,7 @@ export interface SellProduct {
     cod_vetro_telaio?: string | null; // Codice vetro/telaio (import CSV: COD_VETRO_TELAIO)
     modalita_prezzo?: ModalitaPrezzo | null; // Modalita calcolo prezzo listino
     famiglia_apertura_cod?: string | null; // Codice famiglia apertura (prodotti a griglia)
+    cod_tipo_cassone?: string | null; // Codice tipo cassone (Armadi ARM_CASSONE)
     active?: boolean;
     site_id?: string;
     category_id?: number; // Riferimento a sellproduct_categories
@@ -1082,7 +1086,24 @@ export type CoefficienteCategoria =
     | "materiale_serramento"
     | "vetro"
     | "materiale_porta"
-    | "telaio";
+    | "telaio"
+    | "esecuzione_ante"
+    | "tipo_cassone";
+
+export type DimensioneIncremento = "larghezza" | "altezza" | "profondita";
+
+export interface ListinoIncrementoDimensionale {
+    id: string;
+    site_id: string;
+    famiglia_prodotto_cod: string;
+    dimensione: DimensioneIncremento;
+    valore_riferimento_mm: number;
+    incremento_mm: number;
+    prezzo_per_incremento_chf: number;
+    attivo: boolean;
+    created_at: string;
+    updated_at: string;
+}
 
 export interface ListinoGrigliaBase {
     id: string;

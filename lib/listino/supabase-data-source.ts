@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   CoefficienteCategoria,
+  ListinoIncrementoDimensionale,
   Supplemento,
 } from "@/types/supabase";
 import type {
@@ -22,7 +23,7 @@ export function createSupabaseListinoDataSource(
       let query = supabase
         .from("SellProduct")
         .select(
-          "id, modalita_prezzo, famiglia_apertura_cod, cod_materiale, cod_vetro_telaio",
+          "id, modalita_prezzo, famiglia_apertura_cod, cod_materiale, cod_vetro_telaio, cod_tipo_cassone",
         )
         .eq("site_id", siteId)
         .limit(1);
@@ -117,6 +118,23 @@ export function createSupabaseListinoDataSource(
         return null;
       }
       return data ? Number(data.moltiplicatore) : null;
+    },
+
+    async getIncrementiDimensionali(
+      famigliaProdottoCod: string,
+    ): Promise<ListinoIncrementoDimensionale[]> {
+      const { data, error } = await supabase
+        .from("listino_incrementi_dimensionali")
+        .select("*")
+        .eq("site_id", siteId)
+        .eq("famiglia_prodotto_cod", famigliaProdottoCod)
+        .eq("attivo", true);
+
+      if (error) {
+        console.error("getIncrementiDimensionali error:", error);
+        return [];
+      }
+      return (data as ListinoIncrementoDimensionale[]) ?? [];
     },
 
     async getSupplementi(ids: string[]): Promise<Supplemento[]> {

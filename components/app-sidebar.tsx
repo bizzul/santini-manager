@@ -431,6 +431,15 @@ const getMenuItems = (
       moduleName: "products",
     },
     {
+      key: "coefficienti",
+      label: "Coefficienti",
+      icon: "faListUl",
+      lucideIcon: "Ruler",
+      href: `${basePath}/coefficienti`,
+      alert: false,
+      moduleName: "products",
+    },
+    {
       key: "projects",
       label: navLabels.projects,
       icon: "faTable",

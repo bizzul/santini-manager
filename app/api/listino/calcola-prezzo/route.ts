@@ -45,6 +45,14 @@ export async function POST(req: NextRequest) {
         typeof body.codVetroTelaio === "string" && body.codVetroTelaio
           ? body.codVetroTelaio
           : null,
+      codEsecuzioneAnte:
+        typeof body.codEsecuzioneAnte === "string" && body.codEsecuzioneAnte
+          ? body.codEsecuzioneAnte
+          : null,
+      codTipoCassone:
+        typeof body.codTipoCassone === "string" && body.codTipoCassone
+          ? body.codTipoCassone
+          : null,
       supplementoIds: Array.isArray(body.supplementoIds)
         ? body.supplementoIds.map(String)
         : [],

@@ -44,6 +44,15 @@ const PRODOTTI: Record<number, ProdottoListino> = {
   6: { id: 6, modalita_prezzo: null, famiglia_apertura_cod: null },
   // Arredamento a volume (rate in listino_fisso)
   7: { id: 7, modalita_prezzo: "mc", famiglia_apertura_cod: null },
+  // Armadio cassone (griglia + incrementi profondita + tipo cassone fisso)
+  8: {
+    id: 8,
+    modalita_prezzo: "griglia",
+    famiglia_apertura_cod: "ARM_CASSONE",
+    cod_materiale: null,
+    cod_vetro_telaio: null,
+    cod_tipo_cassone: "ARM_MURO",
+  },
 };
 
 const INTERNAL_CODES: Record<string, number> = { "FIN-0001": 1 };
@@ -67,6 +76,34 @@ const GRIGLIA: GrigliaCell[] = [
     hMax: 1500,
     prezzo: 800,
   },
+  {
+    famiglia: "ARM_CASSONE",
+    wMin: 300,
+    wMax: 1200,
+    hMin: 1200,
+    hMax: 2800,
+    prezzo: 1000,
+  },
+];
+
+interface IncrementoCell {
+  famiglia: string;
+  dimensione: "larghezza" | "altezza" | "profondita";
+  valore_riferimento_mm: number;
+  incremento_mm: number;
+  prezzo_per_incremento_chf: number;
+  attivo: boolean;
+}
+
+const INCREMENTI: IncrementoCell[] = [
+  {
+    famiglia: "ARM_CASSONE",
+    dimensione: "profondita",
+    valore_riferimento_mm: 300,
+    incremento_mm: 50,
+    prezzo_per_incremento_chf: 40,
+    attivo: true,
+  },
 ];
 
 const MISURE_STANDARD: Record<number, Record<string, number>> = {
@@ -86,6 +123,10 @@ const COEFFICIENTI: {
 }[] = [
   { categoria: "materiale_serramento", codice: "ALU", moltiplicatore: 1.2 },
   { categoria: "vetro", codice: "VC2", moltiplicatore: 1.1 },
+  { categoria: "esecuzione_ante", codice: "TRC_B", moltiplicatore: 1.0 },
+  { categoria: "esecuzione_ante", codice: "MDF_LAC", moltiplicatore: 1.5 },
+  { categoria: "tipo_cassone", codice: "ARM_MURO", moltiplicatore: 1.0 },
+  { categoria: "tipo_cassone", codice: "ARM_SCORR2", moltiplicatore: 1.2 },
 ];
 
 function makeSupplemento(
@@ -148,6 +189,20 @@ const fakeDataSource: ListinoDataSource = {
       (c) => categorie.includes(c.categoria) && c.codice === codice,
     );
     return match ? match.moltiplicatore : null;
+  },
+  async getIncrementiDimensionali(famiglia) {
+    return INCREMENTI.filter((i) => i.famiglia === famiglia).map((i) => ({
+      id: `${i.famiglia}-${i.dimensione}`,
+      site_id: "site-test",
+      famiglia_prodotto_cod: i.famiglia,
+      dimensione: i.dimensione,
+      valore_riferimento_mm: i.valore_riferimento_mm,
+      incremento_mm: i.incremento_mm,
+      prezzo_per_incremento_chf: i.prezzo_per_incremento_chf,
+      attivo: i.attivo,
+      created_at: "2026-08-10T00:00:00Z",
+      updated_at: "2026-08-10T00:00:00Z",
+    }));
   },
   async getSupplementi(ids) {
     return ids.map((id) => SUPPLEMENTI[id]).filter(Boolean) as Supplemento[];
@@ -387,5 +442,60 @@ describe("calcolaPrezzo - errori (mai prezzo a zero)", () => {
         fakeDataSource,
       ),
     ).rejects.toMatchObject({ code: "SUPPLEMENTO_NON_TROVATO" });
+  });
+});
+
+describe("calcolaPrezzo - Armadi cassone (incrementi + coefficienti)", () => {
+  it("somma l'extra profondita alla base PRIMA dei coefficienti", async () => {
+    // base griglia 1000 + extra profondita (500-300)/50*40 = 160 -> 1160
+    // coeff tipo_cassone ARM_MURO x1.0 -> 1160
+    const b = await calcolaPrezzo(
+      {
+        sellProductId: 8,
+        larghezzaMm: 600,
+        altezzaMm: 2000,
+        profonditaMm: 500,
+      },
+      fakeDataSource,
+    );
+    expect(b.prezzoBase).toBe(1000);
+    expect(b.incrementiDimensionali).toHaveLength(1);
+    expect(b.incrementiDimensionali[0].importo).toBe(160);
+    expect(b.prezzoBaseConIncrementi).toBe(1160);
+    expect(b.prezzoUnitario).toBe(1160);
+  });
+
+  it("applica esecuzione_ante e tipo_cassone come moltiplicatori sulla base+extra", async () => {
+    // (1000 + 160) x esecuzione MDF_LAC 1.5 x tipo ARM_MURO 1.0 = 1740
+    const b = await calcolaPrezzo(
+      {
+        sellProductId: 8,
+        larghezzaMm: 600,
+        altezzaMm: 2000,
+        profonditaMm: 500,
+        codEsecuzioneAnte: "MDF_LAC",
+      },
+      fakeDataSource,
+    );
+    expect(b.coefficienti.map((c) => c.categoria)).toEqual([
+      "esecuzione_ante",
+      "tipo_cassone",
+    ]);
+    expect(b.prezzoUnitario).toBe(1740);
+  });
+
+  it("profondita sotto il riferimento: nessun extra negativo (limitato a 0)", async () => {
+    const b = await calcolaPrezzo(
+      {
+        sellProductId: 8,
+        larghezzaMm: 600,
+        altezzaMm: 2000,
+        profonditaMm: 250,
+      },
+      fakeDataSource,
+    );
+    expect(b.incrementiDimensionali).toHaveLength(0);
+    expect(b.prezzoBaseConIncrementi).toBe(1000);
+    expect(b.prezzoUnitario).toBe(1000);
   });
 });

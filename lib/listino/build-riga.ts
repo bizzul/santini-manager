@@ -11,6 +11,7 @@ export interface BuildCatalogRigaParams {
   profonditaMm?: number | null;
   codMateriale?: string | null;
   codVetroTelaio?: string | null;
+  codEsecuzioneAnte?: string | null;
   /** Nomi dei supplementi selezionati (per la descrizione estesa). */
   supplementiNomi?: string[];
   quantita: number;
@@ -41,7 +42,7 @@ export function buildMisureLabel(
   const h = Number(altezzaMm);
   if (!(w > 0 && h > 0)) return null;
   const d = Number(profonditaMm);
-  const dims = modalita === "mc" && d > 0 ? `${w}x${h}x${d}` : `${w}x${h}`;
+  const dims = d > 0 ? `${w}x${h}x${d}` : `${w}x${h}`;
   return `${dims} mm`;
 }
 
@@ -55,11 +56,13 @@ export function buildDescrizioneEstesa(
   codMateriale?: string | null,
   codVetroTelaio?: string | null,
   supplementiNomi?: string[],
+  codEsecuzioneAnte?: string | null,
 ): string | null {
   const parts: string[] = [];
   if (misureLabel) parts.push(`Misure: ${misureLabel}`);
   if (codMateriale) parts.push(`Materiale: ${codMateriale}`);
   if (codVetroTelaio) parts.push(`Vetro/telaio: ${codVetroTelaio}`);
+  if (codEsecuzioneAnte) parts.push(`Esecuzione ante: ${codEsecuzioneAnte}`);
   if (supplementiNomi && supplementiNomi.length > 0) {
     parts.push(`Supplementi: ${supplementiNomi.join(", ")}`);
   }
@@ -90,6 +93,7 @@ export function buildCatalogRiga(
       params.codMateriale,
       params.codVetroTelaio,
       params.supplementiNomi,
+      params.codEsecuzioneAnte,
     ),
     misure: misureLabel,
     unita: "Pz.",
