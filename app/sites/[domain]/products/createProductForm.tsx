@@ -67,6 +67,8 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
       description: "",
       supplier_id: undefined,
       price_list: false,
+      modalita_prezzo: undefined,
+      famiglia_apertura_cod: "",
       image_url: "",
       doc_url: "",
     },
@@ -363,6 +365,58 @@ const CreateProductForm = ({ handleClose, domain, siteId }: Props) => {
                     value={field.value ?? ""}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="modalita_prezzo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Modalità prezzo (listino)</FormLabel>
+                <FormControl>
+                  <Select
+                    value={field.value ?? "__none__"}
+                    onValueChange={(value) =>
+                      field.onChange(value === "__none__" ? undefined : value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Nessuna" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nessuna</SelectItem>
+                      <SelectItem value="griglia">Griglia dimensionale</SelectItem>
+                      <SelectItem value="misure_standard">Misure standard</SelectItem>
+                      <SelectItem value="fisso">Prezzo fisso</SelectItem>
+                      <SelectItem value="mq">Al metro quadro</SelectItem>
+                      <SelectItem value="mc">Al metro cubo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="famiglia_apertura_cod"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Famiglia apertura</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="es. FIN_SING (solo griglia)"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Richiesta per i prodotti a griglia.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

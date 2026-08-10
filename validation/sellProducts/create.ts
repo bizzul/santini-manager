@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const MODALITA_PREZZO_VALUES = [
+  "griglia",
+  "misure_standard",
+  "fisso",
+  "mq",
+  "mc",
+] as const;
+
 export const validation = z.object({
   category: z.string().min(1, {
     message: "Categoria richiesta",
@@ -47,6 +55,18 @@ export const validation = z.object({
     },
     z.number().positive().optional(),
   ),
+  modalita_prezzo: z
+    .preprocess(
+      (value) => (value === "" || value === null ? undefined : value),
+      z.enum(MODALITA_PREZZO_VALUES).optional(),
+    )
+    .nullable()
+    .optional(),
+  famiglia_apertura_cod: z
+    .string()
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   price_list: z.boolean().default(false),
   image_url: z
     .string()

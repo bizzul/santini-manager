@@ -54,6 +54,8 @@ import {
   errorsFromGenerateApiPayload,
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
+import { CatalogLineConfigurator } from "./catalog-line-configurator";
+import type { RigaArricchita } from "@/validation/documenti/extracted-document";
 
 const UNITA_OPTIONS = UnitaEnum.options;
 
@@ -85,6 +87,7 @@ export function DocumentReviewForm({
   const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(
     null,
   );
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const form = useForm<DocumentoArricchito>({
     resolver: zodResolver(DocumentoArricchitoSchema),
@@ -114,6 +117,10 @@ export function DocumentReviewForm({
       },
       { focusName: `righe.${newIndex}.descrizione` },
     );
+  };
+
+  const addCatalogLine = (riga: RigaArricchita) => {
+    append(riga, { shouldFocus: false });
   };
 
   const uploadRigaImage = async (index: number, file: File) => {
@@ -559,16 +566,28 @@ export function DocumentReviewForm({
               <div className="overflow-hidden rounded-md border border-border/70">
                 <div className="flex items-center justify-between gap-2 border-b border-border/70 bg-muted/20 px-3 py-2">
                   <p className="text-sm font-medium">Righe articolo</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={addRiga}
-                  >
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Nuova riga
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setCatalogOpen(true)}
+                    >
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Da catalogo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={addRiga}
+                    >
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Nuova riga
+                    </Button>
+                  </div>
                 </div>
 
                 {fields.length === 0 ? (
@@ -865,7 +884,17 @@ export function DocumentReviewForm({
                   </div>
                 )}
 
-                <div className="border-t border-border/70 bg-muted/10 px-3 py-2">
+                <div className="grid grid-cols-1 gap-2 border-t border-border/70 bg-muted/10 px-3 py-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full border border-dashed border-border/80"
+                    onClick={() => setCatalogOpen(true)}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Aggiungi da catalogo
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -874,7 +903,7 @@ export function DocumentReviewForm({
                     onClick={addRiga}
                   >
                     <Plus className="mr-1.5 h-4 w-4" />
-                    Aggiungi riga
+                    Aggiungi riga libera
                   </Button>
                 </div>
               </div>
@@ -980,6 +1009,12 @@ export function DocumentReviewForm({
           </aside>
         </div>
       </form>
+      <CatalogLineConfigurator
+        domain={domain}
+        open={catalogOpen}
+        onOpenChange={setCatalogOpen}
+        onAdd={addCatalogLine}
+      />
     </Form>
   );
 }

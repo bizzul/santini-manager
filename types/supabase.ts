@@ -276,6 +276,8 @@ export interface SellProduct {
     internal_code?: string; // Codice interno per import CSV
     cod_materiale?: string | null; // Codice materiale (import CSV: COD_MATERIALE)
     cod_vetro_telaio?: string | null; // Codice vetro/telaio (import CSV: COD_VETRO_TELAIO)
+    modalita_prezzo?: ModalitaPrezzo | null; // Modalita calcolo prezzo listino
+    famiglia_apertura_cod?: string | null; // Codice famiglia apertura (prodotti a griglia)
     active?: boolean;
     site_id?: string;
     category_id?: number; // Riferimento a sellproduct_categories
@@ -1063,4 +1065,107 @@ export interface Dashboard3DScene {
     scene_config: Dashboard3DSceneConfig;
     created_at: string;
     updated_at: string;
+}
+
+// -----------------------------------------------------------------------------
+// Listino prezzi (Fase 1) — schema tabellare di pricing
+// -----------------------------------------------------------------------------
+
+export type ModalitaPrezzo =
+    | "griglia"
+    | "misure_standard"
+    | "fisso"
+    | "mq"
+    | "mc";
+
+export type CoefficienteCategoria =
+    | "materiale_serramento"
+    | "vetro"
+    | "materiale_porta"
+    | "telaio";
+
+export interface ListinoGrigliaBase {
+    id: string;
+    site_id: string;
+    famiglia_apertura_cod: string;
+    larghezza_min_mm: number;
+    larghezza_max_mm: number;
+    altezza_min_mm: number;
+    altezza_max_mm: number;
+    prezzo_base_chf: number;
+    attivo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ListinoCoefficiente {
+    id: string;
+    site_id: string;
+    categoria: CoefficienteCategoria;
+    codice: string;
+    descrizione?: string | null;
+    moltiplicatore: number;
+    attivo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ListinoMisuraStandard {
+    id: string;
+    site_id: string;
+    sell_product_id: number;
+    larghezza_mm: number;
+    altezza_mm: number;
+    prezzo_chf: number;
+    attivo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface ListinoFisso {
+    id: string;
+    site_id: string;
+    sell_product_id: number;
+    prezzo_chf: number;
+    attivo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+// -----------------------------------------------------------------------------
+// Supplementi (Fase 2) — sovrapprezzi opzionali su prodotto configurato
+// -----------------------------------------------------------------------------
+
+export type SupplementoTipoCalcolo =
+    | "fisso_chf"
+    | "percentuale"
+    | "per_mq"
+    | "per_metro_lineare";
+
+export type SupplementoCategoria =
+    | "Arredamento"
+    | "Porte"
+    | "Serramenti"
+    | "Accessori"
+    | "Posa"
+    | "Service"
+    | "tutte";
+
+export interface Supplemento {
+    id: string;
+    site_id: string;
+    codice: string;
+    nome: string;
+    descrizione?: string | null;
+    tipo_calcolo: SupplementoTipoCalcolo;
+    valore: number;
+    attivo: boolean;
+    created_at: string;
+    updated_at: string;
+    categorie?: SupplementoCategoria[]; // Relazione da supplementi_categorie
+}
+
+export interface SupplementoCategoriaLink {
+    supplemento_id: string;
+    categoria: SupplementoCategoria;
 }

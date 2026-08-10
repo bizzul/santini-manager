@@ -422,6 +422,15 @@ const getMenuItems = (
       moduleName: "products",
     },
     {
+      key: "supplementi",
+      label: "Supplementi",
+      icon: "faListUl",
+      lucideIcon: "Layers",
+      href: `${basePath}/supplementi`,
+      alert: false,
+      moduleName: "products",
+    },
+    {
       key: "projects",
       label: navLabels.projects,
       icon: "faTable",

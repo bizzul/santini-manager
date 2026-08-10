@@ -74,6 +74,8 @@ export async function editSellProductAction(
         diameter_mm: formData.diameter_mm ?? null,
         length_mm: formData.length_mm ?? null,
         price_list: formData.price_list ?? false,
+        modalita_prezzo: formData.modalita_prezzo || null,
+        famiglia_apertura_cod: formData.famiglia_apertura_cod || null,
         image_url: formData.image_url || null,
         doc_url: formData.doc_url || null,
         active: formData.active,

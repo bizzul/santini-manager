@@ -63,6 +63,8 @@ export async function createSellProduct(
       diameter_mm: props.diameter_mm ?? null,
       length_mm: props.length_mm ?? null,
       price_list: props.price_list ?? false,
+      modalita_prezzo: props.modalita_prezzo || null,
+      famiglia_apertura_cod: props.famiglia_apertura_cod || null,
       image_url: props.image_url || null,
       doc_url: props.doc_url || null,
       category_id: categoryId,

@@ -117,6 +117,8 @@ export async function POST(req: NextRequest) {
             product_type: resolvedTipo,
             description: result.data.description || null,
             price_list: result.data.price_list ?? false,
+            modalita_prezzo: result.data.modalita_prezzo || null,
+            famiglia_apertura_cod: result.data.famiglia_apertura_cod || null,
             image_url: result.data.image_url || null,
             doc_url: result.data.doc_url || null,
             active: result.data.active ?? true,
