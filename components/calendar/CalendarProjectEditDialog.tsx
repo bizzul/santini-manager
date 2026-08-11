@@ -37,8 +37,8 @@ export function CalendarProjectEditDialog({
         }
       }}
     >
-      <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
-        <DialogHeader className="space-y-0">
+      <DialogContent className="flex h-[min(900px,90vh)] max-h-[90vh] w-[1440px] max-w-[min(1440px,95vw)] flex-col overflow-hidden p-0">
+        <DialogHeader className="shrink-0 space-y-0 border-b px-6 py-4 pr-14">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -55,6 +55,7 @@ export function CalendarProjectEditDialog({
             </DialogTitle>
           </div>
         </DialogHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
         {task && (
           <EditTaskKanban
             handleClose={handleClose}
@@ -67,6 +68,7 @@ export function CalendarProjectEditDialog({
             domain={domain}
           />
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );

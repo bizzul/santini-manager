@@ -1464,8 +1464,8 @@ function Card({
           )}
 
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1100px] flex-col overflow-hidden !bg-background p-0 dark:!bg-muted">
-              <DialogHeader className="border-b px-6 py-4 pr-14">
+            <DialogContent className="flex h-[min(900px,90vh)] max-h-[90vh] w-[1440px] max-w-[min(1440px,95vw)] flex-col overflow-hidden !bg-background p-0 dark:!bg-muted">
+              <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
                 <div className="flex items-center justify-between gap-3">
                   <DialogTitle>Modifica {data.unique_code}</DialogTitle>
                   <ManagerGuideButton
@@ -1477,7 +1477,7 @@ function Card({
                   />
                 </div>
               </DialogHeader>
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
                 <EditTaskKanban
                   handleClose={(wasDeleted?: boolean) => {
                     setShowModal(false);

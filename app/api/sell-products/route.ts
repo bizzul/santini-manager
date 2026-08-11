@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
             .from("SellProduct")
             .select(`
                 *,
-                category:sellproduct_categories(id, name),
+                category:sellproduct_categories(id, name, color, icon, icon_color),
                 supplier:supplier_id(id, name)
             `)
             .eq("site_id", siteId)

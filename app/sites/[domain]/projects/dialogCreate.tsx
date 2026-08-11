@@ -28,7 +28,7 @@ function DialogCreate({ data }: Props) {
           Aggiungi progetto
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
+      <DialogContent className="h-[900px] max-h-[900px] w-[1440px] max-w-[1440px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crea progetto</DialogTitle>
           <DialogDescription>Crea un progetto nuovo</DialogDescription>

@@ -350,6 +350,7 @@ const EditTaskKanban = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isCollaboratorsExpanded, setIsCollaboratorsExpanded] = useState(true);
   const [selectedCollaborator, setSelectedCollaborator] =
     useState<CollaboratorBadge | null>(null);
   const [taskCollaboratorSummaries, setTaskCollaboratorSummaries] = useState<any[]>(
@@ -368,10 +369,9 @@ const EditTaskKanban = ({
       ? resource.posa_collaborator_ids.map((id: unknown) => String(id))
       : []
   );
-  const [selectedServiceCollaborators, setSelectedServiceCollaborators] = useState<string[]>(
-    Array.isArray(resource?.service_collaborator_ids)
-      ? resource.service_collaborator_ids.map((id: unknown) => String(id))
-      : []
+  // Category selected per product line (for two-step category → subcategory pick)
+  const [offerProductCategoryIds, setOfferProductCategoryIds] = useState<(number | null)[]>(
+    []
   );
 
   // Helper to build headers with siteId
@@ -442,11 +442,6 @@ const EditTaskKanban = ({
         setSelectedPosaCollaborators(
           Array.isArray(task.posa_collaborator_ids)
             ? task.posa_collaborator_ids.map((id: unknown) => String(id))
-            : []
-        );
-        setSelectedServiceCollaborators(
-          Array.isArray(task.service_collaborator_ids)
-            ? task.service_collaborator_ids.map((id: unknown) => String(id))
             : []
         );
       }
@@ -663,11 +658,6 @@ const EditTaskKanban = ({
           ? resource.posa_collaborator_ids.map((id: unknown) => String(id))
           : []
       );
-      setSelectedServiceCollaborators(
-        Array.isArray(resource.service_collaborator_ids)
-          ? resource.service_collaborator_ids.map((id: unknown) => String(id))
-          : []
-      );
     };
 
     initializeForm();
@@ -802,18 +792,12 @@ const EditTaskKanban = ({
         produzione_ora_fine: productionRequired ? d.produzione_ora_fine ?? null : null,
         posa_ora_inizio: d.posa_ora_inizio ?? null,
         posa_ora_fine: d.posa_ora_fine ?? null,
-        service_data_inizio: d.service_data_inizio || null,
-        service_data_fine: d.service_data_fine || null,
-        service_ora_inizio: d.service_ora_inizio ?? null,
-        service_ora_fine: d.service_ora_fine ?? null,
         produzione_collaborator_ids: selectedProductionCollaborators,
         posa_collaborator_ids: selectedPosaCollaborators,
-        service_collaborator_ids: selectedServiceCollaborators,
         assigned_collaborator_ids: Array.from(
           new Set([
             ...selectedProductionCollaborators,
             ...selectedPosaCollaborators,
-            ...selectedServiceCollaborators,
           ])
         ),
         // Deprecated field - intentionally nulled because assignment now uses collaborators list
@@ -943,16 +927,121 @@ const EditTaskKanban = ({
       .join(", ");
   }, [selectedClient]);
 
-  const productOptions = useMemo(
-    () =>
-      Array.isArray(products)
-        ? products.map((product: SellProduct) => ({
-            value: product.id,
-            label: [product.name, product.type].filter(Boolean).join(" "),
-          }))
-        : [],
+  const categoryOptions = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+    const byId = new Map<
+      number | string,
+      { label: string; icon?: string | null; iconColor?: string | null }
+    >();
+    let hasUncategorized = false;
+    for (const product of products as SellProduct[]) {
+      const categoryId = product.category_id ?? product.category?.id;
+      const categoryName = product.category?.name;
+      if (categoryId == null) {
+        hasUncategorized = true;
+        continue;
+      }
+      if (categoryName?.trim().toLowerCase() === "service") {
+        continue;
+      }
+      if (!byId.has(categoryId)) {
+        byId.set(categoryId, {
+          label: categoryName || `Categoria ${categoryId}`,
+          icon: product.category?.icon ?? null,
+          iconColor:
+            product.category?.icon_color || product.category?.color || "#3B82F6",
+        });
+      }
+    }
+    const options = Array.from(byId.entries())
+      .map(([value, meta]) => ({
+        value,
+        label: meta.label,
+        icon: meta.icon,
+        iconColor: meta.iconColor,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, "it"));
+    if (hasUncategorized) {
+      options.push({
+        value: 0,
+        label: "Senza categoria",
+        icon: "Package",
+        iconColor: "#64748b",
+      });
+    }
+    return options;
+  }, [products]);
+
+  const getProductSubcategoryName = useCallback((product: SellProduct) => {
+    return String(product.subcategory || product.type || product.name || "").trim();
+  }, []);
+
+  const getProductsForCategory = useCallback(
+    (categoryId: number | null | undefined) => {
+      if (categoryId == null || !Array.isArray(products)) return [];
+      return (products as SellProduct[]).filter((product) => {
+        const categoryName = product.category?.name?.trim().toLowerCase();
+        if (categoryName === "service") return false;
+        const productCategoryId = product.category_id ?? product.category?.id ?? 0;
+        return productCategoryId === categoryId;
+      });
+    },
     [products]
   );
+
+  const getSubcategoryOptionsForCategory = useCallback(
+    (categoryId: number | null | undefined) => {
+      const categoryProducts = getProductsForCategory(categoryId);
+      const byKey = new Map<string, string>();
+
+      for (const product of categoryProducts) {
+        const label = getProductSubcategoryName(product);
+        if (!label) continue;
+        const key = label.toLowerCase();
+        if (!byKey.has(key)) {
+          byKey.set(key, label);
+        }
+      }
+
+      return Array.from(byKey.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label, "it"));
+    },
+    [getProductSubcategoryName, getProductsForCategory]
+  );
+
+  const resolveProductIdForSubcategory = useCallback(
+    (categoryId: number | null | undefined, subcategoryKey: string) => {
+      const key = subcategoryKey.toLowerCase();
+      const match = getProductsForCategory(categoryId).find(
+        (product) => getProductSubcategoryName(product).toLowerCase() === key
+      );
+      return match?.id ?? null;
+    },
+    [getProductSubcategoryName, getProductsForCategory]
+  );
+
+  // Keep category selections aligned with loaded offer product lines
+  useEffect(() => {
+    if (!Array.isArray(products) || products.length === 0) return;
+    setOfferProductCategoryIds((current) => {
+      const next = offerProducts.map((line, index) => {
+        if (line.productId) {
+          const product = (products as SellProduct[]).find((p) => p.id === line.productId);
+          if (!product) return current[index] ?? null;
+          return product.category_id ?? product.category?.id ?? 0;
+        }
+        return current[index] ?? null;
+      });
+      if (
+        next.length === current.length &&
+        next.every((value, index) => value === current[index])
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }, [offerProducts, products]);
 
   const selectedProjectProduct = useMemo(() => {
     const watchedProductId = form.watch("productId");
@@ -1346,6 +1435,20 @@ const EditTaskKanban = ({
     );
   };
 
+  const handleOfferProductCategoryChange = (
+    index: number,
+    categoryId: number | null
+  ) => {
+    setOfferProductCategoryIds((current) => {
+      const next = [...current];
+      while (next.length <= index) next.push(null);
+      next[index] = categoryId;
+      return next;
+    });
+    // Changing category clears the previously selected product
+    handleOfferProductChange(index, { productId: null, productName: null });
+  };
+
   const handleAddOfferProduct = () => {
     if (offerProducts.length >= 5) return;
     setOfferProducts((current) => [
@@ -1359,10 +1462,14 @@ const EditTaskKanban = ({
         totalPrice: null,
       },
     ]);
+    setOfferProductCategoryIds((current) => [...current, null]);
   };
 
   const handleRemoveOfferProduct = (index: number) => {
     setOfferProducts((current) => current.filter((_, lineIndex) => lineIndex !== index));
+    setOfferProductCategoryIds((current) =>
+      current.filter((_, lineIndex) => lineIndex !== index)
+    );
   };
 
   const handleAddSupplier = async (e: React.MouseEvent) => {
@@ -1557,9 +1664,9 @@ const EditTaskKanban = ({
   return (
     <>
     <Form {...form}>
-      <form className="w-full space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
-          <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
+      <form className="w-full space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="grid w-full grid-cols-3 gap-4 items-start">
+          <div className="col-span-1 order-2 flex min-w-0 flex-col gap-3">
         <div className="grid grid-cols-2 gap-3 items-stretch">
           <div className="h-full p-3 bg-muted dark:bg-background rounded-lg border border-slate-500 space-y-3">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -1728,8 +1835,7 @@ const EditTaskKanban = ({
                   {filteredHistory.length} eventi
                 </p>
               </div>
-              {shouldCollapseHistory && (
-                <CollapsibleTrigger asChild>
+              <CollapsibleTrigger asChild>
                   <Button type="button" variant="ghost" size="sm" className="h-8 px-2">
                     <ChevronDown
                       className={cn(
@@ -1739,7 +1845,6 @@ const EditTaskKanban = ({
                     />
                   </Button>
                 </CollapsibleTrigger>
-              )}
             </div>
             <CollapsibleContent forceMount className={!isHistoryExpanded ? "hidden" : ""}>
               <div className="mt-3 max-h-[260px] overflow-y-auto pr-1">
@@ -1817,64 +1922,94 @@ const EditTaskKanban = ({
           </Collapsible>
         </div>
 
-        <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Collaboratori
-            </h4>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock3 className="h-3.5 w-3.5" />
-              {formatHours(
-                involvedCollaborators.reduce(
-                  (total, collaborator) => total + collaborator.hours,
-                  0
-                )
-              )}
-            </span>
-          </div>
-          {involvedCollaborators.length > 0 ? (
-            <div className="max-h-[220px] overflow-y-auto pr-1 space-y-2">
-              {involvedCollaborators.map((collaborator) => (
-                <button
-                  key={collaborator.key}
-                  type="button"
-                  title={`Apri ${collaborator.name}`}
-                  onClick={() => setSelectedCollaborator(collaborator)}
-                  className="w-full flex items-center justify-between gap-2 rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 px-2 py-1.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Avatar
-                      className="h-8 w-8 border border-slate-500 shadow-sm cursor-pointer"
-                      title={collaborator.name}
-                    >
-                      <AvatarImage src={collaborator.picture || undefined} alt={collaborator.name} />
-                      <AvatarFallback
-                        className="text-[10px] font-semibold text-white"
-                        style={{
-                          backgroundColor:
-                            collaborator.color || getAvatarColor(collaborator.key),
-                        }}
+        <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
+          <Collapsible
+            open={isCollaboratorsExpanded}
+            onOpenChange={setIsCollaboratorsExpanded}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Collaboratori
+                </h4>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Clock3 className="h-3.5 w-3.5" />
+                  {formatHours(
+                    involvedCollaborators.reduce(
+                      (total, collaborator) => total + collaborator.hours,
+                      0
+                    )
+                  )}
+                </p>
+              </div>
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="ghost" size="sm" className="h-8 px-2">
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 transition-transform",
+                      isCollaboratorsExpanded && "rotate-180"
+                    )}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent
+              forceMount
+              className={!isCollaboratorsExpanded ? "hidden" : ""}
+            >
+              <div className="mt-3">
+                {involvedCollaborators.length > 0 ? (
+                  <div className="max-h-[220px] overflow-y-auto pr-1 space-y-2">
+                    {involvedCollaborators.map((collaborator) => (
+                      <button
+                        key={collaborator.key}
+                        type="button"
+                        title={`Apri ${collaborator.name}`}
+                        onClick={() => setSelectedCollaborator(collaborator)}
+                        className="w-full flex items-center justify-between gap-2 rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 px-2 py-1.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       >
-                        {collaborator.initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="truncate text-xs font-medium">{collaborator.name}</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Avatar
+                            className="h-8 w-8 border border-slate-500 shadow-sm cursor-pointer"
+                            title={collaborator.name}
+                          >
+                            <AvatarImage
+                              src={collaborator.picture || undefined}
+                              alt={collaborator.name}
+                            />
+                            <AvatarFallback
+                              className="text-[10px] font-semibold text-white"
+                              style={{
+                                backgroundColor:
+                                  collaborator.color ||
+                                  getAvatarColor(collaborator.key),
+                              }}
+                            >
+                              {collaborator.initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="truncate text-xs font-medium">
+                            {collaborator.name}
+                          </span>
+                        </div>
+                        <span className="shrink-0 rounded bg-muted dark:bg-muted/30 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+                          {formatHours(collaborator.hours)}
+                        </span>
+                      </button>
+                    ))}
                   </div>
-                  <span className="shrink-0 rounded bg-muted dark:bg-muted/30 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                    {formatHours(collaborator.hours)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
-              Nessuna ora registrata sul progetto.
-            </div>
-          )}
+                ) : (
+                  <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
+                    Nessuna ora registrata sul progetto.
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
-        <div className="min-h-[320px] rounded-lg border border-slate-500 bg-muted dark:bg-background p-4 space-y-4">
+        <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">Documenti progetto</h3>
             {isOfferTask ? (
@@ -1923,9 +2058,9 @@ const EditTaskKanban = ({
           )}
         </div>
           </div>
-          <div className="space-y-4 w-1/2 min-w-0">
-            {/* Row 1+2: Codice + Cliente + Nome */}
-          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4 space-y-4">
+          <div className="col-span-2 order-1 min-w-0 space-y-3">
+            {/* Row 1+2: Codice + Cliente + Nome + Valore */}
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -1973,7 +2108,7 @@ const EditTaskKanban = ({
                 }}
               />
             </div>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="name"
@@ -1987,11 +2122,24 @@ const EditTaskKanban = ({
                   </FormItem>
                 )}
               />
+              <FormField
+                name="sellPrice"
+                control={form.control}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valore</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </div>
 
           {/* Row 3: Prodotti multipli */}
-          <div className="space-y-3 rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
+          <div className="space-y-3 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 min-w-0">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Prodotti</h3>
@@ -2014,32 +2162,68 @@ const EditTaskKanban = ({
               </div>
             ) : (
               <div className="space-y-3">
-                {offerProducts.map((line, index) => (
+                {offerProducts.map((line, index) => {
+                  const selectedCategoryId = offerProductCategoryIds[index] ?? null;
+                  const subcategoryOptions =
+                    getSubcategoryOptionsForCategory(selectedCategoryId);
+                  const selectedProduct = (products as SellProduct[]).find(
+                    (product) => product.id === line.productId
+                  );
+                  const selectedSubcategory = selectedProduct
+                    ? getProductSubcategoryName(selectedProduct).toLowerCase()
+                    : undefined;
+
+                  return (
                   <div
                     key={`${line.productId || "new"}-${index}`}
-                    className="grid grid-cols-12 gap-3 items-end"
+                    className="flex items-end gap-3"
                   >
-                    <div className="col-span-8 space-y-2">
+                    <div className="w-[9.5rem] shrink-0 space-y-2">
                       <label className="text-sm font-medium">
-                        Prodotto {index + 1}
+                        Categoria {index + 1}
                       </label>
                       <SearchSelect
-                        value={line.productId || undefined}
+                        value={selectedCategoryId ?? undefined}
                         onValueChange={(value) =>
-                          handleOfferProductChange(index, {
-                            productId: value ? Number(value) : null,
-                          })
+                          handleOfferProductCategoryChange(
+                            index,
+                            value === "" || value == null ? null : Number(value)
+                          )
                         }
                         disabled={isSubmitting}
-                        options={productOptions}
-                        placeholder="Seleziona prodotto"
+                        options={categoryOptions}
+                        placeholder="Seleziona categoria"
                       />
                     </div>
-                    <div className="col-span-3 space-y-2">
-                      <label className="text-sm font-medium">Numero pezzi</label>
+                    <div className="w-[18rem] shrink-0 space-y-2">
+                      <label className="text-sm font-medium">
+                        Sottocategoria
+                      </label>
+                      <SearchSelect
+                        value={selectedSubcategory}
+                        onValueChange={(value) => {
+                          const productId = resolveProductIdForSubcategory(
+                            selectedCategoryId,
+                            String(value)
+                          );
+                          handleOfferProductChange(index, { productId });
+                        }}
+                        disabled={isSubmitting || selectedCategoryId == null}
+                        options={subcategoryOptions}
+                        placeholder={
+                          selectedCategoryId == null
+                            ? "Prima la categoria"
+                            : "Seleziona sottocategoria"
+                        }
+                        emptyMessage="Nessuna sottocategoria in questa categoria."
+                      />
+                    </div>
+                    <div className="w-16 shrink-0 space-y-2">
+                      <label className="text-sm font-medium">Pz.</label>
                       <Input
                         type="number"
                         min={1}
+                        className="w-16"
                         value={line.quantity ?? ""}
                         onChange={(e) =>
                           handleOfferProductChange(index, {
@@ -2053,23 +2237,23 @@ const EditTaskKanban = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="col-span-1 justify-self-end"
+                      className="mb-0.5 shrink-0"
                       onClick={() => handleRemoveOfferProduct(index)}
                       disabled={isSubmitting}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Pianificazione Produzione e Posa */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          {/* Pianificazione Produzione e Posa — affiancate */}
+          <div className="grid grid-cols-2 gap-4">
               <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-8">
                   <h3 className="text-sm font-medium">Produzione</h3>
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <input
@@ -2470,201 +2654,10 @@ const EditTaskKanban = ({
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
-                <h3 className="text-sm font-medium">Service</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    name="service_data_inizio"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data inizio</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSubmitting}
-                              >
-                                {field.value
-                                  ? field.value.toLocaleDateString("it-IT")
-                                  : "Seleziona data"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              disabled={weekendDisabled}
-                              captionLayout="dropdown"
-                              startMonth={new Date(new Date().getFullYear(), 0)}
-                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="service_ora_inizio"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ora inizio</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isSubmitting}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="service_data_fine"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data fine</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSubmitting}
-                              >
-                                {field.value
-                                  ? field.value.toLocaleDateString("it-IT")
-                                  : "Seleziona data"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              disabled={weekendDisabled}
-                              captionLayout="dropdown"
-                              startMonth={new Date(new Date().getFullYear(), 0)}
-                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="service_ora_fine"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ora fine</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isSubmitting}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-between"
-                    >
-                      <span>Assegna collaboratori</span>
-                      <span className="text-xs text-muted-foreground">
-                        {selectedServiceCollaborators.length}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[360px] max-w-[90vw] p-2" align="start">
-                    {availableCollaborators.length > 0 ? (
-                      <div className="max-h-[260px] overflow-y-auto space-y-1">
-                        {availableCollaborators.map((collaborator) => {
-                          const isChecked = selectedServiceCollaborators.includes(
-                            collaborator.id
-                          );
-                          return (
-                            <label
-                              key={`service-${collaborator.id}`}
-                              className="flex items-center gap-2 rounded-md border border-slate-500 bg-muted/20 px-2 py-2 cursor-pointer"
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                onCheckedChange={(checked) => {
-                                  setSelectedServiceCollaborators((current) => {
-                                    if (checked) {
-                                      return current.includes(collaborator.id)
-                                        ? current
-                                        : [...current, collaborator.id];
-                                    }
-                                    return current.filter((id) => id !== collaborator.id);
-                                  });
-                                }}
-                              />
-                              <Avatar className="h-7 w-7 border border-slate-500">
-                                <AvatarImage
-                                  src={collaborator.picture || undefined}
-                                  alt={collaborator.name}
-                                />
-                                <AvatarFallback
-                                  className="text-[10px] font-semibold text-white"
-                                  style={{
-                                    backgroundColor:
-                                      collaborator.color || getAvatarColor(collaborator.id),
-                                  }}
-                                >
-                                  {collaborator.initials}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span className="truncate text-sm">{collaborator.name}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="rounded-md border border-dashed border-slate-500 p-3 text-sm text-muted-foreground">
-                        Nessun collaboratore disponibile.
-                      </div>
-                    )}
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
           </div>
 
           {/* Row 5: Kanban + Colonna */}
-          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Kanban</label>
@@ -2728,7 +2721,7 @@ const EditTaskKanban = ({
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
+          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
             <FormField
               name="other"
               control={form.control}
@@ -2736,23 +2729,7 @@ const EditTaskKanban = ({
                 <FormItem>
                   <FormLabel>Commenti</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-4">
-            <FormField
-              name="sellPrice"
-              control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Valore</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="number" />
+                    <Textarea {...field} rows={4} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -2762,8 +2739,8 @@ const EditTaskKanban = ({
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-4">
+        <div className="space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">Ordini fornitori</h3>
               </div>
@@ -3132,7 +3109,7 @@ const EditTaskKanban = ({
 
           </div>
 
-          <div className="flex gap-2 justify-between pt-4 border-t border-slate-500">
+          <div className="flex gap-2 justify-between pt-3 border-t border-slate-500">
             <Button
               type="button"
               variant="destructive"

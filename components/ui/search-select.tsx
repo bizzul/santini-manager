@@ -18,14 +18,47 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { categoryIconName } from "@/lib/category-diagram-icons";
+import { getKanbanIcon } from "@/lib/kanban-icons";
+
+export type SearchSelectOption = {
+  value: string | number;
+  label: string;
+  icon?: string | null;
+  iconColor?: string | null;
+};
 
 interface SearchSelectProps {
   value?: string | number | null;
   onValueChange?: (value: string | number) => void;
   placeholder?: string;
   disabled?: boolean;
-  options: Array<{ value: string | number; label: string }>;
+  options: SearchSelectOption[];
   emptyMessage?: string;
+}
+
+function OptionIcon({
+  label,
+  icon,
+  iconColor,
+}: {
+  label: string;
+  icon?: string | null;
+  iconColor?: string | null;
+}) {
+  if (!icon && !iconColor) return null;
+
+  const Icon = getKanbanIcon(categoryIconName(label, icon));
+  const color = iconColor || "#3B82F6";
+
+  return (
+    <span
+      className="mr-2 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded"
+      style={{ backgroundColor: color }}
+    >
+      <Icon className="h-3 w-3 text-white" />
+    </span>
+  );
 }
 
 export function SearchSelect({
@@ -50,19 +83,32 @@ export function SearchSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between min-w-0"
           disabled={disabled}
         >
-          {selectedOption ? selectedOption.label : placeholder}
+          <span className="flex min-w-0 flex-1 items-center truncate text-left">
+            {selectedOption ? (
+              <>
+                <OptionIcon
+                  label={selectedOption.label}
+                  icon={selectedOption.icon}
+                  iconColor={selectedOption.iconColor}
+                />
+                <span className="truncate">{selectedOption.label}</span>
+              </>
+            ) : (
+              <span className="truncate text-muted-foreground">{placeholder}</span>
+            )}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-full p-0"
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
         onWheelCapture={(e) => e.stopPropagation()}
       >
         <Command>
-          <CommandInput  />
+          <CommandInput />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
@@ -77,14 +123,19 @@ export function SearchSelect({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 shrink-0",
                       value === option.value ||
                         value?.toString() === option.value.toString()
                         ? "opacity-100"
                         : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <OptionIcon
+                    label={option.label}
+                    icon={option.icon}
+                    iconColor={option.iconColor}
+                  />
+                  <span className="truncate">{option.label}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

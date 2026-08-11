@@ -350,7 +350,7 @@ export function ProjectDocuments({
     <div className={cn("space-y-4", className)}>
       <div
         className={cn(
-          "relative rounded-lg border-2 border-dashed p-6 transition-colors",
+          "relative rounded-lg border-2 border-dashed px-4 py-3 transition-colors",
           dragActive
             ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-muted-foreground/50",
@@ -370,22 +370,22 @@ export function ProjectDocuments({
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
         />
 
-        <div className="flex flex-col items-center justify-center gap-2 text-center">
+        <div className="flex flex-col items-center justify-center gap-1.5 text-center">
           {isUploading ? (
             <>
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">
                 Caricamento in corso...
               </p>
             </>
           ) : (
             <>
-              <Upload className="h-8 w-8 text-muted-foreground" />
+              <Upload className="h-5 w-5 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">
                   Trascina i file qui o clicca per selezionare
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   PDF, Word, Immagini - Max 50MB per file
                 </p>
               </div>
