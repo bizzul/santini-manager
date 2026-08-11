@@ -146,6 +146,10 @@ function CategoryRowCells({
   const card = row.categoryCard;
   const hasChildren =
     (row.subcategoryCount ?? 0) > 0 || (row.itemCount ?? 0) > 0;
+  const summary = formatSellCatalogSummary(
+    card?.materialLabels ?? [],
+    card?.variantLabels ?? [],
+  );
 
   return (
     <>
@@ -186,10 +190,9 @@ function CategoryRowCells({
           "text-muted-foreground",
         )}
       >
-        {formatSellCatalogSummary(
-          card?.materialLabels ?? [],
-          card?.variantLabels ?? [],
-        )}
+        <span className="block truncate" title={summary}>
+          {summary}
+        </span>
       </TableCell>
       <TableCell className={getTableCellClasses("metric")}>
         {row.itemCount ?? 0}
@@ -237,6 +240,12 @@ function SubcategoryRowCells({
   siteId: string;
 }) {
   const hasChildren = (row.itemCount ?? 0) > 0;
+  const summary =
+    row.subcategoryCard?.description?.trim() ||
+    formatSellCatalogSummary(
+      row.subcategoryCard?.materialLabels ?? [],
+      row.subcategoryCard?.variantLabels ?? [],
+    );
 
   return (
     <>
@@ -299,10 +308,9 @@ function SubcategoryRowCells({
           "text-muted-foreground",
         )}
       >
-        {formatSellCatalogSummary(
-          row.subcategoryCard?.materialLabels ?? [],
-          row.subcategoryCard?.variantLabels ?? [],
-        )}
+        <span className="block truncate" title={summary}>
+          {summary}
+        </span>
       </TableCell>
       <TableCell className={getTableCellClasses("metric")}>
         {row.itemCount ?? 0}

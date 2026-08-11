@@ -1,0 +1,436 @@
+{
+  "siteId": "7ce3bca0-2293-4328-bee3-b8347c581b5b",
+  "serramentiCatId": 8,
+  "archiveCatId": 154,
+  "canonical": [
+    {
+      "id": 825,
+      "prevInternalCode": "SER-0001-VAC",
+      "newInternalCode": "SER-0001",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 829,
+      "prevInternalCode": "SER-0002-VAC",
+      "newInternalCode": "SER-0002",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 833,
+      "prevInternalCode": "SER-0003-VAC",
+      "newInternalCode": "SER-0003",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 837,
+      "prevInternalCode": "SER-0004-VAC",
+      "newInternalCode": "SER-0004",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 841,
+      "prevInternalCode": "SER-0005-VAC",
+      "newInternalCode": "SER-0005",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 845,
+      "prevInternalCode": "SER-0006-VAC",
+      "newInternalCode": "SER-0006",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 849,
+      "prevInternalCode": "SER-0007-VAC",
+      "newInternalCode": "SER-0007",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 853,
+      "prevInternalCode": "SER-0050-VAC",
+      "newInternalCode": "SER-0050",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 857,
+      "prevInternalCode": "SER-0051-VAC",
+      "newInternalCode": "SER-0051",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 861,
+      "prevInternalCode": "SER-0052-VAC",
+      "newInternalCode": "SER-0052",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 865,
+      "prevInternalCode": "SER-0053-VAC",
+      "newInternalCode": "SER-0053",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 869,
+      "prevInternalCode": "SER-0054-VAC",
+      "newInternalCode": "SER-0054",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 873,
+      "prevInternalCode": "SER-0080-VAC",
+      "newInternalCode": "SER-0080",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 877,
+      "prevInternalCode": "SER-0081-VAC",
+      "newInternalCode": "SER-0081",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 881,
+      "prevInternalCode": "SER-0082-VAC",
+      "newInternalCode": "SER-0082",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 885,
+      "prevInternalCode": "SER-0083-VAC",
+      "newInternalCode": "SER-0083",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 889,
+      "prevInternalCode": "SER-0084-VAC",
+      "newInternalCode": "SER-0084",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 893,
+      "prevInternalCode": "SER-0085-VAC",
+      "newInternalCode": "SER-0085",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 897,
+      "prevInternalCode": "SER-0100-VAC",
+      "newInternalCode": "SER-0100",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 901,
+      "prevInternalCode": "SER-0101-VAC",
+      "newInternalCode": "SER-0101",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 905,
+      "prevInternalCode": "SER-0102-VAC",
+      "newInternalCode": "SER-0102",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    },
+    {
+      "id": 909,
+      "prevInternalCode": "SER-0103-VAC",
+      "newInternalCode": "SER-0103",
+      "prevTipo": "Vetro acustico maggiorato",
+      "prevVt": "VAC"
+    }
+  ],
+  "archived": [
+    {
+      "id": 822,
+      "prevInternalCode": "SER-0001-VC2"
+    },
+    {
+      "id": 823,
+      "prevInternalCode": "SER-0001-VC3"
+    },
+    {
+      "id": 824,
+      "prevInternalCode": "SER-0001-VSIC"
+    },
+    {
+      "id": 826,
+      "prevInternalCode": "SER-0002-VC2"
+    },
+    {
+      "id": 827,
+      "prevInternalCode": "SER-0002-VC3"
+    },
+    {
+      "id": 828,
+      "prevInternalCode": "SER-0002-VSIC"
+    },
+    {
+      "id": 830,
+      "prevInternalCode": "SER-0003-VC2"
+    },
+    {
+      "id": 831,
+      "prevInternalCode": "SER-0003-VC3"
+    },
+    {
+      "id": 832,
+      "prevInternalCode": "SER-0003-VSIC"
+    },
+    {
+      "id": 834,
+      "prevInternalCode": "SER-0004-VC2"
+    },
+    {
+      "id": 835,
+      "prevInternalCode": "SER-0004-VC3"
+    },
+    {
+      "id": 836,
+      "prevInternalCode": "SER-0004-VSIC"
+    },
+    {
+      "id": 838,
+      "prevInternalCode": "SER-0005-VC2"
+    },
+    {
+      "id": 839,
+      "prevInternalCode": "SER-0005-VC3"
+    },
+    {
+      "id": 840,
+      "prevInternalCode": "SER-0005-VSIC"
+    },
+    {
+      "id": 842,
+      "prevInternalCode": "SER-0006-VC2"
+    },
+    {
+      "id": 843,
+      "prevInternalCode": "SER-0006-VC3"
+    },
+    {
+      "id": 844,
+      "prevInternalCode": "SER-0006-VSIC"
+    },
+    {
+      "id": 846,
+      "prevInternalCode": "SER-0007-VC2"
+    },
+    {
+      "id": 847,
+      "prevInternalCode": "SER-0007-VC3"
+    },
+    {
+      "id": 848,
+      "prevInternalCode": "SER-0007-VSIC"
+    },
+    {
+      "id": 850,
+      "prevInternalCode": "SER-0050-VC2"
+    },
+    {
+      "id": 851,
+      "prevInternalCode": "SER-0050-VC3"
+    },
+    {
+      "id": 852,
+      "prevInternalCode": "SER-0050-VSIC"
+    },
+    {
+      "id": 854,
+      "prevInternalCode": "SER-0051-VC2"
+    },
+    {
+      "id": 855,
+      "prevInternalCode": "SER-0051-VC3"
+    },
+    {
+      "id": 856,
+      "prevInternalCode": "SER-0051-VSIC"
+    },
+    {
+      "id": 858,
+      "prevInternalCode": "SER-0052-VC2"
+    },
+    {
+      "id": 859,
+      "prevInternalCode": "SER-0052-VC3"
+    },
+    {
+      "id": 860,
+      "prevInternalCode": "SER-0052-VSIC"
+    },
+    {
+      "id": 862,
+      "prevInternalCode": "SER-0053-VC2"
+    },
+    {
+      "id": 863,
+      "prevInternalCode": "SER-0053-VC3"
+    },
+    {
+      "id": 864,
+      "prevInternalCode": "SER-0053-VSIC"
+    },
+    {
+      "id": 866,
+      "prevInternalCode": "SER-0054-VC2"
+    },
+    {
+      "id": 867,
+      "prevInternalCode": "SER-0054-VC3"
+    },
+    {
+      "id": 868,
+      "prevInternalCode": "SER-0054-VSIC"
+    },
+    {
+      "id": 870,
+      "prevInternalCode": "SER-0080-VC2"
+    },
+    {
+      "id": 871,
+      "prevInternalCode": "SER-0080-VC3"
+    },
+    {
+      "id": 872,
+      "prevInternalCode": "SER-0080-VSIC"
+    },
+    {
+      "id": 874,
+      "prevInternalCode": "SER-0081-VC2"
+    },
+    {
+      "id": 875,
+      "prevInternalCode": "SER-0081-VC3"
+    },
+    {
+      "id": 876,
+      "prevInternalCode": "SER-0081-VSIC"
+    },
+    {
+      "id": 878,
+      "prevInternalCode": "SER-0082-VC2"
+    },
+    {
+      "id": 879,
+      "prevInternalCode": "SER-0082-VC3"
+    },
+    {
+      "id": 880,
+      "prevInternalCode": "SER-0082-VSIC"
+    },
+    {
+      "id": 882,
+      "prevInternalCode": "SER-0083-VC2"
+    },
+    {
+      "id": 883,
+      "prevInternalCode": "SER-0083-VC3"
+    },
+    {
+      "id": 884,
+      "prevInternalCode": "SER-0083-VSIC"
+    },
+    {
+      "id": 886,
+      "prevInternalCode": "SER-0084-VC2"
+    },
+    {
+      "id": 887,
+      "prevInternalCode": "SER-0084-VC3"
+    },
+    {
+      "id": 888,
+      "prevInternalCode": "SER-0084-VSIC"
+    },
+    {
+      "id": 890,
+      "prevInternalCode": "SER-0085-VC2"
+    },
+    {
+      "id": 891,
+      "prevInternalCode": "SER-0085-VC3"
+    },
+    {
+      "id": 892,
+      "prevInternalCode": "SER-0085-VSIC"
+    },
+    {
+      "id": 894,
+      "prevInternalCode": "SER-0100-VC2"
+    },
+    {
+      "id": 895,
+      "prevInternalCode": "SER-0100-VC3"
+    },
+    {
+      "id": 896,
+      "prevInternalCode": "SER-0100-VSIC"
+    },
+    {
+      "id": 898,
+      "prevInternalCode": "SER-0101-VC2"
+    },
+    {
+      "id": 899,
+      "prevInternalCode": "SER-0101-VC3"
+    },
+    {
+      "id": 900,
+      "prevInternalCode": "SER-0101-VSIC"
+    },
+    {
+      "id": 902,
+      "prevInternalCode": "SER-0102-VC2"
+    },
+    {
+      "id": 903,
+      "prevInternalCode": "SER-0102-VC3"
+    },
+    {
+      "id": 904,
+      "prevInternalCode": "SER-0102-VSIC"
+    },
+    {
+      "id": 906,
+      "prevInternalCode": "SER-0103-VC2"
+    },
+    {
+      "id": 907,
+      "prevInternalCode": "SER-0103-VC3"
+    },
+    {
+      "id": 908,
+      "prevInternalCode": "SER-0103-VSIC"
+    }
+  ],
+  "coeff": {
+    "vetro": [
+      "VAC",
+      "VC2",
+      "VC3",
+      "VSIC"
+    ]
+  },
+  "at": "2026-08-11T13:07:16.646Z"
+}

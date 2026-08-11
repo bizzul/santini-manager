@@ -1,0 +1,894 @@
+{
+  "siteId": "7ce3bca0-2293-4328-bee3-b8347c581b5b",
+  "porteCatId": 3,
+  "archiveCatId": 154,
+  "canonical": [
+    {
+      "id": 623,
+      "prevInternalCode": "POR-0001-IMP-APL",
+      "newInternalCode": "POR-0001",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 638,
+      "prevInternalCode": "POR-0002-IMP-APL",
+      "newInternalCode": "POR-0002",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 653,
+      "prevInternalCode": "POR-0003-IMP-APL",
+      "newInternalCode": "POR-0003",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 668,
+      "prevInternalCode": "POR-0004-IMP-APL",
+      "newInternalCode": "POR-0004",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 683,
+      "prevInternalCode": "POR-0005-IMP-APL",
+      "newInternalCode": "POR-0005",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 698,
+      "prevInternalCode": "POR-0050-IMP-APL",
+      "newInternalCode": "POR-0050",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 713,
+      "prevInternalCode": "POR-0051-IMP-APL",
+      "newInternalCode": "POR-0051",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 728,
+      "prevInternalCode": "POR-0052-IMP-APL",
+      "newInternalCode": "POR-0052",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 743,
+      "prevInternalCode": "POR-0053-IMP-APL",
+      "newInternalCode": "POR-0053",
+      "prevTipo": "Impiallacciato / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 749,
+      "prevInternalCode": "POR-0100-LAM-APL",
+      "newInternalCode": "POR-0100",
+      "prevTipo": "Laminato/HPL / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 758,
+      "prevInternalCode": "POR-0101-LAM-APL",
+      "newInternalCode": "POR-0101",
+      "prevTipo": "Laminato/HPL / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 770,
+      "prevInternalCode": "POR-0120-BLI-APL",
+      "newInternalCode": "POR-0120",
+      "prevTipo": "Blindata/sicurezza / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 785,
+      "prevInternalCode": "POR-0121-BLI-APL",
+      "newInternalCode": "POR-0121",
+      "prevTipo": "Blindata/sicurezza / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 797,
+      "prevInternalCode": "POR-0220-LAM-APL",
+      "newInternalCode": "POR-0220",
+      "prevTipo": "Laminato/HPL / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 803,
+      "prevInternalCode": "POR-0221-LAM-APL",
+      "newInternalCode": "POR-0221",
+      "prevTipo": "Laminato/HPL / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    },
+    {
+      "id": 809,
+      "prevInternalCode": "POR-0222-LAM-APL",
+      "newInternalCode": "POR-0222",
+      "prevTipo": "Laminato/HPL / Telaio applicato in legno massiccio",
+      "prevMat": null,
+      "prevVt": null
+    }
+  ],
+  "archived": [
+    {
+      "id": 622,
+      "prevInternalCode": "POR-0001-IMP-CTA"
+    },
+    {
+      "id": 621,
+      "prevInternalCode": "POR-0001-IMP-CTL"
+    },
+    {
+      "id": 617,
+      "prevInternalCode": "POR-0001-LAM-APL"
+    },
+    {
+      "id": 616,
+      "prevInternalCode": "POR-0001-LAM-CTA"
+    },
+    {
+      "id": 615,
+      "prevInternalCode": "POR-0001-LAM-CTL"
+    },
+    {
+      "id": 614,
+      "prevInternalCode": "POR-0001-MAS-APL"
+    },
+    {
+      "id": 613,
+      "prevInternalCode": "POR-0001-MAS-CTA"
+    },
+    {
+      "id": 612,
+      "prevInternalCode": "POR-0001-MAS-CTL"
+    },
+    {
+      "id": 611,
+      "prevInternalCode": "POR-0001-TAM-APL"
+    },
+    {
+      "id": 610,
+      "prevInternalCode": "POR-0001-TAM-CTA"
+    },
+    {
+      "id": 609,
+      "prevInternalCode": "POR-0001-TAM-CTL"
+    },
+    {
+      "id": 620,
+      "prevInternalCode": "POR-0001-VER-APL"
+    },
+    {
+      "id": 619,
+      "prevInternalCode": "POR-0001-VER-CTA"
+    },
+    {
+      "id": 618,
+      "prevInternalCode": "POR-0001-VER-CTL"
+    },
+    {
+      "id": 637,
+      "prevInternalCode": "POR-0002-IMP-CTA"
+    },
+    {
+      "id": 636,
+      "prevInternalCode": "POR-0002-IMP-CTL"
+    },
+    {
+      "id": 632,
+      "prevInternalCode": "POR-0002-LAM-APL"
+    },
+    {
+      "id": 631,
+      "prevInternalCode": "POR-0002-LAM-CTA"
+    },
+    {
+      "id": 630,
+      "prevInternalCode": "POR-0002-LAM-CTL"
+    },
+    {
+      "id": 629,
+      "prevInternalCode": "POR-0002-MAS-APL"
+    },
+    {
+      "id": 628,
+      "prevInternalCode": "POR-0002-MAS-CTA"
+    },
+    {
+      "id": 627,
+      "prevInternalCode": "POR-0002-MAS-CTL"
+    },
+    {
+      "id": 626,
+      "prevInternalCode": "POR-0002-TAM-APL"
+    },
+    {
+      "id": 625,
+      "prevInternalCode": "POR-0002-TAM-CTA"
+    },
+    {
+      "id": 624,
+      "prevInternalCode": "POR-0002-TAM-CTL"
+    },
+    {
+      "id": 635,
+      "prevInternalCode": "POR-0002-VER-APL"
+    },
+    {
+      "id": 634,
+      "prevInternalCode": "POR-0002-VER-CTA"
+    },
+    {
+      "id": 633,
+      "prevInternalCode": "POR-0002-VER-CTL"
+    },
+    {
+      "id": 652,
+      "prevInternalCode": "POR-0003-IMP-CTA"
+    },
+    {
+      "id": 651,
+      "prevInternalCode": "POR-0003-IMP-CTL"
+    },
+    {
+      "id": 647,
+      "prevInternalCode": "POR-0003-LAM-APL"
+    },
+    {
+      "id": 646,
+      "prevInternalCode": "POR-0003-LAM-CTA"
+    },
+    {
+      "id": 645,
+      "prevInternalCode": "POR-0003-LAM-CTL"
+    },
+    {
+      "id": 644,
+      "prevInternalCode": "POR-0003-MAS-APL"
+    },
+    {
+      "id": 643,
+      "prevInternalCode": "POR-0003-MAS-CTA"
+    },
+    {
+      "id": 642,
+      "prevInternalCode": "POR-0003-MAS-CTL"
+    },
+    {
+      "id": 641,
+      "prevInternalCode": "POR-0003-TAM-APL"
+    },
+    {
+      "id": 640,
+      "prevInternalCode": "POR-0003-TAM-CTA"
+    },
+    {
+      "id": 639,
+      "prevInternalCode": "POR-0003-TAM-CTL"
+    },
+    {
+      "id": 650,
+      "prevInternalCode": "POR-0003-VER-APL"
+    },
+    {
+      "id": 649,
+      "prevInternalCode": "POR-0003-VER-CTA"
+    },
+    {
+      "id": 648,
+      "prevInternalCode": "POR-0003-VER-CTL"
+    },
+    {
+      "id": 667,
+      "prevInternalCode": "POR-0004-IMP-CTA"
+    },
+    {
+      "id": 666,
+      "prevInternalCode": "POR-0004-IMP-CTL"
+    },
+    {
+      "id": 662,
+      "prevInternalCode": "POR-0004-LAM-APL"
+    },
+    {
+      "id": 661,
+      "prevInternalCode": "POR-0004-LAM-CTA"
+    },
+    {
+      "id": 660,
+      "prevInternalCode": "POR-0004-LAM-CTL"
+    },
+    {
+      "id": 659,
+      "prevInternalCode": "POR-0004-MAS-APL"
+    },
+    {
+      "id": 658,
+      "prevInternalCode": "POR-0004-MAS-CTA"
+    },
+    {
+      "id": 657,
+      "prevInternalCode": "POR-0004-MAS-CTL"
+    },
+    {
+      "id": 656,
+      "prevInternalCode": "POR-0004-TAM-APL"
+    },
+    {
+      "id": 655,
+      "prevInternalCode": "POR-0004-TAM-CTA"
+    },
+    {
+      "id": 654,
+      "prevInternalCode": "POR-0004-TAM-CTL"
+    },
+    {
+      "id": 665,
+      "prevInternalCode": "POR-0004-VER-APL"
+    },
+    {
+      "id": 664,
+      "prevInternalCode": "POR-0004-VER-CTA"
+    },
+    {
+      "id": 663,
+      "prevInternalCode": "POR-0004-VER-CTL"
+    },
+    {
+      "id": 682,
+      "prevInternalCode": "POR-0005-IMP-CTA"
+    },
+    {
+      "id": 681,
+      "prevInternalCode": "POR-0005-IMP-CTL"
+    },
+    {
+      "id": 677,
+      "prevInternalCode": "POR-0005-LAM-APL"
+    },
+    {
+      "id": 676,
+      "prevInternalCode": "POR-0005-LAM-CTA"
+    },
+    {
+      "id": 675,
+      "prevInternalCode": "POR-0005-LAM-CTL"
+    },
+    {
+      "id": 674,
+      "prevInternalCode": "POR-0005-MAS-APL"
+    },
+    {
+      "id": 673,
+      "prevInternalCode": "POR-0005-MAS-CTA"
+    },
+    {
+      "id": 672,
+      "prevInternalCode": "POR-0005-MAS-CTL"
+    },
+    {
+      "id": 671,
+      "prevInternalCode": "POR-0005-TAM-APL"
+    },
+    {
+      "id": 670,
+      "prevInternalCode": "POR-0005-TAM-CTA"
+    },
+    {
+      "id": 669,
+      "prevInternalCode": "POR-0005-TAM-CTL"
+    },
+    {
+      "id": 680,
+      "prevInternalCode": "POR-0005-VER-APL"
+    },
+    {
+      "id": 679,
+      "prevInternalCode": "POR-0005-VER-CTA"
+    },
+    {
+      "id": 678,
+      "prevInternalCode": "POR-0005-VER-CTL"
+    },
+    {
+      "id": 697,
+      "prevInternalCode": "POR-0050-IMP-CTA"
+    },
+    {
+      "id": 696,
+      "prevInternalCode": "POR-0050-IMP-CTL"
+    },
+    {
+      "id": 692,
+      "prevInternalCode": "POR-0050-LAM-APL"
+    },
+    {
+      "id": 691,
+      "prevInternalCode": "POR-0050-LAM-CTA"
+    },
+    {
+      "id": 690,
+      "prevInternalCode": "POR-0050-LAM-CTL"
+    },
+    {
+      "id": 689,
+      "prevInternalCode": "POR-0050-MAS-APL"
+    },
+    {
+      "id": 688,
+      "prevInternalCode": "POR-0050-MAS-CTA"
+    },
+    {
+      "id": 687,
+      "prevInternalCode": "POR-0050-MAS-CTL"
+    },
+    {
+      "id": 686,
+      "prevInternalCode": "POR-0050-TAM-APL"
+    },
+    {
+      "id": 685,
+      "prevInternalCode": "POR-0050-TAM-CTA"
+    },
+    {
+      "id": 684,
+      "prevInternalCode": "POR-0050-TAM-CTL"
+    },
+    {
+      "id": 695,
+      "prevInternalCode": "POR-0050-VER-APL"
+    },
+    {
+      "id": 694,
+      "prevInternalCode": "POR-0050-VER-CTA"
+    },
+    {
+      "id": 693,
+      "prevInternalCode": "POR-0050-VER-CTL"
+    },
+    {
+      "id": 712,
+      "prevInternalCode": "POR-0051-IMP-CTA"
+    },
+    {
+      "id": 711,
+      "prevInternalCode": "POR-0051-IMP-CTL"
+    },
+    {
+      "id": 707,
+      "prevInternalCode": "POR-0051-LAM-APL"
+    },
+    {
+      "id": 706,
+      "prevInternalCode": "POR-0051-LAM-CTA"
+    },
+    {
+      "id": 705,
+      "prevInternalCode": "POR-0051-LAM-CTL"
+    },
+    {
+      "id": 704,
+      "prevInternalCode": "POR-0051-MAS-APL"
+    },
+    {
+      "id": 703,
+      "prevInternalCode": "POR-0051-MAS-CTA"
+    },
+    {
+      "id": 702,
+      "prevInternalCode": "POR-0051-MAS-CTL"
+    },
+    {
+      "id": 701,
+      "prevInternalCode": "POR-0051-TAM-APL"
+    },
+    {
+      "id": 700,
+      "prevInternalCode": "POR-0051-TAM-CTA"
+    },
+    {
+      "id": 699,
+      "prevInternalCode": "POR-0051-TAM-CTL"
+    },
+    {
+      "id": 710,
+      "prevInternalCode": "POR-0051-VER-APL"
+    },
+    {
+      "id": 709,
+      "prevInternalCode": "POR-0051-VER-CTA"
+    },
+    {
+      "id": 708,
+      "prevInternalCode": "POR-0051-VER-CTL"
+    },
+    {
+      "id": 727,
+      "prevInternalCode": "POR-0052-IMP-CTA"
+    },
+    {
+      "id": 726,
+      "prevInternalCode": "POR-0052-IMP-CTL"
+    },
+    {
+      "id": 722,
+      "prevInternalCode": "POR-0052-LAM-APL"
+    },
+    {
+      "id": 721,
+      "prevInternalCode": "POR-0052-LAM-CTA"
+    },
+    {
+      "id": 720,
+      "prevInternalCode": "POR-0052-LAM-CTL"
+    },
+    {
+      "id": 719,
+      "prevInternalCode": "POR-0052-MAS-APL"
+    },
+    {
+      "id": 718,
+      "prevInternalCode": "POR-0052-MAS-CTA"
+    },
+    {
+      "id": 717,
+      "prevInternalCode": "POR-0052-MAS-CTL"
+    },
+    {
+      "id": 716,
+      "prevInternalCode": "POR-0052-TAM-APL"
+    },
+    {
+      "id": 715,
+      "prevInternalCode": "POR-0052-TAM-CTA"
+    },
+    {
+      "id": 714,
+      "prevInternalCode": "POR-0052-TAM-CTL"
+    },
+    {
+      "id": 725,
+      "prevInternalCode": "POR-0052-VER-APL"
+    },
+    {
+      "id": 724,
+      "prevInternalCode": "POR-0052-VER-CTA"
+    },
+    {
+      "id": 723,
+      "prevInternalCode": "POR-0052-VER-CTL"
+    },
+    {
+      "id": 742,
+      "prevInternalCode": "POR-0053-IMP-CTA"
+    },
+    {
+      "id": 741,
+      "prevInternalCode": "POR-0053-IMP-CTL"
+    },
+    {
+      "id": 737,
+      "prevInternalCode": "POR-0053-LAM-APL"
+    },
+    {
+      "id": 736,
+      "prevInternalCode": "POR-0053-LAM-CTA"
+    },
+    {
+      "id": 735,
+      "prevInternalCode": "POR-0053-LAM-CTL"
+    },
+    {
+      "id": 734,
+      "prevInternalCode": "POR-0053-MAS-APL"
+    },
+    {
+      "id": 733,
+      "prevInternalCode": "POR-0053-MAS-CTA"
+    },
+    {
+      "id": 732,
+      "prevInternalCode": "POR-0053-MAS-CTL"
+    },
+    {
+      "id": 731,
+      "prevInternalCode": "POR-0053-TAM-APL"
+    },
+    {
+      "id": 730,
+      "prevInternalCode": "POR-0053-TAM-CTA"
+    },
+    {
+      "id": 729,
+      "prevInternalCode": "POR-0053-TAM-CTL"
+    },
+    {
+      "id": 740,
+      "prevInternalCode": "POR-0053-VER-APL"
+    },
+    {
+      "id": 739,
+      "prevInternalCode": "POR-0053-VER-CTA"
+    },
+    {
+      "id": 738,
+      "prevInternalCode": "POR-0053-VER-CTL"
+    },
+    {
+      "id": 748,
+      "prevInternalCode": "POR-0100-LAM-CTA"
+    },
+    {
+      "id": 747,
+      "prevInternalCode": "POR-0100-LAM-CTL"
+    },
+    {
+      "id": 746,
+      "prevInternalCode": "POR-0100-TAM-APL"
+    },
+    {
+      "id": 745,
+      "prevInternalCode": "POR-0100-TAM-CTA"
+    },
+    {
+      "id": 744,
+      "prevInternalCode": "POR-0100-TAM-CTL"
+    },
+    {
+      "id": 752,
+      "prevInternalCode": "POR-0100-VER-APL"
+    },
+    {
+      "id": 751,
+      "prevInternalCode": "POR-0100-VER-CTA"
+    },
+    {
+      "id": 750,
+      "prevInternalCode": "POR-0100-VER-CTL"
+    },
+    {
+      "id": 757,
+      "prevInternalCode": "POR-0101-LAM-CTA"
+    },
+    {
+      "id": 756,
+      "prevInternalCode": "POR-0101-LAM-CTL"
+    },
+    {
+      "id": 755,
+      "prevInternalCode": "POR-0101-TAM-APL"
+    },
+    {
+      "id": 754,
+      "prevInternalCode": "POR-0101-TAM-CTA"
+    },
+    {
+      "id": 753,
+      "prevInternalCode": "POR-0101-TAM-CTL"
+    },
+    {
+      "id": 761,
+      "prevInternalCode": "POR-0101-VER-APL"
+    },
+    {
+      "id": 760,
+      "prevInternalCode": "POR-0101-VER-CTA"
+    },
+    {
+      "id": 759,
+      "prevInternalCode": "POR-0101-VER-CTL"
+    },
+    {
+      "id": 769,
+      "prevInternalCode": "POR-0120-BLI-CTA"
+    },
+    {
+      "id": 768,
+      "prevInternalCode": "POR-0120-BLI-CTL"
+    },
+    {
+      "id": 776,
+      "prevInternalCode": "POR-0120-IMP-APL"
+    },
+    {
+      "id": 775,
+      "prevInternalCode": "POR-0120-IMP-CTA"
+    },
+    {
+      "id": 774,
+      "prevInternalCode": "POR-0120-IMP-CTL"
+    },
+    {
+      "id": 764,
+      "prevInternalCode": "POR-0120-MAS-APL"
+    },
+    {
+      "id": 763,
+      "prevInternalCode": "POR-0120-MAS-CTA"
+    },
+    {
+      "id": 762,
+      "prevInternalCode": "POR-0120-MAS-CTL"
+    },
+    {
+      "id": 767,
+      "prevInternalCode": "POR-0120-VER-APL"
+    },
+    {
+      "id": 766,
+      "prevInternalCode": "POR-0120-VER-CTA"
+    },
+    {
+      "id": 765,
+      "prevInternalCode": "POR-0120-VER-CTL"
+    },
+    {
+      "id": 773,
+      "prevInternalCode": "POR-0120-VET-APL"
+    },
+    {
+      "id": 772,
+      "prevInternalCode": "POR-0120-VET-CTA"
+    },
+    {
+      "id": 771,
+      "prevInternalCode": "POR-0120-VET-CTL"
+    },
+    {
+      "id": 784,
+      "prevInternalCode": "POR-0121-BLI-CTA"
+    },
+    {
+      "id": 783,
+      "prevInternalCode": "POR-0121-BLI-CTL"
+    },
+    {
+      "id": 791,
+      "prevInternalCode": "POR-0121-IMP-APL"
+    },
+    {
+      "id": 790,
+      "prevInternalCode": "POR-0121-IMP-CTA"
+    },
+    {
+      "id": 789,
+      "prevInternalCode": "POR-0121-IMP-CTL"
+    },
+    {
+      "id": 779,
+      "prevInternalCode": "POR-0121-MAS-APL"
+    },
+    {
+      "id": 778,
+      "prevInternalCode": "POR-0121-MAS-CTA"
+    },
+    {
+      "id": 777,
+      "prevInternalCode": "POR-0121-MAS-CTL"
+    },
+    {
+      "id": 782,
+      "prevInternalCode": "POR-0121-VER-APL"
+    },
+    {
+      "id": 781,
+      "prevInternalCode": "POR-0121-VER-CTA"
+    },
+    {
+      "id": 780,
+      "prevInternalCode": "POR-0121-VER-CTL"
+    },
+    {
+      "id": 788,
+      "prevInternalCode": "POR-0121-VET-APL"
+    },
+    {
+      "id": 787,
+      "prevInternalCode": "POR-0121-VET-CTA"
+    },
+    {
+      "id": 786,
+      "prevInternalCode": "POR-0121-VET-CTL"
+    },
+    {
+      "id": 796,
+      "prevInternalCode": "POR-0220-LAM-CTA"
+    },
+    {
+      "id": 795,
+      "prevInternalCode": "POR-0220-LAM-CTL"
+    },
+    {
+      "id": 794,
+      "prevInternalCode": "POR-0220-MAS-APL"
+    },
+    {
+      "id": 793,
+      "prevInternalCode": "POR-0220-MAS-CTA"
+    },
+    {
+      "id": 792,
+      "prevInternalCode": "POR-0220-MAS-CTL"
+    },
+    {
+      "id": 802,
+      "prevInternalCode": "POR-0221-LAM-CTA"
+    },
+    {
+      "id": 801,
+      "prevInternalCode": "POR-0221-LAM-CTL"
+    },
+    {
+      "id": 800,
+      "prevInternalCode": "POR-0221-MAS-APL"
+    },
+    {
+      "id": 799,
+      "prevInternalCode": "POR-0221-MAS-CTA"
+    },
+    {
+      "id": 798,
+      "prevInternalCode": "POR-0221-MAS-CTL"
+    },
+    {
+      "id": 808,
+      "prevInternalCode": "POR-0222-LAM-CTA"
+    },
+    {
+      "id": 807,
+      "prevInternalCode": "POR-0222-LAM-CTL"
+    },
+    {
+      "id": 806,
+      "prevInternalCode": "POR-0222-MAS-APL"
+    },
+    {
+      "id": 805,
+      "prevInternalCode": "POR-0222-MAS-CTA"
+    },
+    {
+      "id": 804,
+      "prevInternalCode": "POR-0222-MAS-CTL"
+    }
+  ],
+  "coeff": {
+    "materiale_porta": [
+      "IMP",
+      "LAM",
+      "MAS",
+      "TAM",
+      "VER",
+      "BLI",
+      "VET"
+    ],
+    "telaio": [
+      "APL",
+      "CTA",
+      "CTL"
+    ]
+  },
+  "at": "2026-08-11T13:02:50.528Z"
+}
