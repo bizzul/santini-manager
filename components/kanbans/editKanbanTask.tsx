@@ -110,6 +110,8 @@ import { createClient } from "@/utils/supabase/client";
 import { updateSellProductImageAction } from "@/app/sites/[domain]/products/actions/update-image.action";
 import { resolveCoverImage } from "@/lib/cover-image";
 import { formatHours } from "@/lib/project-consuntivo";
+import { FatturazioneReadinessPanel } from "./FatturazioneReadinessPanel";
+import { isFatturazioneKanban } from "@/lib/fatturazione-readiness";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -122,6 +124,7 @@ type Props = {
   domain?: string;
   preferProjectCoverImage?: boolean;
   onPreferProjectCoverImageChange?: (preferProject: boolean) => void;
+  onTaskUpdated?: () => void;
 };
 
 type Supplier = {
@@ -270,6 +273,7 @@ const EditTaskKanban = ({
   domain,
   preferProjectCoverImage = false,
   onPreferProjectCoverImageChange,
+  onTaskUpdated,
 }: Props) => {
   const router = useRouter();
   const { toast } = useToast();
@@ -1664,9 +1668,9 @@ const EditTaskKanban = ({
   return (
     <>
     <Form {...form}>
-      <form className="w-full space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="grid w-full grid-cols-3 gap-4 items-start">
-          <div className="col-span-1 order-2 flex min-w-0 flex-col gap-3">
+      <form className="w-full space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
+          <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
         <div className="grid grid-cols-2 gap-3 items-stretch">
           <div className="h-full p-3 bg-muted dark:bg-background rounded-lg border border-slate-500 space-y-3">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
@@ -2058,7 +2062,7 @@ const EditTaskKanban = ({
           )}
         </div>
           </div>
-          <div className="col-span-2 order-1 min-w-0 space-y-3">
+          <div className="space-y-4 w-1/2 min-w-0">
             {/* Row 1+2: Codice + Cliente + Nome + Valore */}
           <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
             <div className="grid grid-cols-2 gap-4">
@@ -2139,7 +2143,7 @@ const EditTaskKanban = ({
           </div>
 
           {/* Row 3: Prodotti multipli */}
-          <div className="space-y-3 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 min-w-0">
+          <div className="space-y-3 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium">Prodotti</h3>
@@ -2176,9 +2180,9 @@ const EditTaskKanban = ({
                   return (
                   <div
                     key={`${line.productId || "new"}-${index}`}
-                    className="flex items-end gap-3"
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_3.5rem_auto] items-end gap-2"
                   >
-                    <div className="w-[9.5rem] shrink-0 space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium">
                         Categoria {index + 1}
                       </label>
@@ -2195,7 +2199,7 @@ const EditTaskKanban = ({
                         placeholder="Seleziona categoria"
                       />
                     </div>
-                    <div className="w-[18rem] shrink-0 space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium">
                         Sottocategoria
                       </label>
@@ -2218,12 +2222,12 @@ const EditTaskKanban = ({
                         emptyMessage="Nessuna sottocategoria in questa categoria."
                       />
                     </div>
-                    <div className="w-16 shrink-0 space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <label className="text-sm font-medium">Pz.</label>
                       <Input
                         type="number"
                         min={1}
-                        className="w-16"
+                        className="w-full min-w-0 px-1.5"
                         value={line.quantity ?? ""}
                         onChange={(e) =>
                           handleOfferProductChange(index, {
@@ -2237,7 +2241,7 @@ const EditTaskKanban = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="mb-0.5 shrink-0"
+                      className="mb-0.5 h-9 w-9 shrink-0"
                       onClick={() => handleRemoveOfferProduct(index)}
                       disabled={isSubmitting}
                     >
@@ -2249,6 +2253,15 @@ const EditTaskKanban = ({
               </div>
             )}
           </div>
+
+          {isFatturazioneKanban(resource?.kanban, resource?.column) && (
+            <FatturazioneReadinessPanel
+              taskId={resource.id}
+              siteId={siteId}
+              domain={domain}
+              onChanged={onTaskUpdated}
+            />
+          )}
 
           {/* Pianificazione Produzione e Posa — affiancate */}
           <div className="grid grid-cols-2 gap-4">

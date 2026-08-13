@@ -136,6 +136,11 @@ export interface Task {
     // Source offer code (when task is duplicated from offer to work kanban)
     source_offer_code?: string | null;
     sourceOfferCode?: string | null; // Alternative property name
+    fatturazioneReadiness?: {
+        stato?: "in_attesa" | "pronto" | null;
+        uguale_offerta?: boolean;
+        confermato_at?: string | null;
+    } | null;
 }
 
 // Client related types
@@ -406,6 +411,8 @@ export interface Kanban {
     isWorkKanban?: boolean; // Alternative property name
     is_production_kanban?: boolean;
     isProductionKanban?: boolean; // Alternative property name
+    is_invoicing_kanban?: boolean;
+    isInvoicingKanban?: boolean;
     target_invoice_kanban_id?: number;
     targetInvoiceKanbanId?: number; // Alternative property name
     // Opzione per colorare le card in base alla categoria prodotto

@@ -10,6 +10,7 @@ import {
 } from "./card-display-config";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { ManagerGuideButton } from "@/components/manager-guide";
+import { DASHBOARD_STATUS_TONE } from "@/lib/dashboard-status-tones";
 import { getOfferFollowUpHighlightState } from "@/lib/offers";
 import {
   ContextMenu,
@@ -184,13 +185,16 @@ export default function OfferMiniCard({
 
   // Background class based on overdue status
   const getBackgroundClass = () => {
-    if (hasRecentFollowUp) {
-      return "bg-green-600 dark:bg-green-700";
-    }
-    if (isOverdue || followUpDeadlinePassedBy > 0) {
-      return "bg-orange-500 dark:bg-orange-600";
+    if (hasRecentFollowUp || isOverdue || followUpDeadlinePassedBy > 0) {
+      return "text-white";
     }
     return "bg-slate-600 dark:bg-slate-700";
+  };
+
+  const getBackgroundStyle = () => {
+    if (hasRecentFollowUp) return DASHBOARD_STATUS_TONE.green;
+    if (isOverdue || followUpDeadlinePassedBy > 0) return DASHBOARD_STATUS_TONE.orange;
+    return undefined;
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -355,6 +359,7 @@ export default function OfferMiniCard({
           ref={data.isPreview ? undefined : setNodeRef}
           style={{
             ...dragStyle,
+            ...getBackgroundStyle(),
             opacity: isDragging ? 0.5 : 1,
             cursor: data.isPreview ? "not-allowed" : "pointer",
           }}
@@ -362,9 +367,10 @@ export default function OfferMiniCard({
           onClick={handleClick}
           onContextMenu={(e) => e.preventDefault()}
           className={`
-            w-full mb-2 shadow-md select-none rounded-r-xl rounded-l-sm overflow-hidden
+            w-full mb-2 shadow-md select-none rounded-r-xl rounded-l-sm overflow-clip
             ${data.isPreview ? "opacity-75 cursor-not-allowed" : "hover:brightness-110"}
             ${getBackgroundClass()}
+            ${getBackgroundStyle() ? "border" : ""}
             text-white text-sm
             transition-all duration-200
           `}

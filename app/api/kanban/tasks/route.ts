@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getSiteContext } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
+import { isFatturazioneKanban } from "@/lib/fatturazione-readiness";
+import { isFatturazioneReadinessEnabledForSite } from "@/lib/fatturazione-readiness.server";
 
 export const dynamic = "force-dynamic";
 
@@ -280,6 +282,37 @@ export async function GET(req: NextRequest) {
     const kanbanMap = new Map(kanbans.map((k) => [k.id, k]));
     const sellProductMap = new Map(sellProducts.map((p) => [p.id, p]));
 
+    const readinessByTaskId = new Map<
+      number,
+      { stato: string; uguale_offerta: boolean; confermato_at: string | null }
+    >();
+    const invoicingTaskIds = tasks
+      .filter((task) =>
+        isFatturazioneKanban(kanbanMap.get(task.kanbanId) as any),
+      )
+      .map((task) => task.id);
+    const readinessEnabled =
+      invoicingTaskIds.length > 0 &&
+      (await isFatturazioneReadinessEnabledForSite(siteId));
+    if (readinessEnabled) {
+      const { data: readinessRows, error: readinessError } = await supabase
+        .from("fatturazione_readiness")
+        .select("task_id, stato, uguale_offerta, confermato_at")
+        .eq("site_id", siteId)
+        .in("task_id", invoicingTaskIds);
+      if (readinessError) {
+        log.warn("Error fetching fatturazione_readiness:", readinessError);
+      } else {
+        (readinessRows || []).forEach((row) => {
+          readinessByTaskId.set(row.task_id, {
+            stato: row.stato,
+            uguale_offerta: row.uguale_offerta,
+            confermato_at: row.confermato_at,
+          });
+        });
+      }
+    }
+
     // Group files, QC, and packing by taskId for efficient lookup
     const filesByTaskId = new Map<number, typeof files>();
     files.forEach((f) => {
@@ -430,6 +463,16 @@ export async function GET(req: NextRequest) {
           })
           .filter(Boolean),
         collaboratorTimeSummaries,
+        fatturazioneReadiness: readinessEnabled
+          ? readinessByTaskId.get(task.id) ||
+            (isFatturazioneKanban(kanbanMap.get(task.kanbanId) as any)
+              ? {
+                  stato: "in_attesa",
+                  uguale_offerta: false,
+                  confermato_at: null,
+                }
+              : null)
+          : null,
       };
     });
 

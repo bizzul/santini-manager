@@ -263,6 +263,8 @@ export const deMessages: DeepPartialWiden<Messages> = {
     noImage: "Kein Bild",
     openProjectReports: "Projektauswertung öffnen",
     openClientSheet: "Kundenblatt öffnen",
+    readyForInvoicing: "Bereit zur Fakturierung",
+    waitingDirectorReview: "Wartet auf Prüfung durch die Direktion",
     duplicateProject: "Projekt duplizieren",
     duplicating: "Wird dupliziert...",
     archiveProject: "Projekt archivieren",

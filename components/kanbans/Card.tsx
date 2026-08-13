@@ -10,7 +10,7 @@ import {
 } from "@/types/supabase";
 import { DateManager } from "../../package/utils/dates/date-manager";
 import { logger } from "@/lib/logger";
-import { formatLocalDate, parseLocalDate, startOfLocalDay } from "@/lib/utils";
+import { cn, formatLocalDate, parseLocalDate, startOfLocalDay } from "@/lib/utils";
 import {
   MapPin,
   Image as ImageIcon,
@@ -29,6 +29,13 @@ import { ManagerGuideButton } from "@/components/manager-guide";
 import { useUserContext } from "@/hooks/use-user-context";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/i18n/i18n-provider";
+import {
+  getFatturazioneReadinessBorderColor,
+  getFatturazioneReadinessFillClass,
+  getFatturazioneReadinessFillStyle,
+  resolveFatturazioneReadinessStato,
+  shouldShowFatturazioneReadinessBadge,
+} from "@/lib/fatturazione-readiness";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
 
@@ -308,6 +315,7 @@ function Card({
       data.kanban?.categoryIdentifier ||
       "";
     const isFattureKanban =
+      Boolean(data.kanban?.is_invoicing_kanban) ||
       kanbanIdentifier === "fatture" ||
       /_fatture$/.test(columnIdentifier) ||
       kanbanCategory === "fatturazione";
@@ -393,6 +401,19 @@ function Card({
     history,
     id,
   ]);
+
+  const invoicingTone = shouldShowFatturazioneReadinessBadge(
+    data.kanban,
+    data.column,
+  )
+    ? resolveFatturazioneReadinessStato(data.fatturazioneReadiness)
+    : null;
+  const invoicingFillClass = invoicingTone
+    ? getFatturazioneReadinessFillClass(invoicingTone)
+    : null;
+  const invoicingFillStyle = invoicingTone
+    ? getFatturazioneReadinessFillStyle(invoicingTone)
+    : null;
 
   useEffect(() => {
     if (Array.isArray(data.taskSuppliers)) {
@@ -672,6 +693,9 @@ function Card({
   // Regola legacy (usata nel kanban offerte dove show_category_colors = false):
   //   priorita' bozza -> esito offerta -> ritardo -> neutro.
   const getBorderColor = () => {
+    if (invoicingTone) {
+      return getFatturazioneReadinessBorderColor(invoicingTone);
+    }
     if (showCategoryColors) {
       // Modalita' "colore prodotto": il bordo segue solo la categoria prodotto.
       // Se manca, neutro (slate) - gli altri stati restano visibili nei badge.
@@ -826,8 +850,11 @@ function Card({
       const baseClasses = compact
         ? "h-4 px-1 text-[9px] gap-0.5"
         : "h-5 px-1.5 text-[10px] gap-1";
-      const colorClasses =
-        fattureBadgeInfo.state === "late"
+      const colorClasses = invoicingTone
+        ? fattureBadgeInfo.state === "late"
+          ? "bg-red-700 text-white hover:bg-red-800"
+          : "bg-black/25 text-white hover:bg-black/35"
+        : fattureBadgeInfo.state === "late"
           ? "bg-red-600 text-white hover:bg-red-700"
           : fattureBadgeInfo.state === "ok"
           ? "bg-green-600 text-white hover:bg-green-700"
@@ -849,7 +876,7 @@ function Card({
       return (
         <Badge
           title={tooltip}
-          className={`inline-flex items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+          className={`inline-flex shrink-0 items-center font-bold rounded ${baseClasses} ${colorClasses}`}
         >
           <Icon className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
           {label}
@@ -885,7 +912,7 @@ function Card({
     return (
       <Badge
         title={tooltip}
-        className={`inline-flex items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+        className={`inline-flex shrink-0 items-center font-bold rounded ${baseClasses} ${colorClasses}`}
       >
         <AlertTriangle className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
         {label}
@@ -911,20 +938,28 @@ function Card({
     <ContextMenu>
       <div
         className={`
-          relative w-full mb-2 rounded-r-xl rounded-l-sm select-none overscroll-contain
-          ${criticalBgClass}
+          relative w-full mb-2 rounded-r-xl rounded-l-sm select-none overflow-clip
+          ${invoicingFillClass || criticalBgClass}
           ${cardSizeClass}
-          border-y border-r border-slate-700/70
+          ${invoicingTone ? "border border-y border-r" : "border-y border-r border-slate-700/70"}
           border-l-4
-          shadow-sm ring-1 ring-transparent hover:shadow-md hover:ring-slate-600/70 transition-all duration-200
+          shadow-sm ring-1 ring-transparent hover:shadow-md ${invoicingTone ? "hover:brightness-110" : "hover:ring-slate-600/70"} transition-all duration-200
           ${data.isPreview ? "opacity-75 cursor-not-allowed" : ""}
           ${isDraft ? "border border-dashed border-amber-400" : ""}
         `}
+        title={
+          invoicingTone === "pronto"
+            ? t("kanbanCard.readyForInvoicing")
+            : invoicingTone === "in_attesa"
+              ? t("kanbanCard.waitingDirectorReview")
+              : undefined
+        }
         ref={data.isPreview ? undefined : setNodeRef}
         style={{
           ...dragStyle,
           opacity: isDragging ? 0.5 : 1,
           cursor: data.isPreview ? "not-allowed" : "move",
+          ...(invoicingFillStyle || {}),
           borderLeftColor: getBorderColor(),
           borderLeftWidth: "4px",
           borderLeftStyle: "solid",
@@ -936,7 +971,14 @@ function Card({
         <ContextMenuTrigger>
           {!isSmall ? (
             /* ==================== CARD NORMAL (ESPANSA) ==================== */
-            <div className="relative flex h-full flex-col text-slate-800 dark:text-slate-100">
+            <div
+              className={cn(
+                "relative flex h-full flex-col",
+                invoicingTone
+                  ? "text-white [&_*]:text-white [&_.bg-slate-100]:bg-white/20 dark:[&_.bg-slate-800]:bg-white/15"
+                  : "text-slate-800 dark:text-slate-100",
+              )}
+            >
               <div className="flex min-h-0 flex-1 flex-col gap-[3px] px-3 pt-3 pb-5">
                 {/* Header: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
@@ -1227,19 +1269,35 @@ function Card({
               </div>
 
               {/* Progress bar integrata nella base */}
-              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-br-xl overflow-hidden">
+              <div className={cn(
+                "absolute bottom-0 left-0 right-0 h-1.5 rounded-br-xl overflow-hidden",
+                invoicingTone ? "bg-black/20" : "bg-slate-200 dark:bg-slate-700",
+              )}>
                 <div
                   style={{ width: `${data.percentStatus || 0}%` }}
-                  className="h-full bg-green-500 transition-all duration-300"
+                  className={cn(
+                    "h-full transition-all duration-300",
+                    invoicingTone ? "bg-white/80" : "bg-green-500",
+                  )}
                 />
               </div>
-              <div className="absolute bottom-0 right-2 text-[10px] font-medium text-slate-600 dark:text-slate-400 leading-normal">
+              <div className={cn(
+                "absolute bottom-0 right-2 text-[10px] font-medium leading-normal",
+                invoicingTone ? "text-white/90" : "text-slate-600 dark:text-slate-400",
+              )}>
                 {data.percentStatus || 0}%
               </div>
             </div>
           ) : (
             /* ==================== CARD SMALL (COMPRESSA) ==================== */
-            <div className="relative flex h-full flex-col text-slate-800 dark:text-slate-100">
+            <div
+              className={cn(
+                "relative flex h-full flex-col",
+                invoicingTone
+                  ? "text-white [&_*]:text-white [&_.bg-slate-100]:bg-white/20 dark:[&_.bg-slate-800]:bg-white/15"
+                  : "text-slate-800 dark:text-slate-100",
+              )}
+            >
               <div className="flex min-h-0 flex-1 flex-col gap-[3px] px-3 pt-3 pb-4">
                 {/* Riga 1: N°, Data, Settimana */}
                 <div className="flex items-center justify-between gap-2">
@@ -1451,21 +1509,30 @@ function Card({
               </div>
 
               {/* Progress bar integrata nella base */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200 dark:bg-slate-700 rounded-br-xl overflow-hidden">
+              <div className={cn(
+                "absolute bottom-0 left-0 right-0 h-1 rounded-br-xl overflow-hidden",
+                invoicingTone ? "bg-black/20" : "bg-slate-200 dark:bg-slate-700",
+              )}>
                 <div
                   style={{ width: `${data.percentStatus || 0}%` }}
-                  className="h-full bg-green-500 transition-all duration-300"
+                  className={cn(
+                    "h-full transition-all duration-300",
+                    invoicingTone ? "bg-white/80" : "bg-green-500",
+                  )}
                 />
               </div>
-              <div className="absolute bottom-0 right-1.5 text-[9px] font-medium text-slate-600 dark:text-slate-400 leading-none">
+              <div className={cn(
+                "absolute bottom-0 right-1.5 text-[9px] font-medium leading-none",
+                invoicingTone ? "text-white/90" : "text-slate-600 dark:text-slate-400",
+              )}>
                 {data.percentStatus || 0}%
               </div>
             </div>
           )}
 
           <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="flex h-[min(900px,90vh)] max-h-[90vh] w-[1440px] max-w-[min(1440px,95vw)] flex-col overflow-hidden !bg-background p-0 dark:!bg-muted">
-              <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
+            <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
+              <DialogHeader className="pr-10">
                 <div className="flex items-center justify-between gap-3">
                   <DialogTitle>Modifica {data.unique_code}</DialogTitle>
                   <ManagerGuideButton
@@ -1477,8 +1544,7 @@ function Card({
                   />
                 </div>
               </DialogHeader>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
-                <EditTaskKanban
+              <EditTaskKanban
                   handleClose={(wasDeleted?: boolean) => {
                     setShowModal(false);
                     if (wasDeleted && onTaskDeleted) {
@@ -1494,8 +1560,8 @@ function Card({
                   domain={domain}
                   preferProjectCoverImage={preferProjectCoverImage}
                   onPreferProjectCoverImageChange={persistCoverPreference}
+                  onTaskUpdated={onTaskDeleted}
                 />
-              </div>
             </DialogContent>
           </Dialog>
         </ContextMenuTrigger>

@@ -51,6 +51,7 @@ type KanbanDef = {
     is_offer_kanban?: boolean;
     is_work_kanban?: boolean;
     is_production_kanban?: boolean;
+    is_invoicing_kanban?: boolean;
     show_category_colors?: boolean;
     columns: Array<{
         title: string;
@@ -194,6 +195,7 @@ const KANBAN_BOARDS: KanbanDef[] = [
         categoryIdentifier: "fatturazione",
         color: "#3f434b",
         icon: "MailCheck",
+        is_invoicing_kanban: true,
         columns: [
             { title: "Zu erledigen", identifier: "to_do_fatture", position: 1, column_type: "normal", is_creation_column: true },
             { title: "Gesendet", identifier: "inviata_fatture", position: 2, column_type: "normal", is_creation_column: false },
@@ -430,6 +432,7 @@ async function ensureKanbanStructure(siteId: string) {
                     is_offer_kanban: board.is_offer_kanban ?? false,
                     is_work_kanban: board.is_work_kanban ?? false,
                     is_production_kanban: board.is_production_kanban ?? false,
+                    is_invoicing_kanban: board.is_invoicing_kanban ?? false,
                     show_category_colors: board.show_category_colors ?? false,
                 })
                 .select("id")

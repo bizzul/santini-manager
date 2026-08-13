@@ -260,6 +260,8 @@ export const itMessages = {
     noImage: "Nessuna immagine",
     openProjectReports: "Apri consuntivi progetto",
     openClientSheet: "Apri scheda cliente",
+    readyForInvoicing: "Pronto per fatturazione",
+    waitingDirectorReview: "In attesa di revisione direttore",
     duplicateProject: "Duplica progetto",
     duplicating: "Duplicando...",
     archiveProject: "Archivia progetto",

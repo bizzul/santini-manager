@@ -19,6 +19,7 @@ export async function saveKanban(kanban: {
   // Nuovi campi per routing produzione/fatturazione
   is_work_kanban?: boolean;
   is_production_kanban?: boolean;
+  is_invoicing_kanban?: boolean;
   target_invoice_kanban_id?: number | null;
   // Opzione colori categoria prodotto
   show_category_colors?: boolean;
@@ -86,6 +87,7 @@ export async function saveKanban(kanban: {
         // Nuovi campi per routing produzione/fatturazione
         is_work_kanban: kanban.is_work_kanban || false,
         is_production_kanban: kanban.is_production_kanban || false,
+        is_invoicing_kanban: kanban.is_invoicing_kanban || false,
         target_invoice_kanban_id: kanban.target_invoice_kanban_id || null,
         // Opzione colori categoria prodotto
         show_category_colors: kanban.show_category_colors || false,
@@ -136,6 +138,7 @@ export async function saveKanban(kanban: {
         // Nuovi campi per routing produzione/fatturazione
         is_work_kanban: kanban.is_work_kanban || false,
         is_production_kanban: kanban.is_production_kanban || false,
+        is_invoicing_kanban: kanban.is_invoicing_kanban || false,
         target_invoice_kanban_id: kanban.target_invoice_kanban_id || null,
         // Opzione colori categoria prodotto
         show_category_colors: kanban.show_category_colors || false,

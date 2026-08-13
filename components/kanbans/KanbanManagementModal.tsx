@@ -153,6 +153,9 @@ export default function KanbanManagementModal({
   const [isProductionKanban, setIsProductionKanban] = useState(
     kanban?.is_production_kanban || false
   );
+  const [isInvoicingKanban, setIsInvoicingKanban] = useState(
+    kanban?.is_invoicing_kanban || false
+  );
   const [targetInvoiceKanbanId, setTargetInvoiceKanbanId] = useState<
     number | null
   >(kanban?.target_invoice_kanban_id || null);
@@ -214,6 +217,7 @@ export default function KanbanManagementModal({
       // Reset work/production kanban fields
       setIsWorkKanban(kanban?.is_work_kanban || false);
       setIsProductionKanban(kanban?.is_production_kanban || false);
+      setIsInvoicingKanban(kanban?.is_invoicing_kanban || false);
       setTargetInvoiceKanbanId(kanban?.target_invoice_kanban_id || null);
       // Reset category colors option
       setShowCategoryColors(kanban?.show_category_colors || false);
@@ -312,6 +316,7 @@ export default function KanbanManagementModal({
         // Nuovi campi per routing produzione/fatturazione
         is_work_kanban: isWorkKanban,
         is_production_kanban: isProductionKanban,
+        is_invoicing_kanban: isInvoicingKanban,
         target_invoice_kanban_id: isProductionKanban
           ? targetInvoiceKanbanId
           : null,
@@ -576,6 +581,7 @@ export default function KanbanManagementModal({
                     if (e.target.checked) {
                       setIsWorkKanban(false);
                       setIsProductionKanban(false);
+                      setIsInvoicingKanban(false);
                     }
                   }}
                   className="h-4 w-4 rounded border-gray-300"
@@ -670,6 +676,7 @@ export default function KanbanManagementModal({
                     if (e.target.checked) {
                       setIsOfferKanban(false);
                       setIsProductionKanban(false);
+                      setIsInvoicingKanban(false);
                     }
                   }}
                   className="h-4 w-4 rounded border-gray-300"
@@ -701,6 +708,7 @@ export default function KanbanManagementModal({
                     if (e.target.checked) {
                       setIsOfferKanban(false);
                       setIsWorkKanban(false);
+                      setIsInvoicingKanban(false);
                     }
                   }}
                   className="h-4 w-4 rounded border-gray-300"
@@ -730,9 +738,10 @@ export default function KanbanManagementModal({
                       {availableKanbans
                         .filter(
                           (k) =>
-                            !k.is_offer_kanban &&
+                            k.is_invoicing_kanban ||
+                            (!k.is_offer_kanban &&
                             !k.is_work_kanban &&
-                            !k.is_production_kanban
+                            !k.is_production_kanban)
                         )
                         .map((k) => (
                           <SelectItem key={k.id} value={k.id.toString()}>
@@ -742,6 +751,39 @@ export default function KanbanManagementModal({
                     </SelectContent>
                   </Select>
                 </div>
+              )}
+            </div>
+
+            {/* Kanban Fatturazione */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isInvoicingKanban"
+                  checked={isInvoicingKanban}
+                  onChange={(e) => {
+                    setIsInvoicingKanban(e.target.checked);
+                    if (e.target.checked) {
+                      setIsOfferKanban(false);
+                      setIsWorkKanban(false);
+                      setIsProductionKanban(false);
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label
+                  htmlFor="isInvoicingKanban"
+                  className="cursor-pointer text-sm"
+                >
+                  Kanban Fatturazione
+                </Label>
+              </div>
+              {isInvoicingKanban && (
+                <p className="text-xs text-muted-foreground pl-6">
+                  Attiva il semaforo di readiness (arancione/verde) e i
+                  supplementi di progetto sulle card. Non modifica le altre
+                  kanban dello spazio.
+                </p>
               )}
             </div>
 

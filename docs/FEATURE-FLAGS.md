@@ -111,6 +111,22 @@ stato persistito (localStorage) o differenze di configurazione.
   - `production`: `undefined` finché la nuova shell non è validata (Fase 7)
   - `development`: `true` per lavorare sulle fasi 3–6
 
+## Flag Fatturazione readiness (semaforo supplementi)
+
+### `site_settings.fatturazione_readiness_enabled`
+- **Tipo:** boolean JSONB (`true` / `false`). Assente = **abilitato**.
+- **Dove:**
+  - Lettura: `lib/fatturazione-readiness.server.ts` (`isFatturazioneReadinessEnabledForSite`)
+  - Chiave: `lib/fatturazione-readiness-settings.ts` (`FATTURAZIONE_READINESS_SETTING_KEY`)
+- **Scopo:** semaforo arancione/verde sulle card della Kanban Fatturazione (`is_invoicing_kanban`) e gestione supplementi di progetto da parte del direttore/admin. Si attiva su ogni board Fatture OUT di qualsiasi spazio, senza hardcode di `site_id`.
+- **Comportamento:**
+  - assente / `true` → badge + sezione direttore attivi
+  - `false` → nessuna riga di readiness creata, nessun badge, UI nascosta (le migration restano)
+- **Rollback:** impostare `fatturazione_readiness_enabled = false` sul sito in `site_settings`, senza rollback della migration.
+- **Raccomandazione:**
+  - `production`: assente (on by default) dopo validazione
+  - `development`: assente
+
 ## Flag dominio/URL
 
 ### `NEXT_PUBLIC_ROOT_DOMAIN`

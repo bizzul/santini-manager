@@ -84,6 +84,7 @@ import {
 } from "./card-display-config";
 
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
+import { isFatturazioneKanban } from "@/lib/fatturazione-readiness";
 
 const normalizeCardFieldConfig = (
   rawConfig: unknown
@@ -123,6 +124,7 @@ const Column = ({
   kanban,
   domain,
   isOfferKanban,
+  isInvoicingKanban,
   onMiniCardClick,
   onTaskCreated,
   onTaskDeleted,
@@ -133,6 +135,7 @@ const Column = ({
   const [modalCreate, setModalCreate] = useState(false);
   const [modalQuickAdd, setModalQuickAdd] = useState(false);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
+  const [onlyReady, setOnlyReady] = useState(false);
 
   const getBaseTaskNumber = (taskTitle: string): string => {
     const match = taskTitle.match(/^\d{2}-\d{3}/);
@@ -192,6 +195,44 @@ const Column = ({
     disabled: isPreviewMode,
   });
 
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
+  const setColumnBodyRef = useCallback(
+    (node: HTMLElement | null) => {
+      setNodeRef(node);
+      wheelCleanupRef.current?.();
+      wheelCleanupRef.current = null;
+      if (!node) return;
+
+      const onWheel = (event: WheelEvent) => {
+        if (event.ctrlKey || event.deltaY === 0) return;
+        const canScroll = node.scrollHeight > node.clientHeight + 1;
+        if (!canScroll) return;
+
+        const deltaY =
+          event.deltaMode === 1
+            ? event.deltaY * 16
+            : event.deltaMode === 2
+              ? event.deltaY * node.clientHeight
+              : event.deltaY;
+        const atTop = node.scrollTop <= 0 && deltaY < 0;
+        const atBottom =
+          node.scrollTop + node.clientHeight >= node.scrollHeight - 1 &&
+          deltaY > 0;
+        if (atTop || atBottom) return;
+
+        node.scrollTop += deltaY;
+        event.preventDefault();
+        event.stopPropagation();
+      };
+
+      node.addEventListener("wheel", onWheel, { passive: false, capture: true });
+      wheelCleanupRef.current = () => {
+        node.removeEventListener("wheel", onWheel, { capture: true });
+      };
+    },
+    [setNodeRef],
+  );
+
   useEffect(() => {
     // Simulate a small delay to show loading state
     const timer = setTimeout(() => {
@@ -221,6 +262,16 @@ const Column = ({
   // Check if this is the TODO column (first column) for offer kanbans
   // TODO column is used for quick add of draft offers
   const isTodoColumn = column.position === 1 && isOfferKanban;
+  const isFattureToDoColumn = column.position === 1 && isInvoicingKanban;
+  const hasReadinessData = cards.some(
+    (card: any) => card?.fatturazioneReadiness,
+  );
+  const visibleCards =
+    isFattureToDoColumn && onlyReady && hasReadinessData
+      ? cards.filter(
+          (card: any) => card?.fatturazioneReadiness?.stato === "pronto",
+        )
+      : cards;
 
   const getSortTimestamp = (card: any, fields: string[]) => {
     for (const field of fields) {
@@ -315,6 +366,20 @@ const Column = ({
             </h2>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {isFattureToDoColumn && hasReadinessData && (
+              <button
+                type="button"
+                onClick={() => setOnlyReady((current) => !current)}
+                className={`h-8 rounded-md border px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                  onlyReady
+                    ? "border-success bg-success text-success-foreground"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground"
+                }`}
+                title="Mostra solo le card confermate dal direttore"
+              >
+                Solo pronte
+              </button>
+            )}
             {/* Quick Add button for TODO column in offer kanbans */}
             {isTodoColumn && (
               <Dialog
@@ -433,10 +498,10 @@ const Column = ({
         </div>
       </div>
       <div
-        className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 ${
+        className={`flex-1 min-h-0 overflow-y-auto overscroll-y-contain px-3 py-3 ${
           isOver && !isPreviewMode ? "bg-green-500 border border-zinc-400" : ""
         }`}
-        ref={setNodeRef}
+        ref={setColumnBodyRef}
       >
         {isLoadingCards
           ? // Loading skeletons for cards
@@ -445,7 +510,7 @@ const Column = ({
                 <Skeleton className="h-32 w-full rounded-lg" />
               </div>
             ))
-          : sortCards(cards).map((card: any) =>
+          : sortCards(visibleCards).map((card: any) =>
               isTrattativaColumn ? (
                 <OfferMiniCard
                   key={card.id}
@@ -655,6 +720,7 @@ function KanbanBoard({
   // Check if this is an offer kanban
   const isOfferKanban =
     kanban?.is_offer_kanban || kanban?.isOfferKanban || false;
+  const isInvoicingKanban = isFatturazioneKanban(kanban);
 
   const cardFieldStorageKey = useRef<string | null>(null);
 
@@ -1552,6 +1618,7 @@ function KanbanBoard({
                       kanban={kanban}
                       domain={domain}
                       isOfferKanban={isOfferKanban}
+                      isInvoicingKanban={isInvoicingKanban}
                       onMiniCardClick={handleMiniCardClick}
                       onTaskCreated={refetchTasks}
                       onTaskDeleted={refetchTasks}

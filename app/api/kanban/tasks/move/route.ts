@@ -7,6 +7,8 @@ import {
   getAutoArchiveSettings,
 } from "@/lib/code-generator";
 import { logger } from "@/lib/logger";
+import { isFatturazioneSchemaMissing } from "@/lib/fatturazione-readiness";
+import { syncFatturazioneReadinessOnMove } from "@/lib/fatturazione-readiness.server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -50,6 +52,8 @@ export async function POST(req: NextRequest) {
 
     // Find task with site_id filtering if available
     // Also get the kanban data to check if it's an offer/work/production kanban
+    // Find task with site_id filtering if available
+    // Also get the kanban data to check if it's an offer/work/production kanban
     let taskQuery = supabase
       .from("Task")
       .select(`
@@ -63,6 +67,7 @@ export async function POST(req: NextRequest) {
           code_change_column_id,
           is_work_kanban,
           is_production_kanban,
+          is_invoicing_kanban,
           target_invoice_kanban_id
         ),
         sell_product:sellProductId(
@@ -78,7 +83,36 @@ export async function POST(req: NextRequest) {
 
     logger.debug("Task query with site_id:", siteId);
 
-    const { data: task, error: findError } = await taskQuery.single();
+    let { data: task, error: findError } = await taskQuery.single();
+    if (findError && isFatturazioneSchemaMissing(findError)) {
+      let fallbackQuery = supabase
+        .from("Task")
+        .select(`
+          *,
+          kanban_columns:kanbanColumnId(*),
+          kanban:kanbanId(
+            id,
+            identifier,
+            is_offer_kanban,
+            target_work_kanban_id,
+            code_change_column_id,
+            is_work_kanban,
+            is_production_kanban,
+            target_invoice_kanban_id
+          ),
+          sell_product:sellProductId(
+            id,
+            name
+          )
+        `)
+        .eq("id", id);
+      if (siteId) {
+        fallbackQuery = fallbackQuery.eq("site_id", siteId);
+      }
+      const fallback = await fallbackQuery.single();
+      task = fallback.data as typeof task;
+      findError = fallback.error;
+    }
 
     if (findError || !task) {
       logger.error("Task not found:", id);
@@ -446,7 +480,7 @@ export async function POST(req: NextRequest) {
           // Trova la prima colonna della kanban fatture
           const { data: firstColumn } = await supabase
             .from("KanbanColumn")
-            .select("id")
+            .select("id, identifier, title, position")
             .eq("kanbanId", targetInvoiceKanbanId)
             .order("position", { ascending: true })
             .limit(1)
@@ -480,6 +514,13 @@ export async function POST(req: NextRequest) {
                 updatedTask?.id,
                 newCode,
               );
+              await syncFatturazioneReadinessOnMove({
+                supabase,
+                siteId,
+                taskId: id,
+                kanban: { is_invoicing_kanban: true, identifier: "fatture" },
+                column: firstColumn,
+              });
             }
           }
         } catch (moveError) {
@@ -712,6 +753,13 @@ export async function POST(req: NextRequest) {
     if (updateError) throw updateError;
 
     if (response) {
+      await syncFatturazioneReadinessOnMove({
+        supabase,
+        siteId,
+        taskId: id,
+        kanban: task?.kanban,
+        column: targetColumn,
+      });
       // Create a new Action record to track the user action
       const actionData: any = {
         type: "move_task",

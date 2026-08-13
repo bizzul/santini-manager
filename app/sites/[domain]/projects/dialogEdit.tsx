@@ -26,11 +26,10 @@ function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleClose()}>
-      <DialogContent className="flex h-[min(900px,90vh)] max-h-[90vh] w-[1440px] max-w-[min(1440px,95vw)] flex-col overflow-hidden p-0">
-        <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
+      <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
+        <DialogHeader>
           <DialogTitle>Modifica {data?.unique_code || "progetto"}</DialogTitle>
         </DialogHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4">
         {data && (
           <EditTaskKanban
             handleClose={handleClose}
@@ -43,7 +42,6 @@ function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
             domain={domain}
           />
         )}
-        </div>
       </DialogContent>
     </Dialog>
   );
