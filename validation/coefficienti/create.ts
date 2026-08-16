@@ -7,6 +7,7 @@ export const COEFFICIENTE_CATEGORIE = [
   "telaio",
   "esecuzione_ante",
   "tipo_cassone",
+  "materiale_arredamento",
 ] as const;
 
 export const validation = z.object({

@@ -45,6 +45,7 @@ const CATEGORIA_LABELS: Record<(typeof COEFFICIENTE_CATEGORIE)[number], string> 
     telaio: "Telaio",
     esecuzione_ante: "Esecuzione ante",
     tipo_cassone: "Tipo cassone",
+    materiale_arredamento: "Materiale arredamento",
   };
 
 type Props = {

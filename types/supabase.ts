@@ -1095,7 +1095,8 @@ export type CoefficienteCategoria =
     | "materiale_porta"
     | "telaio"
     | "esecuzione_ante"
-    | "tipo_cassone";
+    | "tipo_cassone"
+    | "materiale_arredamento";
 
 export type DimensioneIncremento = "larghezza" | "altezza" | "profondita";
 

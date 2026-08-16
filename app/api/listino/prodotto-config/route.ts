@@ -64,7 +64,9 @@ export async function GET(req: NextRequest) {
     }
 
     const materiale = (coeffData ?? []).filter((c) =>
-      ["materiale_serramento", "materiale_porta"].includes(c.categoria),
+      ["materiale_serramento", "materiale_porta", "materiale_arredamento"].includes(
+        c.categoria,
+      ),
     );
     const vetroTelaio = (coeffData ?? []).filter((c) =>
       ["vetro", "telaio"].includes(c.categoria),

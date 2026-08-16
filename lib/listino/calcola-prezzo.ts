@@ -370,7 +370,7 @@ async function risolviCoefficienti(
   const codMateriale = input.codMateriale ?? prodotto.cod_materiale ?? null;
   if (codMateriale) {
     const moltiplicatore = await dataSource.getCoefficiente(
-      ["materiale_serramento", "materiale_porta"],
+      ["materiale_serramento", "materiale_porta", "materiale_arredamento"],
       codMateriale,
     );
     if (moltiplicatore != null) {

@@ -36,6 +36,14 @@ export const GLASS_CODE_LABELS: Record<string, string> = {
   VC3: "Vetrocamera triplo",
   VSIC: "Vetro di sicurezza",
   VAC: "Vetro acustico",
+  // Telai porte (rinnovo ago 2026)
+  CAS: "Telaio a cassetta",
+  BAI: "Telaio a baionetta",
+  APP: "Telaio applicato",
+  // Binari porte scorrevoli
+  BINAPP: "Binario applicato",
+  BINSOF: "Binario a soffitto",
+  SCOMP: "A scomparsa",
 };
 
 function normalize(value?: string | null): string {
