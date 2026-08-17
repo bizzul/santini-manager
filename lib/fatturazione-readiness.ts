@@ -64,9 +64,39 @@ export function isFatturazioneKanban(
 
   return (
     kanbanIdentifier === "fatture" ||
+    kanbanIdentifier.includes("fatture") ||
     categoryIdentifier === "fatturazione" ||
+    categoryIdentifier.includes("fattur") ||
     /_fatture$/.test(columnIdentifier)
   );
+}
+
+export function toFatturazioneTaskId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+export function fatturazioneApiErrorMessage(
+  payload: unknown,
+  fallback: string,
+): string {
+  if (!payload || typeof payload !== "object") return fallback;
+  const error = (payload as { error?: unknown }).error;
+  if (typeof error === "string" && error.trim()) return error;
+  if (error && typeof error === "object") {
+    const flattened = error as {
+      formErrors?: string[];
+      fieldErrors?: Record<string, string[] | undefined>;
+    };
+    const formError = flattened.formErrors?.find((item) => item?.trim());
+    if (formError) return formError;
+    const fieldError = Object.values(flattened.fieldErrors || {})
+      .flat()
+      .find((item) => item?.trim());
+    if (fieldError) return fieldError;
+  }
+  return fallback;
 }
 
 export function isFatturazioneToDoColumn(

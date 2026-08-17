@@ -21,6 +21,8 @@ import {
     normalizeSupabaseRelation,
 } from "@/lib/product-category-label";
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
+import { loadFatturazioneReadinessByTaskId } from "@/lib/fatturazione-readiness.server";
+import { toFatturazioneTaskId } from "@/lib/fatturazione-readiness";
 import { assertDashboardQuery } from "@/lib/dashboard-query-guard";
 import { syncRegisteredSuppliersIntoInventorySuppliers } from "@/lib/inventory-suppliers";
 import {
@@ -1236,6 +1238,7 @@ export const fetchKanbanWithTasks = cache(
         const columnMap = new Map(
             (kanban.columns || []).map((c: any) => [c.id, c]),
         );
+        const kanbanById = new Map([[kanban.id, kanban]]);
         const clientMap = new Map(clients.map((c) => [c.id, c]));
         const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -1326,6 +1329,15 @@ export const fetchKanbanWithTasks = cache(
             return parts.map((part) => part.charAt(0).toUpperCase()).join("");
         };
 
+        const { enabled: readinessEnabled, byTaskId: readinessByTaskId } =
+            await loadFatturazioneReadinessByTaskId({
+                supabase,
+                siteId,
+                tasks,
+                kanbanById,
+                columnById: columnMap,
+            });
+
         const tasksWithRelations = tasks.map((task) => {
             const activeEntries = activeEntriesByTask.get(task.id) || [];
             const allEntries = allEntriesByTask.get(task.id) || [];
@@ -1410,6 +1422,11 @@ export const fetchKanbanWithTasks = cache(
                     .length,
                 activeCollaborators,
                 collaboratorTimeSummaries,
+                fatturazioneReadiness:
+                    readinessEnabled && toFatturazioneTaskId(task.id) != null
+                        ? readinessByTaskId.get(toFatturazioneTaskId(task.id) as number) ??
+                          null
+                        : null,
             };
         });
 

@@ -6,6 +6,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import {
   canWriteFatturazioneReadiness,
   isFatturazioneReadinessEnabledForSite,
+  markFatturazioneReadinessInAttesa,
 } from "@/lib/fatturazione-readiness.server";
 
 export const dynamic = "force-dynamic";
@@ -59,15 +60,7 @@ async function markInAttesa(
   siteId: string,
   taskId: number,
 ) {
-  await supabase
-    .from("fatturazione_readiness")
-    .update({
-      stato: "in_attesa",
-      confermato_at: null,
-      confermato_by: null,
-    })
-    .eq("site_id", siteId)
-    .eq("task_id", taskId);
+  await markFatturazioneReadinessInAttesa({ supabase, siteId, taskId });
 }
 
 export async function PATCH(

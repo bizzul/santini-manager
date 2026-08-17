@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createServiceClient } from "@/utils/supabase/server";
 import { getSiteContext } from "@/lib/site-context";
 import { getUserContext } from "@/lib/auth-utils";
 import {
@@ -216,7 +216,8 @@ export async function PATCH(
 
     const parsed = confirmSchema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      const firstIssue = parsed.error.issues[0]?.message || "Richiesta non valida";
+      return NextResponse.json({ error: firstIssue }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -238,53 +239,69 @@ export async function PATCH(
       return NextResponse.json({ error: "Stato non trovato" }, { status: 404 });
     }
 
-    const actorId = userContext.user?.id || userContext.userId || null;
+    const actorIdRaw = userContext.user?.id || userContext.userId || null;
+    const actorId =
+      typeof actorIdRaw === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        actorIdRaw,
+      )
+        ? actorIdRaw
+        : null;
 
-    if (parsed.data.action === "set_uguale_offerta") {
-      const ugualeOfferta = Boolean(parsed.data.ugualeOfferta);
-      const { data, error } = await supabase
+    const persistReadiness = async (patch: Record<string, unknown>) => {
+      const first = await supabase
         .from("fatturazione_readiness")
-        .update({
-          uguale_offerta: ugualeOfferta,
-          stato: "in_attesa",
-          confermato_at: null,
-          confermato_by: null,
-        })
+        .update(patch)
+        .eq("id", readiness.id)
+        .eq("site_id", siteId)
+        .select()
+        .maybeSingle();
+      if (!first.error && first.data) return first.data;
+
+      const service = createServiceClient();
+      const retry = await service
+        .from("fatturazione_readiness")
+        .update(patch)
         .eq("id", readiness.id)
         .eq("site_id", siteId)
         .select()
         .single();
-      if (error) throw error;
+      if (retry.error) throw retry.error;
+      return retry.data;
+    };
+
+    if (parsed.data.action === "set_uguale_offerta") {
+      const ugualeOfferta = Boolean(parsed.data.ugualeOfferta);
+      const data = await persistReadiness({
+        uguale_offerta: ugualeOfferta,
+        stato: "in_attesa",
+        confermato_at: null,
+        confermato_by: null,
+      });
       return NextResponse.json({ readiness: data });
     }
 
     if (parsed.data.action === "reopen") {
-      const { data, error } = await supabase
-        .from("fatturazione_readiness")
-        .update({
-          stato: "in_attesa",
-          confermato_at: null,
-          confermato_by: null,
-        })
-        .eq("id", readiness.id)
-        .eq("site_id", siteId)
-        .select()
-        .single();
-      if (error) throw error;
+      const data = await persistReadiness({
+        stato: "in_attesa",
+        confermato_at: null,
+        confermato_by: null,
+      });
       return NextResponse.json({ readiness: data });
     }
 
-    const { count } = await supabase
+    const { data: supplementiRows, error: supplementiError } = await supabase
       .from("fatturazione_supplemento_riga")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("site_id", siteId)
       .eq("task_id", taskId)
       .is("deleted_at", null);
+    if (supplementiError) throw supplementiError;
 
     if (
       !canConfirmFatturazioneReadiness({
         ugualeOfferta: Boolean(readiness.uguale_offerta),
-        supplementiCount: count || 0,
+        supplementiCount: supplementiRows?.length || 0,
       })
     ) {
       return NextResponse.json(
@@ -296,19 +313,11 @@ export async function PATCH(
       );
     }
 
-    const { data, error } = await supabase
-      .from("fatturazione_readiness")
-      .update({
-        stato: "pronto",
-        confermato_at: new Date().toISOString(),
-        confermato_by: actorId,
-      })
-      .eq("id", readiness.id)
-      .eq("site_id", siteId)
-      .select()
-      .single();
-
-    if (error) throw error;
+    const data = await persistReadiness({
+      stato: "pronto",
+      confermato_at: new Date().toISOString(),
+      confermato_by: actorId,
+    });
     return NextResponse.json({ readiness: data });
   } catch (error) {
     if (isFatturazioneSchemaMissing(error)) {

@@ -1,5 +1,6 @@
 import {
   canConfirmFatturazioneReadiness,
+  fatturazioneApiErrorMessage,
   getFatturazioneReadinessBorderColor,
   getFatturazioneReadinessFillStyle,
   isFatturazioneKanban,
@@ -8,6 +9,7 @@ import {
   isFatturazioneToDoColumn,
   resolveFatturazioneReadinessStato,
   shouldShowFatturazioneReadinessBadge,
+  toFatturazioneTaskId,
 } from "@/lib/fatturazione-readiness";
 import { parseFatturazioneReadinessEnabled } from "@/lib/fatturazione-readiness-settings";
 
@@ -15,8 +17,12 @@ describe("fatturazione-readiness helpers", () => {
   it("detects invoicing boards by flag, identifier and category", () => {
     expect(isFatturazioneKanban({ is_invoicing_kanban: true })).toBe(true);
     expect(isFatturazioneKanban({ identifier: "fatture" })).toBe(true);
+    expect(isFatturazioneKanban({ identifier: "fatture_out" })).toBe(true);
     expect(
       isFatturazioneKanban({ category: { identifier: "fatturazione" } }),
+    ).toBe(true);
+    expect(
+      isFatturazioneKanban(undefined, { identifier: "to_do_fatture" }),
     ).toBe(true);
     expect(isFatturazioneKanban({ identifier: "0_offerte" })).toBe(false);
     expect(isFatturazioneKanban({ identifier: "1_progettazione" })).toBe(false);
@@ -120,5 +126,21 @@ describe("fatturazione-readiness helpers", () => {
         message: "permission denied for table Task",
       }),
     ).toBe(false);
+  });
+
+  it("normalizes task ids and API error payloads", () => {
+    expect(toFatturazioneTaskId(12)).toBe(12);
+    expect(toFatturazioneTaskId("12")).toBe(12);
+    expect(toFatturazioneTaskId(null)).toBeNull();
+    expect(toFatturazioneTaskId("")).toBeNull();
+    expect(fatturazioneApiErrorMessage({ error: "Manca il prezzo" }, "fallback")).toBe(
+      "Manca il prezzo",
+    );
+    expect(
+      fatturazioneApiErrorMessage(
+        { error: { formErrors: ["Seleziona una tipologia"] } },
+        "fallback",
+      ),
+    ).toBe("Seleziona una tipologia");
   });
 });

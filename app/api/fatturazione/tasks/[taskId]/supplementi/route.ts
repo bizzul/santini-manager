@@ -11,6 +11,7 @@ import {
   canWriteFatturazioneReadiness,
   ensureFatturazioneReadiness,
   isFatturazioneReadinessEnabledForSite,
+  markFatturazioneReadinessInAttesa,
 } from "@/lib/fatturazione-readiness.server";
 
 export const dynamic = "force-dynamic";
@@ -205,31 +206,13 @@ export async function POST(
         .select()
         .single();
       if (retry.error) throw retry.error;
-      await supabase
-        .from("fatturazione_readiness")
-        .update({
-          uguale_offerta: false,
-          stato: "in_attesa",
-          confermato_at: null,
-          confermato_by: null,
-        })
-        .eq("site_id", siteId)
-        .eq("task_id", taskId);
+      await markFatturazioneReadinessInAttesa({ supabase, siteId, taskId });
       return NextResponse.json({ supplemento: retry.data }, { status: 201 });
     }
 
     if (error) throw error;
 
-    await supabase
-      .from("fatturazione_readiness")
-      .update({
-        uguale_offerta: false,
-        stato: "in_attesa",
-        confermato_at: null,
-        confermato_by: null,
-      })
-      .eq("site_id", siteId)
-      .eq("task_id", taskId);
+    await markFatturazioneReadinessInAttesa({ supabase, siteId, taskId });
 
     return NextResponse.json({ supplemento: data }, { status: 201 });
   } catch (error) {

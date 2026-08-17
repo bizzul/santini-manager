@@ -10,6 +10,7 @@ import { SearchSelect } from "@/components/ui/search-select";
 import { useToast } from "@/components/ui/use-toast";
 import {
   canConfirmFatturazioneReadiness,
+  fatturazioneApiErrorMessage,
   type FatturazioneCatalogSupplemento,
   type FatturazioneReadiness,
   type FatturazioneSupplementoRiga,
@@ -78,7 +79,7 @@ export function FatturazioneReadinessPanel({
     try {
       const response = await fetch(
         `/api/fatturazione/tasks/${taskId}/readiness`,
-        { headers: siteHeaders(siteId, domain) },
+        { headers: siteHeaders(siteId, domain), cache: "no-store" },
       );
       if (!response.ok) {
         setEnabled(false);
@@ -134,7 +135,9 @@ export function FatturazioneReadinessPanel({
     });
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || "Aggiornamento non riuscito");
+      throw new Error(
+        fatturazioneApiErrorMessage(data, "Aggiornamento non riuscito"),
+      );
     }
     if (data.readiness) setReadiness(data.readiness);
     onChanged?.();
@@ -238,7 +241,9 @@ export function FatturazioneReadinessPanel({
       );
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Creazione non riuscita");
+        throw new Error(
+          fatturazioneApiErrorMessage(data, "Creazione non riuscita"),
+        );
       }
       setSelectedCatalogId("");
       setCustomDescrizione("");
@@ -285,7 +290,7 @@ export function FatturazioneReadinessPanel({
   };
 
   const handleConfirm = async () => {
-    if (!canWrite) return;
+    if (!canWrite || !canConfirm) return;
     setSaving(true);
     try {
       await patchReadiness({ action: "confirm" });
@@ -456,9 +461,9 @@ export function FatturazioneReadinessPanel({
                 <div className="w-14 shrink-0 space-y-1">
                   <Label className="text-xs">Qta</Label>
                   <Input
-                    type="number"
-                    min="0.001"
-                    step="1"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     className="w-full min-w-0 px-1.5"
                     value={quantita}
                     onChange={(event) => setQuantita(event.target.value)}
@@ -468,8 +473,9 @@ export function FatturazioneReadinessPanel({
                 <div className="w-[4.75rem] shrink-0 space-y-1">
                   <Label className="text-xs">Prezzo</Label>
                   <Input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     className="w-full min-w-0 px-1.5"
                     value={prezzo}
                     onChange={(event) => setPrezzo(event.target.value)}
@@ -499,8 +505,12 @@ export function FatturazioneReadinessPanel({
           {canWrite ? (
             <Button
               type="button"
-              onClick={handleConfirm}
-              disabled={saving || !canConfirm || isPronto}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void handleConfirm();
+              }}
+              disabled={saving || !canConfirm}
               className="w-full"
             >
               <Check className="mr-2 h-4 w-4" />

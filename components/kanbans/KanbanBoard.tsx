@@ -622,6 +622,7 @@ function KanbanBoard({
 
       const response = await fetch(`/api/kanban/tasks?kanbanId=${kanban.id}`, {
         headers,
+        cache: "no-store",
       });
 
       if (response.ok) {

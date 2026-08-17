@@ -762,9 +762,24 @@ const EditTaskKanban = ({
     }
 
     const sanitizedProducts = sanitizeOfferProducts(offerProducts);
-    const normalizedSiteAddress = formatSiteAddress(siteAddressStreet, siteAddressTown);
+    const knownProductIds = new Set(
+      (products as { id?: number }[])
+        .map((product) => Number(product.id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    );
     const firstProductId =
-      sanitizedProducts.find((item) => item.productId)?.productId || null;
+      sanitizedProducts.find(
+        (item) =>
+          item.productId != null && knownProductIds.has(Number(item.productId)),
+      )?.productId || null;
+    const offerProductsToSave = sanitizedProducts.map((item) => ({
+      ...item,
+      productId:
+        item.productId != null && knownProductIds.has(Number(item.productId))
+          ? Number(item.productId)
+          : null,
+    }));
+    const normalizedSiteAddress = formatSiteAddress(siteAddressStreet, siteAddressTown);
     const totalPieces = sumOfferPieces(sanitizedProducts);
     const headers: HeadersInit = {
       ...getHeaders(),
@@ -809,7 +824,7 @@ const EditTaskKanban = ({
         other: d.other || null,
         kanbanId: selectedKanbanId || resource?.kanbanId || null,
         kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
-        offer_products: sanitizedProducts,
+        offer_products: offerProductsToSave,
       }),
     });
 
@@ -3132,7 +3147,7 @@ const EditTaskKanban = ({
               <Trash2 className="h-4 w-4 mr-2" />
               Elimina
             </Button>
-            <Button type="submit" disabled={isSubmitting || isDeleting}>
+            <Button type="submit" formNoValidate disabled={isSubmitting || isDeleting}>
               {isSubmitting && (
                 <span className="spinner-border spinner-border-sm mr-1"></span>
               )}

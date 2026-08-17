@@ -394,6 +394,16 @@ export async function PATCH(
       ({ data: taskData, error: updateError } = await runUpdate(updateData));
     }
 
+    if (
+      updateError?.code === "23503" &&
+      String(updateError.message || updateError.details || "").includes(
+        "sellProductId",
+      )
+    ) {
+      updateData.sellProductId = null;
+      ({ data: taskData, error: updateError } = await runUpdate(updateData));
+    }
+
     if (updateError) throw updateError;
 
     return NextResponse.json({
@@ -403,7 +413,10 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("Error updating task:", error);
-    return NextResponse.json({ message: "Internal server error", status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error", status: 500 },
+      { status: 500 },
+    );
   }
 }
 
