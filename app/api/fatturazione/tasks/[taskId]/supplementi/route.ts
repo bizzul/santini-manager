@@ -22,7 +22,12 @@ const createSchema = z.object({
   prezzo: z.coerce.number().finite().optional(),
 }).refine(
   (value) => Boolean(value.catalogSupplementoId || value.descrizione),
-  { message: "Seleziona una tipologia di supplemento" },
+  { message: "Seleziona una tipologia dal catalogo oppure inserisci un testo libero" },
+).refine(
+  (value) =>
+    Boolean(value.catalogSupplementoId) ||
+    (value.prezzo != null && Number.isFinite(value.prezzo)),
+  { message: "Inserisci un prezzo per il testo libero" },
 );
 
 async function assertWritableFatturaTask(
@@ -160,7 +165,14 @@ export async function POST(
 
     if (!descrizione) {
       return NextResponse.json(
-        { error: "Seleziona una tipologia di supplemento" },
+        { error: "Seleziona una tipologia dal catalogo oppure inserisci un testo libero" },
+        { status: 400 },
+      );
+    }
+
+    if (catalogSupplementoId == null && prezzo == null) {
+      return NextResponse.json(
+        { error: "Inserisci un prezzo per il testo libero" },
         { status: 400 },
       );
     }
@@ -179,7 +191,7 @@ export async function POST(
       .select()
       .single();
 
-    if (error && isFatturazioneSchemaMissing(error) && catalogSupplementoId) {
+    if (error && isFatturazioneSchemaMissing(error)) {
       const retry = await supabase
         .from("fatturazione_supplemento_riga")
         .insert({

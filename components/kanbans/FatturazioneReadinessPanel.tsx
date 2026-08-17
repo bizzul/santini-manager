@@ -48,6 +48,7 @@ export function FatturazioneReadinessPanel({
   );
   const [catalog, setCatalog] = useState<FatturazioneCatalogSupplemento[]>([]);
   const [selectedCatalogId, setSelectedCatalogId] = useState<string>("");
+  const [customDescrizione, setCustomDescrizione] = useState("");
   const [quantita, setQuantita] = useState("1");
   const [prezzo, setPrezzo] = useState("");
 
@@ -150,24 +151,47 @@ export function FatturazioneReadinessPanel({
   const handleCatalogChange = (value: string | number) => {
     const nextId = String(value);
     setSelectedCatalogId(nextId);
+    setCustomDescrizione("");
     const item = catalog.find((entry) => entry.id === nextId);
     if (item) {
       setPrezzo(String(Number(item.valore)));
     }
   };
 
+  const handleCustomSelect = (label: string) => {
+    setSelectedCatalogId("");
+    setCustomDescrizione(label);
+  };
+
+  const parseOptionalNumber = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
   const handleAddRow = async () => {
     if (!canWrite) return;
     const qty = Number(quantita);
-    if (!selectedCatalogId || !Number.isFinite(qty) || qty <= 0) {
+    const descrizione = customDescrizione.trim();
+    if ((!selectedCatalogId && !descrizione) || !Number.isFinite(qty) || qty <= 0) {
       toast({
         variant: "destructive",
         title: "Dati incompleti",
-        description: "Seleziona una tipologia e un quantitativo maggiore di zero",
+        description:
+          "Seleziona una tipologia dal catalogo oppure scrivi un testo libero, con quantitativo maggiore di zero",
       });
       return;
     }
-    const price = Number(prezzo);
+    const price = parseOptionalNumber(prezzo);
+    if (!selectedCatalogId && price == null) {
+      toast({
+        variant: "destructive",
+        title: "Dati incompleti",
+        description: "Inserisci un prezzo per il testo libero",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const response = await fetch(
@@ -176,9 +200,10 @@ export function FatturazioneReadinessPanel({
           method: "POST",
           headers: siteHeaders(siteId, domain),
           body: JSON.stringify({
-            catalogSupplementoId: selectedCatalogId,
+            catalogSupplementoId: selectedCatalogId || undefined,
+            descrizione: descrizione || undefined,
             quantita: qty,
-            prezzo: Number.isFinite(price) ? price : undefined,
+            prezzo: price,
           }),
         },
       );
@@ -187,6 +212,7 @@ export function FatturazioneReadinessPanel({
         throw new Error(data.error || "Creazione non riuscita");
       }
       setSelectedCatalogId("");
+      setCustomDescrizione("");
       setQuantita("1");
       setPrezzo("");
       await load();
@@ -266,7 +292,7 @@ export function FatturazioneReadinessPanel({
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Conferma se la fattura coincide con l&apos;offerta, oppure aggiungi i
-            supplementi riga per riga e conferma.
+            supplementi dal catalogo o come testo libero, con quantita e prezzo.
           </p>
         </div>
         <span
@@ -303,7 +329,7 @@ export function FatturazioneReadinessPanel({
             {supplementi.length === 0 ? (
               <p className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
                 Nessun supplemento. Se l&apos;offerta e invariata usa la checkbox
-                sopra.
+                sopra, altrimenti aggiungi una riga dal catalogo o come testo libero.
               </p>
             ) : (
               <div className="space-y-2">
@@ -350,9 +376,12 @@ export function FatturazioneReadinessPanel({
                     value={selectedCatalogId || undefined}
                     onValueChange={handleCatalogChange}
                     options={catalogOptions}
-                    placeholder="Seleziona dal catalogo"
-                    emptyMessage="Nessun supplemento in catalogo."
-                    disabled={saving || catalog.length === 0}
+                    allowCustom
+                    customLabel={customDescrizione || null}
+                    onCustomSelect={handleCustomSelect}
+                    placeholder="Catalogo o testo libero"
+                    emptyMessage="Nessun supplemento in catalogo. Scrivi un testo libero."
+                    disabled={saving}
                   />
                 </div>
                 <div className="min-w-0 space-y-1">
@@ -376,7 +405,7 @@ export function FatturazioneReadinessPanel({
                     value={prezzo}
                     onChange={(event) => setPrezzo(event.target.value)}
                     placeholder={
-                      selectedCatalog ? String(Number(selectedCatalog.valore)) : ""
+                      selectedCatalog ? String(Number(selectedCatalog.valore)) : "0.00"
                     }
                     disabled={saving}
                   />
@@ -387,7 +416,9 @@ export function FatturazioneReadinessPanel({
                   size="sm"
                   className="h-9"
                   onClick={handleAddRow}
-                  disabled={saving || !selectedCatalogId}
+                  disabled={
+                    saving || (!selectedCatalogId && !customDescrizione.trim())
+                  }
                 >
                   <Plus className="mr-1 h-4 w-4" />
                   Riga
