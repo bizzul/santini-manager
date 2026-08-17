@@ -550,8 +550,8 @@ export function SiteFlowchartModal({
     <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[560px]">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-[560px]">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <GitBranch className="h-5 w-5 text-teal-300" />
             Vista Diagramma
@@ -563,7 +563,7 @@ export function SiteFlowchartModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-y-contain py-2 pr-1">
           <div className="rounded-xl border border-teal-300/25 bg-teal-500/10 px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-medium text-white">
@@ -954,8 +954,8 @@ export function SiteFlowchartModal({
         blocker involved). The iframe forces the diagram view without touching
         the user's saved home preference. */}
     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-      <DialogContent className="flex h-[85vh] max-w-[90vw] flex-col gap-3 sm:max-w-[90vw]">
-        <DialogHeader>
+      <DialogContent className="flex h-[85vh] max-h-[85vh] max-w-[90vw] flex-col gap-3 overflow-hidden sm:max-w-[90vw]">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <GitBranch className="h-5 w-5 text-teal-300" />
             Anteprima diagramma — {siteName}

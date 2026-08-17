@@ -14,7 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DASHBOARD_EXPERIENCE_DASHBOARDS,
   DASHBOARD_EXPERIENCE_QUESTIONS,
@@ -46,6 +45,9 @@ function getUserName(user: SiteDashboardSettingsUser) {
   const fullName = `${user.given_name || ""} ${user.family_name || ""}`.trim();
   return fullName || user.email || `Utente ${user.id.slice(0, 8)}`;
 }
+
+const PANEL_SCROLL_CLASS =
+  "min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-y-contain pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.35)_transparent]";
 
 export function SiteDashboardSettingsModal({
   siteId,
@@ -214,8 +216,8 @@ export function SiteDashboardSettingsModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="max-h-[92vh] overflow-hidden sm:max-w-[980px]">
-        <DialogHeader>
+      <DialogContent className="flex h-[min(92vh,880px)] max-h-[92vh] flex-col overflow-hidden sm:max-w-[980px]">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <LayoutDashboard className="h-5 w-5 text-violet-300" />
             Dashboard
@@ -227,10 +229,10 @@ export function SiteDashboardSettingsModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="space-y-4">
-            <section className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4">
-              <div className="flex items-center justify-between gap-3">
+        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-y-contain lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-4 lg:h-full lg:overflow-hidden">
+            <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4 max-lg:max-h-[40vh] lg:flex-[1.35]">
+              <div className="flex shrink-0 items-center justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-white">Dashboard attive</h3>
                   <p className="mt-1 text-xs text-white/65">
@@ -243,7 +245,7 @@ export function SiteDashboardSettingsModal({
                 </Badge>
               </div>
 
-              <div className="mt-4 grid gap-2">
+              <div className={cn("mt-4 flex flex-col gap-2", PANEL_SCROLL_CLASS)}>
                 {DASHBOARD_EXPERIENCE_DASHBOARDS.map((dashboard) => {
                   const checked = settings.activeDashboardIds.includes(dashboard.id);
                   return (
@@ -274,12 +276,12 @@ export function SiteDashboardSettingsModal({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center gap-2">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-4 max-lg:max-h-[36vh]">
+              <div className="flex shrink-0 items-center gap-2">
                 <Users className="h-4 w-4 text-white/70" />
                 <h3 className="font-semibold text-white">Utenti</h3>
               </div>
-              <div className="mt-3 grid gap-2">
+              <div className={cn("mt-3 flex flex-col gap-2", PANEL_SCROLL_CLASS)}>
                 {users.map((user) => {
                   const selected = user.id === activeUser?.id;
                   const count =
@@ -310,8 +312,8 @@ export function SiteDashboardSettingsModal({
             </section>
           </div>
 
-          <section className="min-h-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4 max-lg:min-h-[50vh] lg:h-full">
+            <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-white">
                   Sequenza domande per {activeUser ? getUserName(activeUser) : "utente"}
@@ -326,7 +328,7 @@ export function SiteDashboardSettingsModal({
               </Badge>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex shrink-0 flex-wrap gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -359,56 +361,54 @@ export function SiteDashboardSettingsModal({
               </Button>
             </div>
 
-            <ScrollArea className="mt-4 h-[430px] pr-3">
-              <div className="space-y-2">
-                {loading ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Caricamento impostazioni...
-                  </div>
-                ) : (
-                  DASHBOARD_EXPERIENCE_QUESTIONS.map((question, index) => {
-                    const checked = selectedQuestionSet.has(question.id);
-                    return (
-                      <button
-                        key={question.id}
-                        type="button"
-                        onClick={() => toggleQuestion(question.id)}
-                        disabled={!canConfigure || !activeUser}
-                        className={cn(
-                          "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition",
-                          checked
-                            ? "border-sky-300/40 bg-sky-500/15"
-                            : "border-white/10 bg-white/5 hover:bg-white/10",
-                        )}
-                      >
-                        <Checkbox checked={checked} className="mt-1" />
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs text-white/45">
-                              #{String(index + 1).padStart(2, "0")}
-                            </span>
-                            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/55">
-                              {question.category}
-                            </span>
+            <div className={cn("mt-4 space-y-2", PANEL_SCROLL_CLASS)}>
+              {loading ? (
+                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Caricamento impostazioni...
+                </div>
+              ) : (
+                DASHBOARD_EXPERIENCE_QUESTIONS.map((question, index) => {
+                  const checked = selectedQuestionSet.has(question.id);
+                  return (
+                    <button
+                      key={question.id}
+                      type="button"
+                      onClick={() => toggleQuestion(question.id)}
+                      disabled={!canConfigure || !activeUser}
+                      className={cn(
+                        "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition",
+                        checked
+                          ? "border-sky-300/40 bg-sky-500/15"
+                          : "border-white/10 bg-white/5 hover:bg-white/10",
+                      )}
+                    >
+                      <Checkbox checked={checked} className="mt-1" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-white/45">
+                            #{String(index + 1).padStart(2, "0")}
                           </span>
-                          <span className="mt-1 block text-sm font-medium text-white">
-                            {question.prompt}
-                          </span>
-                          <span className="mt-1 block text-xs text-white/55">
-                            {question.options.join(" · ")}
+                          <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/55">
+                            {question.category}
                           </span>
                         </span>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
+                        <span className="mt-1 block text-sm font-medium text-white">
+                          {question.prompt}
+                        </span>
+                        <span className="mt-1 block text-xs text-white/55">
+                          {question.options.join(" · ")}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </section>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
           <p className="text-xs text-white/55">
             La configurazione viene salvata in `site_settings` e potra essere
             usata dal wizard My 1° Dashboard.
