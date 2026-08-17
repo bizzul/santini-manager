@@ -22,6 +22,26 @@ type FatturazioneReadinessPanelProps = {
   onChanged?: () => void;
 };
 
+function formatChf(value: number) {
+  return Number(value).toLocaleString("it-CH", {
+    style: "currency",
+    currency: "CHF",
+  });
+}
+
+function formatAmount(value: number) {
+  return Number(value).toLocaleString("it-CH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatQty(value: number) {
+  return Number(value).toLocaleString("it-CH", {
+    maximumFractionDigits: 3,
+  });
+}
+
 function siteHeaders(siteId?: string | null, domain?: string) {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -95,6 +115,15 @@ export function FatturazioneReadinessPanel({
         supplementiCount: supplementi.length,
       }),
     [readiness?.uguale_offerta, supplementi.length],
+  );
+
+  const grandTotal = useMemo(
+    () =>
+      supplementi.reduce(
+        (sum, row) => sum + Number(row.quantita) * Number(row.prezzo),
+        0,
+      ),
+    [supplementi],
   );
 
   const patchReadiness = async (body: Record<string, unknown>) => {
@@ -332,45 +361,85 @@ export function FatturazioneReadinessPanel({
                 sopra, altrimenti aggiungi una riga dal catalogo o come testo libero.
               </p>
             ) : (
-              <div className="space-y-2">
-                {supplementi.map((row) => (
-                  <div
-                    key={row.id}
-                    className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 rounded-md border border-border bg-background/50 px-2 py-1.5 text-sm"
-                  >
-                    <span className="truncate">{row.descrizione}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {Number(row.quantita)}
-                    </span>
-                    <span className="tabular-nums">
-                      {Number(row.prezzo).toLocaleString("it-CH", {
-                        style: "currency",
-                        currency: "CHF",
-                      })}
-                    </span>
-                    {canWrite ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-destructive"
-                        onClick={() => handleDeleteRow(row.id)}
-                        disabled={saving}
-                        aria-label="Elimina riga"
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed border-collapse text-sm">
+                  <colgroup>
+                    <col />
+                    <col className="w-14" />
+                    <col className="w-[5.5rem]" />
+                    <col className="w-[6.5rem]" />
+                    <col className="w-9" />
+                  </colgroup>
+                  <thead>
+                    <tr className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <th className="px-2 pb-1 text-left font-medium">Tipologia</th>
+                      <th className="px-1 pb-1 text-right font-medium">Qta</th>
+                      <th className="px-1 pb-1 text-right font-medium">Prezzo</th>
+                      <th className="px-1 pb-1 text-right font-medium">Totale</th>
+                      <th className="pb-1" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supplementi.map((row) => {
+                      const qty = Number(row.quantita);
+                      const unitPrice = Number(row.prezzo);
+                      const total = qty * unitPrice;
+                      return (
+                        <tr key={row.id} className="border-b border-border/70 last:border-b-0">
+                          <td className="px-2 py-1.5">
+                            <span className="block truncate" title={row.descrizione}>
+                              {row.descrizione}
+                            </span>
+                          </td>
+                          <td className="px-1 py-1.5 text-right tabular-nums text-muted-foreground">
+                            {formatQty(qty)}
+                          </td>
+                          <td className="px-1 py-1.5 text-right tabular-nums">
+                            {formatAmount(unitPrice)}
+                          </td>
+                          <td className="px-1 py-1.5 text-right tabular-nums font-medium">
+                            {formatAmount(total)}
+                          </td>
+                          <td className="py-1.5 text-right">
+                            {canWrite ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-destructive"
+                                onClick={() => handleDeleteRow(row.id)}
+                                disabled={saving}
+                                aria-label="Elimina riga"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="px-2 pt-2 text-right text-xs text-muted-foreground"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    ) : (
-                      <span />
-                    )}
-                  </div>
-                ))}
+                        Totale supplementi
+                      </td>
+                      <td className="px-1 pt-2 text-right tabular-nums text-sm font-semibold">
+                        {formatChf(grandTotal)}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             )}
 
             {canWrite && !readiness?.uguale_offerta && (
-              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_4.5rem_5.5rem_auto] items-end gap-2">
-                <div className="min-w-0 space-y-1">
+              <div className="flex min-w-0 items-end gap-2">
+                <div className="min-w-0 flex-1 space-y-1">
                   <Label className="text-xs">Tipologia</Label>
                   <SearchSelect
                     value={selectedCatalogId || undefined}
@@ -384,7 +453,7 @@ export function FatturazioneReadinessPanel({
                     disabled={saving}
                   />
                 </div>
-                <div className="min-w-0 space-y-1">
+                <div className="w-14 shrink-0 space-y-1">
                   <Label className="text-xs">Qta</Label>
                   <Input
                     type="number"
@@ -396,7 +465,7 @@ export function FatturazioneReadinessPanel({
                     disabled={saving}
                   />
                 </div>
-                <div className="min-w-0 space-y-1">
+                <div className="w-[4.75rem] shrink-0 space-y-1">
                   <Label className="text-xs">Prezzo</Label>
                   <Input
                     type="number"
@@ -414,7 +483,7 @@ export function FatturazioneReadinessPanel({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9"
+                  className="h-9 shrink-0"
                   onClick={handleAddRow}
                   disabled={
                     saving || (!selectedCatalogId && !customDescrizione.trim())

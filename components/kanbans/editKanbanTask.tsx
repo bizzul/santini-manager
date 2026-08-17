@@ -2180,9 +2180,9 @@ const EditTaskKanban = ({
                   return (
                   <div
                     key={`${line.productId || "new"}-${index}`}
-                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)_3.5rem_auto] items-end gap-2"
+                    className="flex min-w-0 items-end gap-2"
                   >
-                    <div className="min-w-0 space-y-2">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <label className="text-sm font-medium">
                         Categoria {index + 1}
                       </label>
@@ -2199,7 +2199,7 @@ const EditTaskKanban = ({
                         placeholder="Seleziona categoria"
                       />
                     </div>
-                    <div className="min-w-0 space-y-2">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <label className="text-sm font-medium">
                         Sottocategoria
                       </label>
@@ -2222,7 +2222,7 @@ const EditTaskKanban = ({
                         emptyMessage="Nessuna sottocategoria in questa categoria."
                       />
                     </div>
-                    <div className="min-w-0 space-y-2">
+                    <div className="w-16 shrink-0 space-y-1">
                       <label className="text-sm font-medium">Pz.</label>
                       <Input
                         type="number"
