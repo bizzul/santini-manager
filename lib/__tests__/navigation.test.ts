@@ -2,6 +2,7 @@ import {
   SITE_NAV_GROUPS,
   buildSiteNavigation,
   collectOpenKeysForActivePath,
+  isNavPathActive,
   roleMeetsMin,
 } from "@/lib/navigation";
 
@@ -84,6 +85,27 @@ describe("SITE_NAV_GROUPS", () => {
       "calendar-service",
     ]);
 
+    const projects = SITE_NAV_GROUPS[1].items.find(
+      (item) => item.key === "projects"
+    );
+    expect(projects?.href).toBe("/projects");
+    expect(projects?.children?.map((child) => child.key)).toEqual([
+      "projects-arredamento",
+      "projects-porte",
+      "projects-serramenti",
+      "projects-accessori",
+      "projects-posa",
+      "projects-service",
+    ]);
+    expect(projects?.children?.map((child) => child.href)).toEqual([
+      "/projects?category=arredamento",
+      "/projects?category=porte",
+      "/projects?category=serramenti",
+      "/projects?category=accessori",
+      "/projects?category=posa",
+      "/projects?category=service",
+    ]);
+
     const categories = SITE_NAV_GROUPS[5].items.find(
       (item) => item.key === "categories"
     );
@@ -141,6 +163,15 @@ describe("buildSiteNavigation", () => {
       "documents",
     ]);
     expect(groups[0].items[0].href).toBe("/sites/santini/dashboard");
+    const projects = groups[1].items.find((item) => item.key === "projects");
+    expect(projects?.href).toBe("/sites/santini/projects");
+    expect(projects?.children?.[1]).toEqual(
+      expect.objectContaining({
+        key: "projects-porte",
+        href: "/sites/santini/projects?category=porte",
+        label: "nav.projectsPorte",
+      })
+    );
   });
 
   it("collects open keys for a nested calendar route", () => {
@@ -158,5 +189,58 @@ describe("buildSiteNavigation", () => {
         ""
       )
     ).toEqual(["calendars", "pianificazione"]);
+  });
+
+  it("collects open keys for a filtered projects route", () => {
+    const groups = buildSiteNavigation({
+      basePath: "/sites/santini",
+      enabledModules: ALL_MODULES,
+      role: "admin",
+      t,
+      settingsHref: "/administration/sites/1/edit",
+    });
+    expect(
+      collectOpenKeysForActivePath(
+        groups,
+        "/sites/santini/projects",
+        "category=porte"
+      )
+    ).toEqual(["projects", "lavoro"]);
+  });
+});
+
+describe("isNavPathActive", () => {
+  it("matches query params as a subset of the current search", () => {
+    expect(
+      isNavPathActive(
+        "/sites/santini/projects?category=porte",
+        "/sites/santini/projects",
+        "category=porte"
+      )
+    ).toBe(true);
+    expect(
+      isNavPathActive(
+        "/sites/santini/projects?category=porte",
+        "/sites/santini/projects",
+        "category=porte&edit=12"
+      )
+    ).toBe(true);
+    expect(
+      isNavPathActive(
+        "/sites/santini/projects?category=porte",
+        "/sites/santini/projects",
+        "category=arredamento"
+      )
+    ).toBe(false);
+  });
+
+  it("treats a path without query as active on that path", () => {
+    expect(
+      isNavPathActive(
+        "/sites/santini/projects",
+        "/sites/santini/projects",
+        "category=porte"
+      )
+    ).toBe(true);
   });
 });

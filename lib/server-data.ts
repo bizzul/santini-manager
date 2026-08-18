@@ -20,6 +20,11 @@ import {
     getProductCategoryLabelAndColor,
     normalizeSupabaseRelation,
 } from "@/lib/product-category-label";
+import {
+    parseProjectCategorySlug,
+    projectCategoryNameForSlug,
+    buildProjectCategoryTaskOrFilter,
+} from "@/lib/project-categories";
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
 import { loadFatturazioneReadinessByTaskId } from "@/lib/fatturazione-readiness.server";
 import { toFatturazioneTaskId } from "@/lib/fatturazione-readiness";
@@ -1491,22 +1496,71 @@ export const fetchTasks = cache(async (siteId: string) => {
     return data || [];
 });
 
-/**
- * Fetch tasks with full relations for projects page
- */
-export const fetchTasksWithRelations = cache(async (siteId: string) => {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from("Task")
-        .select(`
+const TASK_WITH_RELATIONS_SELECT = `
             *,
             Kanban!kanbanId (id, title),
             KanbanColumn!kanbanColumnId (id, title),
             Client!clientId (businessName, individualFirstName, individualLastName, zipCode, address, city, countryCode),
             SellProduct!sellProductId (name, type, category_id, category:sellproduct_categories(id, name, color)),
             Action (id, createdAt, User (picture, authId, given_name))
-        `)
+        `;
+
+/**
+ * Fetch tasks with full relations for projects page
+ */
+export const fetchTasksWithRelations = cache(async (
+    siteId: string,
+    categorySlug: string | null = null,
+) => {
+    const supabase = await createClient();
+    const slug = parseProjectCategorySlug(categorySlug);
+
+    let categoryOrFilter: string | null = null;
+    if (categorySlug) {
+        if (!slug) return [];
+        const name = projectCategoryNameForSlug(slug);
+        const { data: categoryRows, error: categoryError } = await supabase
+            .from("sellproduct_categories")
+            .select("id")
+            .eq("site_id", siteId)
+            .ilike("name", name);
+
+        if (categoryError) {
+            log.error("Error resolving project category filter:", categoryError);
+            return [];
+        }
+
+        const categoryIds = (categoryRows ?? []).map((row) => row.id);
+        if (categoryIds.length === 0) return [];
+
+        const { data: productRows, error: productError } = await supabase
+            .from("SellProduct")
+            .select("id")
+            .eq("site_id", siteId)
+            .in("category_id", categoryIds);
+
+        if (productError) {
+            log.error("Error resolving project category products:", productError);
+            return [];
+        }
+
+        categoryOrFilter = buildProjectCategoryTaskOrFilter(
+            categoryIds,
+            (productRows ?? []).map((row) => row.id),
+        );
+        if (!categoryOrFilter) return [];
+    }
+
+    let query = supabase
+        .from("Task")
+        .select(TASK_WITH_RELATIONS_SELECT)
         .eq("site_id", siteId);
+
+    if (categoryOrFilter) {
+        query = query.or(categoryOrFilter);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         log.error("Error fetching tasks with relations:", error);
@@ -2290,14 +2344,17 @@ export async function fetchTimetrackingData(siteId: string) {
 /**
  * Fetch data for projects page
  */
-export const fetchProjectsData = cache(async (siteId: string) => {
+export const fetchProjectsData = cache(async (
+    siteId: string,
+    categorySlug: string | null = null,
+) => {
     const supabase = await createClient();
-    
+
     const [clients, products, kanbans, tasks, categories] = await Promise.all([
         fetchClients(siteId),
         fetchSellProducts(siteId),
         fetchKanbans(siteId),
-        fetchTasksWithRelations(siteId),
+        fetchTasksWithRelations(siteId, categorySlug),
         fetchSellProductCategories(siteId),
     ]);
 

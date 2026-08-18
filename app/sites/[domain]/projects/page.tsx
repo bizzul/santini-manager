@@ -27,10 +27,11 @@ export default async function Page({
   searchParams,
 }: {
   params: Promise<{ domain: string }>;
-  searchParams?: Promise<{ country?: string }>;
+  searchParams?: Promise<{ country?: string; category?: string }>;
 }) {
   const { domain } = await params;
-  const { country } = (await searchParams) ?? {};
+  const { country, category } = (await searchParams) ?? {};
+  const categoryFilter = typeof category === "string" ? category : null;
 
   // Authentication
   const userContext = await getUserContext();
@@ -43,7 +44,7 @@ export default async function Page({
   const verticalProfile = await fetchSiteVerticalProfile(siteId);
 
   // Fetch all project data
-  const rawData = await fetchProjectsData(siteId);
+  const rawData = await fetchProjectsData(siteId, categoryFilter);
 
   // Optional country filter (dashboard map / integration graph shortcuts):
   // keep only tasks whose client is located in the given country.
@@ -77,8 +78,16 @@ export default async function Page({
         ) : (
           <EmptyState
             icon={<FolderKanban className="h-6 w-6" />}
-            title="Nessun progetto registrato"
-            description="Premi 'Aggiungi progetto' per aggiungere il tuo primo progetto."
+            title={
+              categoryFilter
+                ? "Nessun progetto in questa categoria"
+                : "Nessun progetto registrato"
+            }
+            description={
+              categoryFilter
+                ? "Non ci sono progetti collegati a questa categoria prodotto."
+                : "Premi 'Aggiungi progetto' per aggiungere il tuo primo progetto."
+            }
           />
         )}
       </PageContent>

@@ -18,6 +18,7 @@
  */
 
 import type { Translator } from "@/lib/i18n";
+import { PROJECT_PRODUCT_CATEGORIES } from "@/lib/project-categories";
 
 export type NavMinRole = "user" | "admin" | "superadmin";
 
@@ -128,6 +129,13 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
         href: "/projects",
         icon: "faTable",
         moduleName: "projects",
+        children: PROJECT_PRODUCT_CATEGORIES.map((category) => ({
+          key: `projects-${category.slug}`,
+          labelKey: category.labelKey,
+          href: `/projects?category=${category.slug}`,
+          icon: "faTable" as const,
+          moduleName: "projects",
+        })),
       },
       {
         key: "kanban",
@@ -490,11 +498,15 @@ export function isNavPathActive(
   search: string
 ): boolean {
   const [hrefPath, hrefQuery] = href.split("?");
-  if (hrefQuery) {
-    const current = search ? `${pathname}?${search}` : pathname;
-    return current === href;
-  }
-  return pathname === hrefPath;
+  if (pathname !== hrefPath) return false;
+  if (!hrefQuery) return true;
+  const needed = new URLSearchParams(hrefQuery);
+  const current = new URLSearchParams(search);
+  let matches = true;
+  needed.forEach((value, key) => {
+    if (current.get(key) !== value) matches = false;
+  });
+  return matches;
 }
 
 export function navItemContainsPath(

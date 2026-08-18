@@ -87,7 +87,9 @@ const SIDEBAR_KANBAN_OPENED_KEY = "santini-sidebar-kanban-opened";
 const NAV_GROUP_UNBOXED =
   "rounded-none border-0 bg-transparent p-0.5 shadow-none dark:border-0 dark:bg-transparent dark:shadow-none group-data-[collapsible=icon]:rounded-none group-data-[collapsible=icon]:p-0.5";
 const NAV_GROUP_LABEL =
-  "h-auto cursor-pointer gap-1 px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground";
+  "flex h-auto w-full cursor-pointer items-center gap-1 bg-transparent px-2 py-1.5 text-left text-[13px] font-semibold uppercase leading-none tracking-[0.04em] text-[hsl(var(--sidebar-foreground)/0.78)] outline-none ring-0 hover:bg-transparent hover:text-[hsl(var(--sidebar-foreground)/0.92)] focus-visible:outline-none focus-visible:ring-0 dark:text-white/80 dark:hover:bg-transparent dark:hover:text-white [&>svg]:size-[13px] [&>svg]:shrink-0 [&>svg]:translate-y-px [&>svg]:text-current";
+const NAV_GROUP_SEPARATOR =
+  "mb-2.5 h-px w-full bg-[hsl(var(--sidebar-border)/0.45)] group-data-[collapsible=icon]:hidden dark:bg-[hsl(var(--sidebar-border)/0.14)]";
 
 // Helper function to get initial collapsed menus state from localStorage.
 // Default is open (key absent or false). `true` means the user collapsed it.
@@ -742,10 +744,31 @@ export function AppSidebar() {
     if (item.items) {
       // Check if this is the Kanban menu for prefetch on hover
       const isKanbanMenu = item.key === "kanban";
+      const childActive =
+        item.items.some((child) =>
+          menuItemContainsPath(child, pathname, searchParams.toString())
+        ) ?? false;
+      const selfActive = Boolean(
+        item.href && isActive(item.href) && !childActive
+      );
       const parentActive = menuItemContainsPath(
         item,
         pathname,
         searchParams.toString()
+      );
+      const hasParentLink = Boolean(item.href);
+
+      const parentIcon = item.logoSrc ? (
+        <img
+          src={item.logoSrc}
+          alt={item.label}
+          className="h-5 w-5 shrink-0 rounded object-cover"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
+      ) : (
+        <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
       );
 
       return (
@@ -756,32 +779,47 @@ export function AppSidebar() {
           className="group/collapsible"
         >
           <SidebarMenuItem>
-            <CollapsibleTrigger asChild>
-              <SidebarMenuButton
-                tooltip={item.label}
-                isActive={parentActive}
-                // Prefetch kanban data on hover before user clicks
-                onMouseEnter={isKanbanMenu ? prefetchKanbanData : undefined}
-              >
-                {item.logoSrc ? (
-                  <img
-                    src={item.logoSrc}
-                    alt={item.label}
-                    className="h-5 w-5 shrink-0 rounded object-cover"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display =
-                        "none";
-                    }}
-                  />
-                ) : (
-                  <FontAwesomeIcon
-                    icon={iconMap[item.icon]}
-                    className="w-4 h-4"
-                  />
-                )}
-                <span>{item.label}</span>
-              </SidebarMenuButton>
-            </CollapsibleTrigger>
+            {hasParentLink && state !== "collapsed" ? (
+              <div className="flex w-full items-center gap-0.5">
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.label}
+                  isActive={selfActive}
+                  className="flex-1"
+                  onMouseEnter={isKanbanMenu ? prefetchKanbanData : undefined}
+                >
+                  <Link href={item.href!}>
+                    {parentIcon}
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={item.label}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-xl text-[hsl(var(--sidebar-foreground)/0.7)] hover:bg-[hsl(var(--sidebar-card)/0.68)] dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
+                  >
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 transition-transform duration-150 ease-out",
+                        collapsedMenus[collapseKey] === true && "-rotate-90"
+                      )}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+              </div>
+            ) : (
+              <CollapsibleTrigger asChild>
+                <SidebarMenuButton
+                  tooltip={item.label}
+                  isActive={parentActive}
+                  onMouseEnter={isKanbanMenu ? prefetchKanbanData : undefined}
+                >
+                  {parentIcon}
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </CollapsibleTrigger>
+            )}
             <CollapsibleContent>
               <SidebarMenuSub>
                 {item.items.map((subItem: MenuItem, index: number) => {
@@ -1094,7 +1132,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ) : (
-          navGroups.map((group) => {
+          navGroups.map((group, index) => {
             const groupOpen =
               state === "collapsed" || collapsedMenus[group.id] !== true;
             const groupHasActive = group.items.some((item) =>
@@ -1105,24 +1143,29 @@ export function AppSidebar() {
                 key={group.id}
                 open={groupOpen}
                 onOpenChange={() => toggleMenu(group.id)}
-                className="group/collapsible"
+                className={cn("group/nav-group", index > 0 && "mt-3")}
               >
                 <SidebarGroup className={NAV_GROUP_UNBOXED}>
-                  <CollapsibleTrigger asChild>
-                    <SidebarGroupLabel
+                  {index > 0 ? (
+                    <div aria-hidden="true" className={NAV_GROUP_SEPARATOR} />
+                  ) : null}
+                  <CollapsibleTrigger
+                    className={cn(
+                      NAV_GROUP_LABEL,
+                      groupHasActive &&
+                        "text-[hsl(var(--sidebar-foreground)/0.95)] dark:text-white dark:hover:text-white",
+                      state === "collapsed" && "hidden"
+                    )}
+                  >
+                    <span className="flex-1 truncate whitespace-nowrap [color:inherit]">
+                      {group.label}
+                    </span>
+                    <ChevronDown
                       className={cn(
-                        NAV_GROUP_LABEL,
-                        groupHasActive && "text-foreground"
+                        "ml-auto shrink-0 transition-transform duration-150 ease-out",
+                        collapsedMenus[group.id] === true && "-rotate-90"
                       )}
-                    >
-                      <span>{group.label}</span>
-                      <ChevronDown
-                        className={cn(
-                          "ml-auto h-3 w-3 shrink-0 transition-transform",
-                          collapsedMenus[group.id] === true && "-rotate-90"
-                        )}
-                      />
-                    </SidebarGroupLabel>
+                    />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <SidebarGroupContent>

@@ -32,7 +32,7 @@ describe("fatturazione-readiness helpers", () => {
   it("does not treat other boards as fatturazione even with To Do columns", () => {
     expect(
       isFatturazioneKanban(
-        { identifier: "0_offerte", is_offer_kanban: true as any },
+        { identifier: "0_offerte", is_offer_kanban: true } as { identifier: string },
         { identifier: "to_do_0_offerte" },
       ),
     ).toBe(false);
