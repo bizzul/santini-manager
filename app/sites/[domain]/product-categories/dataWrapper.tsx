@@ -10,6 +10,7 @@ import type { AreaTreeSector } from "@/lib/area-tree-diagram";
 import { categoryIconName } from "@/lib/category-diagram-icons";
 import { cn } from "@/lib/utils";
 import { getSellProductDisplayCode } from "@/lib/sell-product-code";
+import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
 import { DataTable } from "./table";
 import { createColumns } from "./columns";
 import { BrowseViewToolbar } from "@/components/categories/browse-view-toolbar";
@@ -100,15 +101,54 @@ const SellCategoriesView = ({
     [domain, isAdmin, managementMode],
   );
 
+  const catalogCategories = useMemo(
+    () =>
+      managementMode
+        ? categories
+        : categories.filter(
+            (category) => !isArchivedSellCategoryName(category.name),
+          ),
+    [categories, managementMode],
+  );
+  const archivedCategoryIds = useMemo(
+    () =>
+      new Set(
+        categories
+          .filter((category) => isArchivedSellCategoryName(category.name))
+          .map((category) => category.id),
+      ),
+    [categories],
+  );
+  const catalogCategoryCards = useMemo(
+    () =>
+      managementMode
+        ? categoryCards
+        : categoryCards.filter(
+            (card) => !isArchivedSellCategoryName(card.name),
+          ),
+    [categoryCards, managementMode],
+  );
+  const catalogProducts = useMemo(
+    () =>
+      managementMode
+        ? products
+        : products.filter(
+            (product) =>
+              !product.category_id ||
+              !archivedCategoryIds.has(product.category_id),
+          ),
+    [products, managementMode, archivedCategoryIds],
+  );
+
   const subcategoryCards: SellSubcategoryCardData[] = useMemo(() => {
     if (!drill.categoryId) return [];
     const categoryId = Number(drill.categoryId);
-    const cards = aggregateSellSubcategoryCards(categoryId, products);
+    const cards = aggregateSellSubcategoryCards(categoryId, catalogProducts);
     const imagesForCategory = subcategoryImages.filter(
       (image) => image.category_id === categoryId,
     );
     return mergeSellSubcategoryRecords(cards, imagesForCategory);
-  }, [drill.categoryId, products, subcategoryImages]);
+  }, [drill.categoryId, catalogProducts, subcategoryImages]);
 
   const activeSubcategory = useMemo(
     () =>
@@ -265,16 +305,16 @@ const SellCategoriesView = ({
 
   const filteredCategoryCards = useMemo(() => {
     const query = globalFilter.trim().toLowerCase();
-    if (!query) return categoryCards;
+    if (!query) return catalogCategoryCards;
 
-    return categoryCards.filter((card) => {
+    return catalogCategoryCards.filter((card) => {
       const haystack = [card.name, card.description]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [categoryCards, globalFilter]);
+  }, [catalogCategoryCards, globalFilter]);
 
   const categoryGridItems = useMemo(
     (): CategoryCardGridItem[] =>
@@ -388,7 +428,7 @@ const SellCategoriesView = ({
     if (!showAreaTreeDiagram) return [];
 
     return filteredCategoryCards.map((card) => {
-      const categoryProducts = products.filter(
+      const categoryProducts = catalogProducts.filter(
         (product) => product.category_id === card.id,
       );
       const panelData = capPanelRows(
@@ -409,7 +449,7 @@ const SellCategoriesView = ({
         },
       );
 
-      const storedIcon = categories.find((c) => c.id === card.id)?.icon;
+      const storedIcon = catalogCategories.find((c) => c.id === card.id)?.icon;
 
       return {
         id: String(card.id),
@@ -428,12 +468,12 @@ const SellCategoriesView = ({
       };
     });
   }, [
-    categories,
+    catalogCategories,
+    catalogProducts,
     diagramFocus,
     domain,
     filteredCategoryCards,
     onDrillChange,
-    products,
     router,
     showAreaTreeDiagram,
   ]);
@@ -487,9 +527,9 @@ const SellCategoriesView = ({
 
       {showHierarchicalTable && (
           <SellProductHierarchicalBrowseTable
-            categoryCards={categoryCards}
-            categories={categories}
-            products={products}
+            categoryCards={catalogCategoryCards}
+            categories={catalogCategories}
+            products={catalogProducts}
             subcategoryImages={subcategoryImages}
             domain={domain}
             siteId={siteId}
@@ -563,8 +603,8 @@ const SellCategoriesView = ({
       {(drill.level === "products" || drill.level === "categoryProducts") &&
         drill.categoryId && (
           <SellCategoryProductsTable
-            products={products}
-            categories={categories}
+            products={catalogProducts}
+            categories={catalogCategories}
             categoryId={Number(drill.categoryId)}
             categoryName={drill.categoryName}
             subcategoryKey={

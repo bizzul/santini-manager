@@ -90,6 +90,7 @@ import {
   isFatturazioneKanban,
   resolveFatturazioneReadinessStato,
 } from "@/lib/fatturazione-readiness";
+import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
 import { cn } from "@/lib/utils";
 
 const normalizeCardFieldConfig = (
@@ -182,33 +183,6 @@ const Column = ({
   // Calculate total number of tasks and total value
   const totalTasks = Object.keys(groupTasksByBaseNumber(cards)).length;
   const totalOffers = cards.length; // For offer kanban, count all cards
-
-  const totalValue = cards
-    .reduce(
-      (total: number, card: any) =>
-        total + calculateCurrentValue(card, column.position),
-      0
-    )
-    .toFixed(2);
-
-  const totalColumn = cards
-    .reduce((total: number, card: any) => total + (card.sellPrice || 0), 0)
-    .toFixed(2);
-
-  // Priorità a numero_pezzi rispetto alle posizioni
-  const totalPositions = cards.reduce((sum: number, card: any) => {
-    // Se numero_pezzi è definito, usa quello
-    if (card.numero_pezzi && card.numero_pezzi > 0) {
-      return sum + card.numero_pezzi;
-    }
-    // Altrimenti conta le posizioni riempite
-    return (
-      sum +
-      (card.positions
-        ? card.positions.filter((position: string) => position !== "").length
-        : 0)
-    );
-  }, 0);
 
   const { isOver, setNodeRef } = useDroppable({
     id: `column-${column.id}`,
@@ -312,6 +286,39 @@ const Column = ({
   const toggleReadinessFilter = (value: "pronto" | "in_attesa") => {
     setReadinessFilter((current) => (current === value ? "all" : value));
   };
+
+  const statsCards = visibleCards;
+  const totalValue = (
+    isFattureToDoColumn
+      ? statsCards.reduce(
+          (total: number, card: any) => total + (card.sellPrice || 0),
+          0,
+        )
+      : statsCards.reduce(
+          (total: number, card: any) =>
+            total + calculateCurrentValue(card, column.position),
+          0,
+        )
+  ).toFixed(2);
+
+  const totalColumn = statsCards
+    .reduce((total: number, card: any) => total + (card.sellPrice || 0), 0)
+    .toFixed(2);
+
+  // Priorità a numero_pezzi rispetto alle posizioni
+  const totalPositions = statsCards.reduce((sum: number, card: any) => {
+    // Se numero_pezzi è definito, usa quello
+    if (card.numero_pezzi && card.numero_pezzi > 0) {
+      return sum + card.numero_pezzi;
+    }
+    // Altrimenti conta le posizioni riempite
+    return (
+      sum +
+      (card.positions
+        ? card.positions.filter((position: string) => position !== "").length
+        : 0)
+    );
+  }, 0);
 
   const getSortTimestamp = (card: any, fields: string[]) => {
     for (const field of fields) {
@@ -660,7 +667,10 @@ function KanbanBoard({
 }: KanbanBoardTypes) {
   const router = useRouter();
   const { siteId } = useSiteId(domain);
-  const safeCategories = Array.isArray(categories) ? categories : [];
+  const safeCategories = (Array.isArray(categories) ? categories : []).filter(
+    (category: { name?: string | null }) =>
+      !isArchivedSellCategoryName(category?.name)
+  );
   const shouldPersistCardConfigLocally =
     process.env.NEXT_PUBLIC_ENABLE_CARD_PREFS === "true";
 

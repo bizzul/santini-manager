@@ -53,6 +53,7 @@ import {
 import { SellProductWithAction } from "./columns";
 import { SellProductCategory } from "@/types/supabase";
 import { cn } from "@/lib/utils";
+import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
 
 type EmbeddedColumnPreset = "categoryDrilldown";
 
@@ -179,19 +180,40 @@ export function DataTable<TData extends { id: number }, TValue>({
   const denseLayout = embeddedMode && Boolean(embeddedColumnPreset);
   const isDrilldown = embeddedColumnPreset === "categoryDrilldown";
 
+  const visibleCategories = useMemo(
+    () =>
+      categories.filter(
+        (category) => !isArchivedSellCategoryName(category.name),
+      ),
+    [categories],
+  );
+  const archivedCategoryIds = useMemo(
+    () =>
+      new Set(
+        categories
+          .filter((category) => isArchivedSellCategoryName(category.name))
+          .map((category) => category.id),
+      ),
+    [categories],
+  );
+
   // Filter data by selected categories
   const filteredData = useMemo(() => {
+    const withoutArchived = data.filter((row: any) => {
+      const categoryId = row.category_id;
+      return !categoryId || !archivedCategoryIds.has(categoryId);
+    });
     if (allCategoriesSelected) {
-      return data;
+      return withoutArchived;
     }
     if (selectedCategories.length === 0) {
       return [];
     }
-    return data.filter((row: any) => {
+    return withoutArchived.filter((row: any) => {
       const categoryId = row.category_id;
       return categoryId && selectedCategories.includes(categoryId);
     });
-  }, [data, selectedCategories, allCategoriesSelected]);
+  }, [data, selectedCategories, allCategoriesSelected, archivedCategoryIds]);
 
   const handleCategoryToggle = (categoryId: number) => {
     setAllCategoriesSelected(false);
@@ -214,7 +236,7 @@ export function DataTable<TData extends { id: number }, TValue>({
     if (checked) {
       setSelectedCategories([]);
     } else {
-      setSelectedCategories(categories.map((cat) => cat.id));
+      setSelectedCategories(visibleCategories.map((cat) => cat.id));
     }
   };
 
@@ -223,12 +245,12 @@ export function DataTable<TData extends { id: number }, TValue>({
 
   const categoryGridStyle = useMemo(
     () =>
-      categories.length > 0
+      visibleCategories.length > 0
         ? {
-            gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${visibleCategories.length}, minmax(0, 1fr))`,
           }
         : undefined,
-    [categories.length]
+    [visibleCategories.length]
   );
 
   // Clear all filters
@@ -368,7 +390,7 @@ export function DataTable<TData extends { id: number }, TValue>({
       ) : (
       <div className="mb-4 rounded-lg border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-4">
-          {categories.length > 0 && (
+          {visibleCategories.length > 0 && (
             <>
               <div
                 className={cn(
@@ -402,7 +424,7 @@ export function DataTable<TData extends { id: number }, TValue>({
               </div>
 
               <div className="grid gap-3" style={categoryGridStyle}>
-                {categories.map((category) => {
+                {visibleCategories.map((category) => {
                   const isSelected = selectedCategories.includes(category.id);
                   return (
                     <div
