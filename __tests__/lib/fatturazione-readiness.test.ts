@@ -7,6 +7,7 @@ import {
   isFatturazionePagataColumn,
   isFatturazioneSchemaMissing,
   isFatturazioneToDoColumn,
+  isFatturazioneInviataColumn,
   resolveFatturazioneReadinessStato,
   shouldShowFatturazioneReadinessBadge,
   toFatturazioneTaskId,
@@ -43,6 +44,9 @@ describe("fatturazione-readiness helpers", () => {
     expect(isFatturazionePagataColumn({ identifier: "pagata_fatture", position: 3 })).toBe(true);
     expect(isFatturazionePagataColumn({ title: "Bezahlt" })).toBe(true);
     expect(isFatturazionePagataColumn({ identifier: "inviata_fatture", position: 2 })).toBe(false);
+    expect(isFatturazioneInviataColumn({ identifier: "inviata_fatture", position: 2 })).toBe(true);
+    expect(isFatturazioneInviataColumn({ title: "Inviata" })).toBe(true);
+    expect(isFatturazioneInviataColumn({ identifier: "to_do_fatture", position: 1 })).toBe(false);
   });
 
   it("shows the fill only on To Do, not on Inviata or Pagata", () => {

@@ -1,4 +1,5 @@
 import { DASHBOARD_STATUS_TONE } from "@/lib/dashboard-status-tones";
+import { parseLocalDate, startOfLocalDay } from "@/lib/utils";
 
 export const FATTURAZIONE_READINESS_STATI = ["in_attesa", "pronto"] as const;
 
@@ -122,6 +123,16 @@ export function isFatturazioneToDoColumn(
   return Number(column.position) === 1;
 }
 
+export function isFatturazioneInviataColumn(
+  column?: FatturazioneColumnLike,
+): boolean {
+  if (!column) return false;
+  const identifier = (column.identifier || "").toLowerCase();
+  const title = (column.title || "").toLowerCase();
+  if (identifier.includes("inviat") || title.includes("inviat")) return true;
+  return Number(column.position) === 2;
+}
+
 export function isFatturazionePagataColumn(
   column?: FatturazioneColumnLike,
 ): boolean {
@@ -131,6 +142,80 @@ export function isFatturazionePagataColumn(
   if (identifier.includes("pagat") || title.includes("pagat")) return true;
   if (title.includes("bezahlt")) return true;
   return Number(column.position) === 3;
+}
+
+export const FATTURAZIONE_INVIATA_LATE_AFTER_DAYS = 30;
+
+export type FatturazioneInviataExpiryState = "ok" | "late";
+
+type FatturazioneMoveActionLike = {
+  taskId?: number;
+  task_id?: number;
+  type?: string;
+  createdAt?: string;
+  created_at?: string;
+  data?: { toColumn?: string };
+};
+
+function daysSinceLocalDate(value?: string | null): number | null {
+  if (!value) return null;
+  try {
+    const start = startOfLocalDay(parseLocalDate(value));
+    const today = startOfLocalDay(new Date());
+    const diff = Math.round(
+      (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return diff < 0 ? 0 : diff;
+  } catch {
+    return null;
+  }
+}
+
+function latestMatchingActionTimestamp(
+  history: FatturazioneMoveActionLike[] | null | undefined,
+  taskId: number,
+  predicate: (action: FatturazioneMoveActionLike) => boolean,
+): string | null {
+  if (!taskId || !Array.isArray(history)) return null;
+  const timestamps = history
+    .filter((action) => (action?.taskId ?? action?.task_id) === taskId)
+    .filter(predicate)
+    .map((action) => action?.createdAt || action?.created_at)
+    .filter(Boolean) as string[];
+  if (timestamps.length === 0) return null;
+  timestamps.sort();
+  return timestamps[timestamps.length - 1];
+}
+
+export function getFatturazioneInviataAge(
+  task?: {
+    id?: number;
+    sent_date?: string | null;
+    sentDate?: string | null;
+    updated_at?: string | null;
+    updatedAt?: string | null;
+  } | null,
+  history?: FatturazioneMoveActionLike[] | null,
+): { days: number; state: FatturazioneInviataExpiryState } {
+  const sentAt =
+    latestMatchingActionTimestamp(
+      history,
+      Number(task?.id || 0),
+      (action) =>
+        action?.type === "move_task" &&
+        String(action?.data?.toColumn || "")
+          .toLowerCase()
+          .includes("inviat"),
+    ) ||
+    task?.sent_date ||
+    task?.sentDate ||
+    task?.updated_at ||
+    task?.updatedAt;
+  const days = daysSinceLocalDate(sentAt) ?? 0;
+  return {
+    days,
+    state: days > FATTURAZIONE_INVIATA_LATE_AFTER_DAYS ? "late" : "ok",
+  };
 }
 
 export function shouldShowFatturazioneReadinessBadge(

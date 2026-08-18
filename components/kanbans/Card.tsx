@@ -30,9 +30,11 @@ import { useUserContext } from "@/hooks/use-user-context";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/i18n/i18n-provider";
 import {
+  getFatturazioneInviataAge,
   getFatturazioneReadinessBorderColor,
   getFatturazioneReadinessFillClass,
   getFatturazioneReadinessFillStyle,
+  isFatturazioneInviataColumn,
   resolveFatturazioneReadinessStato,
   shouldShowFatturazioneReadinessBadge,
 } from "@/lib/fatturazione-readiness";
@@ -322,10 +324,7 @@ function Card({
     if (!isFattureKanban) return null;
 
     const position = Number(data.column?.position || 0);
-    const isInviata =
-      columnIdentifier.includes("inviat") ||
-      columnTitle.includes("inviat") ||
-      position === 2;
+    const isInviata = isFatturazioneInviataColumn(data.column);
     const isPagata =
       columnIdentifier.includes("pagat") ||
       columnTitle.includes("pagat") ||
@@ -365,18 +364,11 @@ function Card({
     };
 
     if (isInviata) {
-      const sentAt =
-        latestTimestamp(
-          (a) =>
-            a?.type === "move_task" &&
-            String(a?.data?.toColumn || "")
-              .toLowerCase()
-              .includes("inviat")
-        ) ||
-        data.sent_date ||
-        data.updated_at;
-      const days = daysSince(sentAt) ?? 0;
-      return { hide: false, state: days > 30 ? "late" : "ok", days };
+      const { days, state } = getFatturazioneInviataAge(
+        { ...data, id: data?.id ?? id },
+        actions,
+      );
+      return { hide: false, state, days };
     }
 
     // Colonna To Do (default)

@@ -87,6 +87,8 @@ import {
 
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
 import {
+  getFatturazioneInviataAge,
+  isFatturazioneInviataColumn,
   isFatturazioneKanban,
   resolveFatturazioneReadinessStato,
 } from "@/lib/fatturazione-readiness";
@@ -144,6 +146,9 @@ const Column = ({
   const [readinessFilter, setReadinessFilter] = useState<
     "all" | "pronto" | "in_attesa"
   >("all");
+  const [expiryFilter, setExpiryFilter] = useState<"all" | "late" | "ok">(
+    "all",
+  );
 
   const newOfferResource = useMemo(
     () => ({
@@ -263,6 +268,8 @@ const Column = ({
   // TODO column is used for quick add of draft offers
   const isTodoColumn = column.position === 1 && isOfferKanban;
   const isFattureToDoColumn = column.position === 1 && isInvoicingKanban;
+  const isFattureInviataColumn =
+    isInvoicingKanban && isFatturazioneInviataColumn(column);
   const hasReadinessData = cards.some(
     (card: any) => card?.fatturazioneReadiness,
   );
@@ -274,6 +281,15 @@ const Column = ({
       ).length
     : 0;
   const waitingCount = isFattureToDoColumn ? cards.length - readyCount : 0;
+  const lateCount = isFattureInviataColumn
+    ? cards.filter(
+        (card: any) =>
+          getFatturazioneInviataAge(card, history).state === "late",
+      ).length
+    : 0;
+  const notExpiredCount = isFattureInviataColumn
+    ? cards.length - lateCount
+    : 0;
   const visibleCards =
     isFattureToDoColumn && readinessFilter !== "all"
       ? cards.filter(
@@ -281,10 +297,19 @@ const Column = ({
             resolveFatturazioneReadinessStato(card?.fatturazioneReadiness) ===
             readinessFilter,
         )
-      : cards;
+      : isFattureInviataColumn && expiryFilter !== "all"
+        ? cards.filter(
+            (card: any) =>
+              getFatturazioneInviataAge(card, history).state === expiryFilter,
+          )
+        : cards;
 
   const toggleReadinessFilter = (value: "pronto" | "in_attesa") => {
     setReadinessFilter((current) => (current === value ? "all" : value));
+  };
+
+  const toggleExpiryFilter = (value: "late" | "ok") => {
+    setExpiryFilter((current) => (current === value ? "all" : value));
   };
 
   const statsCards = visibleCards;
@@ -581,6 +606,58 @@ const Column = ({
                       aria-label={`${waitingCount} progetti arancioni`}
                     >
                       {waitingCount}
+                    </button>
+                  </div>
+                </div>
+              ) : isFattureInviataColumn ? (
+                <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Progetti
+                  </p>
+                  <div className="flex items-baseline gap-1.5 text-sm font-semibold leading-tight">
+                    <button
+                      type="button"
+                      onClick={() => setExpiryFilter("all")}
+                      className={cn(
+                        "rounded px-0.5 transition-colors hover:text-foreground",
+                        expiryFilter === "all"
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                      title="Mostra tutte le fatture inviate"
+                      aria-pressed={expiryFilter === "all"}
+                    >
+                      {totalTasks}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpiryFilter("late")}
+                      className={cn(
+                        "rounded px-1 tabular-nums transition-colors",
+                        expiryFilter === "late"
+                          ? "bg-red-600 text-white"
+                          : "text-red-600 hover:bg-red-600/15",
+                      )}
+                      title="Mostra solo le fatture scadute"
+                      aria-pressed={expiryFilter === "late"}
+                      aria-label={`${lateCount} fatture scadute`}
+                    >
+                      {lateCount}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleExpiryFilter("ok")}
+                      className={cn(
+                        "rounded px-1 tabular-nums transition-colors",
+                        expiryFilter === "ok"
+                          ? "bg-success text-success-foreground"
+                          : "text-success hover:bg-success/15",
+                      )}
+                      title="Mostra solo le fatture non ancora scadute"
+                      aria-pressed={expiryFilter === "ok"}
+                      aria-label={`${notExpiredCount} fatture non scadute`}
+                    >
+                      {notExpiredCount}
                     </button>
                   </div>
                 </div>
