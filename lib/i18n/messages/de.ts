@@ -27,6 +27,12 @@ export const deMessages: DeepPartialWiden<Messages> = {
   },
   nav: {
     home: "Startseite",
+    groupPanoramica: "Überblick",
+    groupLavoro: "Arbeit",
+    groupPianificazione: "Planung",
+    groupAnagrafiche: "Stammdaten",
+    groupListino: "Preisliste",
+    groupConfigurazione: "Konfiguration",
     dashboard: "Dashboard",
     overview: "Übersicht",
     forecast: "Prognose",

@@ -14,7 +14,6 @@ import {
   SidebarMenuSubItem,
   SidebarMenuSubButton,
   SidebarRail,
-  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,22 +27,26 @@ import { UserContext } from "@/lib/auth-utils";
 import { usePathname, useSearchParams } from "next/navigation";
 import { NavUser } from "./nav-user";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { logger } from "@/lib/logger";
-import KanbanManagementModal from "./kanbans/KanbanManagementModal";
-import { useToast } from "./ui/use-toast";
-import { useKanbanStore } from "../store/kanban-store";
+import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Kanban } from "../store/kanban-store";
 import Link from "next/link";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { useSiteModules } from "@/hooks/use-site-modules";
-import { useKanbanModal } from "@/components/kanbans/KanbanModalContext";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { resolveSiteVerticalProfile } from "@/lib/site-verticals";
 import { isCampagnaElettorale } from "@/lib/campagna/config";
 import { useT } from "@/components/i18n/i18n-provider";
-import type { Translator } from "@/lib/i18n";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Settings } from "lucide-react";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import { ChevronDown, Settings } from "lucide-react";
+import {
+  buildSiteNavigation,
+  collectOpenKeysForActivePath,
+  isNavPathActive,
+  type NavIconName,
+  type NavMinRole,
+  type ResolvedNavItem,
+} from "@/lib/navigation";
 import {
   faWaveSquare,
   faTable,
@@ -66,7 +69,6 @@ import {
   faBriefcase,
   faIndustry,
   faListUl,
-  faHouse,
 } from "@fortawesome/free-solid-svg-icons";
 import { QuickActions } from "@/components/quick-actions";
 import { CommandDeckLauncher } from "@/components/command-deck/CommandDeckLauncher";
@@ -79,12 +81,18 @@ const formatKanbanTitle = (title: string): string =>
   title.replace(/Tantal/g, "Ta");
 
 // localStorage keys for sidebar state persistence
-const SIDEBAR_COLLAPSED_MENUS_KEY = "santini-sidebar-collapsed-menus";
+const SIDEBAR_COLLAPSED_MENUS_KEY = "santini-sidebar-collapsed-nav-v2";
 const SIDEBAR_KANBAN_OPENED_KEY = "santini-sidebar-kanban-opened";
 
-// Helper function to get initial collapsed menus state from localStorage
+const NAV_GROUP_UNBOXED =
+  "rounded-none border-0 bg-transparent p-0.5 shadow-none dark:border-0 dark:bg-transparent dark:shadow-none group-data-[collapsible=icon]:rounded-none group-data-[collapsible=icon]:p-0.5";
+const NAV_GROUP_LABEL =
+  "h-auto cursor-pointer gap-1 px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground";
+
+// Helper function to get initial collapsed menus state from localStorage.
+// Default is open (key absent or false). `true` means the user collapsed it.
 const getInitialCollapsedMenus = (): Record<string, boolean> => {
-  if (typeof window === "undefined") return { Kanban: true };
+  if (typeof window === "undefined") return {};
   try {
     const stored = localStorage.getItem(SIDEBAR_COLLAPSED_MENUS_KEY);
     if (stored) {
@@ -93,7 +101,7 @@ const getInitialCollapsedMenus = (): Record<string, boolean> => {
   } catch (e) {
     // Ignore localStorage errors
   }
-  return { Kanban: true };
+  return {};
 };
 
 // Helper function to get initial kanban opened state from localStorage
@@ -111,7 +119,7 @@ const getInitialKanbanOpened = (): boolean => {
 };
 
 // Icon mapping for sidebar
-const iconMap = {
+const iconMap: Record<NavIconName, IconDefinition> = {
   faWaveSquare,
   faTable,
   faClock,
@@ -133,7 +141,6 @@ const iconMap = {
   faBriefcase,
   faIndustry,
   faListUl,
-  faHouse,
 };
 
 type SiteDataQueryResult = {
@@ -190,7 +197,7 @@ type MenuItem = {
   /** Stable identity for grouping/collapse, independent from the (translated) label. */
   key?: string;
   label: string;
-  icon: keyof typeof iconMap;
+  icon: NavIconName;
   href?: string;
   action?: () => void;
   alert: boolean;
@@ -204,438 +211,36 @@ type MenuItem = {
   logoSrc?: string; // Optional logo image shown instead of the FontAwesome icon
 };
 
+function toMenuItem(item: ResolvedNavItem): MenuItem {
+  return {
+    key: item.key,
+    label: item.label,
+    icon: item.icon,
+    href: item.href,
+    lucideIcon: item.lucideIcon,
+    alert: false,
+    items: item.children?.map(toMenuItem),
+  };
+}
+
+function menuItemContainsPath(
+  item: MenuItem,
+  pathname: string,
+  search: string
+): boolean {
+  if (item.href && isNavPathActive(item.href, pathname, search)) return true;
+  return (
+    item.items?.some((child) => menuItemContainsPath(child, pathname, search)) ??
+    false
+  );
+}
+
 // Optimized domain extraction function
 const extractDomainFromPath = (pathname: string): string | null => {
   const match = pathname.match(/\/sites\/([^\/]+)/);
   return match ? match[1] : null;
 };
 
-// Enhanced menu items generation with better module filtering
-const getMenuItems = (
-  pathname: string,
-  enabledModules: string[] = [],
-  basePath: string = "",
-  t: Translator,
-  navLabels: {
-    kanban: string;
-    projects: string;
-    reports: string;
-  }
-): MenuItem[] => {
-  // Spazio Matris: la home ("/") E' la Overview Connector. La esponiamo come
-  // prima voce dedicata del gruppo Dashboard, senza rimuovere la dashboard
-  // analitica (/dashboard), che resta su "Overview".
-  const isMatrisHome = basePath === "/sites/matrispro";
-  const allSiteItems: MenuItem[] = [
-    {
-      key: "dashboard",
-      label: t("nav.dashboard"),
-      icon: "faWaveSquare",
-      alert: true,
-      moduleName: "dashboard",
-      items: [
-        ...(isMatrisHome
-          ? [
-              {
-                label: "Overview Connector",
-                icon: "faWaveSquare",
-                href: `${basePath}`,
-                alert: false,
-                moduleName: "dashboard",
-              } as MenuItem,
-            ]
-          : []),
-        {
-          label: t("nav.overview"),
-          icon: "faWaveSquare",
-          href: `${basePath}/dashboard`,
-          alert: false,
-          moduleName: "dashboard",
-        },
-        {
-          label: t("nav.forecast"),
-          icon: "faSquarePollVertical",
-          href: `${basePath}/dashboard/forecast`,
-          alert: false,
-          moduleName: "dashboard-forecast",
-        },
-      ],
-    },
-    {
-      key: "kanban",
-      label: navLabels.kanban,
-      icon: "faTable",
-      alert: true,
-      moduleName: "kanban",
-      items: [
-        {
-          label: t("nav.kanbanOffice"),
-          icon: "faBriefcase",
-          href: `${basePath}/kanban?type=office`,
-          alert: false,
-          moduleName: "kanban",
-        },
-        {
-          label: t("nav.kanbanProduction"),
-          icon: "faIndustry",
-          href: `${basePath}/kanban?type=production`,
-          alert: false,
-          moduleName: "kanban",
-        },
-      ],
-    },
-    {
-      key: "documents",
-      label: t("nav.documents"),
-      icon: "faBriefcase",
-      href: `${basePath}/documenti`,
-      alert: false,
-      moduleName: "projects",
-    },
-    {
-      key: "calendars",
-      label: t("nav.calendars"),
-      icon: "faCalendarDays",
-      alert: false,
-      items: [
-        {
-          label: t("nav.calendarProduction"),
-          icon: "faCalendarCheck",
-          href: `${basePath}/calendar`,
-          alert: false,
-          moduleName: "calendar",
-        },
-        {
-          label: t("nav.calendarInstallation"),
-          icon: "faCalendarDays",
-          href: `${basePath}/calendar-installation`,
-          alert: false,
-          moduleName: "calendar",
-        },
-        {
-          label: t("nav.calendarService"),
-          icon: "faCalendarDays",
-          href: `${basePath}/calendar-service`,
-          alert: false,
-          moduleName: "calendar",
-        },
-      ],
-    },
-    {
-      key: "hours",
-      label: t("nav.hours"),
-      icon: "faClock",
-      href: `${basePath}/timetracking`,
-      alert: false,
-      moduleName: "timetracking",
-    },
-    {
-      key: "attendance",
-      label: t("nav.attendance"),
-      icon: "faCalendarCheck",
-      href: `${basePath}/attendance`,
-      alert: false,
-      moduleName: "attendance",
-    },
-    {
-      key: "collaboratorArea",
-      label: t("nav.collaboratorArea"),
-      icon: "faUser",
-      href: `${basePath}/area-collaboratore`,
-      alert: false,
-      moduleName: "area-collaboratore",
-    },
-    {
-      key: "contacts",
-      label: t("nav.contacts"),
-      icon: "faUsers",
-      alert: false,
-      items: [
-        {
-          label: t("nav.clients"),
-          icon: "faUser",
-          href: `${basePath}/clients`,
-          alert: false,
-          moduleName: "clients",
-        },
-        {
-          label: t("nav.suppliers"),
-          icon: "faHelmetSafety",
-          href: `${basePath}/suppliers`,
-          alert: false,
-          moduleName: "suppliers",
-        },
-        {
-          label: t("nav.manufacturers"),
-          icon: "faIndustry",
-          href: `${basePath}/manufacturers`,
-          alert: false,
-          moduleName: "manufacturers",
-        },
-        {
-          label: t("nav.resellers"),
-          icon: "faTruckField",
-          href: `${basePath}/resellers`,
-          alert: false,
-          moduleName: "resellers",
-        },
-        {
-          label: t("nav.collaborators"),
-          icon: "faUserTie",
-          href: `${basePath}/collaborators`,
-          alert: false,
-          moduleName: "collaborators",
-        },
-      ],
-    },
-    {
-      key: "warehouse",
-      label: t("nav.warehouse"),
-      icon: "faWarehouse",
-      alert: false,
-      moduleName: "inventory",
-      href: `${basePath}/inventory`,
-    },
-    {
-      key: "factory",
-      label: t("nav.factory"),
-      icon: "faIndustry",
-      alert: false,
-      moduleName: "factory",
-      href: `${basePath}/factory`,
-    },
-    {
-      key: "treemap",
-      label: "Treemap",
-      icon: "faListUl",
-      lucideIcon: "TreeDeciduous",
-      href: `${basePath}/treemap`,
-      alert: false,
-      moduleName: "treemap",
-    },
-    {
-      key: "products",
-      label: t("nav.products"),
-      icon: "faBox",
-      href: `${basePath}/products`,
-      alert: false,
-      moduleName: "products",
-    },
-    {
-      key: "supplementi",
-      label: "Supplementi",
-      icon: "faListUl",
-      lucideIcon: "Layers",
-      href: `${basePath}/supplementi`,
-      alert: false,
-      moduleName: "products",
-    },
-    {
-      key: "coefficienti",
-      label: "Coefficienti",
-      icon: "faListUl",
-      lucideIcon: "Ruler",
-      href: `${basePath}/coefficienti`,
-      alert: false,
-      moduleName: "products",
-    },
-    {
-      key: "projects",
-      label: navLabels.projects,
-      icon: "faTable",
-      href: `${basePath}/projects`,
-      alert: false,
-      moduleName: "projects",
-    },
-    {
-      key: "categories",
-      label: t("nav.categories"),
-      icon: "faListUl",
-      alert: false,
-      items: [
-        {
-          label: t("nav.categoriesInventory"),
-          icon: "faListUl",
-          href: `${basePath}/categories`,
-          alert: false,
-          moduleName: "categories",
-        },
-        {
-          label: t("nav.categoriesProducts"),
-          icon: "faListUl",
-          href: `${basePath}/product-categories`,
-          alert: false,
-          moduleName: "products",
-        },
-        {
-          label: t("nav.categoriesSuppliers"),
-          icon: "faListUl",
-          href: `${basePath}/supplier-categories`,
-          alert: false,
-          moduleName: "suppliers",
-        },
-        {
-          label: t("nav.categoriesManufacturers"),
-          icon: "faListUl",
-          href: `${basePath}/manufacturer-categories`,
-          alert: false,
-          moduleName: "manufacturers",
-        },
-      ],
-    },
-    {
-      key: "errors",
-      label: t("nav.errors"),
-      icon: "faExclamation",
-      href: `${basePath}/errortracking`,
-      alert: false,
-      moduleName: "errortracking",
-    },
-    {
-      key: "reports",
-      label: navLabels.reports,
-      icon: "faSquarePollVertical",
-      href: `${basePath}/reports`,
-      alert: false,
-      // Show Reports menu if any report module is enabled (no main module, just alternatives)
-      alternativeModules: ["report-time", "report-inventory", "report-projects", "report-errors", "report-imb"],
-      items: [
-        {
-          label: t("nav.reportTime"),
-          icon: "faClock",
-          href: `${basePath}/reports`,
-          alert: false,
-          moduleName: "report-time",
-        },
-        {
-          label: t("nav.reportInventory"),
-          icon: "faWarehouse",
-          href: `${basePath}/reports`,
-          alert: false,
-          moduleName: "report-inventory",
-        },
-        {
-          label: t("nav.reportProjects"),
-          icon: "faTable",
-          href: `${basePath}/reports`,
-          alert: false,
-          moduleName: "report-projects",
-        },
-        {
-          label: t("nav.reportErrors"),
-          icon: "faExclamation",
-          href: `${basePath}/reports`,
-          alert: false,
-          moduleName: "report-errors",
-        },
-        {
-          label: t("nav.reportImb"),
-          icon: "faBox",
-          href: `${basePath}/reports`,
-          alert: false,
-          moduleName: "report-imb",
-        },
-        {
-          label: t("nav.qualityControl"),
-          icon: "faCheckSquare",
-          href: `${basePath}/qualityControl`,
-          alert: false,
-          moduleName: "qualitycontrol",
-        },
-        {
-          label: t("nav.doQualityControl"),
-          icon: "faCheckSquare",
-          href: `${basePath}/qualityControl/edit`,
-          alert: false,
-          moduleName: "qualitycontrol",
-        },
-        {
-          label: t("nav.boxing"),
-          icon: "faBox",
-          href: `${basePath}/boxing`,
-          alert: false,
-          moduleName: "boxing",
-        },
-        {
-          label: t("nav.doBoxing"),
-          icon: "faBox",
-          href: `${basePath}/boxing/edit`,
-          alert: false,
-          moduleName: "boxing",
-        },
-      ],
-    },
-  ];
-
-  // Enhanced module filtering with better performance
-  const siteSpecificItems = allSiteItems.filter((item) => {
-    // Helper to check if a module or any of its alternatives is enabled
-    const isModuleOrAlternativeEnabled = (moduleName?: string, alternativeModules?: string[]) => {
-      if (moduleName && enabledModules.includes(moduleName)) return true;
-      if (alternativeModules) {
-        return alternativeModules.some(alt => enabledModules.includes(alt));
-      }
-      return false;
-    };
-    
-    // If item has sub-items, always filter them based on their moduleNames
-    if (item.items) {
-      const enabledSubItems = item.items.filter(
-        (subItem) =>
-          !subItem.moduleName || enabledModules.includes(subItem.moduleName)
-      );
-      
-      // Check if parent module or any alternative is enabled
-      const parentModuleEnabled = isModuleOrAlternativeEnabled(item.moduleName, item.alternativeModules);
-      
-      if (enabledSubItems.length > 0) {
-        item.items = enabledSubItems;
-        // If parent has no moduleName and no alternatives, show it if it has enabled sub-items
-        if (!item.moduleName && !item.alternativeModules) return true;
-        // If parent has moduleName or alternatives, check if any is enabled
-        return parentModuleEnabled;
-      }
-      
-      // If no sub-items are enabled but the parent module itself is enabled,
-      // show the menu without sub-items (will link directly to parent href)
-      if (parentModuleEnabled && item.href) {
-        // Remove items array so it renders as a simple link
-        delete item.items;
-        return true;
-      }
-      
-      return false;
-    }
-
-    // Items without sub-items and without moduleName are always shown
-    if (!item.moduleName) return true;
-
-    // Items with moduleName must be in enabledModules (or alternatives)
-    return isModuleOrAlternativeEnabled(item.moduleName, item.alternativeModules);
-  });
-
-  // Add admin-only items if not on site domain
-  if (!basePath) {
-    siteSpecificItems.push(
-      {
-        key: "users",
-        label: t("nav.users"),
-        icon: "faUsers",
-        href: "/administration/users",
-        alert: false,
-      },
-      {
-        key: "sites",
-        label: t("nav.sites"),
-        icon: "faTable",
-        href: "/administration/sites",
-        alert: false,
-      }
-    );
-  }
-
-  return siteSpecificItems;
-};
 
 const UserSection = memo(function UserSection({
   user,
@@ -654,13 +259,12 @@ export function AppSidebar() {
   const { userContext } = useUserContext();
   const { openCreateModal } = useKanbanModal();
   const t = useT();
+  const { isOnline } = useOnlineStatus();
   // Server-safe defaults: localStorage is read only after mount, so the
   // first client render matches the SSR HTML (avoids hydration mismatch).
   const [collapsedMenus, setCollapsedMenus] = useState<Record<string, boolean>>(
-    { Kanban: true }
+    {}
   );
-  const { toast } = useToast();
-  const { isOnline } = useOnlineStatus();
   const queryClient = useQueryClient();
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -806,7 +410,6 @@ export function AppSidebar() {
   const {
     data: kanbansLocal = [],
     isLoading: isLoadingKanbansLocal,
-    refetch: refetchKanbans,
   } = useQuery({
     queryKey: ["kanbans-list", domain],
     queryFn: () => fetchKanbans(domain!),
@@ -817,7 +420,7 @@ export function AppSidebar() {
   });
 
   // OPTIMIZED: Lazy load kanban categories - only fetch when section is expanded
-  const { data: kanbanCategories = [], isLoading: isLoadingCategories } =
+  const { data: kanbanCategories = [] } =
     useQuery({
       queryKey: ["kanban-categories", domain],
       queryFn: () => fetchKanbanCategories(domain!),
@@ -843,72 +446,42 @@ export function AppSidebar() {
     });
   }, [domain, isOnline, kanbanOpened, queryClient]);
 
-  const refreshKanbansOptimized = useCallback(async () => {
-    if (!isOnline || !domain) {
-      if (!isOnline) {
-        toast({
-          title: "Impossibile aggiornare",
-          description: "Nessuna connessione internet disponibile",
-          variant: "destructive",
-        });
-      }
-      return;
+  const canManageSettings =
+    userContext?.role === "admin" || userContext?.role === "superadmin";
+  const settingsHref = useMemo(() => {
+    if (!canManageSettings) return null;
+    if (domain) {
+      return siteData?.id ? `/administration/sites/${siteData.id}/edit` : null;
     }
+    return "/administration";
+  }, [canManageSettings, domain, siteData?.id]);
 
-    try {
-      await refetchKanbans();
-      toast({
-        title: "Aggiornamento completato",
-        description: "Lista kanban aggiornata con successo",
-      });
-    } catch (error) {
-      logger.error("Error refreshing kanbans:", error);
-      toast({
-        title: "Errore nell'aggiornamento",
-        description: "Impossibile aggiornare la lista kanban",
-        variant: "destructive",
-      });
-    }
-  }, [isOnline, toast, domain, refetchKanbans]);
+  const injectKanbanChildren = useCallback(
+    (item: MenuItem): MenuItem => {
+      const isSuperAdmin = userContext?.role === "superadmin";
 
-  // Optimized menu items generation
-  const menuItems = useMemo(() => {
-    const items = getMenuItems(
-      pathname,
-      enabledModules.map((m) => m.name),
-      basePath,
-      t,
-      navLabels
-    );
-
-    return items.map((item: MenuItem) => {
-      if (item.key === "kanban") {
-        const isSuperAdmin = userContext?.role === "superadmin";
-
-        // Se non ci sono categorie, mostra tutte le kanban senza raggruppamento
-        if (kanbanCategories.length === 0) {
-          const kanbanSubItems = [
-            ...(isLoadingKanbansLocal
+      if (kanbanCategories.length === 0) {
+        const kanbanSubItems: MenuItem[] = [
+          ...(isLoadingKanbansLocal
+            ? [
+                {
+                  label: t("common.loading"),
+                  icon: "faWrench" as const,
+                  href: "#",
+                  alert: false,
+                },
+              ]
+            : kanbansLocal.length === 0
               ? [
                   {
-                    label: t("common.loading"),
-                    icon: "faWrench" as const,
-                    href: "#",
-                    alert: false,
-                  },
-                ]
-              : kanbansLocal.length === 0
-              ? [
-                  {
-                    label: isOnline
-                      ? t("nav.noKanban")
-                      : t("nav.offlineData"),
+                    label: isOnline ? t("nav.noKanban") : t("nav.offlineData"),
                     icon: "faTable" as const,
                     href: "#",
                     alert: false,
                   },
                 ]
               : kanbansLocal.map((kanban) => ({
+                  key: `kanban-${kanban.id || kanban.identifier}`,
                   label: formatKanbanTitle(kanban.title),
                   icon: "faTable" as const,
                   lucideIcon: kanban.icon || "Folder",
@@ -916,31 +489,34 @@ export function AppSidebar() {
                   alert: false,
                   id: kanban.id || kanban.identifier,
                 }))),
-            ...(isSuperAdmin
-              ? [
-                  {
-                    label: t("nav.createKanban"),
-                    icon: "faPlus" as const,
-                    action: () => openCreateModal(null),
-                    alert: false,
-                  },
-                ]
-              : []),
-          ];
+          ...(isSuperAdmin
+            ? [
+                {
+                  label: t("nav.createKanban"),
+                  icon: "faPlus" as const,
+                  action: () => openCreateModal(null),
+                  alert: false,
+                },
+              ]
+            : []),
+        ];
+        return { ...item, items: kanbanSubItems };
+      }
 
-          return {
-            ...item,
-            items: kanbanSubItems,
-          };
-        }
-
-        // Raggruppa le kanban per categoria
-        const kanbanSubItems = kanbanCategories.map((category: any) => {
+      const kanbanSubItems: MenuItem[] = kanbanCategories.map(
+        (category: {
+          id: number;
+          name: string;
+          icon?: string;
+          color?: string;
+          identifier: string;
+        }) => {
           const categoryKanbans = kanbansLocal.filter(
             (k) => k.category_id === category.id
           );
 
           return {
+            key: `kanban-cat-${category.id}`,
             label: category.name,
             icon: "faListUl" as const,
             lucideIcon: category.icon || "Folder",
@@ -957,24 +533,25 @@ export function AppSidebar() {
                     },
                   ]
                 : categoryKanbans.length === 0
-                ? [
-                    {
-                      label: isOnline
-                        ? t("nav.noKanban")
-                        : t("nav.offlineData"),
+                  ? [
+                      {
+                        label: isOnline
+                          ? t("nav.noKanban")
+                          : t("nav.offlineData"),
+                        icon: "faTable" as const,
+                        href: "#",
+                        alert: false,
+                      },
+                    ]
+                  : categoryKanbans.map((kanban) => ({
+                      key: `kanban-${kanban.id || kanban.identifier}`,
+                      label: formatKanbanTitle(kanban.title),
                       icon: "faTable" as const,
-                      href: "#",
+                      lucideIcon: kanban.icon || "Folder",
+                      href: `${basePath}/kanban?name=${kanban.identifier}&category=${category.identifier}`,
                       alert: false,
-                    },
-                  ]
-                : categoryKanbans.map((kanban) => ({
-                    label: formatKanbanTitle(kanban.title),
-                    icon: "faTable" as const,
-                    lucideIcon: kanban.icon || "Folder",
-                    href: `${basePath}/kanban?name=${kanban.identifier}&category=${category.identifier}`,
-                    alert: false,
-                    id: kanban.id || kanban.identifier,
-                  }))),
+                      id: kanban.id || kanban.identifier,
+                    }))),
               ...(isSuperAdmin
                 ? [
                     {
@@ -987,31 +564,33 @@ export function AppSidebar() {
                 : []),
             ],
           };
-        });
+        }
+      );
 
-        // Aggiungi le kanban senza categoria
-        const uncategorizedKanbans = kanbansLocal.filter((k) => !k.category_id);
+      const uncategorizedKanbans = kanbansLocal.filter((k) => !k.category_id);
 
-        if (uncategorizedKanbans.length > 0 || isSuperAdmin) {
-          kanbanSubItems.push({
-            label: t("nav.uncategorized"),
-            icon: "faListUl" as const,
-            lucideIcon: "Folder",
-            color: "#6B7280",
-            alert: false,
-            items: [
-              ...(isLoadingKanbansLocal
-                ? [
-                    {
-                      label: t("common.loading"),
-                      icon: "faWrench" as const,
-                      href: "#",
-                      alert: false,
-                    },
-                  ]
-                : uncategorizedKanbans.length === 0
+      if (uncategorizedKanbans.length > 0 || isSuperAdmin) {
+        kanbanSubItems.push({
+          key: "kanban-uncategorized",
+          label: t("nav.uncategorized"),
+          icon: "faListUl" as const,
+          lucideIcon: "Folder",
+          color: "#6B7280",
+          alert: false,
+          items: [
+            ...(isLoadingKanbansLocal
+              ? [
+                  {
+                    label: t("common.loading"),
+                    icon: "faWrench" as const,
+                    href: "#",
+                    alert: false,
+                  },
+                ]
+              : uncategorizedKanbans.length === 0
                 ? []
                 : uncategorizedKanbans.map((kanban) => ({
+                    key: `kanban-${kanban.id || kanban.identifier}`,
                     label: formatKanbanTitle(kanban.title),
                     icon: "faTable" as const,
                     lucideIcon: kanban.icon || "Folder",
@@ -1019,75 +598,111 @@ export function AppSidebar() {
                     alert: false,
                     id: kanban.id || kanban.identifier,
                   }))),
-              ...(isSuperAdmin
-                ? [
-                    {
-                      label: t("nav.createKanban"),
-                      icon: "faPlus" as const,
-                      action: () => openCreateModal(null),
-                      alert: false,
-                    },
-                  ]
-                : []),
-            ],
-          });
-        }
-
-        return {
-          ...item,
-          items: kanbanSubItems,
-        };
+            ...(isSuperAdmin
+              ? [
+                  {
+                    label: t("nav.createKanban"),
+                    icon: "faPlus" as const,
+                    action: () => openCreateModal(null),
+                    alert: false,
+                  },
+                ]
+              : []),
+          ],
+        });
       }
-      return item;
-    });
-  }, [
-    pathname,
-    enabledModules,
-    basePath,
-    t,
-    navLabels,
-    kanbansLocal,
-    kanbanCategories,
-    isLoadingKanbansLocal,
-    isOnline,
-    userContext,
-    openCreateModal,
-  ]);
 
-  // Optimized utility functions - Include query params for proper Kanban selection
-  const isActive = useCallback(
-    (href: string) => {
-      const [hrefPath, hrefQuery] = href.split("?");
-      const currentPath = pathname;
-      const currentQuery = searchParams.toString();
-      
-      // If href has query params, compare full URL (path + query)
-      if (hrefQuery) {
-        const currentFullUrl = currentQuery ? `${currentPath}?${currentQuery}` : currentPath;
-        return currentFullUrl === href;
-      }
-      
-      // For hrefs without query params, just compare the path
-      return currentPath === hrefPath;
+      return { ...item, items: kanbanSubItems };
     },
+    [
+      userContext?.role,
+      kanbanCategories,
+      isLoadingKanbansLocal,
+      kanbansLocal,
+      isOnline,
+      t,
+      basePath,
+      openCreateModal,
+    ]
+  );
+
+  const resolvedNavGroups = useMemo(
+    () =>
+      buildSiteNavigation({
+        basePath,
+        enabledModules: enabledModules.map((m) => m.name),
+        role: userContext?.role as NavMinRole | undefined,
+        t,
+        navLabels,
+        settingsHref,
+        includeMatrisHome: basePath === "/sites/matrispro",
+      }),
+    [basePath, enabledModules, userContext?.role, t, navLabels, settingsHref]
+  );
+
+  const navGroups = useMemo(
+    () =>
+      resolvedNavGroups.map((group) => ({
+        ...group,
+        items: group.items.map((item) => {
+          const menuItem = toMenuItem(item);
+          return menuItem.key === "kanban"
+            ? injectKanbanChildren(menuItem)
+            : menuItem;
+        }),
+      })),
+    [resolvedNavGroups, injectKanbanChildren]
+  );
+
+  const isActive = useCallback(
+    (href: string) => isNavPathActive(href, pathname, searchParams.toString()),
     [pathname, searchParams]
   );
 
-  const toggleMenu = useCallback((label: string) => {
+  const toggleMenu = useCallback((key: string) => {
     setCollapsedMenus((prev) => {
-      const wasCollapsed = prev[label];
-      // If opening Kanban section, mark it as opened for lazy loading
-      if (label === navLabels.kanban && wasCollapsed) {
+      const nextCollapsed = prev[key] !== true;
+      if (
+        !nextCollapsed &&
+        (key === "lavoro" || key === "kanban")
+      ) {
         setKanbanOpened(true);
       }
       return {
         ...prev,
-        [label]: !wasCollapsed,
+        [key]: nextCollapsed,
       };
     });
-  }, [navLabels]);
+  }, []);
 
-  // Optimized display values
+  useEffect(() => {
+    if (!isHydrated) return;
+    if (collapsedMenus.lavoro !== true) {
+      setKanbanOpened(true);
+    }
+  }, [isHydrated, collapsedMenus.lavoro]);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+    const keys = collectOpenKeysForActivePath(
+      resolvedNavGroups,
+      pathname,
+      searchParams.toString()
+    );
+    if (keys.length === 0) return;
+    setCollapsedMenus((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const key of keys) {
+        if (next[key] === true) {
+          next[key] = false;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [isHydrated, pathname, searchParams, resolvedNavGroups]);
+
   const displayTitle = useMemo(() => {
     if (siteData) {
       return siteData.organization.name
@@ -1101,66 +716,7 @@ export function AppSidebar() {
     () => siteData?.logo || siteData?.image || null,
     [siteData]
   );
-  const canManageSettings =
-    userContext?.role === "admin" || userContext?.role === "superadmin";
-  const settingsHref = useMemo(() => {
-    if (!canManageSettings) return null;
-    if (domain) {
-      return siteData?.id ? `/administration/sites/${siteData.id}/edit` : null;
-    }
-    return "/administration";
-  }, [canManageSettings, domain, siteData?.id]);
   const settingsTitle = domain ? t("nav.settings") : t("nav.administration");
-
-  // Raggruppa i menu items per categoria (per chiave stabile, indipendente
-  // dalla lingua/label tradotta).
-  const groupedMenuItems = useMemo(() => {
-    const GROUPED_KEYS = [
-      "dashboard",
-      "kanban",
-      "calendars",
-      "hours",
-      "attendance",
-      "contacts",
-      "warehouse",
-      "factory",
-      "products",
-      "projects",
-      "documents",
-      "categories",
-      "errors",
-      "reports",
-    ];
-    const core = menuItems.filter((item) => item.key === "dashboard");
-    const projects = menuItems.filter((item) => item.key === "kanban");
-    const documenti = menuItems.filter((item) => item.key === "documents");
-    const calendars = menuItems.filter((item) => item.key === "calendars");
-    const contacts = menuItems.filter((item) => item.key === "contacts");
-    const warehouse = menuItems.filter((item) => item.key === "warehouse");
-    const factory = menuItems.filter((item) => item.key === "factory");
-    const products = menuItems.filter((item) => item.key === "products");
-    const projectsSection = menuItems.filter((item) => item.key === "projects");
-    const categories = menuItems.filter((item) => item.key === "categories");
-    const attendance = menuItems.filter((item) => item.key === "attendance");
-    const others = menuItems.filter(
-      (item) => !item.key || !GROUPED_KEYS.includes(item.key)
-    );
-
-    return {
-      core,
-      projects,
-      documenti,
-      calendars,
-      attendance,
-      contacts,
-      warehouse,
-      factory,
-      products,
-      projectsSection,
-      categories,
-      others,
-    };
-  }, [menuItems]);
 
   // Progressive loading: separate loading states for different parts
   // Header/footer load from hydration, so usually instant
@@ -1177,207 +733,33 @@ export function AppSidebar() {
     return loadingModules;
   }, [domain, loadingModules]);
 
-  // Kanban section loading (only when expanded)
-  const isLoadingKanbanSection = useMemo(() => {
-    return kanbanOpened && (isLoadingKanbansLocal || isLoadingCategories);
-  }, [kanbanOpened, isLoadingKanbansLocal, isLoadingCategories]);
-
-  // Legacy: keep for backwards compatibility but now more granular
-  const isLoadingSidebar = useMemo(() => {
-    if (!domain) return false;
-    return loadingModules || loadingSiteData;
-  }, [domain, loadingModules, loadingSiteData]);
-
-  // Skeleton component for loading state - Content
-  const SidebarSkeletonContent = () => (
-    <>
-      {/* Logo skeleton */}
-      <SidebarGroup>
-        <SidebarGroupLabel className="h-auto py-2">
-          <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-white/10" />
-        </SidebarGroupLabel>
-        {/* Dashboard skeleton */}
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-      <SidebarSeparator />
-
-      {/* Kanban section skeleton with nested categories */}
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {/* Kanban header */}
-            <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-4 w-16 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </SidebarMenuItem>
-            {/* Category: Ufficio */}
-            <div className="pl-4 mt-1 space-y-1">
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-14 bg-gray-200 dark:bg-white/10" />
-              </div>
-              <div className="pl-4 space-y-1">
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
-                  <Skeleton className="h-3 w-16 bg-gray-200 dark:bg-white/10" />
-                </div>
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
-                  <Skeleton className="h-3 w-14 bg-gray-200 dark:bg-white/10" />
-                </div>
-              </div>
-            </div>
-            {/* Category: Produzione */}
-            <div className="pl-4 mt-1 space-y-1">
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-20 bg-gray-200 dark:bg-white/10" />
-              </div>
-              <div className="pl-4 space-y-1">
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
-                  <Skeleton className="h-3 w-24 bg-gray-200 dark:bg-white/10" />
-                </div>
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
-                  <Skeleton className="h-3 w-12 bg-gray-200 dark:bg-white/10" />
-                </div>
-                <div className="flex items-center gap-2 px-2 py-1">
-                  <Skeleton className="h-3 w-3 rounded bg-gray-200 dark:bg-white/10" />
-                  <Skeleton className="h-3 w-20 bg-gray-200 dark:bg-white/10" />
-                </div>
-              </div>
-            </div>
-            {/* Category: Senza Categoria */}
-            <div className="pl-4 mt-1 space-y-1">
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-28 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </div>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-      <SidebarSeparator />
-
-      {/* Calendari section skeleton */}
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </SidebarMenuItem>
-            <div className="pl-4 mt-1 space-y-1">
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-28 bg-gray-200 dark:bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-20 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </div>
-            {/* Ore item */}
-            <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-4 w-8 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-
-      <SidebarSeparator />
-
-      {/* Contatti section skeleton */}
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2 py-2">
-                <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-4 w-16 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </SidebarMenuItem>
-            <div className="pl-4 mt-1 space-y-1">
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-14 bg-gray-200 dark:bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-16 bg-gray-200 dark:bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-20 bg-gray-200 dark:bg-white/10" />
-              </div>
-              <div className="flex items-center gap-2 px-2 py-1.5">
-                <Skeleton className="h-3.5 w-3.5 rounded bg-gray-200 dark:bg-white/10" />
-                <Skeleton className="h-3.5 w-24 bg-gray-200 dark:bg-white/10" />
-              </div>
-            </div>
-          </SidebarMenu>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    </>
-  );
-
-  // Skeleton component for loading state - Footer
-  const SidebarSkeletonFooter = () => (
-    <div className="flex flex-col gap-2">
-      {/* Theme switcher skeleton */}
-      <div className="flex justify-start px-2 py-2">
-        <Skeleton className="h-8 w-8 rounded-full bg-gray-200 dark:bg-white/10" />
-      </div>
-      {/* User section skeleton */}
-      <div className="flex items-center gap-3 px-2 py-2 rounded-md">
-        <Skeleton className="h-9 w-9 rounded-md shrink-0 bg-gray-200 dark:bg-white/10" />
-        <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <Skeleton className="h-4 w-32 bg-gray-200 dark:bg-white/10" />
-          <Skeleton className="h-3 w-24 bg-gray-200 dark:bg-white/10" />
-          <Skeleton className="h-3 w-16 bg-gray-200 dark:bg-white/10" />
-        </div>
-        <Skeleton className="h-4 w-4 rounded shrink-0 bg-gray-200 dark:bg-white/10" />
-      </div>
-    </div>
-  );
-
   const renderMenuItem = (item: MenuItem) => {
+    const collapseKey = item.key || item.label;
+    const itemOpen =
+      state === "collapsed" || collapsedMenus[collapseKey] !== true;
+
     // If item has subitems, use Collapsible
     if (item.items) {
       // Check if this is the Kanban menu for prefetch on hover
       const isKanbanMenu = item.key === "kanban";
+      const parentActive = menuItemContainsPath(
+        item,
+        pathname,
+        searchParams.toString()
+      );
 
       return (
         <Collapsible
-          key={item.label}
-          open={!collapsedMenus[item.label]}
-          onOpenChange={() => toggleMenu(item.label)}
+          key={collapseKey}
+          open={itemOpen}
+          onOpenChange={() => toggleMenu(collapseKey)}
           className="group/collapsible"
         >
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 tooltip={item.label}
-                isActive={item.href ? isActive(item.href) : false}
+                isActive={parentActive}
                 // Prefetch kanban data on hover before user clicks
                 onMouseEnter={isKanbanMenu ? prefetchKanbanData : undefined}
               >
@@ -1408,15 +790,19 @@ export function AppSidebar() {
                     const LucideIcon = subItem.lucideIcon
                       ? getKanbanIcon(subItem.lucideIcon)
                       : null;
+                    const nestedKey = subItem.key || subItem.label;
                     return (
                       <Collapsible
                         key={
                           subItem.id ||
                           subItem.href ||
-                          `${subItem.label}-${index}`
+                          `${nestedKey}-${index}`
                         }
-                        open={!collapsedMenus[subItem.label]}
-                        onOpenChange={() => toggleMenu(subItem.label)}
+                        open={
+                          state === "collapsed" ||
+                          collapsedMenus[nestedKey] !== true
+                        }
+                        onOpenChange={() => toggleMenu(nestedKey)}
                         className="group/collapsible"
                       >
                         <SidebarMenuSubItem>
@@ -1594,8 +980,11 @@ export function AppSidebar() {
     }
 
     // Regular menu item without subitems
+    const TopIcon = item.lucideIcon
+      ? getKanbanIcon(item.lucideIcon)
+      : null;
     return (
-      <SidebarMenuItem key={item.label}>
+      <SidebarMenuItem key={collapseKey}>
         <SidebarMenuButton
           asChild={!!item.href && !item.action}
           tooltip={item.label}
@@ -1604,12 +993,20 @@ export function AppSidebar() {
         >
           {item.action ? (
             <div className="flex items-center gap-2 cursor-pointer">
-              <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
+              {TopIcon ? (
+                <TopIcon className="w-4 h-4" />
+              ) : (
+                <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
+              )}
               <span>{item.label}</span>
             </div>
           ) : (
             <Link href={item.href!}>
-              <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
+              {TopIcon ? (
+                <TopIcon className="w-4 h-4" />
+              ) : (
+                <FontAwesomeIcon icon={iconMap[item.icon]} className="w-4 h-4" />
+              )}
               <span>{item.label}</span>
             </Link>
           )}
@@ -1623,8 +1020,7 @@ export function AppSidebar() {
       <SidebarContent>
         {/* PROGRESSIVE LOADING: Show header immediately, skeleton only for loading parts */}
 
-        {/* Overview Section - shows immediately with hydrated data or skeleton */}
-        <SidebarGroup>
+        <SidebarGroup className={NAV_GROUP_UNBOXED}>
           <SidebarGroupLabel className="h-auto py-2">
             {isLoadingHeader ? (
               <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-white/10" />
@@ -1647,255 +1043,98 @@ export function AppSidebar() {
               </div>
             )}
           </SidebarGroupLabel>
-
-          {/* Home + Dashboard - show skeleton only if modules loading */}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {domain && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={t("nav.home")}
-                    isActive={isActive(`${basePath}/home`)}
-                  >
-                    <Link href={`${basePath}/home`}>
-                      <FontAwesomeIcon icon={faHouse} className="w-4 h-4" />
-                      <span>{t("nav.home")}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              {isLoadingMenuItems ? (
-                <SidebarMenuItem>
-                  <div className="flex items-center gap-2 px-2 py-2">
-                    <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                    <Skeleton className="h-4 w-20 bg-gray-200 dark:bg-white/10" />
-                  </div>
-                </SidebarMenuItem>
-              ) : isCampagna ? (
-                campagnaMenuItems
-                  .filter((item) => item.key === "campagna-dashboard")
-                  .map(renderMenuItem)
-              ) : (
-                groupedMenuItems.core.map(renderMenuItem)
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Campaign sites render a fixed electoral menu; business sites keep
-            their existing module-driven sections untouched. */}
+        {/* Campaign sites render a fixed electoral menu; business sites use
+            the 6-area config from lib/navigation.ts. */}
         {isCampagna ? (
           <>
-            <SidebarSeparator />
-            <SidebarGroup>
+            <SidebarGroup className={NAV_GROUP_UNBOXED}>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {campagnaMenuItems
-                    .filter((item) => item.key !== "campagna-dashboard")
-                    .map(renderMenuItem)}
+                  {campagnaMenuItems.map(renderMenuItem)}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
 
             {canManageSettings && settingsHref && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup className="mt-auto">
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          tooltip={settingsTitle}
-                          isActive={isActive(settingsHref)}
-                        >
-                          <Link href={settingsHref}>
-                            <Settings className="h-4 w-4" />
-                            <span>{settingsTitle}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
+              <SidebarGroup className={cn(NAV_GROUP_UNBOXED, "mt-auto")}>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        asChild
+                        tooltip={settingsTitle}
+                        isActive={isActive(settingsHref)}
+                      >
+                        <Link href={settingsHref}>
+                          <Settings className="h-4 w-4" />
+                          <span>{settingsTitle}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
           </>
         ) : isLoadingMenuItems ? (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {[1, 2, 3].map((i) => (
-                    <SidebarMenuItem key={i}>
-                      <div className="flex items-center gap-2 px-2 py-2">
-                        <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
-                        <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-white/10" />
-                      </div>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
+          <SidebarGroup className={NAV_GROUP_UNBOXED}>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <SidebarMenuItem key={i}>
+                    <div className="flex items-center gap-2 px-2 py-2">
+                      <Skeleton className="h-4 w-4 rounded bg-gray-200 dark:bg-white/10" />
+                      <Skeleton className="h-4 w-24 bg-gray-200 dark:bg-white/10" />
+                    </div>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         ) : (
-          <>
-            {/* Project Management (Kanban) */}
-            {groupedMenuItems.projects.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.projects.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
+          navGroups.map((group) => {
+            const groupOpen =
+              state === "collapsed" || collapsedMenus[group.id] !== true;
+            const groupHasActive = group.items.some((item) =>
+              menuItemContainsPath(item, pathname, searchParams.toString())
+            );
+            return (
+              <Collapsible
+                key={group.id}
+                open={groupOpen}
+                onOpenChange={() => toggleMenu(group.id)}
+                className="group/collapsible"
+              >
+                <SidebarGroup className={NAV_GROUP_UNBOXED}>
+                  <CollapsibleTrigger asChild>
+                    <SidebarGroupLabel
+                      className={cn(
+                        NAV_GROUP_LABEL,
+                        groupHasActive && "text-foreground"
+                      )}
+                    >
+                      <span>{group.label}</span>
+                      <ChevronDown
+                        className={cn(
+                          "ml-auto h-3 w-3 shrink-0 transition-transform",
+                          collapsedMenus[group.id] === true && "-rotate-90"
+                        )}
+                      />
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {group.items.map(renderMenuItem)}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
                 </SidebarGroup>
-              </>
-            )}
-
-            {/* Documenti */}
-            {groupedMenuItems.documenti.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.documenti.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Calendari */}
-            {groupedMenuItems.calendars.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.calendars.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Presenze */}
-            {groupedMenuItems.attendance.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.attendance.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Contacts */}
-            {groupedMenuItems.contacts.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.contacts.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Warehouse, Factory & Products */}
-            {(groupedMenuItems.warehouse.length > 0 ||
-              groupedMenuItems.factory.length > 0 ||
-              groupedMenuItems.products.length > 0) && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.warehouse.map(renderMenuItem)}
-                      {groupedMenuItems.factory.map(renderMenuItem)}
-                      {groupedMenuItems.products.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Projects */}
-            {groupedMenuItems.projectsSection.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.projectsSection.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Categories */}
-            {groupedMenuItems.categories.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.categories.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {/* Others */}
-            {groupedMenuItems.others.length > 0 && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      {groupedMenuItems.others.map(renderMenuItem)}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-
-            {canManageSettings && settingsHref && (
-              <>
-                <SidebarSeparator />
-                <SidebarGroup className="mt-auto">
-                  <SidebarGroupContent>
-                    <SidebarMenu>
-                      <SidebarMenuItem>
-                        <SidebarMenuButton
-                          asChild
-                          tooltip={settingsTitle}
-                          isActive={isActive(settingsHref)}
-                        >
-                          <Link href={settingsHref}>
-                            <Settings className="h-4 w-4" />
-                            <span>{settingsTitle}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </>
-            )}
-          </>
+              </Collapsible>
+            );
+          })
         )}
       </SidebarContent>
       <SidebarFooter>

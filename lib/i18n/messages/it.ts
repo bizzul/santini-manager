@@ -27,6 +27,12 @@ export const itMessages = {
   },
   nav: {
     home: "Home",
+    groupPanoramica: "Panoramica",
+    groupLavoro: "Lavoro",
+    groupPianificazione: "Pianificazione",
+    groupAnagrafiche: "Anagrafiche",
+    groupListino: "Listino e prezzi",
+    groupConfigurazione: "Configurazione",
     dashboard: "Dashboard",
     overview: "Overview",
     forecast: "Forecast",
