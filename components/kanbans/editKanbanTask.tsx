@@ -279,6 +279,8 @@ const EditTaskKanban = ({
   const { toast } = useToast();
   const { siteId, error: siteIdError } = useSiteId(domain);
   const weekendDisabled = disableWeekendUnlessAllowed(domain);
+  const taskId = resource?.id as number | undefined;
+  const isCreate = !taskId;
   const [isLoading, setIsLoading] = useState(true);
   const newOrderDateInputRef = useRef<HTMLInputElement>(null);
   const newDeliveryDateInputRef = useRef<HTMLInputElement>(null);
@@ -418,8 +420,9 @@ const EditTaskKanban = ({
     "pr-10 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-0 [&::-webkit-calendar-picker-indicator]:w-10";
 
   const loadTaskDetails = useCallback(async () => {
+    if (!taskId) return;
     try {
-      const response = await fetch(`/api/kanban/tasks/${resource.id}`, {
+      const response = await fetch(`/api/kanban/tasks/${taskId}`, {
         headers: getHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch task details");
@@ -453,7 +456,7 @@ const EditTaskKanban = ({
       logger.error("Error fetching task details:", error);
       setProjectFiles([]);
     }
-  }, [resource.id, siteId, domain]);
+  }, [taskId, siteId, domain]);
 
   useEffect(() => {
     if (!resource) return;
@@ -665,16 +668,43 @@ const EditTaskKanban = ({
     };
 
     initializeForm();
-    setIsLoading(false);
+
+    const generateCode = async () => {
+      if (!isCreate) return;
+      const kanbanToUse = resource?.kanbanId;
+      if (!kanbanToUse) return;
+      try {
+        const params = new URLSearchParams();
+        params.set("kanbanId", String(kanbanToUse));
+        const res = await fetch(`/api/tasks/generate-code?${params.toString()}`, {
+          headers: getHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.code) {
+            form.setValue("unique_code", data.code, { shouldValidate: true });
+          }
+        }
+      } catch (error) {
+        logger.error("Error generating code:", error);
+      }
+    };
+
+    void (async () => {
+      if (isCreate) {
+        await generateCode();
+      }
+      setIsLoading(false);
+    })();
 
     void Promise.allSettled([
       getClients(),
       getProducts(),
       getKanbans(),
       getCollaborators(),
-      loadTaskDetails(),
+      isCreate ? Promise.resolve() : loadTaskDetails(),
     ]);
-  }, [resource, form.setValue, siteId, siteIdError, domain, loadTaskDetails]);
+  }, [resource, form.setValue, siteId, siteIdError, domain, loadTaskDetails, isCreate]);
 
   // Load columns when kanban changes
   useEffect(() => {
@@ -720,8 +750,13 @@ const EditTaskKanban = ({
         const suppliersData = await response.json();
         setSuppliers(Array.isArray(suppliersData) ? suppliersData : []);
 
+        if (!taskId) {
+          setTaskSuppliers([]);
+          return;
+        }
+
         const taskSuppResponse = await fetch(
-          `/api/tasks/${resource.id}/suppliers`,
+          `/api/tasks/${taskId}/suppliers`,
           { headers: getHeaders() }
         );
         const taskSuppData = await taskSuppResponse.json();
@@ -734,7 +769,7 @@ const EditTaskKanban = ({
     };
 
     loadSuppliers();
-  }, [resource.id, siteId]);
+  }, [taskId, siteId]);
 
   const { errors, isSubmitting } = form.formState;
   logger.debug("Form errors:", errors);
@@ -786,47 +821,58 @@ const EditTaskKanban = ({
       "Content-Type": "application/json",
     };
 
-    const response = await fetch(`/api/kanban/tasks/${resource.id}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({
-        unique_code: d.unique_code || null,
-        name: d.name || null,
-        luogo: normalizedSiteAddress || null,
-        clientId: d.clientId || null,
-        sellProductId: firstProductId,
-        sellPrice: d.sellPrice ? Number(d.sellPrice) : 0,
-        numero_pezzi: totalPieces,
-        // Legacy fields kept in sync for existing views
-        deliveryDate: d.posa_data_fine || null,
-        termine_produzione: productionRequired ? d.produzione_data_fine || null : null,
-        ora_inizio: d.posa_ora_inizio ?? null,
-        ora_fine: d.posa_ora_fine ?? null,
-        // New planning fields
-        produzione_data_inizio: productionRequired ? d.produzione_data_inizio || null : null,
-        produzione_data_fine: productionRequired ? d.produzione_data_fine || null : null,
-        posa_data_inizio: d.posa_data_inizio || null,
-        posa_data_fine: d.posa_data_fine || null,
-        produzione_ora_inizio: productionRequired ? d.produzione_ora_inizio ?? null : null,
-        produzione_ora_fine: productionRequired ? d.produzione_ora_fine ?? null : null,
-        posa_ora_inizio: d.posa_ora_inizio ?? null,
-        posa_ora_fine: d.posa_ora_fine ?? null,
-        produzione_collaborator_ids: selectedProductionCollaborators,
-        posa_collaborator_ids: selectedPosaCollaborators,
-        assigned_collaborator_ids: Array.from(
-          new Set([
-            ...selectedProductionCollaborators,
-            ...selectedPosaCollaborators,
-          ])
-        ),
-        // Deprecated field - intentionally nulled because assignment now uses collaborators list
-        squadra: null,
-        other: d.other || null,
-        kanbanId: selectedKanbanId || resource?.kanbanId || null,
-        kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
-        offer_products: offerProductsToSave,
-      }),
-    });
+    const assignedCollaboratorIds = Array.from(
+      new Set([
+        ...selectedProductionCollaborators,
+        ...selectedPosaCollaborators,
+      ])
+    );
+    const payload = {
+      unique_code: d.unique_code || null,
+      name: d.name || null,
+      luogo: normalizedSiteAddress || null,
+      clientId: d.clientId || null,
+      productId: firstProductId,
+      sellProductId: firstProductId,
+      sellPrice: d.sellPrice ? Number(d.sellPrice) : 0,
+      numero_pezzi: totalPieces,
+      // Legacy fields kept in sync for existing views
+      deliveryDate: d.posa_data_fine || null,
+      termine_produzione: productionRequired ? d.produzione_data_fine || null : null,
+      ora_inizio: d.posa_ora_inizio ?? null,
+      ora_fine: d.posa_ora_fine ?? null,
+      // New planning fields
+      produzione_data_inizio: productionRequired ? d.produzione_data_inizio || null : null,
+      produzione_data_fine: productionRequired ? d.produzione_data_fine || null : null,
+      posa_data_inizio: d.posa_data_inizio || null,
+      posa_data_fine: d.posa_data_fine || null,
+      produzione_ora_inizio: productionRequired ? d.produzione_ora_inizio ?? null : null,
+      produzione_ora_fine: productionRequired ? d.produzione_ora_fine ?? null : null,
+      posa_ora_inizio: d.posa_ora_inizio ?? null,
+      posa_ora_fine: d.posa_ora_fine ?? null,
+      produzione_collaborator_ids: selectedProductionCollaborators,
+      posa_collaborator_ids: selectedPosaCollaborators,
+      assigned_collaborator_ids: assignedCollaboratorIds,
+      // Deprecated field - intentionally nulled because assignment now uses collaborators list
+      squadra: null,
+      other: d.other || null,
+      kanbanId: selectedKanbanId || resource?.kanbanId || null,
+      kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
+      offer_products: offerProductsToSave,
+      offerProducts: offerProductsToSave,
+      is_draft: false,
+      isDraft: false,
+      task_type: resource?.task_type || resource?.taskType || (isCreate ? "OFFERTA" : undefined),
+    };
+
+    const response = await fetch(
+      isCreate ? "/api/kanban/tasks/create" : `/api/kanban/tasks/${taskId}`,
+      {
+        method: isCreate ? "POST" : "PATCH",
+        headers,
+        body: JSON.stringify(payload),
+      },
+    );
 
     const responseData = await response.json();
 
@@ -841,16 +887,19 @@ const EditTaskKanban = ({
       });
     } else {
       router.refresh();
+      onTaskUpdated?.();
       handleClose(false);
       toast({
-        description: `Elemento ${d.unique_code} aggiornato correttamente!`,
+        description: isCreate
+          ? `Offerta ${d.unique_code} creata correttamente!`
+          : `Elemento ${d.unique_code} aggiornato correttamente!`,
       });
       form.reset();
     }
   };
 
-  const filteredHistory = history.filter(
-    (action: any) => action.taskId === resource.id
+  const filteredHistory = (history || []).filter(
+    (action: any) => action.taskId === taskId
   );
   const shouldCollapseHistory = filteredHistory.length > 3;
 
@@ -1183,6 +1232,14 @@ const EditTaskKanban = ({
         return;
       }
 
+      if (!taskId) {
+        toast({
+          variant: "destructive",
+          description: "Salva l'offerta prima di caricare un'immagine",
+        });
+        return;
+      }
+
       const maxSizeMB = 10;
       if (file.size > maxSizeMB * 1024 * 1024) {
         toast({
@@ -1201,7 +1258,7 @@ const EditTaskKanban = ({
           .replace(/[^a-zA-Z0-9-_]/g, "_")
           .substring(0, 50);
         const fileName = `${safeName}-${Date.now()}.${fileExt}`;
-        const filePath = `${siteId}/projects/${resource.id}/images/${fileName}`;
+        const filePath = `${siteId}/projects/${taskId}/images/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from("documents")
@@ -1225,7 +1282,7 @@ const EditTaskKanban = ({
             name: file.name,
             url: publicUrl,
             storage_path: filePath,
-            taskId: resource.id,
+            taskId,
           }),
         });
 
@@ -1252,7 +1309,7 @@ const EditTaskKanban = ({
         setIsUploadingProjectImage(false);
       }
     },
-    [resource.id, siteId, toast]
+    [taskId, siteId, toast]
   );
 
   const handleProjectImageInputChange = useCallback(
@@ -1507,7 +1564,15 @@ const EditTaskKanban = ({
         ? calculateDeliveryDateFromOrder(newOrderDate, normalizedSupplyDays)
         : null;
 
-    const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
+    if (!taskId) {
+      toast({
+        variant: "destructive",
+        description: "Salva l'offerta prima di aggiungere un fornitore",
+      });
+      return;
+    }
+
+    const response = await fetch(`/api/tasks/${taskId}/suppliers`, {
       method: "POST",
       headers: {
         ...getHeaders(),
@@ -1551,7 +1616,7 @@ const EditTaskKanban = ({
     successMessage: string
   ) => {
     const request = (async () => {
-      const response = await fetch(`/api/tasks/${resource.id}/suppliers`, {
+      const response = await fetch(`/api/tasks/${taskId}/suppliers`, {
         method: "POST",
         headers: {
           ...getHeaders(),
@@ -1586,7 +1651,7 @@ const EditTaskKanban = ({
   const handleDeleteSupplier = async (supplierId: number) => {
     try {
       const response = await fetch(
-        `/api/tasks/${resource.id}/suppliers/${supplierId}`,
+        `/api/tasks/${taskId}/suppliers/${supplierId}`,
         {
           method: "DELETE",
           headers: getHeaders(),
@@ -1611,9 +1676,11 @@ const EditTaskKanban = ({
   };
 
   const handleDeleteTask = async () => {
+    if (!taskId) return;
+
     setIsDeleting(true);
     try {
-      const result = await removeItem(resource.id, domain);
+      const result = await removeItem(taskId, domain);
       if (result && typeof result === "object" && "error" in result) {
         toast({
           variant: "destructive",
@@ -1638,10 +1705,10 @@ const EditTaskKanban = ({
   };
 
   const handleDownloadPdf = async () => {
-    if (!siteId) {
+    if (!siteId || !taskId) {
       toast({
         variant: "destructive",
-        description: "Contesto sito non disponibile per generare il PDF",
+        description: "Salva l'offerta prima di generare il PDF",
       });
       return;
     }
@@ -1649,7 +1716,7 @@ const EditTaskKanban = ({
     setIsDownloadingPdf(true);
     try {
       await downloadOfferPdf({
-        taskId: resource.id,
+        taskId,
         siteId,
         saveToProjectDocuments: true,
       });
@@ -1724,7 +1791,7 @@ const EditTaskKanban = ({
                 variant="outline"
                 className="w-full"
                 onClick={() => projectImageInputRef.current?.click()}
-                disabled={!siteId || isUploadingProjectImage}
+                disabled={!siteId || !taskId || isUploadingProjectImage}
               >
                 {isUploadingProjectImage ? (
                   <>
@@ -2037,7 +2104,7 @@ const EditTaskKanban = ({
                 variant="outline"
                 size="sm"
                 onClick={handleDownloadPdf}
-                disabled={!siteId || isDownloadingPdf}
+                disabled={!siteId || !taskId || isDownloadingPdf}
                 className="h-8"
               >
                 {isDownloadingPdf ? (
@@ -2064,15 +2131,17 @@ const EditTaskKanban = ({
               progetto.
             </p>
           )}
-          {siteId ? (
+          {siteId && taskId ? (
             <ProjectDocuments
-              projectId={resource.id}
+              projectId={taskId}
               siteId={siteId}
               initialFiles={projectFiles}
             />
           ) : (
             <div className="rounded-lg border border-dashed border-slate-500 p-4 text-sm text-muted-foreground">
-              Caricamento documenti disponibile appena il contesto sito e pronto.
+              {isCreate
+                ? "I documenti saranno disponibili dopo il primo salvataggio."
+                : "Caricamento documenti disponibile appena il contesto sito e pronto."}
             </div>
           )}
         </div>
@@ -2269,9 +2338,9 @@ const EditTaskKanban = ({
             )}
           </div>
 
-          {isFatturazioneKanban(resource?.kanban, resource?.column) && (
+          {taskId && isFatturazioneKanban(resource?.kanban, resource?.column) && (
             <FatturazioneReadinessPanel
-              taskId={resource.id}
+              taskId={taskId}
               siteId={siteId}
               domain={domain}
               onChanged={onTaskUpdated}
@@ -3138,20 +3207,31 @@ const EditTaskKanban = ({
           </div>
 
           <div className="flex gap-2 justify-between pt-3 border-t border-slate-500">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={isSubmitting || isDeleting}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Elimina
-            </Button>
+            {isCreate ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleClose(false)}
+                disabled={isSubmitting}
+              >
+                Annulla
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={isSubmitting || isDeleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Elimina
+              </Button>
+            )}
             <Button type="submit" formNoValidate disabled={isSubmitting || isDeleting}>
               {isSubmitting && (
                 <span className="spinner-border spinner-border-sm mr-1"></span>
               )}
-              Salva
+              {isCreate ? "Crea offerta" : "Salva"}
             </Button>
           </div>
         </form>

@@ -279,3 +279,26 @@ export function sumOfferProductsTotal(lines: OfferProductLine[]): number {
     return sum + (Number.isNaN(lineTotal) ? 0 : lineTotal);
   }, 0);
 }
+
+export function isInviataKanbanColumn(column?: {
+  identifier?: string | null;
+  title?: string | null;
+} | null): boolean {
+  const identifier = column?.identifier?.toUpperCase() ?? "";
+  const title = column?.title?.toUpperCase() ?? "";
+  return identifier.includes("INVIAT") || title.includes("INVIAT");
+}
+
+export function isOfferDraftIncomplete(task?: Partial<Task> | null): boolean {
+  if (!task) return true;
+  const isDraft = Boolean(task.is_draft || task.isDraft);
+  if (!isDraft) return false;
+
+  const hasClient = Boolean(task.clientId || task.client_id);
+  const products = task.offer_products || task.offerProducts;
+  const hasProducts =
+    (Array.isArray(products) && products.length > 0) ||
+    Boolean(task.sellProductId || task.sell_product_id);
+
+  return !hasClient || !hasProducts;
+}

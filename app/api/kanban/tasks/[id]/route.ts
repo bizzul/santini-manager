@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "../../../../../lib/fetchers";
 import { logger } from "@/lib/logger";
 import { toDateString } from "@/lib/utils";
+import { isInviataKanbanColumn } from "@/lib/offers";
 
 const TIMETRACKING_SELECT_WITH_USER =
   "id, task_id, user_id, employee_id, totalTime, hours, minutes";
@@ -330,6 +331,19 @@ export async function PATCH(
       updateData.offer_loss_competitor_name === undefined
     ) {
       updateData.offer_loss_competitor_name = body.offerLossCompetitorName;
+    }
+
+    const nextColumnId = updateData.kanbanColumnId ?? task.kanbanColumnId;
+    if (nextColumnId && nextColumnId !== task.kanbanColumnId) {
+      const { data: targetColumn } = await supabase
+        .from("KanbanColumn")
+        .select("identifier, title")
+        .eq("id", nextColumnId)
+        .single();
+
+      if (isInviataKanbanColumn(targetColumn) && !task.sent_date) {
+        updateData.sent_date = new Date().toISOString();
+      }
     }
 
     // Add updated_at timestamp

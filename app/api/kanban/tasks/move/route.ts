@@ -9,6 +9,7 @@ import {
 import { logger } from "@/lib/logger";
 import { isFatturazioneSchemaMissing } from "@/lib/fatturazione-readiness";
 import { syncFatturazioneReadinessOnMove } from "@/lib/fatturazione-readiness.server";
+import { isInviataKanbanColumn } from "@/lib/offers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -191,11 +192,7 @@ export async function POST(req: NextRequest) {
       });
 
       // Check if moving to "Inviata" column - set sent_date
-      const isInviataColumn =
-        targetColumn.identifier?.toUpperCase().includes("INVIAT") ||
-        targetColumn.title?.toUpperCase().includes("INVIAT");
-
-      if (isInviataColumn && !task.sent_date) {
+      if (isInviataKanbanColumn(targetColumn) && !task.sent_date) {
         logger.debug("Setting sent_date for offer moved to Inviata column");
       }
 
@@ -707,15 +704,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Set sent_date when moving to "Inviata" column in offer kanban
-    if (isOfferKanban) {
-      const isInviataColumn =
-        targetColumn.identifier?.toUpperCase().includes("INVIAT") ||
-        targetColumn.title?.toUpperCase().includes("INVIAT");
+    if (isOfferKanban && isInviataKanbanColumn(targetColumn) && !task.sent_date) {
+      updateData.sent_date = now.toISOString();
+      logger.debug("Set sent_date:", updateData.sent_date);
+    }
 
-      if (isInviataColumn && !task.sent_date) {
-        updateData.sent_date = now.toISOString();
-        logger.debug("Set sent_date:", updateData.sent_date);
-      }
+    // Keep filled offer sheets as regular cards after leaving TODO
+    if (task.is_draft) {
+      updateData.is_draft = false;
     }
 
     // Update task with site_id filtering if available

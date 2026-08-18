@@ -11,6 +11,7 @@ import {
 import { createProjectFolders } from "../../../../../lib/project-folders";
 import { toDateString } from "../../../../../lib/utils";
 import {
+  isInviataKanbanColumn,
   sanitizeOfferProducts,
   sumOfferPieces,
   sumOfferProductsTotal,
@@ -138,19 +139,34 @@ export async function POST(req: NextRequest) {
       }
 
       // Get the first column of the kanban (order by position)
-      const { data: column, error: columnError } = await supabase
+      const { data: firstColumn, error: columnError } = await supabase
         .from("KanbanColumn")
-        .select("id")
+        .select("id, identifier, title")
         .eq("kanbanId", kanban.id)
         .order("position", { ascending: true })
         .limit(1)
         .single();
 
-      if (columnError || !column) {
+      if (columnError || !firstColumn) {
         return NextResponse.json({
           error: true,
           message: `Colonna kanban non trovata: ${columnError?.message || "Nessuna colonna"}`,
         }, { status: 404 });
+      }
+
+      let column = firstColumn;
+      const requestedColumnId =
+        body.kanbanColumnId || result.data.kanbanColumnId || null;
+      if (requestedColumnId) {
+        const { data: requestedColumn } = await supabase
+          .from("KanbanColumn")
+          .select("id, identifier, title")
+          .eq("id", requestedColumnId)
+          .eq("kanbanId", kanban.id)
+          .single();
+        if (requestedColumn) {
+          column = requestedColumn;
+        }
       }
 
       // create an array of positions from the request body
@@ -217,6 +233,21 @@ export async function POST(req: NextRequest) {
           numero_pezzi: result.data.numero_pezzi || totalOfferPieces || null,
           other: result.data.other,
           positions: positions,
+          produzione_data_inizio: toDateString(result.data.produzione_data_inizio),
+          produzione_data_fine: toDateString(result.data.produzione_data_fine),
+          posa_data_inizio: toDateString(result.data.posa_data_inizio),
+          posa_data_fine: toDateString(result.data.posa_data_fine),
+          produzione_ora_inizio: result.data.produzione_ora_inizio ?? null,
+          produzione_ora_fine: result.data.produzione_ora_fine ?? null,
+          posa_ora_inizio: result.data.posa_ora_inizio ?? null,
+          posa_ora_fine: result.data.posa_ora_fine ?? null,
+          produzione_collaborator_ids:
+            result.data.produzione_collaborator_ids || [],
+          posa_collaborator_ids: result.data.posa_collaborator_ids || [],
+          assigned_collaborator_ids:
+            result.data.assigned_collaborator_ids || [],
+          ora_inizio: result.data.ora_inizio ?? null,
+          ora_fine: result.data.ora_fine ?? null,
           // Draft and task type fields
           is_draft: result.data.isDraft || false,
           task_type: taskType,
@@ -233,6 +264,10 @@ export async function POST(req: NextRequest) {
           insertData.site_id = siteId;
         }
 
+        if (isInviataKanbanColumn(column)) {
+          insertData.sent_date = new Date().toISOString();
+        }
+
         let { data: createdTask, error: error } = await supabase
           .from("Task")
           .insert(insertData)
@@ -245,12 +280,40 @@ export async function POST(req: NextRequest) {
             error.message?.includes("offer_send_date") ||
             error.message?.includes("offer_products") ||
             error.message?.includes("offer_loss_reason") ||
-            error.message?.includes("offer_loss_competitor_name"))
+            error.message?.includes("offer_loss_competitor_name") ||
+            error.message?.includes("produzione_data_inizio") ||
+            error.message?.includes("produzione_data_fine") ||
+            error.message?.includes("posa_data_inizio") ||
+            error.message?.includes("posa_data_fine") ||
+            error.message?.includes("produzione_ora_inizio") ||
+            error.message?.includes("produzione_ora_fine") ||
+            error.message?.includes("posa_ora_inizio") ||
+            error.message?.includes("posa_ora_fine") ||
+            error.message?.includes("produzione_collaborator_ids") ||
+            error.message?.includes("posa_collaborator_ids") ||
+            error.message?.includes("assigned_collaborator_ids") ||
+            error.message?.includes("ora_inizio") ||
+            error.message?.includes("ora_fine") ||
+            error.message?.includes("sent_date"))
         ) {
           delete insertData.offer_send_date;
           delete insertData.offer_products;
           delete insertData.offer_loss_reason;
           delete insertData.offer_loss_competitor_name;
+          delete insertData.produzione_data_inizio;
+          delete insertData.produzione_data_fine;
+          delete insertData.posa_data_inizio;
+          delete insertData.posa_data_fine;
+          delete insertData.produzione_ora_inizio;
+          delete insertData.produzione_ora_fine;
+          delete insertData.posa_ora_inizio;
+          delete insertData.posa_ora_fine;
+          delete insertData.produzione_collaborator_ids;
+          delete insertData.posa_collaborator_ids;
+          delete insertData.assigned_collaborator_ids;
+          delete insertData.ora_inizio;
+          delete insertData.ora_fine;
+          delete insertData.sent_date;
 
           ({ data: createdTask, error } = await supabase
             .from("Task")

@@ -19,7 +19,7 @@ import OfferMiniCard from "./OfferMiniCard";
 const OfferFollowUpDialog = dynamic(() => import("./OfferFollowUpDialog"), {
   ssr: false,
 });
-const OfferQuickAdd = dynamic(() => import("./OfferQuickAdd"), { ssr: false });
+const EditTaskKanban = dynamic(() => import("./editKanbanTask"), { ssr: false });
 const DraftCompletionWizard = dynamic(() => import("./DraftCompletionWizard"), {
   ssr: false,
 });
@@ -45,6 +45,7 @@ import { useSiteId } from "@/hooks/use-site-id";
 import { useRealtimeKanban } from "@/hooks/use-realtime-kanban";
 import { useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
+import { ManagerGuideButton } from "@/components/manager-guide";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,6 +74,7 @@ import {
 } from "../ui/select";
 import {
   getOfferTrattativaSortPriority,
+  isOfferDraftIncomplete,
   OFFER_LOSS_REASON_OPTIONS,
 } from "@/lib/offers";
 import {
@@ -84,7 +86,11 @@ import {
 } from "./card-display-config";
 
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
-import { isFatturazioneKanban } from "@/lib/fatturazione-readiness";
+import {
+  isFatturazioneKanban,
+  resolveFatturazioneReadinessStato,
+} from "@/lib/fatturazione-readiness";
+import { cn } from "@/lib/utils";
 
 const normalizeCardFieldConfig = (
   rawConfig: unknown
@@ -130,12 +136,32 @@ const Column = ({
   onTaskDeleted,
   cardFieldConfig,
 }: any) => {
-  const router = useRouter();
   const [isMovingTask, setIsMovingTask] = useState(false);
   const [modalCreate, setModalCreate] = useState(false);
-  const [modalQuickAdd, setModalQuickAdd] = useState(false);
+  const [modalCreateOffer, setModalCreateOffer] = useState(false);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
-  const [onlyReady, setOnlyReady] = useState(false);
+  const [readinessFilter, setReadinessFilter] = useState<
+    "all" | "pronto" | "in_attesa"
+  >("all");
+
+  const newOfferResource = useMemo(
+    () => ({
+      unique_code: "",
+      kanbanId: kanban?.id ?? null,
+      kanbanColumnId: column.id,
+      task_type: "OFFERTA",
+      sellPrice: 0,
+      name: "",
+      luogo: "",
+      other: "",
+      clientId: null,
+      sellProductId: null,
+      offer_products: [],
+      is_draft: false,
+      files: [],
+    }),
+    [kanban?.id, column.id]
+  );
 
   const getBaseTaskNumber = (taskTitle: string): string => {
     const match = taskTitle.match(/^\d{2}-\d{3}/);
@@ -266,12 +292,26 @@ const Column = ({
   const hasReadinessData = cards.some(
     (card: any) => card?.fatturazioneReadiness,
   );
+  const readyCount = isFattureToDoColumn
+    ? cards.filter(
+        (card: any) =>
+          resolveFatturazioneReadinessStato(card?.fatturazioneReadiness) ===
+          "pronto",
+      ).length
+    : 0;
+  const waitingCount = isFattureToDoColumn ? cards.length - readyCount : 0;
   const visibleCards =
-    isFattureToDoColumn && onlyReady && hasReadinessData
+    isFattureToDoColumn && readinessFilter !== "all"
       ? cards.filter(
-          (card: any) => card?.fatturazioneReadiness?.stato === "pronto",
+          (card: any) =>
+            resolveFatturazioneReadinessStato(card?.fatturazioneReadiness) ===
+            readinessFilter,
         )
       : cards;
+
+  const toggleReadinessFilter = (value: "pronto" | "in_attesa") => {
+    setReadinessFilter((current) => (current === value ? "all" : value));
+  };
 
   const getSortTimestamp = (card: any, fields: string[]) => {
     for (const field of fields) {
@@ -369,9 +409,13 @@ const Column = ({
             {isFattureToDoColumn && hasReadinessData && (
               <button
                 type="button"
-                onClick={() => setOnlyReady((current) => !current)}
+                onClick={() =>
+                  setReadinessFilter((current) =>
+                    current === "pronto" ? "all" : "pronto",
+                  )
+                }
                 className={`h-8 rounded-md border px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
-                  onlyReady
+                  readinessFilter === "pronto"
                     ? "border-success bg-success text-success-foreground"
                     : "border-border bg-background text-muted-foreground hover:text-foreground"
                 }`}
@@ -380,61 +424,59 @@ const Column = ({
                 Solo pronte
               </button>
             )}
-            {/* Quick Add button for TODO column in offer kanbans */}
-            {isTodoColumn && (
+            {/* Create button - full project sheet for offer kanbans */}
+            {isOfferKanban && (isCreationColumn || isTodoColumn) ? (
               <Dialog
-                open={modalQuickAdd}
-                onOpenChange={() => setModalQuickAdd(!modalQuickAdd)}
+                open={modalCreateOffer}
+                onOpenChange={setModalCreateOffer}
               >
                 <DialogTrigger asChild>
                   <button
-                    className="cursor-pointer rounded border bg-amber-500 p-2 text-white transition-colors hover:bg-amber-600"
-                    onClick={() => setModalQuickAdd(true)}
-                    title="Aggiungi richiesta offerta rapida"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border bg-red-600 text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => setModalCreateOffer(true)}
+                    title="Crea nuova offerta"
+                    aria-label="Crea nuova offerta"
                   >
-                    <FileEdit className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                   </button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                  <DialogHeader>
-                    <DialogTitle>Nuova Richiesta Offerta</DialogTitle>
+                <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
+                  <DialogHeader className="pr-10">
+                    <div className="flex items-center justify-between gap-3">
+                      <DialogTitle>Nuova offerta</DialogTitle>
+                      <ManagerGuideButton
+                        label="Apri guida dettaglio progetto"
+                        stepId="offer-details"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                      />
+                    </div>
                     <DialogDescription>
-                      Aggiungi una richiesta rapida in TODO. Potrai completare i
-                      dettagli quando lavori l&apos;offerta.
+                      Compila la scheda progetto. I dati restano salvati anche
+                      quando sposti la card tra le colonne.
                     </DialogDescription>
                   </DialogHeader>
-                  <OfferQuickAdd
-                    clients={data.clients || []}
-                    categories={data.categories || []}
-                    kanbanId={(kanban as any)?.id}
-                    domain={domain}
-                    onSuccess={() => {
-                      setModalQuickAdd(false);
-                      if (onTaskCreated) {
-                        onTaskCreated();
-                      }
-                    }}
-                    onCancel={() => setModalQuickAdd(false)}
-                  />
+                  {modalCreateOffer && (
+                    <EditTaskKanban
+                      handleClose={() => setModalCreateOffer(false)}
+                      setIsLocked={() => {}}
+                      open={modalCreateOffer}
+                      setOpenModal={setModalCreateOffer}
+                      setOpen={setModalCreateOffer}
+                      resource={newOfferResource}
+                      history={[]}
+                      domain={domain}
+                      onTaskUpdated={() => {
+                        if (onTaskCreated) {
+                          onTaskCreated();
+                        }
+                      }}
+                    />
+                  )}
                 </DialogContent>
               </Dialog>
-            )}
-            {/* Create button - different behavior for offer kanbans */}
-            {isCreationColumn &&
-              (isOfferKanban ? (
-                <button
-                  className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border bg-red-600 text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() =>
-                    router.push(
-                      `/sites/${domain}/offerte/create?kanbanId=${kanban?.id}`
-                    )
-                  }
-                  title="Crea nuova offerta"
-                  aria-label="Crea nuova offerta"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              ) : (
+            ) : isCreationColumn ? (
                 <Dialog
                   open={modalCreate}
                   onOpenChange={() => setModalCreate(!modalCreate)}
@@ -468,7 +510,7 @@ const Column = ({
                     </div>
                   </DialogContent>
                 </Dialog>
-              ))}
+              ) : null}
           </div>
         </div>
         {/* Column stats - different display for offer kanbans */}
@@ -483,7 +525,61 @@ const Column = ({
             </>
           ) : (
             <>
-              {renderStat("Progetti", totalTasks)}
+              {isFattureToDoColumn ? (
+                <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Progetti
+                  </p>
+                  <div className="flex items-baseline gap-1.5 text-sm font-semibold leading-tight">
+                    <button
+                      type="button"
+                      onClick={() => setReadinessFilter("all")}
+                      className={cn(
+                        "rounded px-0.5 transition-colors hover:text-foreground",
+                        readinessFilter === "all"
+                          ? "text-foreground"
+                          : "text-muted-foreground",
+                      )}
+                      title="Mostra tutti i progetti"
+                      aria-pressed={readinessFilter === "all"}
+                    >
+                      {totalTasks}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleReadinessFilter("pronto")}
+                      className={cn(
+                        "rounded px-1 tabular-nums transition-colors",
+                        readinessFilter === "pronto"
+                          ? "bg-success text-success-foreground"
+                          : "text-success hover:bg-success/15",
+                      )}
+                      title="Mostra solo i progetti verdi"
+                      aria-pressed={readinessFilter === "pronto"}
+                      aria-label={`${readyCount} progetti verdi`}
+                    >
+                      {readyCount}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleReadinessFilter("in_attesa")}
+                      className={cn(
+                        "rounded px-1 tabular-nums transition-colors",
+                        readinessFilter === "in_attesa"
+                          ? "bg-warning text-warning-foreground"
+                          : "text-warning hover:bg-warning/15",
+                      )}
+                      title="Mostra solo i progetti arancioni"
+                      aria-pressed={readinessFilter === "in_attesa"}
+                      aria-label={`${waitingCount} progetti arancioni`}
+                    >
+                      {waitingCount}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                renderStat("Progetti", totalTasks)
+              )}
               {renderStat("Posizioni", totalPositions)}
               {renderStat(
                 "V. attuale",
@@ -1190,11 +1286,15 @@ function KanbanBoard({
 
     // Check if this is a draft being moved out of TODO (first column)
     const task = tasks.find((t) => t.id === cardId);
-    const isDraft = task?.is_draft || task?.isDraft;
     const isMovingFromFirstColumn = activeData?.fromColumnPosition === 1;
 
-    if (isDraft && isOfferKanban && isMovingFromFirstColumn) {
-      // Show draft completion dialog instead of redirecting
+    if (
+      task &&
+      isOfferKanban &&
+      isMovingFromFirstColumn &&
+      isOfferDraftIncomplete(task)
+    ) {
+      // Show draft completion dialog only for incomplete legacy drafts
       setDraftTask(task);
       setDraftTargetColumn({ id: columnId, identifier: columnIdentifier });
       setShowDraftCompletion(true);

@@ -119,19 +119,19 @@ const GUIDE_STEPS: GuideStep[] = [
   },
   {
     id: "quick-offer-request",
-    shortTitle: "Nuova richiesta",
-    title: "Creazione rapida di una richiesta offerta",
+    shortTitle: "Nuova offerta",
+    title: "Creazione di una nuova offerta",
     description:
-      "La richiesta rapida ti permette di aprire una nuova opportunità in To do e completare i dettagli operativi in un secondo momento.",
+      "Dal pulsante + nella colonna To do si apre la stessa scheda progetto usata per modificare le card: cliente, oggetto, prodotti, date e documenti.",
     image: "/manager-guide/step-03.png",
-    imageAlt: "Modal nuova richiesta offerta rapida",
+    imageAlt: "Scheda completa per creare una nuova offerta",
     imageAspect: "aspect-[4/5]",
     highlights: [
-      "Inserisci cliente e categoria prodotto per registrare subito la richiesta.",
-      "Aggiungi una data prevista e note veloci per non perdere il contesto.",
-      "La bozza resta nel kanban e può essere completata quando hai tutti i dati.",
+      "Compila cliente, oggetto, prodotti e date direttamente nella scheda progetto.",
+      "Salva per creare la card in To do: i dati restano anche se sposti l'offerta in Inviata.",
+      "Puoi completare immagine, documenti e PDF dopo il primo salvataggio.",
     ],
-    tip: "Usa la creazione rapida quando ricevi richieste al telefono o durante una visita.",
+    tip: "Usa la stessa scheda sia per creare sia per aggiornare: così il kanban resta allineato allo stato reale della pratica.",
   },
   {
     id: "offer-details",
