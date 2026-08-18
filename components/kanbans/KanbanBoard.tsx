@@ -456,6 +456,20 @@ const Column = ({
                 Solo pronte
               </button>
             )}
+            {isFattureInviataColumn && (
+              <button
+                type="button"
+                onClick={() => toggleExpiryFilter("late")}
+                className={`h-8 rounded-md border px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                  expiryFilter === "late"
+                    ? "border-red-600 bg-red-600 text-white"
+                    : "border-border bg-background text-muted-foreground hover:text-foreground"
+                }`}
+                title="Mostra solo le fatture scadute"
+              >
+                Scadute
+              </button>
+            )}
             {/* Create button - full project sheet for offer kanbans */}
             {isOfferKanban && (isCreationColumn || isTodoColumn) ? (
               <Dialog
