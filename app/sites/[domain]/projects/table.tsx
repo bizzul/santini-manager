@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { countries as ISO2_COUNTRIES } from "@/components/clients/countries";
+import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
 
 const ALL_COUNTRIES = "__all__";
 
@@ -77,6 +78,14 @@ export function DataTable<TData, TValue>({
   const [archivedFilter, setArchivedFilter] = useState<"all" | "archived" | "not_archived">("not_archived");
   // Loading state for bulk actions
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  const visibleCategories = useMemo(
+    () =>
+      categories.filter(
+        (category) => !isArchivedSellCategoryName(category.name),
+      ),
+    [categories],
+  );
 
   // Distinct countries present in the data (for the country filter dropdown).
   const availableCountries = useMemo(() => {
@@ -202,7 +211,7 @@ export function DataTable<TData, TValue>({
     if (checked) {
       setSelectedCategories([]);
     } else {
-      setSelectedCategories(categories.map((cat) => cat.id));
+      setSelectedCategories(visibleCategories.map((cat) => cat.id));
     }
   };
 
@@ -363,7 +372,7 @@ export function DataTable<TData, TValue>({
                 Tutte le categorie
               </Label>
             </div>
-            {categories.map((category) => {
+            {visibleCategories.map((category) => {
               const isSelected = selectedCategories.includes(category.id);
               return (
                 <div key={category.id} className="flex items-center space-x-2">
