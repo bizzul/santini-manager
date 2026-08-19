@@ -438,7 +438,7 @@ const Column = ({
               })()}
             </h2>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             {isFattureToDoColumn && hasReadinessData && (
               <button
                 type="button"
@@ -447,14 +447,14 @@ const Column = ({
                     current === "pronto" ? "all" : "pronto",
                   )
                 }
-                className={`h-8 rounded-md border px-2 text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+                className={`h-7 rounded-md border px-1.5 text-[9px] font-semibold uppercase tracking-wide transition-colors ${
                   readinessFilter === "pronto"
                     ? "border-success bg-success text-success-foreground"
                     : "border-border bg-background text-muted-foreground hover:text-foreground"
                 }`}
                 title="Mostra solo le card confermate dal direttore"
               >
-                Solo pronte
+                Pronte
               </button>
             )}
             {isFattureToDoColumn && !isPreviewMode ? (
