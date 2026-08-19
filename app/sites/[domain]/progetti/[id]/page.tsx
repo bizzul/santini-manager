@@ -8,6 +8,7 @@ import { ProjectDocuments } from "@/components/project/project-documents";
 import { ProjectConsuntivoSummary } from "@/components/project/ProjectConsuntivoSummary";
 import { ProjectStatusPanel } from "@/components/project/ProjectStatusPanel";
 import { ProjectReportDownloadButton } from "@/components/project/ProjectReportDownloadButton";
+import { ProjectSummaryPdfButton } from "@/components/project/ProjectSummaryPdfButton";
 import { buildCollaboratorTimeSummaries } from "@/lib/project-consuntivo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -662,7 +663,10 @@ export default async function Page({
                       Report progetto
                     </span>
                   </div>
-                  <ProjectReportDownloadButton domain={domain} taskId={id} />
+                  <div className="flex items-center gap-2">
+                    <ProjectSummaryPdfButton domain={domain} taskId={id} />
+                    <ProjectReportDownloadButton domain={domain} taskId={id} />
+                  </div>
                 </div>
 
                 {!canBuildExtendedReport ? (
