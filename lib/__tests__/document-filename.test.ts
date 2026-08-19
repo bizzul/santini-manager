@@ -16,15 +16,15 @@ describe("document-filename", () => {
     ).toBe("26-047-FATT");
   });
 
-  it("builds the convention filename", () => {
+  it("builds the operational project-sheet filename", () => {
     expect(
       buildDocumentFilename({
-        projectNumber: "26-047",
-        documentType: "RiepilogoProgetto",
-        clientName: "Santini SA",
+        projectNumber: "26-150",
+        documentType: "SchedaProgetto",
+        clientName: "Villa delle Rose",
         generatedAt: new Date(2026, 7, 19),
       }),
-    ).toBe("26-047_RiepilogoProgetto_SantiniSA_20260819.pdf");
+    ).toBe("26-150_SchedaProgetto_VilladelleRose_20260819.pdf");
   });
 
   it("appends an incrementing suffix on collision", () => {

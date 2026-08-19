@@ -152,7 +152,7 @@ export default function KPICards({ data, domain }: KPICardsProps) {
             tone="orange"
           />
           <SubMetric
-            label="In trattativa"
+            label="Trattativa"
             count={offers.inTrattativa.count}
             value={offers.inTrattativa.value}
             tone="green"
@@ -194,7 +194,7 @@ export default function KPICards({ data, domain }: KPICardsProps) {
         />
         <div className="grid grid-cols-2 gap-2.5">
           <SubMetric
-            label="In produzione"
+            label="Produzione"
             count={production.inProduzione.count}
             value={production.inProduzione.value}
             href={kanbanHref(links.production)}

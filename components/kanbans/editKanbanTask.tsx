@@ -22,7 +22,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Input } from "../../components/ui/input";
 import { SearchSelect } from "../../components/ui/search-select";
-import { Textarea } from "../../components/ui/textarea";
 import { validation } from "../../validation/task/create";
 import { useToast } from "../../components/ui/use-toast";
 import {
@@ -104,6 +103,7 @@ import {
   ProjectDocuments,
   ProjectFile,
 } from "@/components/project/project-documents";
+import { ProjectSummaryPdfButton } from "@/components/project/ProjectSummaryPdfButton";
 import { downloadOfferPdf } from "@/lib/offer-pdf";
 import { DocumentUpload } from "@/components/ui/document-upload";
 import { createClient } from "@/utils/supabase/client";
@@ -112,6 +112,12 @@ import { resolveCoverImage } from "@/lib/cover-image";
 import { formatHours } from "@/lib/project-consuntivo";
 import { FatturazioneReadinessPanel } from "./FatturazioneReadinessPanel";
 import { isFatturazioneKanban } from "@/lib/fatturazione-readiness";
+import { ProjectTypedCommentsField } from "@/components/project/ProjectTypedCommentsField";
+import {
+  emptyTypedComments,
+  parseTypedComments,
+  serializeTypedCommentsToOther,
+} from "@/lib/task-typed-comments";
 
 type Props = {
   handleClose: (wasDeleted?: boolean) => void;
@@ -320,6 +326,7 @@ const EditTaskKanban = ({
       unique_code: "",
       kanbanId: resource?.kanbanId || undefined,
       kanbanColumnId: resource?.kanbanColumnId || undefined,
+      typed_comments: emptyTypedComments(),
     },
   });
 
@@ -642,6 +649,13 @@ const EditTaskKanban = ({
       setSiteAddressStreet(siteAddress.street);
       setSiteAddressTown(siteAddress.town);
       form.setValue("other", resource.other ?? undefined);
+      form.setValue(
+        "typed_comments",
+        parseTypedComments({
+          typed_comments: (resource as { typed_comments?: unknown }).typed_comments,
+          other: resource.other,
+        }),
+      );
       form.setValue("sellPrice", resource.sellPrice!);
       form.setValue("numero_pezzi", resource.numero_pezzi ?? null);
       form.setValue("clientId", resource.clientId);
@@ -827,6 +841,9 @@ const EditTaskKanban = ({
         ...selectedPosaCollaborators,
       ])
     );
+    const typedComments = parseTypedComments({
+      typed_comments: d.typed_comments,
+    });
     const payload = {
       unique_code: d.unique_code || null,
       name: d.name || null,
@@ -855,7 +872,8 @@ const EditTaskKanban = ({
       assigned_collaborator_ids: assignedCollaboratorIds,
       // Deprecated field - intentionally nulled because assignment now uses collaborators list
       squadra: null,
-      other: d.other || null,
+      typed_comments: typedComments,
+      other: serializeTypedCommentsToOther(typedComments) || null,
       kanbanId: selectedKanbanId || resource?.kanbanId || null,
       kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
       offer_products: offerProductsToSave,
@@ -1751,6 +1769,11 @@ const EditTaskKanban = ({
     <>
     <Form {...form}>
       <form className="w-full space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+        {!isCreate && domain && taskId ? (
+          <div className="flex items-center justify-end">
+            <ProjectSummaryPdfButton domain={domain} taskId={taskId} />
+          </div>
+        ) : null}
         <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
           <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
         <div className="grid grid-cols-2 gap-3 items-stretch">
@@ -2819,18 +2842,9 @@ const EditTaskKanban = ({
           </div>
 
           <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
-            <FormField
-              name="other"
+            <ProjectTypedCommentsField
               control={form.control}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Commenti</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} rows={4} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              disabled={isSubmitting}
             />
           </div>
           </div>
@@ -3227,12 +3241,21 @@ const EditTaskKanban = ({
                 Elimina
               </Button>
             )}
-            <Button type="submit" formNoValidate disabled={isSubmitting || isDeleting}>
-              {isSubmitting && (
-                <span className="spinner-border spinner-border-sm mr-1"></span>
-              )}
-              {isCreate ? "Crea offerta" : "Salva"}
-            </Button>
+            <div className="flex items-center gap-2">
+              {!isCreate && domain && taskId ? (
+                <ProjectSummaryPdfButton
+                  domain={domain}
+                  taskId={taskId}
+                  variant="outline"
+                />
+              ) : null}
+              <Button type="submit" formNoValidate disabled={isSubmitting || isDeleting}>
+                {isSubmitting && (
+                  <span className="spinner-border spinner-border-sm mr-1"></span>
+                )}
+                {isCreate ? "Crea offerta" : "Salva"}
+              </Button>
+            </div>
           </div>
         </form>
       </Form>

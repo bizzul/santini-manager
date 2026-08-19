@@ -66,6 +66,13 @@ export const validation = z.object({
   numero_pezzi: z.preprocess((val) => (val ? Number(val) : null), z.number())
     .optional().nullable(),
   other: z.string().optional(),
+  typed_comments: z
+    .object({
+      produzione: z.string().optional(),
+      posa: z.string().optional(),
+      fatturazione: z.string().optional(),
+    })
+    .optional(),
   offerProducts: z.array(z.object({
     productId: z.preprocess(
       (val) => (val === "" || val === null || val === undefined ? null : Number(val)),

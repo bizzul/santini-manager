@@ -232,6 +232,7 @@ export async function POST(req: NextRequest) {
             (computedOfferTotal > 0 ? computedOfferTotal : 0),
           numero_pezzi: result.data.numero_pezzi || totalOfferPieces || null,
           other: result.data.other,
+          typed_comments: result.data.typed_comments ?? {},
           positions: positions,
           produzione_data_inizio: toDateString(result.data.produzione_data_inizio),
           produzione_data_fine: toDateString(result.data.produzione_data_fine),
@@ -294,7 +295,8 @@ export async function POST(req: NextRequest) {
             error.message?.includes("assigned_collaborator_ids") ||
             error.message?.includes("ora_inizio") ||
             error.message?.includes("ora_fine") ||
-            error.message?.includes("sent_date"))
+            error.message?.includes("sent_date") ||
+            error.message?.includes("typed_comments"))
         ) {
           delete insertData.offer_send_date;
           delete insertData.offer_products;
@@ -314,6 +316,7 @@ export async function POST(req: NextRequest) {
           delete insertData.ora_inizio;
           delete insertData.ora_fine;
           delete insertData.sent_date;
+          delete insertData.typed_comments;
 
           ({ data: createdTask, error } = await supabase
             .from("Task")

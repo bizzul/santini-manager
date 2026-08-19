@@ -94,6 +94,7 @@ import {
 } from "@/lib/fatturazione-readiness";
 import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
 import { cn } from "@/lib/utils";
+import { FattureOutSummaryPrintButton } from "./FattureOutSummaryPrintButton";
 
 const normalizeCardFieldConfig = (
   rawConfig: unknown
@@ -456,6 +457,14 @@ const Column = ({
                 Solo pronte
               </button>
             )}
+            {isFattureToDoColumn && !isPreviewMode ? (
+              <FattureOutSummaryPrintButton
+                domain={domain}
+                taskIds={sortCards(visibleCards)
+                  .map((card: { id?: number }) => Number(card?.id))
+                  .filter((id: number) => Number.isFinite(id) && id > 0)}
+              />
+            ) : null}
             {isFattureInviataColumn && (
               <button
                 type="button"

@@ -31,6 +31,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { resolveCalendarReturnNavigation } from "@/components/calendar/calendar-utils";
+import {
+  formatTypedCommentsForDisplay,
+  parseTypedComments,
+} from "@/lib/task-typed-comments";
 
 function getWeekNumber(date: Date): number {
   const d = new Date(
@@ -387,8 +391,14 @@ export default async function Page({
     "rounded-xl border bg-card/95 p-4 shadow-sm";
   const subtlePanelClass =
     "rounded-xl border bg-muted/40 p-4";
+  const commentsDisplay = formatTypedCommentsForDisplay(
+    parseTypedComments({
+      typed_comments: data.typed_comments,
+      other: data.other,
+    }),
+  );
   const showInfoSections =
-    Boolean(contactPhone || clientAddress) || Boolean(data.other) || taskSuppliers.length > 0;
+    Boolean(contactPhone || clientAddress) || Boolean(commentsDisplay) || taskSuppliers.length > 0;
 
   const kanbanIdentifier = Array.isArray(data.kanban)
     ? data.kanban[0]?.identifier
@@ -474,6 +484,9 @@ export default async function Page({
                       {productName} {productType || ""}
                     </Badge>
                   )}
+                  <div className="ml-auto">
+                    <ProjectSummaryPdfButton domain={domain} taskId={id} />
+                  </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -663,10 +676,7 @@ export default async function Page({
                       Report progetto
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <ProjectSummaryPdfButton domain={domain} taskId={id} />
-                    <ProjectReportDownloadButton domain={domain} taskId={id} />
-                  </div>
+                  <ProjectReportDownloadButton domain={domain} taskId={id} />
                 </div>
 
                 {!canBuildExtendedReport ? (
@@ -787,7 +797,7 @@ export default async function Page({
                     </div>
                   )}
 
-                  {data.other && (
+                  {commentsDisplay && (
                     <div className={subtlePanelClass}>
                       <div className="flex items-center gap-2 mb-2">
                         <StickyNote className="h-4 w-4 text-muted-foreground" />
@@ -796,7 +806,7 @@ export default async function Page({
                         </span>
                       </div>
                       <p className="text-sm whitespace-pre-wrap text-foreground">
-                        {data.other}
+                        {commentsDisplay}
                       </p>
                     </div>
                   )}

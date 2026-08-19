@@ -81,6 +81,67 @@ export async function getPdfLogoBuffer(
   }
 }
 
+/** Reads a PNG/JPEG from /public when the remote site logo cannot be fetched. */
+export async function getLocalPdfLogoBuffer(
+  relativePublicPath: string,
+): Promise<Buffer | null> {
+  const { existsSync, readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const fullPath = join(
+    process.cwd(),
+    "public",
+    relativePublicPath.replace(/^\//, ""),
+  );
+  if (!existsSync(fullPath)) return null;
+  const fileBytes = readFileSync(fullPath);
+  try {
+    return await sharp(fileBytes).png().toBuffer();
+  } catch {
+    return fileBytes;
+  }
+}
+
+function logoSubdomainHint(value?: string | null): string {
+  return String(value || "")
+    .toLowerCase()
+    .split(":")[0]
+    .split("/")[0]
+    .split(".")[0]
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+/** Remote site logo, then `/public/{subdomain}-logo.png` for known spaces. */
+export async function resolvePdfLogoBuffer(options: {
+  remoteUrl?: string | null;
+  subdomain?: string | null;
+  companyName?: string | null;
+}): Promise<Buffer | null> {
+  const subdomain = logoSubdomainHint(options.subdomain);
+  const company = String(options.companyName || "").toLowerCase();
+  const candidates: string[] = [];
+  const addCandidate = (file: string) => {
+    if (file && !candidates.includes(file)) candidates.push(file);
+  };
+  if (options.remoteUrl?.startsWith("/")) {
+    addCandidate(options.remoteUrl.replace(/^\//, ""));
+  }
+  if (subdomain) addCandidate(`${subdomain}-logo.png`);
+  if (subdomain.includes("santini") || company.includes("santini")) {
+    addCandidate("santini-logo.png");
+  }
+  if (subdomain.includes("momentum") || company.includes("momentum")) {
+    addCandidate("momentum-logo.png");
+  }
+
+  // Prefer the bundled file: remote `sites.logo` URLs often fail to fetch in PDF generation.
+  for (const file of candidates) {
+    const local = await getLocalPdfLogoBuffer(file);
+    if (local) return local;
+  }
+
+  return getPdfLogoBuffer(options.remoteUrl);
+}
+
 export function drawPdfReportHeader(options: {
   page: PDFPage;
   fontRegular: PDFFont;

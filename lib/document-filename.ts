@@ -9,6 +9,7 @@ export const DOCUMENT_FILENAME_TYPES = [
   "Fattura",
   "Altro",
   "RiepilogoProgetto",
+  "SchedaProgetto",
 ] as const;
 
 export type DocumentFilenameType = (typeof DOCUMENT_FILENAME_TYPES)[number];

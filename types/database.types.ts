@@ -4466,6 +4466,7 @@ export type Database = {
           ora_fine: string | null
           ora_inizio: string | null
           other: string | null
+          typed_comments: Json
           parent_task_id: number | null
           percentStatus: number | null
           posa_collaborator_ids: Json | null
@@ -4538,6 +4539,7 @@ export type Database = {
           ora_fine?: string | null
           ora_inizio?: string | null
           other?: string | null
+          typed_comments?: Json
           parent_task_id?: number | null
           percentStatus?: number | null
           posa_collaborator_ids?: Json | null
@@ -4610,6 +4612,7 @@ export type Database = {
           ora_fine?: string | null
           ora_inizio?: string | null
           other?: string | null
+          typed_comments?: Json
           parent_task_id?: number | null
           percentStatus?: number | null
           posa_collaborator_ids?: Json | null

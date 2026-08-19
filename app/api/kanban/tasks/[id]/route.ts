@@ -284,7 +284,7 @@ export async function PATCH(
       'produzione_collaborator_ids', 'posa_collaborator_ids',
       'service_collaborator_ids', 'assigned_collaborator_ids',
       'ora_inizio', 'ora_fine', 'squadra',
-      'other', 'positions', 'numero_pezzi',
+      'other', 'typed_comments', 'positions', 'numero_pezzi',
       'kanbanColumnId', 'kanbanId',
       'is_draft', 'task_type', 'display_mode',
       'material', 'metalli', 'ferramenta', 'legno', 'vernice', 'altro', 'stoccato',
@@ -382,7 +382,8 @@ export async function PATCH(
         updateError.message?.includes("produzione_collaborator_ids") ||
         updateError.message?.includes("posa_collaborator_ids") ||
         updateError.message?.includes("service_collaborator_ids") ||
-        updateError.message?.includes("assigned_collaborator_ids"))
+        updateError.message?.includes("assigned_collaborator_ids") ||
+        updateError.message?.includes("typed_comments"))
     ) {
       delete updateData.offer_send_date;
       delete updateData.offer_products;
@@ -405,6 +406,7 @@ export async function PATCH(
       delete updateData.posa_collaborator_ids;
       delete updateData.service_collaborator_ids;
       delete updateData.assigned_collaborator_ids;
+      delete updateData.typed_comments;
       ({ data: taskData, error: updateError } = await runUpdate(updateData));
     }
 
