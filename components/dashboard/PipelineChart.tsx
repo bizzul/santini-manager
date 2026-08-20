@@ -28,6 +28,22 @@ function formatCurrency(value: number): string {
 }
 
 export default function PipelineChart({ data }: PipelineChartProps) {
+  const points = data.pipelineData;
+  const hasPartialMonth = points.some((point) => point.isPartial);
+  const categories = points.map((point) =>
+    point.isPartial ? `${point.month} · in corso` : point.month,
+  );
+
+  const completeSeries = points.map((point) => {
+    if (point.isPartial) return null;
+    return point.value;
+  });
+  const partialSeries = points.map((point, index) => {
+    if (point.isPartial) return point.value;
+    if (points[index + 1]?.isPartial) return point.value;
+    return null;
+  });
+
   const chartOptions: ApexOptions = {
     chart: {
       type: "area",
@@ -50,7 +66,8 @@ export default function PipelineChart({ data }: PipelineChartProps) {
     },
     stroke: {
       curve: "smooth",
-      width: 2,
+      width: hasPartialMonth ? [2, 2] : 2,
+      dashArray: hasPartialMonth ? [0, 6] : 0,
     },
     fill: {
       type: "gradient",
@@ -62,7 +79,7 @@ export default function PipelineChart({ data }: PipelineChartProps) {
       },
     },
     xaxis: {
-      categories: data.pipelineData.map((d) => d.month),
+      categories,
       labels: {
         style: {
           colors: getChartAxisColor(),
@@ -85,6 +102,12 @@ export default function PipelineChart({ data }: PipelineChartProps) {
         formatter: (value) => `${formatCurrency(value)}`,
       },
     },
+    legend: {
+      show: hasPartialMonth,
+      labels: {
+        colors: getChartAxisColor(),
+      },
+    },
     grid: {
       show: true,
       borderColor: getChartGridColor(),
@@ -93,18 +116,33 @@ export default function PipelineChart({ data }: PipelineChartProps) {
     tooltip: {
       theme: "dark",
       y: {
-        formatter: (value) => `CHF ${formatCurrency(value)}`,
+        formatter: (value, opts) => {
+          const point = points[opts.dataPointIndex];
+          const amount = `CHF ${formatCurrency(value)}`;
+          return point?.isPartial ? `${amount} (mese parziale)` : amount;
+        },
       },
     },
-    colors: [chartColorAt(0)],
+    colors: [chartColorAt(0), "#93c5fd"],
   };
 
-  const chartSeries = [
-    {
-      name: "Valore Offerte",
-      data: data.pipelineData.map((d) => d.value),
-    },
-  ];
+  const chartSeries = hasPartialMonth
+    ? [
+        {
+          name: "Valore Offerte",
+          data: completeSeries,
+        },
+        {
+          name: "Mese in corso",
+          data: partialSeries,
+        },
+      ]
+    : [
+        {
+          name: "Valore Offerte",
+          data: points.map((point) => point.value),
+        },
+      ];
 
   return (
     <div className="dashboard-panel p-6">
@@ -116,7 +154,9 @@ export default function PipelineChart({ data }: PipelineChartProps) {
           <div>
             <h3 className="dashboard-panel-title">Pipeline Globale</h3>
             <p className="dashboard-panel-subtitle">
-              Andamento valori offerti negli ultimi 6 mesi
+              {hasPartialMonth
+                ? "Andamento valori offerti negli ultimi 6 mesi · mese in corso parziale"
+                : "Andamento valori offerti negli ultimi 6 mesi"}
             </p>
           </div>
         </div>

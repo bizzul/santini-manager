@@ -86,10 +86,35 @@ const SIDEBAR_KANBAN_OPENED_KEY = "santini-sidebar-kanban-opened";
 
 const NAV_GROUP_UNBOXED =
   "rounded-none border-0 bg-transparent p-0.5 shadow-none dark:border-0 dark:bg-transparent dark:shadow-none group-data-[collapsible=icon]:rounded-none group-data-[collapsible=icon]:p-0.5";
+const NAV_GROUP_FRAME =
+  "sidebar-nav-group w-full min-w-0 overflow-hidden rounded-2xl border border-[#3a3f48] bg-white/80 shadow-none dark:bg-white/10 group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent";
+const NAV_GROUP_FRAME_STYLE: React.CSSProperties = {
+  borderColor: "#3a3f48",
+  backgroundImage:
+    "linear-gradient(155deg, color-mix(in srgb, var(--sidebar-nav-accent) 18%, transparent), color-mix(in srgb, var(--sidebar-nav-accent) 5%, transparent))",
+};
 const NAV_GROUP_LABEL =
-  "flex h-auto w-full cursor-pointer items-center gap-1 bg-transparent px-2 py-1.5 text-left text-[13px] font-semibold uppercase leading-none tracking-[0.04em] text-[hsl(var(--sidebar-foreground)/0.78)] outline-none ring-0 hover:bg-transparent hover:text-[hsl(var(--sidebar-foreground)/0.92)] focus-visible:outline-none focus-visible:ring-0 dark:text-white/80 dark:hover:bg-transparent dark:hover:text-white [&>svg]:size-[13px] [&>svg]:shrink-0 [&>svg]:translate-y-px [&>svg]:text-current";
-const NAV_GROUP_SEPARATOR =
-  "mb-2.5 h-px w-full bg-[hsl(var(--sidebar-border)/0.45)] group-data-[collapsible=icon]:hidden dark:bg-[hsl(var(--sidebar-border)/0.14)]";
+  "flex h-auto w-full cursor-pointer items-center gap-1 bg-transparent py-3 pl-5 pr-3.5 text-left text-[13px] font-bold uppercase leading-none tracking-[0.08em] text-[hsl(var(--sidebar-foreground)/0.72)] outline-none ring-0 hover:bg-transparent hover:text-[hsl(var(--sidebar-foreground)/0.92)] focus-visible:outline-none focus-visible:ring-0 dark:text-white/70 dark:hover:bg-transparent dark:hover:text-white [&>svg]:size-[13px] [&>svg]:shrink-0 [&>svg]:translate-y-px [&>svg]:text-current";
+const NAV_CATEGORY_FRAME =
+  "sidebar-nav-category mb-2 last:mb-0 block w-full min-w-0 overflow-hidden rounded-[14px] border border-[#3a3f48] bg-white/70 p-1 dark:bg-white/[0.08]";
+const NAV_CATEGORY_FRAME_ACTIVE =
+  "sidebar-nav-category-active border-[#4b5160] dark:bg-white/[0.14]";
+const NAV_CATEGORY_FRAME_STYLE: React.CSSProperties = {
+  borderColor: "#3a3f48",
+  backgroundImage:
+    "linear-gradient(155deg, color-mix(in srgb, var(--sidebar-nav-accent) 22%, transparent), color-mix(in srgb, var(--sidebar-nav-accent) 6%, transparent))",
+};
+const NAV_CATEGORY_FRAME_ACTIVE_STYLE: React.CSSProperties = {
+  borderColor: "#4b5160",
+  backgroundImage:
+    "linear-gradient(155deg, color-mix(in srgb, var(--sidebar-nav-accent) 36%, transparent), color-mix(in srgb, var(--sidebar-nav-accent) 12%, transparent))",
+};
+const NAV_SUBTREE =
+  "sidebar-nav-subtree ml-1 mr-1 mb-1 translate-x-0 rounded-b-[10px] border-0 border-l-2 border-[var(--sidebar-nav-accent)] bg-black/[0.06] py-1 pl-2.5 pr-1 dark:bg-black/25";
+const NAV_KANBAN_LIST =
+  "sidebar-nav-kanban-list ml-1 mr-0 translate-x-0 py-0 pl-2 gap-0";
+const NAV_CATEGORY_ITEMS =
+  "sidebar-nav-category-items ml-1 mr-1 mb-1 translate-x-0 rounded-b-[10px] border-0 border-l-2 border-[var(--sidebar-nav-accent)] bg-black/[0.06] py-1 pl-2.5 pr-1 dark:bg-black/25";
 
 // Helper function to get initial collapsed menus state from localStorage.
 // Default is open (key absent or false). `true` means the user collapsed it.
@@ -821,29 +846,50 @@ export function AppSidebar() {
               </CollapsibleTrigger>
             )}
             <CollapsibleContent>
-              <SidebarMenuSub>
+              <SidebarMenuSub
+                className={isKanbanMenu ? NAV_KANBAN_LIST : NAV_SUBTREE}
+              >
                 {item.items.map((subItem: MenuItem, index: number) => {
                   if (subItem.items) {
-                    // Nested collapsible for third level
+                    // Nested collapsible for third level (kanban categories)
                     const LucideIcon = subItem.lucideIcon
                       ? getKanbanIcon(subItem.lucideIcon)
                       : null;
                     const nestedKey = subItem.key || subItem.label;
+                    const categoryActive = menuItemContainsPath(
+                      subItem,
+                      pathname,
+                      searchParams.toString()
+                    );
                     return (
-                      <Collapsible
+                      <SidebarMenuSubItem
                         key={
                           subItem.id ||
                           subItem.href ||
                           `${nestedKey}-${index}`
                         }
-                        open={
-                          state === "collapsed" ||
-                          collapsedMenus[nestedKey] !== true
+                        className={cn(
+                          isKanbanMenu && NAV_CATEGORY_FRAME,
+                          isKanbanMenu &&
+                            categoryActive &&
+                            NAV_CATEGORY_FRAME_ACTIVE
+                        )}
+                        style={
+                          isKanbanMenu
+                            ? categoryActive
+                              ? NAV_CATEGORY_FRAME_ACTIVE_STYLE
+                              : NAV_CATEGORY_FRAME_STYLE
+                            : undefined
                         }
-                        onOpenChange={() => toggleMenu(nestedKey)}
-                        className="group/collapsible"
                       >
-                        <SidebarMenuSubItem>
+                        <Collapsible
+                          open={
+                            state === "collapsed" ||
+                            collapsedMenus[nestedKey] !== true
+                          }
+                          onOpenChange={() => toggleMenu(nestedKey)}
+                          className="group/collapsible min-w-0"
+                        >
                           <CollapsibleTrigger asChild>
                             <SidebarMenuSubButton>
                               {LucideIcon ? (
@@ -865,7 +911,7 @@ export function AppSidebar() {
                             </SidebarMenuSubButton>
                           </CollapsibleTrigger>
                           <CollapsibleContent>
-                            <SidebarMenuSub>
+                            <SidebarMenuSub className={NAV_CATEGORY_ITEMS}>
                               {subItem.items.map(
                                 (nestedItem: MenuItem, nestedIndex: number) => (
                                   <SidebarMenuSubItem
@@ -938,8 +984,8 @@ export function AppSidebar() {
                               )}
                             </SidebarMenuSub>
                           </CollapsibleContent>
-                        </SidebarMenuSubItem>
-                      </Collapsible>
+                        </Collapsible>
+                      </SidebarMenuSubItem>
                     );
                   }
 
@@ -1058,42 +1104,48 @@ export function AppSidebar() {
       <SidebarContent>
         {/* PROGRESSIVE LOADING: Show header immediately, skeleton only for loading parts */}
 
-        <SidebarGroup className={NAV_GROUP_UNBOXED}>
-          <SidebarGroupLabel className="h-auto py-2">
-            {isLoadingHeader ? (
-              <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-white/10" />
-            ) : (
-              <div className="flex items-center justify-between w-full gap-2">
-                {siteImage ? (
-                  <img
-                    src={siteImage}
-                    alt={displayTitle}
-                    className="max-h-10 w-auto object-contain"
-                    title={displayTitle}
-                  />
-                ) : (
-                  <span className="truncate">{displayTitle}</span>
-                )}
-                <div className="flex items-center gap-1.5">
-                  {domain && <CommandDeckLauncher domain={domain} />}
-                  <QuickActions />
+        <div className={NAV_GROUP_FRAME} style={NAV_GROUP_FRAME_STYLE}>
+          <SidebarGroup className={NAV_GROUP_UNBOXED}>
+            <SidebarGroupLabel className="h-auto px-2.5 py-2.5">
+              {isLoadingHeader ? (
+                <Skeleton className="h-10 w-28 bg-gray-200 dark:bg-white/10" />
+              ) : (
+                <div className="flex w-full items-center justify-between gap-2">
+                  {siteImage ? (
+                    <div className="flex min-w-0 flex-1 items-center rounded-xl bg-white px-2 py-1.5 shadow-sm">
+                      <img
+                        src={siteImage}
+                        alt={displayTitle}
+                        className="max-h-11 w-auto object-contain"
+                        title={displayTitle}
+                      />
+                    </div>
+                  ) : (
+                    <span className="truncate px-1">{displayTitle}</span>
+                  )}
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {domain && <CommandDeckLauncher domain={domain} />}
+                    <QuickActions />
+                  </div>
                 </div>
-              </div>
-            )}
-          </SidebarGroupLabel>
-        </SidebarGroup>
+              )}
+            </SidebarGroupLabel>
+          </SidebarGroup>
+        </div>
 
         {/* Campaign sites render a fixed electoral menu; business sites use
             the 6-area config from lib/navigation.ts. */}
         {isCampagna ? (
           <>
-            <SidebarGroup className={NAV_GROUP_UNBOXED}>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {campagnaMenuItems.map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            <div className={NAV_GROUP_FRAME} style={NAV_GROUP_FRAME_STYLE}>
+              <SidebarGroup className={NAV_GROUP_UNBOXED}>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {campagnaMenuItems.map(renderMenuItem)}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </div>
 
             {canManageSettings && settingsHref && (
               <SidebarGroup className={cn(NAV_GROUP_UNBOXED, "mt-auto")}>
@@ -1132,7 +1184,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ) : (
-          navGroups.map((group, index) => {
+          navGroups.map((group) => {
             const groupOpen =
               state === "collapsed" || collapsedMenus[group.id] !== true;
             const groupHasActive = group.items.some((item) =>
@@ -1143,38 +1195,39 @@ export function AppSidebar() {
                 key={group.id}
                 open={groupOpen}
                 onOpenChange={() => toggleMenu(group.id)}
-                className={cn("group/nav-group", index > 0 && "mt-3")}
+                className="group/nav-group"
               >
-                <SidebarGroup className={NAV_GROUP_UNBOXED}>
-                  {index > 0 ? (
-                    <div aria-hidden="true" className={NAV_GROUP_SEPARATOR} />
-                  ) : null}
-                  <CollapsibleTrigger
-                    className={cn(
-                      NAV_GROUP_LABEL,
-                      groupHasActive &&
-                        "text-[hsl(var(--sidebar-foreground)/0.95)] dark:text-white dark:hover:text-white",
-                      state === "collapsed" && "hidden"
-                    )}
-                  >
-                    <span className="flex-1 truncate whitespace-nowrap [color:inherit]">
-                      {group.label}
-                    </span>
-                    <ChevronDown
+                <div className={NAV_GROUP_FRAME} style={NAV_GROUP_FRAME_STYLE}>
+                  <SidebarGroup className={NAV_GROUP_UNBOXED}>
+                    <CollapsibleTrigger
                       className={cn(
-                        "ml-auto shrink-0 transition-transform duration-150 ease-out",
-                        collapsedMenus[group.id] === true && "-rotate-90"
+                        NAV_GROUP_LABEL,
+                        groupHasActive &&
+                          "text-[hsl(var(--sidebar-foreground)/0.95)] dark:text-white dark:hover:text-white",
+                        state === "collapsed" && "hidden"
                       )}
-                    />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarGroupContent>
-                      <SidebarMenu>
-                        {group.items.map(renderMenuItem)}
-                      </SidebarMenu>
-                    </SidebarGroupContent>
-                  </CollapsibleContent>
-                </SidebarGroup>
+                    >
+                      <span className="flex-1 truncate whitespace-nowrap [color:inherit]">
+                        {group.label}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "ml-auto shrink-0 transition-transform duration-150 ease-out",
+                          collapsedMenus[group.id] === true && "-rotate-90"
+                        )}
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="min-w-0 overflow-x-hidden px-2 pb-2.5 group-data-[collapsible=icon]:overflow-visible group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:pb-0">
+                        <SidebarGroupContent>
+                          <SidebarMenu>
+                            {group.items.map(renderMenuItem)}
+                          </SidebarMenu>
+                        </SidebarGroupContent>
+                      </div>
+                    </CollapsibleContent>
+                  </SidebarGroup>
+                </div>
               </Collapsible>
             );
           })

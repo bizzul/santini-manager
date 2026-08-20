@@ -140,6 +140,56 @@
     @apply text-sm text-muted-foreground;
   }
 
+  .sidebar-nav-group {
+    @apply block w-full min-w-0 overflow-hidden rounded-2xl shadow-none;
+    @apply bg-white/80 dark:bg-white/10;
+    border: 1px solid #3a3f48;
+    background-image: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--sidebar-nav-accent) 18%, transparent),
+      color-mix(in srgb, var(--sidebar-nav-accent) 5%, transparent)
+    );
+  }
+
+  .group[data-collapsible="icon"] .sidebar-nav-group {
+    @apply bg-transparent;
+    border-color: transparent;
+    background-image: none;
+  }
+
+  .sidebar-nav-category {
+    @apply mb-2 block w-full min-w-0 overflow-hidden rounded-[14px] p-1 last:mb-0;
+    @apply bg-white/70 dark:bg-white/[0.08];
+    border: 1px solid #3a3f48;
+    background-image: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--sidebar-nav-accent) 22%, transparent),
+      color-mix(in srgb, var(--sidebar-nav-accent) 6%, transparent)
+    );
+  }
+
+  .sidebar-nav-category-active {
+    @apply dark:bg-white/[0.14];
+    border-color: #4b5160;
+    background-image: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--sidebar-nav-accent) 36%, transparent),
+      color-mix(in srgb, var(--sidebar-nav-accent) 12%, transparent)
+    );
+  }
+
+  .sidebar-nav-kanban-list {
+    @apply ml-1 min-w-0 overflow-x-hidden pl-2;
+  }
+
+  .sidebar-nav-subtree,
+  .sidebar-nav-category-items {
+    @apply mb-1 ml-1 mr-1 min-w-0 overflow-x-hidden rounded-b-[10px] border-0 border-l-2 py-1 pl-2.5 pr-1;
+    @apply bg-black/[0.06];
+    @apply dark:bg-black/25;
+    border-left-color: color-mix(in srgb, var(--sidebar-nav-accent) 55%, transparent);
+  }
+
   /* Isolated A4 print simulation — intentional white paper, not app chrome */
   .document-print-preview {
     @apply rounded-lg border border-border bg-white p-4 text-sm text-black;
@@ -436,6 +486,8 @@ body:has(.home-gradient-bg) {
   --sidebar-accent-foreground: 24 12% 14%;
   --sidebar-border: 35 18% 82%;
   --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-nav-accent: #7e96ab;
+  --sidebar-nav-frame-border: #6b6560;
 }
 
 /*
@@ -455,6 +507,15 @@ body:has(.home-gradient-bg) {
   --sidebar-accent-foreground: 0 0% 100%;
   --sidebar-border: 0 0% 100%;
   --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-nav-accent: #9fb4c7;
+  --sidebar-nav-frame-border: #3a3f48;
+}
+
+[data-collapsible="icon"] .sidebar-nav-group {
+  overflow: visible;
+  border-color: transparent;
+  background-color: transparent;
+  background-image: none;
 }
 
 /*
@@ -826,4 +887,19 @@ body:has(.home-gradient-bg) {
 /* Editor carta intestata: canvas pdfme a tutta larghezza (sidebar interna nascosta) */
 .letterhead-pdfme-host [style*="overflow: auto"] {
   margin-right: 0 !important;
+}
+
+.sidebar-nav-group,
+.sidebar-nav-category {
+  border-color: #3a3f48 !important;
+  outline: none;
+}
+
+.sidebar-nav-category-active {
+  border-color: #4b5160 !important;
+}
+
+.group[data-collapsible="icon"] .sidebar-nav-group,
+[data-collapsible="icon"] .sidebar-nav-group {
+  border-color: transparent !important;
 }

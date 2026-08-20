@@ -8,6 +8,12 @@ import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { COUNTRY_CAPITALS, type CountryDashboardStats } from "./map-capitals";
 import type { DashboardStats } from "./server-data";
+import {
+  attachDepartmentVisuals,
+  buildPipelineSeries,
+  countActiveWorkload,
+  departmentNameFromKanban,
+} from "./dashboard-active-workload";
 import { getSiteHighlightCountries } from "./map-highlight.server";
 import { WORLD_SOVEREIGN_COUNTRIES_COUNT } from "./map-highlight";
 import { countries as ISO2_COUNTRIES } from "@/components/clients/countries";
@@ -221,11 +227,6 @@ function createEmptyDashboardStats(): DashboardStats {
   };
 }
 
-const MONTH_LABELS_IT = [
-  "Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
-  "Lug", "Ago", "Set", "Ott", "Nov", "Dic",
-];
-
 /**
  * Country-scoped dashboard data + KPI facts. Reuses the same task
  * classification heuristics as `fetchDashboardData` but filters tasks to the
@@ -268,19 +269,24 @@ export const fetchCountryDashboardData = cache(
       country.clients = clientIds.length;
       if (clientIds.length === 0) return { dashboard, country };
 
-      const [{ data: kanbans }, { data: rawTasks }] = await Promise.all([
+      const [{ data: kanbans }, { data: rawTasks }, { data: kanbanCategories }] =
+        await Promise.all([
         supabase
           .from("Kanban")
-          .select("id, is_offer_kanban, is_production_kanban, title, identifier")
+          .select("id, is_offer_kanban, is_production_kanban, title, identifier, icon, color, category_id")
           .eq("site_id", siteId),
         supabase
           .from("Task")
           .select(
-            "id, task_type, sellPrice, kanbanId, kanbanColumnId, display_mode, created_at, deliveryDate, sent_date",
+            "id, unique_code, task_type, sellPrice, kanbanId, kanbanColumnId, display_mode, created_at, deliveryDate, sent_date",
           )
           .eq("site_id", siteId)
           .eq("archived", false)
           .in("clientId", clientIds),
+        supabase
+          .from("KanbanCategory")
+          .select("id, name, identifier, icon, color")
+          .eq("site_id", siteId),
       ]);
 
       const kanbanList = kanbans ?? [];
@@ -311,40 +317,14 @@ export const fetchCountryDashboardData = cache(
         return t.display_mode === "small_red" || col?.column_type === "lost";
       };
 
-      const departmentOf = (kanbanId: number | null): string => {
-        if (!kanbanId) return "Altro";
-        const k = kanbanMap.get(kanbanId) as any;
-        if (!k) return "Altro";
-        if (k.is_offer_kanban) return "Vendita";
-        const name = String(k.title || k.identifier || "").toLowerCase();
-        if (name.includes("avor") || name.includes("ufficio")) return "AVOR";
-        if (name.includes("vendita") || name.includes("offerta")) return "Vendita";
-        if (name.includes("produzione") || name.includes("prod") || name.includes("lavorazione")) return "Prod.";
-        if (name.includes("fattur") || name.includes("invoic")) return "Fatturazione";
-        if (name.includes("install") || name.includes("montag") || name.includes("cantiere")) return "Install.";
-        if (name.includes("service") || name.includes("assistenza")) return "Service";
-        const orig = k.title || k.identifier || "";
-        return orig ? orig.charAt(0).toUpperCase() + orig.slice(1) : "Altro";
-      };
-
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
-      // Pipeline: last 6 months of offer value.
-      const pipelineBuckets: Array<{ month: string; value: number; year: number; m: number }> = [];
-      for (let i = 5; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        pipelineBuckets.push({
-          month: MONTH_LABELS_IT[d.getMonth()],
-          value: 0,
-          year: d.getFullYear(),
-          m: d.getMonth(),
-        });
-      }
+      const departmentOf = (kanbanId: number | null): string =>
+        departmentNameFromKanban(kanbanMap.get(kanbanId ?? undefined) as any);
 
-      const departmentCounts = new Map<string, number>();
       let activeOffersCount = 0;
       let activeOffersValue = 0;
       let currentMonthOffers = 0;
@@ -360,7 +340,6 @@ export const fetchCountryDashboardData = cache(
         country.totalValue += value;
 
         const dept = departmentOf(t.kanbanId);
-        departmentCounts.set(dept, (departmentCounts.get(dept) || 0) + 1);
         if (dept === "AVOR") avorCount += 1;
 
         const created = t.created_at ? new Date(t.created_at) : null;
@@ -385,17 +364,9 @@ export const fetchCountryDashboardData = cache(
           if (created && created >= startOfLastMonth && created <= endOfLastMonth) {
             lastMonthOffers += value;
           }
-          // Pipeline bucket by creation month.
-          if (created) {
-            const bucket = pipelineBuckets.find(
-              (b) => b.year === created.getFullYear() && b.m === created.getMonth(),
-            );
-            if (bucket) bucket.value += value;
-          }
           return;
         }
 
-        // Production order (LAVORO / other non-offer non-invoice).
         country.projects += 1;
         country.orderValue += value;
         productionTotal += 1;
@@ -428,13 +399,20 @@ export const fetchCountryDashboardData = cache(
         changePercent: 0,
       };
       dashboard.avorWorkload = { percentage: avorPct, status: avorStatus };
-      dashboard.pipelineData = pipelineBuckets.map((b) => ({
-        month: b.month,
-        value: b.value,
-      }));
-      dashboard.departmentWorkload = Array.from(departmentCounts.entries())
-        .map(([department, count]) => ({ department, count }))
-        .sort((a, b) => b.count - a.count);
+      dashboard.pipelineData = buildPipelineSeries({
+        now,
+        tasks,
+        isOfferTask: isOffer,
+      });
+      dashboard.departmentWorkload = attachDepartmentVisuals(
+        countActiveWorkload({
+          tasks,
+          getDepartment: departmentOf,
+          getColumn: (columnId) => columnMap.get(columnId as number) as any,
+        }),
+        kanbanList,
+        kanbanCategories ?? [],
+      );
 
       return { dashboard, country };
     } catch (error) {

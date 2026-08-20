@@ -28,6 +28,13 @@ import {
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
 import { loadFatturazioneReadinessByTaskId } from "@/lib/fatturazione-readiness.server";
 import { toFatturazioneTaskId } from "@/lib/fatturazione-readiness";
+import {
+    attachDepartmentVisuals,
+    buildPipelineSeries,
+    countActiveWorkload,
+    departmentNameFromKanban,
+    normalizeWorkflowLabel,
+} from "@/lib/dashboard-active-workload";
 import { assertDashboardQuery } from "@/lib/dashboard-query-guard";
 import { syncRegisteredSuppliersIntoInventorySuppliers } from "@/lib/inventory-suppliers";
 import {
@@ -2510,11 +2517,14 @@ export interface DashboardStats {
     pipelineData: Array<{
         month: string;
         value: number;
+        isPartial?: boolean;
     }>;
     // Department workload data
     departmentWorkload: Array<{
         department: string;
         count: number;
+        icon?: string;
+        color?: string;
     }>;
     // Aggregated kanban status
     kanbanStatus: Array<{
@@ -2627,14 +2637,22 @@ export const fetchDashboardData = cache(
         sixMonthsAgo.setMonth(now.getMonth() - 6);
 
         // First fetch kanbans to get their IDs for column query
-        const kanbansResult = await supabase
-            .from("Kanban")
-            .select("id, is_offer_kanban, is_work_kanban, is_production_kanban, title, identifier")
-            .eq("site_id", siteId);
+        const [kanbansResult, kanbanCategoriesResult] = await Promise.all([
+            supabase
+                .from("Kanban")
+                .select("id, is_offer_kanban, is_work_kanban, is_production_kanban, title, identifier, icon, color, category_id")
+                .eq("site_id", siteId),
+            supabase
+                .from("KanbanCategory")
+                .select("id, name, identifier, icon, color")
+                .eq("site_id", siteId),
+        ]);
 
         assertDashboardQuery(kanbansResult, "Overview:Kanban", { siteId });
+        assertDashboardQuery(kanbanCategoriesResult, "Overview:KanbanCategory", { siteId });
 
         const kanbans = kanbansResult.data || [];
+        const kanbanCategories = kanbanCategoriesResult.data || [];
         const kanbanIds = kanbans.map((k) => k.id);
 
         // Fetch remaining data in parallel
@@ -2840,63 +2858,14 @@ export const fetchDashboardData = cache(
         const columnMap = new Map(columns.map((c) => [c.id, c]));
         const kanbanMap = new Map(kanbans.map((k) => [k.id, k]));
 
-        // Map kanban names to departments
-        const getDepartmentName = (kanbanId: number | null): string => {
-            if (!kanbanId) return "Altro";
-            const kanban = kanbanMap.get(kanbanId);
-            if (!kanban) return "Altro";
-
-            // Check if it's an offer kanban first
-            if (kanban.is_offer_kanban) return "Vendita";
-
-            const name = (kanban.title || kanban.identifier || "")
-                .toLowerCase();
-
-            // Map common kanban names to department names (more comprehensive matching)
-            if (
-                name.includes("avor") || name.includes("ufficio") ||
-                name.includes("ufficio tecnico")
-            ) return "AVOR";
-            if (
-                name.includes("vendita") || name.includes("offerta") ||
-                name.includes("commerciale")
-            ) return "Vendita";
-            if (
-                name.includes("produzione") || name.includes("prod") ||
-                name.includes("officina") || name.includes("lavorazione")
-            ) return "Prod.";
-            if (
-                name.includes("fattur") || name.includes("billing") ||
-                name.includes("invoic")
-            ) return "Fatturazione";
-            if (
-                name.includes("install") || name.includes("montaggio") ||
-                name.includes("cantiere")
-            ) return "Install.";
-            if (
-                name.includes("service") || name.includes("assistenza") ||
-                name.includes("manutenzione")
-            ) return "Service";
-
-            // If no match, return the original name capitalized, or "Altro"
-            const originalName = kanban.title || kanban.identifier || "";
-            return originalName
-                ? originalName.charAt(0).toUpperCase() + originalName.slice(1)
-                : "Altro";
-        };
+        const getDepartmentName = (kanbanId: number | null): string =>
+            departmentNameFromKanban(kanbanMap.get(kanbanId));
 
         const isOfferTask = (task: any): boolean =>
             task.task_type === "OFFERTA" || offerKanbanIds.has(task.kanbanId);
 
         const isInvoiceTask = (task: any): boolean =>
             task.task_type === "FATTURA";
-
-        const normalizeWorkflowLabel = (value: unknown): string =>
-            String(value || "")
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "")
-                .trim();
 
         const getKanbanSearchText = (kanbanId: number | null): string => {
             if (!kanbanId) return "";
@@ -3700,72 +3669,30 @@ export const fetchDashboardData = cache(
             invoices: firstKanbanIdentifier(invoiceKanbanIds),
         };
 
-        // Calculate Pipeline Data (6 months)
-        const pipelineDataMap = new Map<string, number>();
-        const monthNames = [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-        ];
-
-        // Initialize last 6 months
-        for (let i = 5; i >= 0; i--) {
-            const date = new Date(now);
-            date.setMonth(now.getMonth() - i);
-            const monthKey = `${monthNames[date.getMonth()]} ${
-                date.getFullYear().toString().slice(-2)
-            }`;
-            pipelineDataMap.set(monthKey, 0);
-        }
-
-        // Aggregate historical offer values by month
-        historicalTasks.forEach((task: any) => {
-            const isOffer = task.task_type === "OFFERTA" ||
-                offerKanbanIds.has(task.kanbanId);
-            if (!isOffer) return;
-
-            const taskDate = new Date(task.created_at);
-            const monthKey = `${monthNames[taskDate.getMonth()]} ${
-                taskDate.getFullYear().toString().slice(-2)
-            }`;
-
-            if (pipelineDataMap.has(monthKey)) {
-                pipelineDataMap.set(
-                    monthKey,
-                    pipelineDataMap.get(monthKey)! + (task.sellPrice || 0),
-                );
-            }
+        const pipelineData = buildPipelineSeries({
+            now,
+            tasks: historicalTasks,
+            isOfferTask: (task) =>
+                task.task_type === "OFFERTA" ||
+                (task.kanbanId != null && offerKanbanIds.has(task.kanbanId)),
         });
 
-        const pipelineData = Array.from(pipelineDataMap.entries()).map((
-            [month, value],
-        ) => ({
-            month,
-            value,
-        }));
-
-        // Calculate Department Workload
-        const departmentWorkloadMap = new Map<string, number>();
-        tasks.forEach((task: any) => {
-            const department = getDepartmentName(task.kanbanId);
-            departmentWorkloadMap.set(
-                department,
-                (departmentWorkloadMap.get(department) || 0) + 1,
-            );
-        });
-
-        const departmentWorkload = Array.from(departmentWorkloadMap.entries())
-            .map(([department, count]) => ({ department, count }))
-            .sort((a, b) => b.count - a.count);
+        // Active workload only: exclude terminal columns (paid/sent invoices,
+        // won/lost offers, spedito/ultimato, …). Uses the paginated KPI set so
+        // the 1000-row PostgREST cap cannot inflate Fatturazione/Vendita.
+        const kpiTaskIds = new Set(kpiTasks.map((task: any) => task.id));
+        const departmentWorkload = attachDepartmentVisuals(
+            countActiveWorkload({
+                tasks: [
+                    ...kpiTasks,
+                    ...tasks.filter((task: any) => !kpiTaskIds.has(task.id)),
+                ],
+                getDepartment: getDepartmentName,
+                getColumn: (columnId) => columnMap.get(columnId as number),
+            }),
+            kanbans,
+            kanbanCategories,
+        );
 
         // Calculate Aggregated Kanban Status
         const kanbanStatusMap = new Map<

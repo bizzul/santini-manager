@@ -1,25 +1,15 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { ApexOptions } from "apexcharts";
 import { BarChart3 } from "lucide-react";
-import {
-  CHART_SERIES_COLORS,
-  chartColorAt,
-  getChartAxisColor,
-  getChartGridColor,
-} from "@/lib/charts/theme";
+import { getKanbanIcon } from "@/lib/kanban-icons";
+import { CHART_SERIES_COLORS, chartColorAt } from "@/lib/charts/theme";
 import { DashboardStats } from "@/lib/server-data";
-
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {
-  ssr: false,
-});
 
 interface DepartmentWorkloadChartProps {
   data: DashboardStats;
 }
 
-const DEPARTMENT_COLORS: { [key: string]: string } = {
+const FALLBACK_BAR_COLORS: { [key: string]: string } = {
   Vendita: CHART_SERIES_COLORS[0],
   AVOR: CHART_SERIES_COLORS[2],
   Produzione: CHART_SERIES_COLORS[3],
@@ -29,107 +19,18 @@ const DEPARTMENT_COLORS: { [key: string]: string } = {
   Service: CHART_SERIES_COLORS[5],
 };
 
+/** Chart-only: "5. Posa" → "Posa". Does not change kanban titles elsewhere. */
+function departmentChartLabel(department: string): string {
+  return department.replace(/^\d+\.\s*/, "").trim() || department;
+}
+
 export default function DepartmentWorkloadChart({
   data,
 }: DepartmentWorkloadChartProps) {
   const sortedData = [...data.departmentWorkload].sort(
     (a, b) => b.count - a.count
   );
-
-  const chartOptions: ApexOptions = {
-    chart: {
-      type: "bar",
-      height: 300,
-      animations: {
-        enabled: true,
-        speed: 1000,
-        animateGradually: {
-          enabled: true,
-          delay: 150,
-        },
-      },
-      toolbar: {
-        show: false,
-      },
-      background: "transparent",
-    },
-    plotOptions: {
-      bar: {
-        borderRadius: 8,
-        borderRadiusApplication: "end",
-        horizontal: true,
-        dataLabels: {
-          position: "right",
-        },
-      },
-    },
-    dataLabels: {
-      enabled: true,
-      offsetX: 10,
-      style: {
-        fontSize: "12px",
-        fontWeight: "bold",
-        colors: ["#18181b"],
-      },
-      background: {
-        enabled: true,
-        foreColor: "#ffffff",
-        borderRadius: 4,
-        padding: 4,
-        opacity: 0.95,
-        borderWidth: 1,
-        borderColor: "#d1d5db",
-      },
-    },
-    xaxis: {
-      categories: sortedData.map((d) => d.department),
-      labels: {
-        style: {
-          colors: getChartAxisColor(),
-          fontSize: "12px",
-        },
-      },
-      axisBorder: {
-        show: false,
-      },
-      axisTicks: {
-        show: false,
-      },
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: getChartAxisColor(),
-          fontSize: "12px",
-        },
-      },
-    },
-    fill: {
-      type: "solid",
-      opacity: 0.95,
-    },
-    grid: {
-      show: true,
-      borderColor: getChartGridColor(),
-      strokeDashArray: 3,
-    },
-    tooltip: {
-      theme: "dark",
-      y: {
-        formatter: (value) => `${value} commesse`,
-      },
-    },
-    colors: sortedData.map(
-      (d, i) => DEPARTMENT_COLORS[d.department] || chartColorAt(i)
-    ),
-  };
-
-  const chartSeries = [
-    {
-      name: "Commesse",
-      data: sortedData.map((d) => d.count),
-    },
-  ];
+  const maxCount = Math.max(...sortedData.map((row) => row.count), 1);
 
   return (
     <div className="dashboard-panel p-6">
@@ -141,18 +42,54 @@ export default function DepartmentWorkloadChart({
           <div>
             <h3 className="dashboard-panel-title">Lavori per Reparto</h3>
             <p className="dashboard-panel-subtitle">
-              Carico attuale numero commesse
+              Carico attuale numero commesse (solo stato attivo)
             </p>
           </div>
         </div>
       </div>
 
-      <ReactApexChart
-        options={chartOptions}
-        series={chartSeries}
-        type="bar"
-        height={300}
-      />
+      {sortedData.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nessuna commessa attiva</p>
+      ) : (
+        <div className="space-y-2.5">
+          {sortedData.map((row, index) => {
+            const Icon = getKanbanIcon(row.icon);
+            const label = departmentChartLabel(row.department);
+            const barColor =
+              FALLBACK_BAR_COLORS[row.department] || chartColorAt(index);
+            const width = `${Math.max((row.count / maxCount) * 100, 4)}%`;
+
+            return (
+              <div
+                key={row.department}
+                className="flex items-center gap-2.5"
+                title={`${label}: ${row.count} commesse attive`}
+              >
+                <div
+                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded"
+                  style={{ backgroundColor: row.color || "#3B82F6" }}
+                >
+                  <Icon className="h-3 w-3 text-white" />
+                </div>
+                <span className="w-40 shrink-0 truncate text-xs text-muted-foreground">
+                  {label}
+                </span>
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <div className="relative h-6 min-w-0 flex-1 overflow-hidden rounded-md bg-muted/35">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-md"
+                      style={{ width, backgroundColor: barColor }}
+                    />
+                  </div>
+                  <span className="w-8 shrink-0 text-right text-[11px] font-bold text-foreground">
+                    {row.count}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
