@@ -3,6 +3,7 @@ import {
   StandardFonts,
   rgb,
   type PDFFont,
+  type PDFImage,
   type PDFPage,
 } from "@pdfme/pdf-lib";
 import {
@@ -41,6 +42,7 @@ export type FattureOutSummaryPdfInput = {
   columnLabel: string;
   generatedAt?: Date;
   sections: FattureOutSummarySection[];
+  logoBytes?: Uint8Array | null;
 };
 
 const INK = rgb(0.08, 0.1, 0.14);
@@ -106,6 +108,18 @@ export async function buildFattureOutSummaryPdf(
   const pdfDoc = await PDFDocument.create();
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  let logoImage: PDFImage | null = null;
+  if (input.logoBytes && input.logoBytes.byteLength > 0) {
+    try {
+      logoImage = await pdfDoc.embedPng(input.logoBytes);
+    } catch {
+      try {
+        logoImage = await pdfDoc.embedJpg(input.logoBytes);
+      } catch {
+        logoImage = null;
+      }
+    }
+  }
   const contentWidth = PAGE_WIDTH - PAGE_MARGIN * 2;
   const valueWidth = contentWidth - BOX_PAD * 2 - LABEL_WIDTH;
   const generatedAt = input.generatedAt ?? new Date();
@@ -122,6 +136,23 @@ export async function buildFattureOutSummaryPdf(
   };
 
   let { page, y } = startPage();
+
+  const LOGO_MAX_H = 48;
+  const LOGO_MAX_W = 150;
+  if (logoImage) {
+    const scale = Math.min(
+      LOGO_MAX_H / logoImage.height,
+      LOGO_MAX_W / logoImage.width,
+    );
+    const logoWidth = logoImage.width * scale;
+    const logoHeight = logoImage.height * scale;
+    page.drawImage(logoImage, {
+      x: PAGE_WIDTH - PAGE_MARGIN - logoWidth,
+      y: PAGE_HEIGHT - PAGE_MARGIN - logoHeight,
+      width: logoWidth,
+      height: logoHeight,
+    });
+  }
 
   const ensureSpace = (needed: number) => {
     if (y - needed >= PAGE_MARGIN) return;

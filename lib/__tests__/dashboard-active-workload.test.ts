@@ -67,7 +67,10 @@ describe("dashboard active workload", () => {
       getDepartment: () => "Vendita",
       getColumn: (id) => columns.get(id ?? -1),
     });
-    expect(rows).toEqual([{ department: "Vendita", count: 3 }]);
+    expect(rows).toEqual([
+      { department: "Vendita", count: 3 },
+      { department: "AVOR", count: 2 },
+    ]);
   });
 
   it("excludes spedito/ultimato production cards from operational load", () => {
@@ -96,6 +99,35 @@ describe("dashboard active workload", () => {
     expect(isTerminalOperationalColumn({ column_type: "invoicing" })).toBe(true);
     expect(isActiveWorkloadTask({ kanbanColumnId: 1 }, { title: "Inviata" }, "vendita")).toBe(true);
     expect(isActiveWorkloadTask({ kanbanColumnId: 1 }, { title: "Inviata" }, "fatturazione")).toBe(false);
+  });
+
+  it("counts AVOR as every board project plus every won offer", () => {
+    const columns = new Map([
+      [1, { id: 1, title: "To Do", column_type: "normal" }],
+      [2, { id: 2, title: "Produzione", column_type: "production" }],
+      [3, { id: 3, title: "Vinta", column_type: "won" }],
+      [4, { id: 4, title: "Inviata", column_type: "normal" }],
+    ]);
+    const departmentOf = (kanbanId: number | null) =>
+      kanbanId === 20 ? "Vendita" : "AVOR";
+    const rows = countActiveWorkload({
+      tasks: [
+        { id: 1, unique_code: "26-001", kanbanId: 30, kanbanColumnId: 1 },
+        { id: 2, unique_code: "26-002", kanbanId: 30, kanbanColumnId: 2 },
+        { id: 3, unique_code: "26-003", kanbanId: 30, kanbanColumnId: 2 },
+        { id: 4, unique_code: "26-010", kanbanId: 20, kanbanColumnId: 3 },
+        { id: 5, unique_code: "26-011", kanbanId: 20, kanbanColumnId: 3 },
+        { id: 6, unique_code: "26-011", kanbanId: 20, kanbanColumnId: 3, display_mode: "small_green" },
+        { id: 7, unique_code: "26-020", kanbanId: 20, kanbanColumnId: 4 },
+        { id: 8, unique_code: "26-001", kanbanId: 20, kanbanColumnId: 3 },
+      ],
+      getDepartment: departmentOf,
+      getColumn: (id) => columns.get(id ?? -1),
+    });
+    expect(rows).toEqual([
+      { department: "AVOR", count: 6 },
+      { department: "Vendita", count: 1 },
+    ]);
   });
 
   it("maps offer kanbans to Vendita for every tenant", () => {

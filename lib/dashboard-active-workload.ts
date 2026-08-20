@@ -3,8 +3,9 @@
  *
  * Shared by every tenant (Santini, Benicchio, …): "attivo" is derived from
  * kanban column type/title and display_mode, never from a hardcoded site.
- * Closed/paid/won/lost rows stay in the database; they are only excluded from
- * the "carico attuale" count.
+ * Closed/paid/lost rows stay in the database; they are only excluded from
+ * the "carico attuale" count, except AVOR which adds every board project
+ * plus every won offer.
  */
 
 export type OfferColumnStatus =
@@ -253,10 +254,22 @@ export function workloadProjectKey(task: WorkloadTask): string {
   return String(task.id ?? "");
 }
 
+/** Unique project identity, independent of column (one card per commessa). */
+export function uniqueProjectKey(task: WorkloadTask): string {
+  const base = baseProjectNumber(task.unique_code);
+  if (base) return base;
+  return String(task.id ?? "");
+}
+
+export function isAvorDepartment(department: string): boolean {
+  return department === "AVOR";
+}
+
 /**
  * Unique-project count for Fatturazione (matches Overview KPI "Da inviare").
  * Per-card count for Vendita (matches KPI Inviate + Trattativa).
- * Unique-project count for every other board.
+ * AVOR = every project on the AVOR board + every won offer.
+ * Unique-project count for every other board (active columns only).
  */
 export function countActiveWorkload(params: {
   tasks: WorkloadTask[];
@@ -265,18 +278,34 @@ export function countActiveWorkload(params: {
 }): Array<{ department: string; count: number }> {
   const venditaCount = { current: 0 };
   const fatturazioneKeys = new Set<string>();
+  const avorBoardKeys = new Set<string>();
+  const wonOfferKeys = new Set<string>();
   const operationalKeys = new Map<string, Set<string>>();
 
   for (const task of params.tasks) {
+    if (task.archived === true) continue;
+
     const department = params.getDepartment(task.kanbanId ?? null);
     const lane = workloadLaneFromDepartment(department);
     const column = params.getColumn(task.kanbanColumnId);
-    if (!isActiveWorkloadTask(task, column, lane)) continue;
 
     if (lane === "vendita") {
-      venditaCount.current += 1;
+      const status = resolveOfferStatus(task, column);
+      if (status === "inviate" || status === "inTrattativa") {
+        venditaCount.current += 1;
+      } else if (status === "vinte") {
+        wonOfferKeys.add(uniqueProjectKey(task));
+      }
       continue;
     }
+
+    if (isAvorDepartment(department)) {
+      avorBoardKeys.add(uniqueProjectKey(task));
+      continue;
+    }
+
+    if (!isActiveWorkloadTask(task, column, lane)) continue;
+
     if (lane === "fatturazione") {
       fatturazioneKeys.add(workloadProjectKey(task));
       continue;
@@ -293,10 +322,15 @@ export function countActiveWorkload(params: {
   if (venditaCount.current > 0) {
     rows.push({ department: "Vendita", count: venditaCount.current });
   }
+  const avorCount = avorBoardKeys.size + wonOfferKeys.size;
+  if (avorCount > 0) {
+    rows.push({ department: "AVOR", count: avorCount });
+  }
   if (fatturazioneKeys.size > 0) {
     rows.push({ department: "Fatturazione", count: fatturazioneKeys.size });
   }
   for (const [department, keys] of Array.from(operationalKeys.entries())) {
+    if (department === "AVOR") continue;
     if (keys.size > 0) rows.push({ department, count: keys.size });
   }
   return rows.sort((a, b) => b.count - a.count);

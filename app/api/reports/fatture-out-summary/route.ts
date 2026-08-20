@@ -10,6 +10,7 @@ import {
 } from "@/lib/fatturazione-readiness";
 import { parseTypedComments } from "@/lib/task-typed-comments";
 import { formatDocumentDateStamp } from "@/lib/document-filename";
+import { resolvePdfLogoBuffer } from "@/lib/pdf-report-branding";
 import {
   buildFattureOutSummaryPdf,
   type FattureOutSummaryRow,
@@ -294,20 +295,32 @@ type TaskRow = {
   }));
 
   let companyName = siteContext.siteData?.name || "FDM";
-  if (!siteContext.siteData?.name) {
+  let siteLogo = siteContext.siteData?.logo ?? null;
+  if (!siteContext.siteData?.name || !siteLogo) {
     const { data: siteRow } = await supabase
       .from("sites")
-      .select("name")
+      .select("name, logo")
       .eq("id", siteContext.siteId)
       .maybeSingle();
     companyName = siteRow?.name || companyName;
+    siteLogo = siteRow?.logo ?? siteLogo;
   }
+
+  const logoBuffer = await resolvePdfLogoBuffer({
+    remoteUrl: siteLogo || siteContext.siteData?.image,
+    subdomain:
+      siteContext.siteData?.subdomain ||
+      req.headers.get("x-site-domain") ||
+      siteContext.domain,
+    companyName,
+  });
 
   const pdfBytes = await buildFattureOutSummaryPdf({
     companyName,
     columnLabel,
     generatedAt: new Date(),
     sections,
+    logoBytes: logoBuffer ? Uint8Array.from(logoBuffer) : null,
   });
 
   const filename = `RiepilogoFattureOut_${columnLabel.replace(/\s+/g, "")}_${formatDocumentDateStamp(new Date())}.pdf`;

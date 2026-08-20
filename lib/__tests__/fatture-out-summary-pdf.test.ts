@@ -1,4 +1,5 @@
 import { inflateSync } from "node:zlib";
+import { resolvePdfLogoBuffer } from "@/lib/pdf-report-branding";
 import {
   buildFattureOutSummaryPdf,
   formatInvoiceChf,
@@ -169,5 +170,43 @@ describe("fatture-out-summary-pdf", () => {
     expect(visible).toContain("Totale Non scadute");
     expect(visible).toContain("CHF 1'000.00");
     expect(visible).toContain("CHF 2'500.00");
+  });
+
+  it("embeds the Santini logo in the top-right header", async () => {
+    const logoBytes = await resolvePdfLogoBuffer({
+      companyName: "Santini SA",
+      subdomain: "santini",
+    });
+    expect(logoBytes?.length).toBeGreaterThan(1000);
+
+    const bytes = await buildFattureOutSummaryPdf({
+      companyName: "Santini SA",
+      columnLabel: "Inviate",
+      generatedAt: new Date(2026, 7, 20),
+      sections: [
+        {
+          title: "Scadute",
+          rows: [
+            {
+              uniqueCode: "26-066-FATT",
+              name: "Fattura scaduta",
+              clientName: "Cliente A",
+              objectName: "Oggetto A",
+              value: 1000,
+              supplements: [],
+              comments: "",
+              invoicingNotes: "",
+              invoicingStatus: "Pronto",
+              sameAsOffer: true,
+            },
+          ],
+        },
+      ],
+      logoBytes: logoBytes ? Uint8Array.from(logoBytes) : null,
+    });
+
+    const raw = Buffer.from(bytes).toString("latin1");
+    expect(raw).toContain("/XObject");
+    expect(raw).toMatch(/\/Subtype\s*\/Image/);
   });
 });
