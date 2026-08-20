@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Timetracking, Task } from "@/types/supabase";
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTableColumnHeader } from "@/components/table/column-header";
@@ -19,13 +20,12 @@ import { editItem } from "./actions/edit-item.action";
 import { DateManager } from "@/package/utils/dates/date-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { SearchSelect } from "@/components/ui/search-select";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -34,7 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getProjectLabel } from "@/lib/project-label";
-import { cn } from "@/lib/utils";
+import { cn, toDateString } from "@/lib/utils";
 
 interface InternalActivity {
   id: string;
@@ -114,17 +114,28 @@ type TimetrackingTaskOption = Task & {
   } | null;
 };
 
+function extractRoleId(rowData: TimetrackingRow): string | number | undefined {
+  const first = rowData.roles?.[0] as
+    | number
+    | string
+    | { role?: { id?: string | number }; id?: string | number }
+    | undefined;
+  if (first == null || first === "") return undefined;
+  if (typeof first === "number" || typeof first === "string") return first;
+  const id = first.role?.id ?? first.id;
+  return id == null || id === "" ? undefined : id;
+}
+
 const buildTimetrackingPayload = (
   rowData: TimetrackingRow,
   updates: Record<string, string | number | boolean | null | undefined>
 ) => ({
-  hours: rowData.hours ?? 0,
-  minutes: rowData.minutes ?? 0,
+  hours: Number.isFinite(Number(rowData.hours)) ? Number(rowData.hours) : 0,
+  minutes: Number.isFinite(Number(rowData.minutes)) ? Number(rowData.minutes) : 0,
   description: rowData.description ?? "",
-  date: rowData.created_at,
-  task: rowData.task_id?.toString() ?? "",
-  userId: rowData.employee_id?.toString() ?? "",
-  roles: rowData.roles?.[0]?.role?.id ?? rowData.roles?.[0],
+  task: rowData.task_id != null ? rowData.task_id.toString() : "",
+  userId: rowData.employee_id != null ? rowData.employee_id.toString() : "",
+  roles: extractRoleId(rowData),
   lunchOffsite: rowData.lunch_offsite ?? false,
   lunchLocation: rowData.lunch_location ?? "",
   ...updates,
@@ -138,7 +149,12 @@ const createTimetrackingUpdateHandler = (domain?: string) => {
     try {
       const result = await editItem(buildTimetrackingPayload(rowData, updates), rowData.id, domain);
       if (result?.message || result?.error) {
-        return { error: result.message || result.error };
+        const error = result.error;
+        const errorText =
+          typeof error === "string"
+            ? error
+            : result.message || "Errore durante il salvataggio";
+        return { error: errorText };
       }
       return { success: true };
     } catch (error: any) {
@@ -189,6 +205,9 @@ const saveActionButtonClassName =
 const cancelActionButtonClassName =
   "h-8 w-8 text-red-600 hover:bg-red-500/10 hover:text-red-700";
 
+const timeInputClassName =
+  "h-9 w-16 min-w-[4rem] shrink-0 px-2 text-center tabular-nums";
+
 function TimetrackingHoursCell({
   rowData,
   editable,
@@ -202,6 +221,7 @@ function TimetrackingHoursCell({
   ) => Promise<{ success?: boolean; error?: string }>;
 }) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hours, setHours] = useState(String(rowData.hours || 0));
@@ -220,6 +240,15 @@ function TimetrackingHoursCell({
 
   const effectiveHours = optimisticValue?.hours ?? rowData.hours ?? 0;
   const effectiveMinutes = optimisticValue?.minutes ?? rowData.minutes ?? 0;
+
+  const openEditor = (open: boolean) => {
+    if (isSaving) return;
+    if (open) {
+      setHours(String(optimisticValue?.hours ?? rowData.hours ?? 0));
+      setMinutes(String(optimisticValue?.minutes ?? rowData.minutes ?? 0));
+    }
+    setIsEditing(open);
+  };
 
   const handleSave = async () => {
     const nextHours = Math.max(0, Math.min(24, parseInt(hours.replace(/\D/g, "") || "0", 10)));
@@ -248,82 +277,227 @@ function TimetrackingHoursCell({
       }
 
       setIsEditing(false);
+      router.refresh();
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    setHours(String(rowData.hours || 0));
-    setMinutes(String(rowData.minutes || 0));
-    setIsEditing(false);
-  };
+  const display = (
+    <span className="whitespace-nowrap">
+      {formatTrackedTime(effectiveHours, effectiveMinutes)}
+    </span>
+  );
 
   if (!editable) {
-    return (
-      <span className="whitespace-nowrap">
-        {formatTrackedTime(effectiveHours, effectiveMinutes)}
-      </span>
-    );
-  }
-
-  if (isEditing) {
-    return (
-      <div className="flex min-w-[180px] items-center gap-2">
-        <Input
-          value={hours}
-          onChange={(event) => setHours(event.target.value.replace(/\D/g, ""))}
-          className="h-8 w-14"
-          inputMode="numeric"
-          placeholder="0"
-          disabled={isSaving}
-        />
-        <span className="text-xs text-muted-foreground">h</span>
-        <Input
-          value={minutes}
-          onChange={(event) => setMinutes(event.target.value.replace(/\D/g, ""))}
-          className="h-8 w-14"
-          inputMode="numeric"
-          placeholder="0"
-          disabled={isSaving}
-        />
-        <span className="text-xs text-muted-foreground">m</span>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={saveActionButtonClassName}
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-        </Button>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          className={cancelActionButtonClassName}
-          onClick={handleCancel}
-          disabled={isSaving}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    );
+    return display;
   }
 
   return (
-    <button
-      type="button"
-      className="group relative flex min-h-[32px] w-full items-center justify-between rounded px-1 -mx-1 pr-6 text-left transition-colors hover:bg-muted/50"
-      onClick={() => setIsEditing(true)}
-      title="Clicca per modificare le ore"
-    >
-      <span className="whitespace-nowrap">
-        {formatTrackedTime(effectiveHours, effectiveMinutes)}
-      </span>
-      <Pencil className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-    </button>
+    <Popover open={isEditing} onOpenChange={openEditor}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="group relative h-8 w-full justify-start px-1 -mx-1 pr-6 text-left font-normal hover:bg-muted/50"
+          title="Clicca per modificare le ore"
+        >
+          {display}
+          <Pencil className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-3 p-3" side="bottom">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          <p className="text-sm font-medium">Modifica ore</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor={`hours-${rowData.id}`} className="text-xs text-muted-foreground">
+                Ore
+              </Label>
+              <Input
+                id={`hours-${rowData.id}`}
+                value={hours}
+                onChange={(event) =>
+                  setHours(event.target.value.replace(/\D/g, "").slice(0, 2))
+                }
+                className={timeInputClassName}
+                inputMode="numeric"
+                maxLength={2}
+                placeholder="0"
+                disabled={isSaving}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor={`minutes-${rowData.id}`} className="text-xs text-muted-foreground">
+                Minuti
+              </Label>
+              <Input
+                id={`minutes-${rowData.id}`}
+                value={minutes}
+                onChange={(event) =>
+                  setMinutes(event.target.value.replace(/\D/g, "").slice(0, 2))
+                }
+                className={timeInputClassName}
+                inputMode="numeric"
+                maxLength={2}
+                placeholder="0"
+                disabled={isSaving}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => openEditor(false)}
+              disabled={isSaving}
+            >
+              Annulla
+            </Button>
+            <Button type="submit" size="sm" disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salva"}
+            </Button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TimetrackingDateCell({
+  rowData,
+  editable,
+  onSave,
+}: {
+  rowData: TimetrackingRow;
+  editable: boolean;
+  onSave: (
+    rowData: TimetrackingRow,
+    updates: Record<string, string | number | boolean | null | undefined>
+  ) => Promise<{ success?: boolean; error?: string }>;
+}) {
+  const { toast } = useToast();
+  const router = useRouter();
+  const currentDate = toDateString(rowData.created_at) || "";
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [dateValue, setDateValue] = useState(currentDate);
+  const [optimisticDate, setOptimisticDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDateValue(optimisticDate ?? currentDate);
+  }, [currentDate, optimisticDate]);
+
+  const effectiveDate = optimisticDate ?? rowData.created_at;
+  const displayValue = effectiveDate
+    ? DateManager.formatEUDate(String(effectiveDate))
+    : "N/A";
+
+  const openEditor = (open: boolean) => {
+    if (isSaving) return;
+    if (open) {
+      setDateValue(optimisticDate ?? currentDate);
+    }
+    setIsEditing(open);
+  };
+
+  const handleSave = async () => {
+    if (!dateValue || dateValue === currentDate) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    setOptimisticDate(dateValue);
+    try {
+      const result = await onSave(rowData, { date: dateValue });
+
+      if (result?.error) {
+        setOptimisticDate(null);
+        toast({
+          variant: "destructive",
+          description: result.error,
+        });
+        return;
+      }
+
+      setIsEditing(false);
+      router.refresh();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const display = (
+    <span className={cn("whitespace-nowrap", !effectiveDate && "text-muted-foreground")}>
+      {displayValue}
+    </span>
+  );
+
+  if (!editable) {
+    return display;
+  }
+
+  return (
+    <Popover open={isEditing} onOpenChange={openEditor}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          className="group relative h-8 w-full justify-start px-1 -mx-1 pr-6 text-left font-normal hover:bg-muted/50"
+          title="Clicca per modificare la data"
+        >
+          {display}
+          <Pencil className="pointer-events-none absolute right-1 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 space-y-3 p-3" side="bottom">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor={`date-${rowData.id}`} className="text-sm font-medium">
+              Modifica data
+            </Label>
+            <Input
+              id={`date-${rowData.id}`}
+              type="date"
+              value={dateValue}
+              onChange={(event) => setDateValue(event.target.value)}
+              className="h-9"
+              disabled={isSaving}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => openEditor(false)}
+              disabled={isSaving}
+            >
+              Annulla
+            </Button>
+            <Button type="submit" size="sm" disabled={isSaving || !dateValue}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salva"}
+            </Button>
+          </div>
+        </form>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -683,8 +857,8 @@ export const createColumns = (
         <DataTableColumnHeader column={column} title="Ore" />
       ),
       meta: {
-        headClassName: "w-[88px] px-2",
-        cellClassName: "w-[88px] px-2 whitespace-nowrap",
+        headClassName: "w-[100px] px-2",
+        cellClassName: "w-[100px] px-2 whitespace-nowrap",
       },
       cell: ({ row }) => (
         <TimetrackingHoursCell
@@ -808,17 +982,10 @@ export const createColumns = (
         cellClassName: "w-[110px] px-2",
       },
       cell: ({ row }) => (
-        <EditableCell
-          value={row.original.created_at}
-          row={row}
-          field="date"
-          type="date"
-          onSave={handleTimetrackingEdit}
+        <TimetrackingDateCell
+          rowData={row.original}
           editable={editable}
-          activateOnSingleClick={editable}
-          formatter={(value) => DateManager.formatEUDate(String(value))}
-          placeholder="N/A"
-          className="min-w-0 [&>span]:min-w-0 [&>span]:flex-1"
+          onSave={handleTimetrackingUpdate}
         />
       ),
     },

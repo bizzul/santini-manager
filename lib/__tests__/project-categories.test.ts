@@ -17,6 +17,12 @@ describe("project category nav", () => {
     ]);
   });
 
+  it("uses the same Lucide icons as Produzione kanban boards", () => {
+    expect(
+      PROJECT_PRODUCT_CATEGORIES.map((category) => category.lucideIcon),
+    ).toEqual(["Armchair", "KeyRound", "Building", "List", "Drill", "Settings"]);
+  });
+
   it("parses known slugs and rejects unknown values", () => {
     expect(parseProjectCategorySlug("Porte")).toBe("porte");
     expect(parseProjectCategorySlug(["serramenti"])).toBe("serramenti");

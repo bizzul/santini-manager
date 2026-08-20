@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import {
@@ -19,13 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { validation } from "@/validation/timeTracking/editManual";
+import {
+  editFormSchema,
+  type EditFormValues,
+} from "@/validation/timeTracking/editManual";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchSelect } from "@/components/ui/search-select";
 import { editItem } from "./actions/edit-item.action";
 import { Roles, Task, User, Timetracking } from "@/types/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { logger } from "@/lib/logger";
 import { getProjectLabel } from "@/lib/project-label";
 
@@ -36,28 +39,13 @@ interface RoleEntry {
   };
 }
 
-interface EditFormValues {
-  date: string;
-  description: string;
-  hours: number;
-  minutes: number;
-  roles: string;
-  task: string;
-  userId: string;
-}
-
 function formatDate(date: Date) {
-  // Padding function to add leading zeros if necessary
-  const pad = (num: number) => (num < 10 ? "0" + num : num);
-
-  // Constructing each part of the date
+  const pad = (num: number) => (num < 10 ? "0" + num : String(num));
   const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1); // getMonth() returns 0-11
+  const month = pad(date.getMonth() + 1);
   const day = pad(date.getDate());
   const hours = pad(date.getHours());
   const minutes = pad(date.getMinutes());
-
-  // Constructing the format
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
@@ -75,6 +63,7 @@ const EditForm = ({
   tasks?: Task[];
 }) => {
   const { toast } = useToast();
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>(propTasks);
   const [users, setUsers] = useState<User[]>(propUsers);
   const [roles, setRoles] = useState<Roles[]>(propRoles);
@@ -82,7 +71,7 @@ const EditForm = ({
   const [loadingUserRoles, setLoadingUserRoles] = useState(false);
 
   const form = useForm<EditFormValues>({
-    resolver: zodResolver(validation),
+    resolver: zodResolver(editFormSchema),
     defaultValues: {
       date: "",
       description: "",
@@ -111,8 +100,8 @@ const EditForm = ({
         : formatDate(new Date())
     );
     setValue("description", data.description ?? "");
-    setValue("hours", data.hours!);
-    setValue("minutes", data.minutes!);
+    setValue("hours", Number(data.hours) || 0);
+    setValue("minutes", Number(data.minutes) || 0);
 
     // Roles will be set after userAssignedRoles are loaded
 
@@ -240,19 +229,35 @@ const EditForm = ({
 
   const onSubmit: SubmitHandler<EditFormValues> = async (d) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore: legacy typing constraint
-      const timetracking = await editItem(d, data.id, domain);
+      const nextHours = Number.isFinite(Number(d.hours))
+        ? Number(d.hours)
+        : Number(data.hours) || 0;
+      const nextMinutes = Number.isFinite(Number(d.minutes))
+        ? Number(d.minutes)
+        : Number(data.minutes) || 0;
+
+      const timetracking = await editItem(
+        {
+          date: d.date,
+          description: d.description ?? data.description ?? "",
+          hours: nextHours,
+          minutes: nextMinutes,
+          roles: d.roles || undefined,
+          task: d.task || undefined,
+          userId: d.userId || undefined,
+        },
+        data.id,
+        domain
+      );
       if (timetracking && timetracking.id) {
-        handleClose(false);
         toast({
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore: legacy typing constraint
           description: `Elemento ${timetracking.id} aggiornato correttamente!`,
         });
-        form.reset();
-      } else if (timetracking && timetracking.message) {
-        // Handle validation or server errors
+        handleClose(false);
+        router.refresh();
+        return;
+      }
+      if (timetracking && timetracking.message) {
         toast({
           description: timetracking.message,
           variant: "destructive",
@@ -271,16 +276,23 @@ const EditForm = ({
     <Form {...form}>
       <form className="space-y-4 " onSubmit={form.handleSubmit(onSubmit, (errors) => {
           logger.error("Edit form validation failed:", errors);
+          const firstError = Object.values(errors)[0]?.message;
+          toast({
+            description:
+              typeof firstError === "string"
+                ? firstError
+                : "Controlla i campi del modulo e riprova.",
+            variant: "destructive",
+          });
         })}>
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="date"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Data registrazione</FormLabel>
               <FormControl>
-                <Input type="datetime-local" {...field} />
+                <Input type="datetime-local" {...field} disabled={isSubmitting} />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -289,7 +301,6 @@ const EditForm = ({
         />
         {users.length ? (
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="userId"
             render={({ field }) => (
@@ -298,7 +309,7 @@ const EditForm = ({
                 <FormControl>
                   <SearchSelect
                     value={field.value}
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => field.onChange(String(value))}
                     disabled={isSubmitting}
                     options={
                       Array.isArray(users)
@@ -324,7 +335,6 @@ const EditForm = ({
         )}
 
         <FormField
-          disabled={isSubmitting || loadingUserRoles}
           control={form.control}
           name="roles"
           render={({ field }) => (
@@ -370,7 +380,6 @@ const EditForm = ({
         />
         {tasks.length ? (
           <FormField
-            disabled={isSubmitting}
             control={form.control}
             name="task"
             render={({ field }) => (
@@ -379,7 +388,7 @@ const EditForm = ({
                 <FormControl>
                   <SearchSelect
                     value={field.value}
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => field.onChange(String(value))}
                     disabled={isSubmitting}
                     options={
                       Array.isArray(tasks)
@@ -401,14 +410,27 @@ const EditForm = ({
           <Skeleton className="w-32 h-8" />
         )}
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="hours"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Ore</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input
+                  type="number"
+                  min={0}
+                  max={24}
+                  disabled={isSubmitting}
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  value={Number.isFinite(Number(field.value)) ? field.value : 0}
+                  onChange={(event) =>
+                    field.onChange(
+                      event.target.value === "" ? 0 : Number(event.target.value)
+                    )
+                  }
+                />
               </FormControl>
               {/* <FormDescription>Tipologia</FormDescription> */}
               <FormMessage />
@@ -416,14 +438,27 @@ const EditForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="minutes"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Minuti</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input
+                  type="number"
+                  min={0}
+                  max={59}
+                  disabled={isSubmitting}
+                  name={field.name}
+                  ref={field.ref}
+                  onBlur={field.onBlur}
+                  value={Number.isFinite(Number(field.value)) ? field.value : 0}
+                  onChange={(event) =>
+                    field.onChange(
+                      event.target.value === "" ? 0 : Number(event.target.value)
+                    )
+                  }
+                />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />
@@ -431,14 +466,13 @@ const EditForm = ({
           )}
         />
         <FormField
-          disabled={isSubmitting}
           control={form.control}
           name="description"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} disabled={isSubmitting} />
               </FormControl>
               {/* <FormDescription>Numero articolo</FormDescription> */}
               <FormMessage />

@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useDraggable } from "@dnd-kit/core";
+import { useKanbanDndLock, useLockKanbanDnd } from "./kanban-dnd-lock";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Action,
@@ -158,6 +159,8 @@ function Card({
     process.env.NEXT_PUBLIC_ENABLE_CARD_PREFS === "true";
   const [showModal, setShowModal] = useState(false);
   const [isLocked, setIsLocked] = useState(data.locked);
+  const { isDragLocked } = useKanbanDndLock();
+  useLockKanbanDnd(showModal);
   const [clickTimeout, setClickTimeout] = useState<any | null>(null);
   const { toast } = useToast();
   const [taskSuppliers, setTaskSuppliers] = useState<TaskSupplier[]>([]);
@@ -454,7 +457,7 @@ function Card({
         fromColumn: data.column?.identifier,
         fromColumnPosition: data.column?.position || columnIndex,
       },
-      disabled: isLocked || data.isPreview,
+      disabled: isLocked || data.isPreview || isDragLocked || showModal,
     });
 
   const dragStyle = transform
@@ -1521,41 +1524,6 @@ function Card({
               </div>
             </div>
           )}
-
-          <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
-            <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
-              <DialogHeader className="pr-10">
-                <div className="flex items-center justify-between gap-3">
-                  <DialogTitle>Modifica {data.unique_code}</DialogTitle>
-                  <ManagerGuideButton
-                    label="Apri guida dettaglio progetto"
-                    stepId="offer-details"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                  />
-                </div>
-              </DialogHeader>
-              <EditTaskKanban
-                  handleClose={(wasDeleted?: boolean) => {
-                    setShowModal(false);
-                    if (wasDeleted && onTaskDeleted) {
-                      onTaskDeleted();
-                    }
-                  }}
-                  setIsLocked={setIsLocked}
-                  open={showModal}
-                  setOpenModal={setShowModal}
-                  setOpen={setShowModal}
-                  resource={data}
-                  history={history}
-                  domain={domain}
-                  preferProjectCoverImage={preferProjectCoverImage}
-                  onPreferProjectCoverImageChange={persistCoverPreference}
-                  onTaskUpdated={onTaskDeleted}
-                />
-            </DialogContent>
-          </Dialog>
         </ContextMenuTrigger>
 
         <ContextMenuContent>
@@ -1593,6 +1561,45 @@ function Card({
           </ContextMenuItem>
         </ContextMenuContent>
       </div>
+
+      <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
+        <DialogContent
+          className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted"
+          onPointerDown={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <DialogHeader className="pr-10">
+            <div className="flex items-center justify-between gap-3">
+              <DialogTitle>Modifica {data.unique_code}</DialogTitle>
+              <ManagerGuideButton
+                label="Apri guida dettaglio progetto"
+                stepId="offer-details"
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+              />
+            </div>
+          </DialogHeader>
+          <EditTaskKanban
+            handleClose={(wasDeleted?: boolean) => {
+              setShowModal(false);
+              if (wasDeleted && onTaskDeleted) {
+                onTaskDeleted();
+              }
+            }}
+            setIsLocked={setIsLocked}
+            open={showModal}
+            setOpenModal={setShowModal}
+            setOpen={setShowModal}
+            resource={data}
+            history={history}
+            domain={domain}
+            preferProjectCoverImage={preferProjectCoverImage}
+            onPreferProjectCoverImageChange={persistCoverPreference}
+            onTaskUpdated={onTaskDeleted}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

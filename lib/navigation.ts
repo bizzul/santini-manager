@@ -134,6 +134,7 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
           labelKey: category.labelKey,
           href: `/projects?category=${category.slug}`,
           icon: "faTable" as const,
+          lucideIcon: category.lucideIcon,
           moduleName: "projects",
         })),
       },

@@ -3,6 +3,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { getSiteContext, hasSiteId } from "@/lib/site-context";
 import { createServiceClient } from "@/utils/supabase/server";
 import {
+  isFatturazioneInviataColumn,
   isFatturazioneKanban,
   isFatturazioneSchemaMissing,
   isFatturazioneToDoColumn,
@@ -12,6 +13,7 @@ import { formatDocumentDateStamp } from "@/lib/document-filename";
 import {
   buildFattureOutSummaryPdf,
   type FattureOutSummaryRow,
+  type FattureOutSummarySection,
 } from "@/lib/fatture-out-summary-pdf";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +54,37 @@ function parseTaskIds(payload: unknown): number[] {
   return ids;
 }
 
+function parseLane(payload: unknown): "todo" | "inviata" {
+  return (payload as { lane?: unknown })?.lane === "inviata" ? "inviata" : "todo";
+}
+
+function parseGroups(
+  payload: unknown,
+): Array<{ title: string; taskIds: number[] }> {
+  const raw = (payload as { groups?: unknown })?.groups;
+  if (Array.isArray(raw) && raw.length > 0) {
+    const seen = new Set<number>();
+    return raw.map((group) => {
+      const title =
+        typeof group?.title === "string" && group.title.trim()
+          ? group.title.trim()
+          : "Fatture";
+      const ids: number[] = [];
+      for (const value of Array.isArray(group?.taskIds) ? group.taskIds : []) {
+        const id = Number(value);
+        if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
+        seen.add(id);
+        ids.push(id);
+        if (seen.size >= MAX_TASKS) break;
+      }
+      return { title, taskIds: ids };
+    });
+  }
+
+  const taskIds = parseTaskIds(payload);
+  return taskIds.length > 0 ? [{ title: "Fatture", taskIds }] : [];
+}
+
 export async function POST(req: NextRequest) {
   const userContext = await getUserContext();
   if (!userContext?.userId) {
@@ -67,10 +100,13 @@ export async function POST(req: NextRequest) {
   }
 
   const payload = await req.json().catch(() => null);
-  const requestedIds = parseTaskIds(payload);
+  const lane = parseLane(payload);
+  const groups = parseGroups(payload);
+  const requestedIds = groups.flatMap((group) => group.taskIds);
+  const columnLabel = lane === "inviata" ? "Inviate" : "To Do";
   if (requestedIds.length === 0) {
     return NextResponse.json(
-      { error: "Nessuna fattura da stampare nella colonna To Do" },
+      { error: `Nessuna fattura da stampare nella colonna ${columnLabel}` },
       { status: 400 },
     );
   }
@@ -159,7 +195,10 @@ type TaskRow = {
   const eligible = (tasks ?? []).filter((task) => {
     const kanban = asSingle(task.kanban as never);
     const column = asSingle(task.column as never);
-    return isFatturazioneKanban(kanban, column) && isFatturazioneToDoColumn(column);
+    if (!isFatturazioneKanban(kanban, column)) return false;
+    return lane === "inviata"
+      ? isFatturazioneInviataColumn(column)
+      : isFatturazioneToDoColumn(column);
   });
   const eligibleById = new Map(eligible.map((task) => [Number(task.id), task]));
   const ordered = requestedIds
@@ -168,7 +207,7 @@ type TaskRow = {
 
   if (ordered.length === 0) {
     return NextResponse.json(
-      { error: "Nessuna fattura To Do trovata" },
+      { error: `Nessuna fattura ${columnLabel} trovata` },
       { status: 404 },
     );
   }
@@ -221,28 +260,38 @@ type TaskRow = {
     supplementsByTaskId.set(taskId, current);
   }
 
-  const rows: FattureOutSummaryRow[] = ordered.map((task) => {
-    const comments = parseTypedComments({
-      typed_comments: (task as { typed_comments?: unknown }).typed_comments,
-      other: task.other,
-    });
-    const commentParts = [comments.produzione, comments.posa]
-      .map((part) => part.trim())
-      .filter(Boolean);
-    const readiness = readinessByTaskId.get(Number(task.id));
-    return {
-      uniqueCode: task.unique_code || `P${task.id}`,
-      name: task.title || task.name || "-",
-      clientName: clientName(asSingle(task.client as never)),
-      objectName: task.name || task.title || "-",
-      value: Number(task.sellPrice) || 0,
-      supplements: supplementsByTaskId.get(Number(task.id)) ?? [],
-      comments: commentParts.join("\n") || "-",
-      invoicingNotes: comments.fatturazione.trim(),
-      invoicingStatus: readiness?.stato || "In attesa",
-      sameAsOffer: Boolean(readiness?.uguale_offerta),
-    };
-  });
+  const rowsById = new Map(
+    ordered.map((task) => {
+      const comments = parseTypedComments({
+        typed_comments: (task as { typed_comments?: unknown }).typed_comments,
+        other: task.other,
+      });
+      const commentParts = [comments.produzione, comments.posa]
+        .map((part) => part.trim())
+        .filter(Boolean);
+      const readiness = readinessByTaskId.get(Number(task.id));
+      const row: FattureOutSummaryRow = {
+        uniqueCode: task.unique_code || `P${task.id}`,
+        name: task.title || task.name || "-",
+        clientName: clientName(asSingle(task.client as never)),
+        objectName: task.name || task.title || "-",
+        value: Number(task.sellPrice) || 0,
+        supplements: supplementsByTaskId.get(Number(task.id)) ?? [],
+        comments: commentParts.join("\n") || "-",
+        invoicingNotes: comments.fatturazione.trim(),
+        invoicingStatus: readiness?.stato || "In attesa",
+        sameAsOffer: Boolean(readiness?.uguale_offerta),
+      };
+      return [Number(task.id), row] as const;
+    }),
+  );
+
+  const sections: FattureOutSummarySection[] = groups.map((group) => ({
+    title: group.title,
+    rows: group.taskIds
+      .map((id) => rowsById.get(id))
+      .filter((row): row is FattureOutSummaryRow => Boolean(row)),
+  }));
 
   let companyName = siteContext.siteData?.name || "FDM";
   if (!siteContext.siteData?.name) {
@@ -256,16 +305,17 @@ type TaskRow = {
 
   const pdfBytes = await buildFattureOutSummaryPdf({
     companyName,
+    columnLabel,
     generatedAt: new Date(),
-    rows,
+    sections,
   });
 
-  const filename = `RiepilogoFattureOut_${formatDocumentDateStamp(new Date())}.pdf`;
+  const filename = `RiepilogoFattureOut_${columnLabel.replace(/\s+/g, "")}_${formatDocumentDateStamp(new Date())}.pdf`;
   return new NextResponse(Buffer.from(pdfBytes), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `inline; filename="${filename}"`,
       "Cache-Control": "no-store",
     },
   });

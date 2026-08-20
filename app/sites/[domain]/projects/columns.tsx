@@ -23,7 +23,6 @@ import {
   FileText,
   MapPin,
   Settings,
-  Flag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { disableWeekendUnlessAllowed } from "@/lib/utils";
@@ -301,42 +300,6 @@ export const createColumns = (config: ColumnsConfig): ColumnDef<ProjectRow>[] =>
       ),
       enableSorting: false,
       enableHiding: false,
-    },
-
-    // --- Paese (bandiera) ---
-    {
-      id: "country_flag",
-      header: () => (
-        <div className="flex items-center justify-center w-full">
-          <Flag className="h-4 w-4" />
-        </div>
-      ),
-      size: 44,
-      minSize: 36,
-      maxSize: 60,
-      enableResizing: false,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const cc = row.original.Client?.countryCode;
-        return (
-          <div className="flex items-center justify-center w-full h-full">
-            {cc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`https://flagcdn.com/w40/${cc.toLowerCase()}.png`}
-                alt={cc}
-                title={cc}
-                className="h-4 w-6 shrink-0 rounded-sm border border-border/60 object-cover"
-              />
-            ) : (
-              <div
-                title="Paese non impostato"
-                className="h-4 w-6 shrink-0 rounded-sm border border-dashed border-muted-foreground/30"
-              />
-            )}
-          </div>
-        );
-      },
     },
 
     // --- Codice (link to project detail) ---

@@ -31,10 +31,16 @@ export type FattureOutSummaryRow = {
   sameAsOffer: boolean;
 };
 
+export type FattureOutSummarySection = {
+  title: string;
+  rows: FattureOutSummaryRow[];
+};
+
 export type FattureOutSummaryPdfInput = {
   companyName: string;
+  columnLabel: string;
   generatedAt?: Date;
-  rows: FattureOutSummaryRow[];
+  sections: FattureOutSummarySection[];
 };
 
 const INK = rgb(0.08, 0.1, 0.14);
@@ -64,6 +70,10 @@ export function formatSupplementLine(line: FattureOutSupplementLine): string {
   const price = Number(line.price) || 0;
   const total = qty * price;
   return `${line.description}  ${qty} x ${formatInvoiceChf(price)} = ${formatInvoiceChf(total)}`;
+}
+
+export function sectionTotal(rows: FattureOutSummaryRow[]): number {
+  return rows.reduce((sum, row) => sum + (row.value || 0), 0);
 }
 
 function formatSheetDate(date: Date): string {
@@ -99,7 +109,9 @@ export async function buildFattureOutSummaryPdf(
   const contentWidth = PAGE_WIDTH - PAGE_MARGIN * 2;
   const valueWidth = contentWidth - BOX_PAD * 2 - LABEL_WIDTH;
   const generatedAt = input.generatedAt ?? new Date();
-  const totalValue = input.rows.reduce((sum, row) => sum + (row.value || 0), 0);
+  const sections = input.sections ?? [];
+  const allRows = sections.flatMap((section) => section.rows);
+  const totalValue = sectionTotal(allRows);
 
   const wrap = (text: string, font: PDFFont, size: number, width: number) =>
     wrapPdfText(toPdfText(text || ""), font, size, width);
@@ -135,7 +147,7 @@ export async function buildFattureOutSummaryPdf(
   drawText("Riepilogo fatture", PAGE_MARGIN, 16, fontBold);
   y -= 18;
   drawText(
-    `${input.companyName}  |  Colonna To Do  |  ${formatSheetDate(generatedAt)}`,
+    `${input.companyName}  |  Colonna ${input.columnLabel}  |  ${formatSheetDate(generatedAt)}`,
     PAGE_MARGIN,
     9,
     fontRegular,
@@ -143,15 +155,21 @@ export async function buildFattureOutSummaryPdf(
   );
   y -= 14;
   drawText(
-    `Pratiche: ${input.rows.length}    Totale: ${formatInvoiceChf(totalValue)}`,
+    `Pratiche: ${allRows.length}    Totale: ${formatInvoiceChf(totalValue)}`,
     PAGE_MARGIN,
     10,
     fontBold,
   );
   y -= 16;
 
-  if (input.rows.length === 0) {
-    drawText("Nessuna fattura in To Do.", PAGE_MARGIN, 11, fontRegular, MUTED);
+  if (allRows.length === 0) {
+    drawText(
+      `Nessuna fattura in ${input.columnLabel}.`,
+      PAGE_MARGIN,
+      11,
+      fontRegular,
+      MUTED,
+    );
     return pdfDoc.save();
   }
 
@@ -205,7 +223,7 @@ export async function buildFattureOutSummaryPdf(
     ];
   };
 
-  for (const row of input.rows) {
+  const drawRow = (row: FattureOutSummaryRow) => {
     const fields = labeledLines(row);
     const fieldHeight = fields.reduce(
       (sum, field) => sum + Math.max(field.lines.length, 1) * LINE,
@@ -259,6 +277,30 @@ export async function buildFattureOutSummaryPdf(
     }
 
     y -= boxHeight + GAP;
+  };
+
+  for (const section of sections) {
+    ensureSpace(LINE * 3);
+    drawText(section.title, PAGE_MARGIN, 12, fontBold);
+    y -= 16;
+
+    if (section.rows.length === 0) {
+      drawText("Nessuna fattura in questa categoria.", PAGE_MARGIN, 9, fontRegular, MUTED);
+      y -= 14;
+    } else {
+      for (const row of section.rows) {
+        drawRow(row);
+      }
+    }
+
+    ensureSpace(LINE * 2);
+    drawText(
+      `Totale ${section.title}: ${section.rows.length} pratiche    ${formatInvoiceChf(sectionTotal(section.rows))}`,
+      PAGE_MARGIN,
+      10,
+      fontBold,
+    );
+    y -= 20;
   }
 
   return pdfDoc.save();

@@ -3,21 +3,46 @@
  * Slugs go in `?category=` on `/projects`; names match sellproduct_categories.name.
  */
 
+/**
+ * Lucide names match the Produzione kanban boards (see `scripts/seed-scherman.ts`).
+ */
 export const PROJECT_PRODUCT_CATEGORIES = [
   {
     slug: "arredamento",
     name: "Arredamento",
     labelKey: "nav.projectsArredamento",
+    lucideIcon: "Armchair",
   },
-  { slug: "porte", name: "Porte", labelKey: "nav.projectsPorte" },
+  {
+    slug: "porte",
+    name: "Porte",
+    labelKey: "nav.projectsPorte",
+    lucideIcon: "KeyRound",
+  },
   {
     slug: "serramenti",
     name: "Serramenti",
     labelKey: "nav.projectsSerramenti",
+    lucideIcon: "Building",
   },
-  { slug: "accessori", name: "Accessori", labelKey: "nav.projectsAccessori" },
-  { slug: "posa", name: "Posa", labelKey: "nav.projectsPosa" },
-  { slug: "service", name: "Service", labelKey: "nav.projectsService" },
+  {
+    slug: "accessori",
+    name: "Accessori",
+    labelKey: "nav.projectsAccessori",
+    lucideIcon: "List",
+  },
+  {
+    slug: "posa",
+    name: "Posa",
+    labelKey: "nav.projectsPosa",
+    lucideIcon: "Drill",
+  },
+  {
+    slug: "service",
+    name: "Service",
+    labelKey: "nav.projectsService",
+    lucideIcon: "Settings",
+  },
 ] as const;
 
 export type ProjectCategorySlug =

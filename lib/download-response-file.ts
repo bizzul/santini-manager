@@ -45,3 +45,25 @@ export async function downloadResponseFile(
 
   return filename;
 }
+
+export async function openResponsePdfPreview(
+  response: Response,
+  fallbackFilename: string,
+) {
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    const fallbackResponse = new Response(blob, {
+      headers: {
+        "Content-Disposition":
+          response.headers.get("Content-Disposition") ||
+          `attachment; filename="${fallbackFilename}"`,
+      },
+    });
+    await downloadResponseFile(fallbackResponse, fallbackFilename);
+    window.URL.revokeObjectURL(url);
+    return;
+  }
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
+}

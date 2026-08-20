@@ -13,6 +13,11 @@ import {
 import dynamic from "next/dynamic";
 import Card from "./Card";
 import OfferMiniCard from "./OfferMiniCard";
+import {
+  KanbanDndLockProvider,
+  useKanbanDndLock,
+  useLockKanbanDnd,
+} from "./kanban-dnd-lock";
 
 // Modal/dialog-only components: lazy-loaded so they stay out of the initial
 // kanban bundle and are fetched on first interaction (or only on offer boards).
@@ -143,6 +148,7 @@ const Column = ({
   const [isMovingTask, setIsMovingTask] = useState(false);
   const [modalCreate, setModalCreate] = useState(false);
   const [modalCreateOffer, setModalCreateOffer] = useState(false);
+  useLockKanbanDnd(modalCreate || modalCreateOffer);
   const [isLoadingCards, setIsLoadingCards] = useState(true);
   const [readinessFilter, setReadinessFilter] = useState<
     "all" | "pronto" | "in_attesa"
@@ -413,6 +419,11 @@ const Column = ({
     });
   };
 
+  const invoiceTaskIds = (cardsToPrint: any[]) =>
+    sortCards(cardsToPrint)
+      .map((card: { id?: number }) => Number(card?.id))
+      .filter((id: number) => Number.isFinite(id) && id > 0);
+
   const renderStat = (label: string, value: any) => (
     <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -460,9 +471,59 @@ const Column = ({
             {isFattureToDoColumn && !isPreviewMode ? (
               <FattureOutSummaryPrintButton
                 domain={domain}
-                taskIds={sortCards(visibleCards)
-                  .map((card: { id?: number }) => Number(card?.id))
-                  .filter((id: number) => Number.isFinite(id) && id > 0)}
+                lane="todo"
+                groups={[
+                  {
+                    title: "Pronte",
+                    taskIds: invoiceTaskIds(
+                      cards.filter(
+                        (card: any) =>
+                          resolveFatturazioneReadinessStato(
+                            card?.fatturazioneReadiness,
+                          ) === "pronto",
+                      ),
+                    ),
+                  },
+                  {
+                    title: "Non pronte",
+                    taskIds: invoiceTaskIds(
+                      cards.filter(
+                        (card: any) =>
+                          resolveFatturazioneReadinessStato(
+                            card?.fatturazioneReadiness,
+                          ) !== "pronto",
+                      ),
+                    ),
+                  },
+                ]}
+              />
+            ) : null}
+            {isFattureInviataColumn && !isPreviewMode ? (
+              <FattureOutSummaryPrintButton
+                domain={domain}
+                lane="inviata"
+                groups={[
+                  {
+                    title: "Scadute",
+                    taskIds: invoiceTaskIds(
+                      cards.filter(
+                        (card: any) =>
+                          getFatturazioneInviataAge(card, history).state ===
+                          "late",
+                      ),
+                    ),
+                  },
+                  {
+                    title: "Non scadute",
+                    taskIds: invoiceTaskIds(
+                      cards.filter(
+                        (card: any) =>
+                          getFatturazioneInviataAge(card, history).state !==
+                          "late",
+                      ),
+                    ),
+                  },
+                ]}
               />
             ) : null}
             {isFattureInviataColumn && (
@@ -495,7 +556,11 @@ const Column = ({
                     <Plus className="h-4 w-4" />
                   </button>
                 </DialogTrigger>
-                <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted">
+                <DialogContent
+                  className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
                   <DialogHeader className="pr-10">
                     <div className="flex items-center justify-between gap-3">
                       <DialogTitle>Nuova offerta</DialogTitle>
@@ -545,7 +610,11 @@ const Column = ({
                       <Plus className="h-4 w-4" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[1100px] flex-col overflow-hidden p-0">
+                  <DialogContent
+                    className="flex max-h-[90vh] w-[95vw] max-w-[1100px] flex-col overflow-hidden p-0"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onMouseDown={(event) => event.stopPropagation()}
+                  >
                     <DialogHeader className="border-b px-6 py-4">
                       <DialogTitle>Crea progetto</DialogTitle>
                       <DialogDescription>Crea un progetto nuovo</DialogDescription>
@@ -755,7 +824,7 @@ interface KanbanBoardTypes {
   domain: string;
 }
 
-function KanbanBoard({
+function KanbanBoardInner({
   name,
   clients,
   products,
@@ -1372,9 +1441,15 @@ function KanbanBoard({
   });
 
   const sensors = useSensors(mouseSensor, touchSensor);
+  const { isDragLocked } = useKanbanDndLock();
+  useLockKanbanDnd(
+    showMoveConfirm || showFollowUpDialog || showDraftCompletion
+  );
 
   // Handle drag end event
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (isDragLocked) return;
+
     const { active, over } = event;
 
     if (!over) return;
@@ -1552,11 +1627,16 @@ function KanbanBoard({
 
   return (
     <DndContext
-      sensors={sensors}
+      sensors={isDragLocked ? [] : sensors}
       collisionDetection={pointerWithin}
+      autoScroll={!isDragLocked}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col h-full overflow-hidden">
+      <div
+        className={`flex flex-col h-full overflow-hidden${
+          isDragLocked ? " pointer-events-none" : ""
+        }`}
+      >
         {kanban && (
           <div className="shrink-0 w-full pt-4 pb-2 px-8 overflow-x-auto">
             <div style={{ width: `${boardColumnsWidthRem}rem` }} className="min-w-max">
@@ -1998,6 +2078,14 @@ function KanbanBoard({
         />
       )}
     </DndContext>
+  );
+}
+
+function KanbanBoard(props: KanbanBoardTypes) {
+  return (
+    <KanbanDndLockProvider>
+      <KanbanBoardInner {...props} />
+    </KanbanDndLockProvider>
   );
 }
 

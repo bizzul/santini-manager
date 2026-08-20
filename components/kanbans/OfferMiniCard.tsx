@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
+import { useKanbanDndLock } from "./kanban-dnd-lock";
 import { CSS } from "@dnd-kit/utilities";
 import { Task, Client, KanbanColumn } from "@/types/supabase";
 import {
@@ -106,6 +107,7 @@ export default function OfferMiniCard({
     [data],
   );
 
+  const { isDragLocked } = useKanbanDndLock();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: id.toString(),
@@ -113,7 +115,7 @@ export default function OfferMiniCard({
         id,
         fromColumn: data.column?.identifier,
       },
-      disabled: data.locked || data.isPreview,
+      disabled: data.locked || data.isPreview || isDragLocked,
     });
 
   const dragStyle = transform

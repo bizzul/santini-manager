@@ -105,6 +105,14 @@ describe("SITE_NAV_GROUPS", () => {
       "/projects?category=posa",
       "/projects?category=service",
     ]);
+    expect(projects?.children?.map((child) => child.lucideIcon)).toEqual([
+      "Armchair",
+      "KeyRound",
+      "Building",
+      "List",
+      "Drill",
+      "Settings",
+    ]);
 
     const categories = SITE_NAV_GROUPS[5].items.find(
       (item) => item.key === "categories"

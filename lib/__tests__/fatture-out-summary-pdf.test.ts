@@ -52,33 +52,44 @@ describe("fatture-out-summary-pdf", () => {
   it("prints stacked invoice fields for administration", async () => {
     const bytes = await buildFattureOutSummaryPdf({
       companyName: "Santini SA",
+      columnLabel: "To Do",
       generatedAt: new Date(2026, 7, 19),
-      rows: [
+      sections: [
         {
-          uniqueCode: "26-035-FATT",
-          name: "Commessa FFS",
-          clientName: "Ferrovie Federali Svizzere FFS",
-          objectName: "Porte piano 2",
-          value: 1600,
-          supplements: [
-            { description: "Trasporto", quantity: 1, price: 80 },
+          title: "Pronte",
+          rows: [
+            {
+              uniqueCode: "26-035-FATT",
+              name: "Commessa FFS",
+              clientName: "Ferrovie Federali Svizzere FFS",
+              objectName: "Porte piano 2",
+              value: 1600,
+              supplements: [
+                { description: "Trasporto", quantity: 1, price: 80 },
+              ],
+              comments: "Attendere conferma misure.",
+              invoicingNotes: "Fatturare acconto 30%.",
+              invoicingStatus: "Pronto",
+              sameAsOffer: false,
+            },
           ],
-          comments: "Attendere conferma misure.",
-          invoicingNotes: "Fatturare acconto 30%.",
-          invoicingStatus: "Pronto",
-          sameAsOffer: false,
         },
         {
-          uniqueCode: "26-040-FATT",
-          name: "Armadio nicchia",
-          clientName: "Tedeschi Antonietta",
-          objectName: "Armadio nicchia",
-          value: 2400,
-          supplements: [],
-          comments: "",
-          invoicingNotes: "",
-          invoicingStatus: "In attesa",
-          sameAsOffer: true,
+          title: "Non pronte",
+          rows: [
+            {
+              uniqueCode: "26-040-FATT",
+              name: "Armadio nicchia",
+              clientName: "Tedeschi Antonietta",
+              objectName: "Armadio nicchia",
+              value: 2400,
+              supplements: [],
+              comments: "",
+              invoicingNotes: "",
+              invoicingStatus: "In attesa",
+              sameAsOffer: true,
+            },
+          ],
         },
       ],
     });
@@ -101,5 +112,62 @@ describe("fatture-out-summary-pdf", () => {
     expect(visible).toContain("Fatturare acconto 30%.");
     expect(visible).toContain("Uguale all'offerta");
     expect(visible).toContain("26-040-FATT");
+    expect(visible).toContain("Pronte");
+    expect(visible).toContain("Non pronte");
+    expect(visible).toContain("Totale Pronte");
+    expect(visible).toContain("Totale Non pronte");
+  });
+
+  it("prints expired invoices before non-expired ones with category totals", async () => {
+    const bytes = await buildFattureOutSummaryPdf({
+      companyName: "Santini SA",
+      columnLabel: "Inviate",
+      generatedAt: new Date(2026, 7, 20),
+      sections: [
+        {
+          title: "Scadute",
+          rows: [
+            {
+              uniqueCode: "26-066-FATT",
+              name: "Fattura scaduta",
+              clientName: "Cliente A",
+              objectName: "Oggetto A",
+              value: 1000,
+              supplements: [],
+              comments: "",
+              invoicingNotes: "",
+              invoicingStatus: "Pronto",
+              sameAsOffer: true,
+            },
+          ],
+        },
+        {
+          title: "Non scadute",
+          rows: [
+            {
+              uniqueCode: "26-070-FATT",
+              name: "Fattura aperta",
+              clientName: "Cliente B",
+              objectName: "Oggetto B",
+              value: 2500,
+              supplements: [],
+              comments: "",
+              invoicingNotes: "",
+              invoicingStatus: "Pronto",
+              sameAsOffer: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    const visible = visiblePdfText(bytes);
+    expect(visible).toContain("Colonna Inviate");
+    expect(visible.indexOf("Scadute")).toBeLessThan(visible.indexOf("Non scadute"));
+    expect(visible.indexOf("26-066-FATT")).toBeLessThan(visible.indexOf("26-070-FATT"));
+    expect(visible).toContain("Totale Scadute");
+    expect(visible).toContain("Totale Non scadute");
+    expect(visible).toContain("CHF 1'000.00");
+    expect(visible).toContain("CHF 2'500.00");
   });
 });

@@ -52,7 +52,7 @@ export async function editItem(props: any, id: number, domain?: string) {
       const currentEmployeeId = currentUserRecord?.id ?? null;
       const { data: existingEntry, error: existingEntryError } = await supabase
         .from("Timetracking")
-        .select("id, employee_id")
+        .select("id, employee_id, hours, minutes")
         .eq("id", id)
         .maybeSingle();
 
@@ -77,7 +77,13 @@ export async function editItem(props: any, id: number, domain?: string) {
         return { message: "Non puoi riassegnare il consuntivo a un altro collaboratore" };
       }
 
-      const totalTimeInHours = result.data.hours + result.data.minutes / 60;
+      const nextHours =
+        result.data.hours != null ? result.data.hours : existingEntry.hours ?? 0;
+      const nextMinutes =
+        result.data.minutes != null
+          ? result.data.minutes
+          : existingEntry.minutes ?? 0;
+      const totalTimeInHours = nextHours + nextMinutes / 60;
       const roundedTotalTime = parseFloat(totalTimeInHours.toFixed(2));
 
       // Check if the user used the CNC
@@ -88,17 +94,23 @@ export async function editItem(props: any, id: number, domain?: string) {
 
       const updateData: Record<string, unknown> = {
         description: result.data.description,
-        hours: result.data.hours,
-        minutes: result.data.minutes,
+        hours: nextHours,
+        minutes: nextMinutes,
         totalTime: roundedTotalTime,
         use_cnc: useCNC,
-        site_id: siteId,
       };
 
-      if (result.data.date || result.data.created_at) {
-        updateData.created_at = new Date(
-          result.data.date || result.data.created_at!
-        );
+      // Keep the existing site when the domain lookup fails instead of nulling it.
+      if (siteId) {
+        updateData.site_id = siteId;
+      }
+
+      // Only rewrite created_at when the caller actually sent a date.
+      // Hours-only edits must not shift the stored calendar day.
+      if (result.data.date) {
+        updateData.created_at = result.data.date;
+      } else if (result.data.created_at) {
+        updateData.created_at = result.data.created_at;
       }
       if (result.data.task != null) {
         updateData.task_id = Number(result.data.task);
@@ -182,6 +194,16 @@ export async function editItem(props: any, id: number, domain?: string) {
       return { message: "Modifica elemento fallita!", error: error.message };
     }
   } else {
-    return { message: "Validazione elemento fallita!", error: result.error };
+    const flat = result.error.flatten();
+    const fieldMessages = Object.entries(flat.fieldErrors)
+      .map(([field, messages]) => `${field}: ${(messages as string[]).join(", ")}`)
+      .join("; ");
+    const formMessages = flat.formErrors.join("; ");
+    const details = [fieldMessages, formMessages].filter(Boolean).join(" | ");
+    console.error("Timetracking edit validation failed:", details || result.error);
+    return {
+      message: details || "Validazione elemento fallita!",
+      error: details || "Validazione elemento fallita!",
+    };
   }
 }

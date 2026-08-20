@@ -3,24 +3,35 @@
 import { useState } from "react";
 import { Loader2, Printer } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { downloadResponseFile } from "@/lib/download-response-file";
+import { openResponsePdfPreview } from "@/lib/download-response-file";
+
+export type FattureOutSummaryLane = "todo" | "inviata";
+
+export type FattureOutSummaryPrintGroup = {
+  title: string;
+  taskIds: number[];
+};
 
 type FattureOutSummaryPrintButtonProps = {
   domain: string;
-  taskIds: number[];
+  lane: FattureOutSummaryLane;
+  groups: FattureOutSummaryPrintGroup[];
 };
 
 export function FattureOutSummaryPrintButton({
   domain,
-  taskIds,
+  lane,
+  groups,
 }: FattureOutSummaryPrintButtonProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const { toast } = useToast();
+  const columnLabel = lane === "inviata" ? "Inviate" : "To Do";
+  const taskCount = groups.reduce((sum, group) => sum + group.taskIds.length, 0);
 
   const handlePrint = async () => {
-    if (taskIds.length === 0) {
+    if (taskCount === 0) {
       toast({
-        description: "Nessuna fattura in To Do da stampare.",
+        description: `Nessuna fattura in ${columnLabel} da stampare.`,
       });
       return;
     }
@@ -33,7 +44,7 @@ export function FattureOutSummaryPrintButton({
           "Content-Type": "application/json",
           "x-site-domain": domain,
         },
-        body: JSON.stringify({ taskIds }),
+        body: JSON.stringify({ lane, groups }),
       });
 
       if (!response.ok) {
@@ -43,7 +54,7 @@ export function FattureOutSummaryPrintButton({
         );
       }
 
-      await downloadResponseFile(response, "riepilogo-fatture-out.pdf");
+      await openResponsePdfPreview(response, "riepilogo-fatture-out.pdf");
     } catch (error) {
       toast({
         variant: "destructive",
@@ -63,8 +74,8 @@ export function FattureOutSummaryPrintButton({
       onClick={handlePrint}
       disabled={isPrinting}
       className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:text-foreground disabled:opacity-60"
-      title="Stampa riepilogo fatture To Do"
-      aria-label="Stampa riepilogo fatture To Do"
+      title={`Anteprima PDF fatture ${columnLabel}`}
+      aria-label={`Anteprima PDF fatture ${columnLabel}`}
     >
       {isPrinting ? (
         <Loader2 className="h-4 w-4 animate-spin" />
