@@ -4,6 +4,7 @@ import { normalizeClientContactPeople } from "@/lib/client-contacts";
 import { getSiteContext } from "@/lib/site-context";
 import { logger } from "@/lib/logger";
 import { validation } from "@/validation/clients/create";
+import { generateClientCode, normalizeClientType } from "@/lib/client-code";
 
 const log = logger.scope("Clients");
 
@@ -109,16 +110,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const clientType = result.data.clientType || "BUSINESS";
-        const baseCode =
-            (clientType === "BUSINESS"
-                ? result.data.businessName
-                : `${result.data.individualFirstName || ""}${result.data.individualLastName || ""}`) ||
-            "CL";
-        const generatedCode = baseCode
-            .replace(/\s+/g, "")
-            .toUpperCase()
-            .slice(0, 4) || "CL";
+        const clientType = normalizeClientType(result.data.clientType);
+        const generatedCode = generateClientCode({
+            ...result.data,
+            clientType,
+        });
 
         const insertData: Record<string, unknown> = {
             individualTitle:

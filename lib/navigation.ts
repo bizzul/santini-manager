@@ -9,8 +9,9 @@
  *   / "direttore"). `user` is treated as collaborator, `admin`/`superadmin`
  *   as space director.
  * - Groups without `minRole` are visible to every role.
- * - `minRole: "admin"` hides Anagrafiche, Listino e prezzi, Configurazione
- *   from `user`.
+ * - `minRole: "admin"` hides Listino e prezzi and Configurazione from `user`.
+ * - Anagrafiche stays visible: collaborators need Clienti (and related
+ *   records) for daily work.
  *
  * Items intentionally left out of the 6-area tree (URL + footer still work):
  * Ore, Errori, Reports, Fabbrica, Treemap, Area Collaboratore,
@@ -198,7 +199,6 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
   {
     id: "anagrafiche",
     labelKey: "nav.groupAnagrafiche",
-    minRole: "admin",
     items: [
       {
         key: "contacts",

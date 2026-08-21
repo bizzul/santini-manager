@@ -55,9 +55,8 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               </FormLabel>
               <FormControl>
                 <RadioGroup
-                  {...field}
                   onValueChange={field.onChange}
-                  defaultValue={field.value}
+                  value={field.value}
                   disabled={isSubmitting}
                   className="flex space-x-6"
                 >
@@ -92,19 +91,13 @@ export const MainClientForm: FC<MainClientFormProps> = ({
               <FormLabel className="text-base font-medium text-foreground mb-3 block">
                 Lingua
               </FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-                disabled={isSubmitting}
-              >
-                <FormControl>
-                  <LanguageCombo
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={isSubmitting}
-                  />
-                </FormControl>
-              </Select>
+              <FormControl>
+                <LanguageCombo
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isSubmitting}
+                />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

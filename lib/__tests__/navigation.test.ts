@@ -134,7 +134,7 @@ describe("roleMeetsMin", () => {
 });
 
 describe("buildSiteNavigation", () => {
-  it("hides anagrafiche, listino and configurazione from user", () => {
+  it("hides listino and configurazione from user but keeps anagrafiche", () => {
     const groups = buildSiteNavigation({
       basePath: "/sites/santini",
       enabledModules: ALL_MODULES,
@@ -146,6 +146,7 @@ describe("buildSiteNavigation", () => {
       "panoramica",
       "lavoro",
       "pianificazione",
+      "anagrafiche",
     ]);
   });
 

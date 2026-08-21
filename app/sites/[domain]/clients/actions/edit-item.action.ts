@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { validation } from "@/validation/clients/create";
 import { normalizeClientContactPeople } from "@/lib/client-contacts";
+import { generateClientCode, normalizeClientType } from "@/lib/client-code";
 import { getSiteData } from "@/lib/fetchers";
 import { logger } from "@/lib/logger";
 
@@ -49,41 +50,35 @@ export async function editItem(props: Client, id: number, domain: string) {
     }
 
     try {
-      const firstInitials = result.data?.individualFirstName
-        ? result.data?.individualFirstName.slice(0, 2)
-        : undefined;
-      const lastInitials = result.data?.individualLastName
-        ? result.data?.individualLastName.slice(0, 2)
-        : undefined;
-
-      const generatedCode = firstInitials ? firstInitials + lastInitials : "";
-      // Concatenate the initials using the + operator
+      const clientType = normalizeClientType(result.data.clientType);
 
       const { data: saveData, error: updateError } = await supabase
         .from("Client")
         .update({
-          individualTitle: result.data?.clientType === "INDIVIDUAL"
-            ? result.data?.individualTitle
-            : "",
-          businessName: result.data?.clientType === "BUSINESS"
-            ? result.data?.businessName
-            : "",
-          individualFirstName: result.data?.individualFirstName,
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore: legacy typing constraint
-          clientType: result.data.clientType,
-          individualLastName: result.data?.individualLastName,
-          address: result.data?.address,
-          addressSecondary: result.data?.addressSecondary,
-          city: result.data?.city,
-          countryCode: result.data?.countryCode,
-          email: result.data?.email,
-          mobilePhone: result.data?.phone,
-          landlinePhone: result.data?.phone,
-          zipCode: result.data?.zipCode !== 0 ? result.data?.zipCode : null,
-          clientLanguage: result.data?.clientLanguage?.trim() || "Italiano",
-          contactPeople: normalizeClientContactPeople(result.data?.contactPeople),
-          code: generatedCode,
+          individualTitle:
+            clientType === "INDIVIDUAL" ? result.data.individualTitle || "" : "",
+          businessName:
+            clientType === "BUSINESS" ? result.data.businessName || "" : "",
+          individualFirstName:
+            clientType === "INDIVIDUAL"
+              ? result.data.individualFirstName || ""
+              : "",
+          individualLastName:
+            clientType === "INDIVIDUAL"
+              ? result.data.individualLastName || ""
+              : "",
+          clientType,
+          address: result.data.address,
+          addressSecondary: result.data.addressSecondary,
+          city: result.data.city,
+          countryCode: result.data.countryCode,
+          email: result.data.email,
+          mobilePhone: result.data.phone,
+          landlinePhone: result.data.phone,
+          zipCode: result.data.zipCode !== 0 ? result.data.zipCode : null,
+          clientLanguage: result.data.clientLanguage?.trim() || "Italiano",
+          contactPeople: normalizeClientContactPeople(result.data.contactPeople),
+          code: generateClientCode({ ...result.data, clientType }),
         })
         .eq("id", id)
         .select()
@@ -117,6 +112,7 @@ export async function editItem(props: Client, id: number, domain: string) {
         }
       }
 
+      revalidatePath(`/sites/${domain}/clients`);
       revalidatePath("/clients");
       return { success: true, data: saveData };
     } catch (error: any) {

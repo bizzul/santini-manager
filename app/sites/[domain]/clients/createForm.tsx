@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/components/ui/use-toast";
 import { createItem } from "./actions/create-item.action";
 import { validation } from "@/validation/clients/create";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 // Components
 import { MainClientForm } from "@/components/clients/forms/main-client-form";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,14 @@ type CreateItemResult =
   | { message: string; error: string }
   | void;
 
-const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
+const CreateClientForm = ({
+  handleClose,
+}: {
+  handleClose: (success?: boolean) => void;
+}) => {
   const { toast } = useToast();
   const params = useParams();
+  const router = useRouter();
   const domain = params?.domain as string;
 
   const form = useForm<FormData>({
@@ -69,7 +74,8 @@ const CreateClientForm = ({ handleClose }: { handleClose: () => void }) => {
       logger.debug("result", result);
 
       if (result && "success" in result && result.success) {
-        handleClose();
+        handleClose(true);
+        router.refresh();
         toast({
           description: `Cliente ${
             data.businessName ||
