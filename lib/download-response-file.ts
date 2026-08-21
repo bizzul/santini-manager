@@ -67,3 +67,56 @@ export async function openResponsePdfPreview(
   }
   window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
 }
+
+/**
+ * Opens the browser print dialog for a PDF blob URL.
+ * Chrome's built-in PDF toolbar print button does not work inside a preview
+ * iframe, so printing must go through a dedicated window or frame.
+ */
+export function printPdfFromUrl(url: string) {
+  let printed = false;
+
+  const triggerPrint = (win: Window | null) => {
+    if (printed || !win || win.closed) return;
+    printed = true;
+    try {
+      win.focus();
+      win.print();
+    } catch {
+      printed = false;
+    }
+  };
+
+  const printWindow = window.open(url, "_blank");
+  if (printWindow) {
+    printWindow.addEventListener("afterprint", () => {
+      printWindow.close();
+    });
+    printWindow.addEventListener("load", () => {
+      window.setTimeout(() => triggerPrint(printWindow), 300);
+    });
+    window.setTimeout(() => triggerPrint(printWindow), 800);
+    return;
+  }
+
+  const iframe = document.createElement("iframe");
+  iframe.title = "Stampa PDF";
+  iframe.setAttribute(
+    "style",
+    "position:fixed;inset:0;width:100%;height:100%;border:0;z-index:2147483646;opacity:0;pointer-events:none;",
+  );
+  iframe.src = url;
+
+  const cleanup = () => {
+    iframe.remove();
+  };
+
+  iframe.addEventListener("load", () => {
+    window.setTimeout(() => triggerPrint(iframe.contentWindow), 300);
+  });
+  document.body.appendChild(iframe);
+  window.setTimeout(() => triggerPrint(iframe.contentWindow), 1200);
+  window.setTimeout(() => {
+    if (document.body.contains(iframe)) cleanup();
+  }, 120_000);
+}

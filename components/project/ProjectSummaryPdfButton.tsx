@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Eye, FileDown, X } from "lucide-react";
+import { Eye, FileDown, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { downloadResponseFile } from "@/lib/download-response-file";
+import {
+  downloadResponseFile,
+  printPdfFromUrl,
+} from "@/lib/download-response-file";
 
 interface ProjectSummaryPdfButtonProps {
   domain: string;
@@ -42,6 +45,7 @@ export function ProjectSummaryPdfButton({
 }: ProjectSummaryPdfButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const previewUrlRef = useRef<string | null>(null);
@@ -98,6 +102,24 @@ export function ProjectSummaryPdfButton({
     }
   };
 
+  const handlePrint = () => {
+    if (!previewUrl) return;
+    setIsPrinting(true);
+    try {
+      printPdfFromUrl(previewUrl);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Errore durante la stampa del PDF.",
+      });
+    } finally {
+      window.setTimeout(() => setIsPrinting(false), 800);
+    }
+  };
+
   const handlePreview = async () => {
     setIsPreviewing(true);
     try {
@@ -125,7 +147,7 @@ export function ProjectSummaryPdfButton({
     }
   };
 
-  const busy = isDownloading || isPreviewing;
+  const busy = isDownloading || isPreviewing || isPrinting;
 
   const previewOverlay =
     mounted && previewUrl
@@ -134,6 +156,18 @@ export function ProjectSummaryPdfButton({
             <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
               <p className="text-sm font-semibold">Anteprima scheda progetto</p>
               <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handlePrint}
+                  disabled={busy}
+                  title="Stampa"
+                  aria-label="Stampa"
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  {isPrinting ? "Stampa..." : "Stampa"}
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -156,7 +190,7 @@ export function ProjectSummaryPdfButton({
               </div>
             </div>
             <iframe
-              src={previewUrl}
+              src={`${previewUrl}#toolbar=0&navpanes=0`}
               title="Anteprima scheda progetto"
               className="min-h-0 flex-1 w-full bg-muted"
             />
