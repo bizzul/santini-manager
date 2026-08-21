@@ -71,6 +71,9 @@ export interface Task {
     produzione_data_fine?: string | null;
     posa_data_inizio?: string | null;
     posa_data_fine?: string | null;
+    data_fatturazione?: string | null;
+    cantiere_contatto?: string | null;
+    cantiere_telefono?: string | null;
     produzione_ora_inizio?: string | null;
     produzione_ora_fine?: string | null;
     posa_ora_inizio?: string | null;
@@ -167,6 +170,7 @@ export interface Client {
     zipCode?: number;
     phone?: string;
     mobilePhone?: string;
+    landlinePhone?: string;
     email?: string;
     contactPeople?: ClientContactPerson[] | null;
     logoUrl?: string | null;

@@ -525,7 +525,10 @@ function getPhaseFieldsForCalendarType(
   switch (calendarType) {
     case "production":
       return {
-        dataInizio: task.produzione_data_inizio,
+        dataInizio:
+          task.produzione_data_inizio ||
+          task.produzione_data_fine ||
+          task.termine_produzione,
         dataFine: task.produzione_data_fine || task.termine_produzione,
         oraInizio: task.produzione_ora_inizio,
         oraFine: task.produzione_ora_fine,

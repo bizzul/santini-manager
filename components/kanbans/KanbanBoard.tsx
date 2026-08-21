@@ -1834,7 +1834,9 @@ function KanbanBoardInner({
                         </p>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {(Object.keys(CARD_FIELD_LABELS) as CardDisplayField[]).map((field) => {
+                        {(Object.keys(CARD_FIELD_LABELS) as CardDisplayField[])
+                          .filter((field) => field !== "image")
+                          .map((field) => {
                           const checked = draftCardFieldConfig[mode][field];
                           return (
                             <button

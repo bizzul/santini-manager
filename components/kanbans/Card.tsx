@@ -14,7 +14,6 @@ import { logger } from "@/lib/logger";
 import { cn, formatLocalDate, parseLocalDate, startOfLocalDay } from "@/lib/utils";
 import {
   MapPin,
-  Image as ImageIcon,
   Copy,
   Trash2,
   Archive,
@@ -40,14 +39,6 @@ import {
   shouldShowFatturazioneReadinessBadge,
 } from "@/lib/fatturazione-readiness";
 
-const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
-
-const isImagePath = (value?: string | null): boolean => {
-  if (!value || typeof value !== "string") return false;
-  const cleanValue = value.split("?")[0] || "";
-  const extension = cleanValue.split(".").pop()?.toLowerCase() || "";
-  return IMAGE_EXTENSIONS.includes(extension);
-};
 
 // Funzione per generare colori derivati da un colore base
 const getDerivedColors = (baseColor: string | null | undefined) => {
@@ -105,7 +96,6 @@ import {
   DEFAULT_CARD_FIELD_CONFIG,
   type CardFieldConfig,
 } from "./card-display-config";
-import { resolveCoverImage } from "@/lib/cover-image";
 import { formatHours } from "@/lib/project-consuntivo";
 
 type Supplier = {
@@ -167,7 +157,6 @@ function Card({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const cardCoverPreferenceStorageKey = `card-cover-preference-${id}`;
   const canAccessConsuntivo =
     userContext?.role === "admin" || userContext?.role === "superadmin";
   const resolvedDomain = domain || data?.domain || "";
@@ -210,19 +199,6 @@ function Card({
     return isSmallInitial;
   });
 
-  const [preferProjectCoverImage, setPreferProjectCoverImage] = useState(() => {
-    if (!shouldPersistVisualPreferences) {
-      return false;
-    }
-    try {
-      const saved = localStorage.getItem(cardCoverPreferenceStorageKey);
-      return saved === "project";
-    } catch (error) {
-      logger.warn("Error reading card cover preference:", error);
-      return false;
-    }
-  });
-
   // Sync con il comando globale "Chiudi tutte le tab" / "Apri tutte le tab"
   useEffect(() => {
     // isSmallInitial: null = non attivato (ignora), true = chiudi tutte, false = apri tutte
@@ -247,23 +223,6 @@ function Card({
       logger.warn("Error saving to localStorage:", error);
     }
   };
-
-  const persistCoverPreference = useCallback(
-    (preferProject: boolean) => {
-      if (shouldPersistVisualPreferences) {
-        try {
-          localStorage.setItem(
-            cardCoverPreferenceStorageKey,
-            preferProject ? "project" : "product"
-          );
-        } catch (error) {
-          logger.warn("Error saving card cover preference:", error);
-        }
-      }
-      setPreferProjectCoverImage(preferProject);
-    },
-    [cardCoverPreferenceStorageKey, shouldPersistVisualPreferences]
-  );
 
   // Stato temporale a 4 livelli:
   // - "normal": nessuna urgenza (no data, colonna SPEDITO, o consegna > 3 giorni futuri)
@@ -618,65 +577,6 @@ function Card({
     return sellProduct.name || sellProduct.type || null;
   }, [data.sellProduct, data.sell_product]);
 
-  const productImageUrl = useMemo(() => {
-    const sellProduct = data.sellProduct || data.sell_product;
-    if (!sellProduct) {
-      return null;
-    }
-
-    const imageUrl = sellProduct.image_url || sellProduct.imageUrl || null;
-    if (typeof imageUrl !== "string" || imageUrl.trim().length === 0) {
-      return null;
-    }
-
-    return imageUrl;
-  }, [data.sellProduct, data.sell_product]);
-
-  const projectImageUrl = useMemo(() => {
-    if (!Array.isArray(data.files)) {
-      return null;
-    }
-
-    const projectImage = data.files.find((file: any) =>
-      isImagePath(file?.name) || isImagePath(file?.url)
-    );
-
-    const imageUrl = projectImage?.url;
-    if (typeof imageUrl !== "string" || imageUrl.trim().length === 0) {
-      return null;
-    }
-
-    return imageUrl;
-  }, [data.files]);
-
-  const cardImage = useMemo(() => {
-    return resolveCoverImage({
-      productImageUrl,
-      projectImageUrl,
-      preferProjectCoverImage,
-      productCategoryName: productCategory?.name || null,
-      productType: data.sellProduct?.type || data.sell_product?.type || null,
-      productName: productDisplayName,
-      projectName: data.name || null,
-      projectLocation: data.luogo || null,
-      projectNotes: data.other || null,
-    });
-  }, [
-    data.name,
-    data.luogo,
-    data.other,
-    data.sellProduct?.type,
-    data.sell_product?.type,
-    preferProjectCoverImage,
-    productCategory?.name,
-    productDisplayName,
-    productImageUrl,
-    projectImageUrl,
-  ]);
-  const cardImageUrl = cardImage.imageUrl || "/placeholders/default.svg";
-  const showCoverSourceBadge =
-    process.env.NEXT_PUBLIC_SHOW_COVER_SOURCE_BADGE === "true";
-
   // Determina il colore del bordo sinistro in base allo stato.
   //
   // Regola (da AVOR in avanti / tutti i kanban con show_category_colors = true):
@@ -783,6 +683,7 @@ function Card({
   }, [cardFieldConfig]);
 
   const isFieldVisible = (field: keyof typeof DEFAULT_CARD_FIELD_CONFIG.normal) => {
+    if (field === "image") return false;
     return isSmall
       ? resolvedFieldConfig.small[field]
       : resolvedFieldConfig.normal[field];
@@ -1040,28 +941,6 @@ function Card({
                           </span>
                         )}
                     </div>
-                )}
-
-                {isFieldVisible("image") && (
-                  <div className="relative mb-1 rounded-lg border border-slate-200 bg-slate-50/80 p-1.5 dark:border-slate-700 dark:bg-slate-800/50">
-                    {showCoverSourceBadge && (
-                      <span className="absolute right-2 top-2 z-10 rounded bg-slate-900/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                        {cardImage.source}
-                      </span>
-                    )}
-                    {cardImageUrl ? (
-                      <img
-                        src={cardImageUrl}
-                        alt={productDisplayName || "Immagine progetto"}
-                        className="h-24 w-full rounded-md object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 text-xs text-slate-500 dark:border-slate-600 dark:text-slate-400">
-                        <ImageIcon className="h-3.5 w-3.5" />
-                        <span>{t("kanbanCard.noImage")}</span>
-                      </div>
-                    )}
-                  </div>
                 )}
 
                 {/* Riga 2: Nome cliente (riga dedicata, wrap fino a 2 righe) */}
@@ -1344,28 +1223,6 @@ function Card({
                     </div>
                 )}
 
-                {isFieldVisible("image") && (
-                  <div className="relative mb-[3px] rounded-md border border-slate-200 bg-slate-50/80 p-1 dark:border-slate-700 dark:bg-slate-800/50">
-                    {showCoverSourceBadge && (
-                      <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
-                        {cardImage.source}
-                      </span>
-                    )}
-                    {cardImageUrl ? (
-                      <img
-                        src={cardImageUrl}
-                        alt={productDisplayName || "Immagine progetto"}
-                        className="h-14 w-full rounded object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-14 w-full items-center justify-center gap-1 rounded border border-dashed border-slate-300 text-[11px] text-slate-500 dark:border-slate-600 dark:text-slate-400">
-                        <ImageIcon className="h-3 w-3" />
-                        <span>{t("kanbanCard.noImage")}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {/* Riga 2: Nome cliente (riga dedicata, wrap fino a 2 righe) */}
                 {isFieldVisible("client") && (
                   <button
@@ -1594,8 +1451,6 @@ function Card({
             resource={data}
             history={history}
             domain={domain}
-            preferProjectCoverImage={preferProjectCoverImage}
-            onPreferProjectCoverImageChange={persistCoverPreference}
             onTaskUpdated={onTaskDeleted}
           />
         </DialogContent>

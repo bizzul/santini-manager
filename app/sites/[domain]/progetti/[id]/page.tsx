@@ -23,6 +23,7 @@ import {
   Folder,
   MapPin,
   Phone,
+  Mail,
   StickyNote,
   Truck,
   Link2,
@@ -64,11 +65,6 @@ function formatCompactCurrency(value?: number | null): string {
     return `${(safeValue / 1000).toFixed(1)}K CHF`;
   }
   return formatCurrency(safeValue);
-}
-
-function isImageFilename(name?: string | null): boolean {
-  if (!name) return false;
-  return /\.(png|jpe?g|webp|gif|svg)$/i.test(name);
 }
 
 function getControlStatusMeta(status?: string | null): {
@@ -287,6 +283,7 @@ export default async function Page({
   const cf = data.clientFull;
   const contactPhone =
     cf?.mobilePhone || cf?.phone || cf?.landlinePhone || null;
+  const contactEmail = cf?.email || data.client?.email || null;
   const clientAddress = data.client?.address
     ? `${data.client.address}${data.client.city ? `, ${data.client.city}` : ""}${data.client.zipCode ? ` ${data.client.zipCode}` : ""}`
     : null;
@@ -311,8 +308,6 @@ export default async function Page({
     }
     return "-";
   })();
-  const projectImageUrl =
-    (files || []).find((file: any) => isImageFilename(file?.name))?.url || null;
   const projectProductLabels = (() => {
     const labels = new Set<string>();
     const offerProducts = Array.isArray(data.offer_products) ? data.offer_products : [];
@@ -520,16 +515,46 @@ export default async function Page({
                     </div>
                   </div>
                   <div className="rounded-xl border bg-card/95 p-3 shadow-sm">
-                    <div className="h-[148px] overflow-hidden rounded-lg border bg-muted/40">
-                      {projectImageUrl ? (
-                        <img
-                          src={projectImageUrl}
-                          alt={`Progetto ${data.unique_code || id}`}
-                          className="h-full w-full object-cover object-center"
-                        />
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Info cliente
+                    </p>
+                    <div className="mt-2 space-y-2 text-sm">
+                      {clientAddress ? (
+                        <div className="flex items-start gap-2">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span>{clientAddress}</span>
+                        </div>
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs text-muted-foreground">
-                          Nessuna immagine progetto caricata
+                        <p className="text-xs italic text-muted-foreground">
+                          Indirizzo non disponibile
+                        </p>
+                      )}
+                      {contactPhone ? (
+                        <a
+                          href={`tel:${contactPhone}`}
+                          className="flex items-center gap-2 text-primary hover:underline"
+                        >
+                          <Phone className="h-4 w-4 shrink-0" />
+                          <span>{contactPhone}</span>
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Phone className="h-4 w-4 shrink-0" />
+                          <span className="text-xs italic">Telefono non disponibile</span>
+                        </div>
+                      )}
+                      {contactEmail ? (
+                        <a
+                          href={`mailto:${contactEmail}`}
+                          className="flex items-center gap-2 break-all text-primary hover:underline"
+                        >
+                          <Mail className="h-4 w-4 shrink-0" />
+                          <span>{contactEmail}</span>
+                        </a>
+                      ) : (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mail className="h-4 w-4 shrink-0" />
+                          <span className="text-xs italic">Email non disponibile</span>
                         </div>
                       )}
                     </div>

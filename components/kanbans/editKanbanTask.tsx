@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useCallback,
   useRef,
-  useTransition,
 } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -56,12 +55,11 @@ import {
   Trash2,
   User,
   Phone,
+  Mail,
   MapPin,
   Info,
   Download,
   Loader2,
-  Save,
-  Upload,
   ChevronDown,
   Clock3,
   Users,
@@ -106,10 +104,14 @@ import {
 import { ProjectSummaryPdfButton } from "@/components/project/ProjectSummaryPdfButton";
 import { downloadOfferPdf } from "@/lib/offer-pdf";
 import { DocumentUpload } from "@/components/ui/document-upload";
-import { createClient } from "@/utils/supabase/client";
-import { updateSellProductImageAction } from "@/app/sites/[domain]/products/actions/update-image.action";
-import { resolveCoverImage } from "@/lib/cover-image";
 import { formatHours } from "@/lib/project-consuntivo";
+import {
+  formatSiteAddress,
+  getClientSiteAddress,
+  isEquivalentSiteAddress,
+  splitSiteAddress,
+} from "@/lib/site-address";
+import { getPrimaryClientContact, isEquivalentClientContact } from "@/lib/client-contacts";
 import { FatturazioneReadinessPanel } from "./FatturazioneReadinessPanel";
 import { isFatturazioneKanban } from "@/lib/fatturazione-readiness";
 import { ProjectTypedCommentsField } from "@/components/project/ProjectTypedCommentsField";
@@ -128,8 +130,6 @@ type Props = {
   resource: any;
   history: any;
   domain?: string;
-  preferProjectCoverImage?: boolean;
-  onPreferProjectCoverImageChange?: (preferProject: boolean) => void;
   onTaskUpdated?: () => void;
 };
 
@@ -242,43 +242,11 @@ function getAvatarColor(seed: string): string {
   return `hsl(${hue} 72% 46%)`;
 }
 
-function isImageFilename(filename: string | null | undefined): boolean {
-  if (!filename) return false;
-  const extension = filename.split(".").pop()?.toLowerCase() || "";
-  return ["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(extension);
-}
-
-function splitSiteAddress(value: string | null | undefined) {
-  const normalized = (value || "").trim();
-  if (!normalized) {
-    return { street: "", town: "" };
-  }
-
-  const [firstPart, ...rest] = normalized.split(",").map((part) => part.trim()).filter(Boolean);
-  if (rest.length > 0) {
-    return {
-      street: firstPart || "",
-      town: rest.join(", "),
-    };
-  }
-
-  const looksLikeStreet = /\d|via|viale|piazza|strada|corso|vicolo|rue|route|platz/i.test(normalized);
-  return looksLikeStreet
-    ? { street: normalized, town: "" }
-    : { street: "", town: normalized };
-}
-
-function formatSiteAddress(street: string, town: string) {
-  return [street.trim(), town.trim()].filter(Boolean).join(", ");
-}
-
 const EditTaskKanban = ({
   handleClose,
   resource,
   history,
   domain,
-  preferProjectCoverImage = false,
-  onPreferProjectCoverImageChange,
   onTaskUpdated,
 }: Props) => {
   const router = useRouter();
@@ -291,7 +259,6 @@ const EditTaskKanban = ({
   const newOrderDateInputRef = useRef<HTMLInputElement>(null);
   const newDeliveryDateInputRef = useRef<HTMLInputElement>(null);
   const pendingSupplierUpdatesRef = useRef(new Set<Promise<void>>());
-  const projectImageInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<z.infer<typeof validation>>({
     resolver: zodResolver(validation),
@@ -303,6 +270,9 @@ const EditTaskKanban = ({
       produzione_data_fine: undefined,
       posa_data_inizio: undefined,
       posa_data_fine: undefined,
+      data_fatturazione: undefined,
+      cantiere_contatto: "",
+      cantiere_telefono: "",
       service_data_inizio: undefined,
       service_data_fine: undefined,
       produzione_ora_inizio: null,
@@ -337,12 +307,10 @@ const EditTaskKanban = ({
   const [projectFiles, setProjectFiles] = useState<ProjectFile[]>([]);
   const [siteAddressStreet, setSiteAddressStreet] = useState("");
   const [siteAddressTown, setSiteAddressTown] = useState("");
-  const [isUploadingProjectImage, setIsUploadingProjectImage] = useState(false);
-  const [productImageDraftUrl, setProductImageDraftUrl] = useState<string | null>(
-    null
-  );
-  const [productImageUploadKey, setProductImageUploadKey] = useState(0);
-  const [isSavingProductImage, startSavingProductImage] = useTransition();
+  const siteAddressCustomRef = useRef(false);
+  const [siteContactName, setSiteContactName] = useState("");
+  const [siteContactPhone, setSiteContactPhone] = useState("");
+  const siteContactCustomRef = useRef(false);
   const [offerProducts, setOfferProducts] = useState<OfferProductLine[]>([]);
   const [productionRequired, setProductionRequired] = useState(
     Boolean(resource?.termine_produzione)
@@ -583,6 +551,12 @@ const EditTaskKanban = ({
             : undefined
       );
       form.setValue(
+        "data_fatturazione",
+        resource.data_fatturazione
+          ? parseLocalDate(resource.data_fatturazione)
+          : undefined
+      );
+      form.setValue(
         "produzione_ora_inizio",
         (resource as any).produzione_ora_inizio ?? null
       );
@@ -645,9 +619,13 @@ const EditTaskKanban = ({
       form.setValue("squadra", (resource as any).squadra ?? null);
       form.setValue("name", resource.name ?? "");
       form.setValue("luogo", resource.luogo ?? "");
+      siteAddressCustomRef.current = false;
       const siteAddress = splitSiteAddress(resource.luogo);
       setSiteAddressStreet(siteAddress.street);
       setSiteAddressTown(siteAddress.town);
+      siteContactCustomRef.current = false;
+      setSiteContactName(resource.cantiere_contatto ?? "");
+      setSiteContactPhone(resource.cantiere_telefono ?? "");
       form.setValue("other", resource.other ?? undefined);
       form.setValue(
         "typed_comments",
@@ -789,12 +767,21 @@ const EditTaskKanban = ({
   logger.debug("Form errors:", errors);
 
   const updateSiteAddress = (street: string, town: string) => {
+    siteAddressCustomRef.current = Boolean(street.trim() || town.trim());
     setSiteAddressStreet(street);
     setSiteAddressTown(town);
     form.setValue("luogo", formatSiteAddress(street, town), {
       shouldDirty: true,
       shouldValidate: true,
     });
+  };
+
+  const updateSiteContact = (name: string, phone: string) => {
+    siteContactCustomRef.current = Boolean(name.trim() || phone.trim());
+    setSiteContactName(name);
+    setSiteContactPhone(phone);
+    form.setValue("cantiere_contatto", name, { shouldDirty: true });
+    form.setValue("cantiere_telefono", phone, { shouldDirty: true });
   };
 
   const onSubmit: SubmitHandler<z.infer<typeof validation>> = async (d) => {
@@ -848,6 +835,8 @@ const EditTaskKanban = ({
       unique_code: d.unique_code || null,
       name: d.name || null,
       luogo: normalizedSiteAddress || null,
+      cantiere_contatto: siteContactName.trim() || null,
+      cantiere_telefono: siteContactPhone.trim() || null,
       clientId: d.clientId || null,
       productId: firstProductId,
       sellProductId: firstProductId,
@@ -856,17 +845,18 @@ const EditTaskKanban = ({
       // Legacy fields kept in sync for existing views
       deliveryDate: d.posa_data_fine || null,
       termine_produzione: productionRequired ? d.produzione_data_fine || null : null,
-      ora_inizio: d.posa_ora_inizio ?? null,
-      ora_fine: d.posa_ora_fine ?? null,
+      ora_inizio: null,
+      ora_fine: null,
       // New planning fields
-      produzione_data_inizio: productionRequired ? d.produzione_data_inizio || null : null,
+      produzione_data_inizio: productionRequired ? d.produzione_data_fine || null : null,
       produzione_data_fine: productionRequired ? d.produzione_data_fine || null : null,
       posa_data_inizio: d.posa_data_inizio || null,
       posa_data_fine: d.posa_data_fine || null,
-      produzione_ora_inizio: productionRequired ? d.produzione_ora_inizio ?? null : null,
-      produzione_ora_fine: productionRequired ? d.produzione_ora_fine ?? null : null,
-      posa_ora_inizio: d.posa_ora_inizio ?? null,
-      posa_ora_fine: d.posa_ora_fine ?? null,
+      data_fatturazione: d.data_fatturazione || null,
+      produzione_ora_inizio: null,
+      produzione_ora_fine: null,
+      posa_ora_inizio: null,
+      posa_ora_fine: null,
       produzione_collaborator_ids: selectedProductionCollaborators,
       posa_collaborator_ids: selectedPosaCollaborators,
       assigned_collaborator_ids: assignedCollaboratorIds,
@@ -1000,7 +990,11 @@ const EditTaskKanban = ({
     return selectedClient.mobilePhone || selectedClient.phone || selectedClient.landlinePhone || null;
   }, [selectedClient]);
 
-  const currentLuogo = form.watch("luogo") || resource?.luogo;
+  const contactEmail = useMemo(() => {
+    if (!selectedClient) return null;
+    return selectedClient.email?.trim() || null;
+  }, [selectedClient]);
+
   const clientAddress = useMemo(() => {
     if (!selectedClient) return "";
     return [
@@ -1012,6 +1006,80 @@ const EditTaskKanban = ({
       .filter(Boolean)
       .join(", ");
   }, [selectedClient]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const fromClient = getClientSiteAddress(selectedClient);
+    if (!fromClient.street && !fromClient.town) return;
+
+    const current = {
+      street: siteAddressStreet,
+      town: siteAddressTown,
+    };
+    const empty = !current.street.trim() && !current.town.trim();
+    if (empty) {
+      siteAddressCustomRef.current = false;
+    }
+    if (siteAddressCustomRef.current) return;
+
+    if (!empty && !isEquivalentSiteAddress(current, fromClient)) {
+      siteAddressCustomRef.current = true;
+      return;
+    }
+
+    if (current.street === fromClient.street && current.town === fromClient.town) {
+      return;
+    }
+
+    setSiteAddressStreet(fromClient.street);
+    setSiteAddressTown(fromClient.town);
+    form.setValue("luogo", formatSiteAddress(fromClient.street, fromClient.town), {
+      shouldDirty: false,
+      shouldValidate: false,
+    });
+  }, [
+    form,
+    isLoading,
+    selectedClient,
+    siteAddressStreet,
+    siteAddressTown,
+  ]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const fromClient = getPrimaryClientContact(selectedClient);
+    if (!fromClient.name && !fromClient.phone) return;
+
+    const current = {
+      name: siteContactName,
+      phone: siteContactPhone,
+    };
+    const empty = !current.name.trim() && !current.phone.trim();
+    if (empty) {
+      siteContactCustomRef.current = false;
+    }
+    if (siteContactCustomRef.current) return;
+
+    if (!empty && !isEquivalentClientContact(current, fromClient)) {
+      siteContactCustomRef.current = true;
+      return;
+    }
+
+    if (current.name === fromClient.name && current.phone === fromClient.phone) {
+      return;
+    }
+
+    setSiteContactName(fromClient.name);
+    setSiteContactPhone(fromClient.phone);
+    form.setValue("cantiere_contatto", fromClient.name, { shouldDirty: false });
+    form.setValue("cantiere_telefono", fromClient.phone, { shouldDirty: false });
+  }, [
+    form,
+    isLoading,
+    selectedClient,
+    siteContactName,
+    siteContactPhone,
+  ]);
 
   const categoryOptions = useMemo(() => {
     if (!Array.isArray(products)) return [];
@@ -1129,379 +1197,6 @@ const EditTaskKanban = ({
     });
   }, [offerProducts, products]);
 
-  const selectedProjectProduct = useMemo(() => {
-    const watchedProductId = form.watch("productId");
-    const fallbackProductId =
-      offerProducts.find((line) => line.productId)?.productId ??
-      watchedProductId ??
-      resource?.sellProductId ??
-      null;
-
-    if (!fallbackProductId) {
-      return null;
-    }
-
-    return (
-      products.find(
-        (product: SellProduct) => product.id === Number(fallbackProductId)
-      ) || null
-    );
-  }, [offerProducts, products, form.watch("productId"), resource?.sellProductId]);
-
-  const selectedProjectProductImage = useMemo(() => {
-    if (!selectedProjectProduct || typeof selectedProjectProduct !== "object") {
-      return null;
-    }
-
-    const imageUrl = (selectedProjectProduct as { image_url?: string | null })
-      .image_url;
-
-    if (typeof imageUrl !== "string" || imageUrl.trim().length === 0) {
-      return null;
-    }
-
-    return imageUrl;
-  }, [selectedProjectProduct]);
-
-  const projectImageFile = useMemo(
-    () =>
-      projectFiles.find((file) =>
-        isImageFilename(file.name) ||
-        isImageFilename(file.url) ||
-        isImageFilename(file.storage_path || null)
-      ) || null,
-    [projectFiles]
-  );
-  const projectImageUrl = projectImageFile?.url || null;
-  const currentProductImageUrl = selectedProjectProductImage;
-  const productImagePreview = useMemo(() => {
-    if (productImageDraftUrl) {
-      return {
-        imageUrl: productImageDraftUrl,
-        source: "product" as const,
-      };
-    }
-    return resolveCoverImage({
-      productImageUrl: currentProductImageUrl,
-      projectImageUrl,
-      productCategoryName: selectedProjectProduct?.category?.name || null,
-      productType: selectedProjectProduct?.type || null,
-      productName: selectedProjectProduct?.name || null,
-      projectName: resource?.name || null,
-      projectLocation: resource?.luogo || null,
-      projectNotes: resource?.other || null,
-    });
-  }, [
-    currentProductImageUrl,
-    productImageDraftUrl,
-    projectImageUrl,
-    resource?.luogo,
-    resource?.other,
-    resource?.name,
-    selectedProjectProduct?.category?.name,
-    selectedProjectProduct?.name,
-    selectedProjectProduct?.type,
-  ]);
-  const productImagePreviewUrl =
-    productImagePreview.imageUrl || "/placeholders/default.svg";
-  const hasPendingProductImageChanges =
-    productImageDraftUrl !== null && productImageDraftUrl !== currentProductImageUrl;
-  const projectImagePreview = useMemo(
-    () =>
-      resolveCoverImage({
-        productImageUrl: currentProductImageUrl,
-        projectImageUrl,
-        preferProjectCoverImage: true,
-        productCategoryName: selectedProjectProduct?.category?.name || null,
-        productType: selectedProjectProduct?.type || null,
-        productName: selectedProjectProduct?.name || null,
-        projectName: resource?.name || null,
-        projectLocation: resource?.luogo || null,
-        projectNotes: resource?.other || null,
-      }),
-    [
-      currentProductImageUrl,
-      projectImageUrl,
-      resource?.luogo,
-      resource?.other,
-      resource?.name,
-      selectedProjectProduct?.category?.name,
-      selectedProjectProduct?.name,
-      selectedProjectProduct?.type,
-    ]
-  );
-  const projectImagePreviewUrl =
-    projectImagePreview.imageUrl || "/placeholders/default.svg";
-  const showCoverSourceBadge =
-    process.env.NEXT_PUBLIC_SHOW_COVER_SOURCE_BADGE === "true";
-
-  useEffect(() => {
-    setProductImageDraftUrl(null);
-    setProductImageUploadKey((current) => current + 1);
-  }, [selectedProjectProduct?.id]);
-
-  const uploadProjectImage = useCallback(
-    async (file: File) => {
-      if (!siteId) {
-        toast({
-          variant: "destructive",
-          description: "Contesto sito non disponibile per caricare immagini",
-        });
-        return;
-      }
-
-      if (!taskId) {
-        toast({
-          variant: "destructive",
-          description: "Salva l'offerta prima di caricare un'immagine",
-        });
-        return;
-      }
-
-      const maxSizeMB = 10;
-      if (file.size > maxSizeMB * 1024 * 1024) {
-        toast({
-          variant: "destructive",
-          description: `File troppo grande. Max ${maxSizeMB}MB`,
-        });
-        return;
-      }
-
-      setIsUploadingProjectImage(true);
-      try {
-        const supabase = createClient();
-        const fileExt = file.name.split(".").pop();
-        const safeName = file.name
-          .replace(/\.[^/.]+$/, "")
-          .replace(/[^a-zA-Z0-9-_]/g, "_")
-          .substring(0, 50);
-        const fileName = `${safeName}-${Date.now()}.${fileExt}`;
-        const filePath = `${siteId}/projects/${taskId}/images/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("documents")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
-
-        if (uploadError) {
-          throw new Error(uploadError.message);
-        }
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("documents").getPublicUrl(filePath);
-
-        const response = await fetch("/api/files/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: file.name,
-            url: publicUrl,
-            storage_path: filePath,
-            taskId,
-          }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || result.error || !result.data) {
-          throw new Error(result.error || "Errore durante il salvataggio del file");
-        }
-
-        setProjectFiles((current) => [result.data, ...current]);
-        router.refresh();
-        toast({
-          description: "Immagine progetto caricata con successo",
-        });
-      } catch (error) {
-        logger.error("Error uploading project image:", error);
-        toast({
-          variant: "destructive",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Errore durante il caricamento immagine progetto",
-        });
-      } finally {
-        setIsUploadingProjectImage(false);
-      }
-    },
-    [taskId, siteId, toast]
-  );
-
-  const handleProjectImageInputChange = useCallback(
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = "";
-      if (!file) return;
-      await uploadProjectImage(file);
-    },
-    [uploadProjectImage]
-  );
-
-  const handleDeleteProjectImage = useCallback(async () => {
-    if (!projectImageFile) return;
-
-    setIsUploadingProjectImage(true);
-    try {
-      const response = await fetch(`/api/files/${projectImageFile.id}`, {
-        method: "DELETE",
-      });
-      const result = await response.json();
-
-      if (!response.ok || result.error) {
-        throw new Error(result.error || "Errore durante l'eliminazione");
-      }
-
-      setProjectFiles((current) =>
-        current.filter((file) => file.id !== projectImageFile.id)
-      );
-      router.refresh();
-      toast({
-        description: "Immagine progetto rimossa",
-      });
-    } catch (error) {
-      logger.error("Error deleting project image:", error);
-      toast({
-        variant: "destructive",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Errore durante la rimozione immagine progetto",
-      });
-    } finally {
-      setIsUploadingProjectImage(false);
-    }
-  }, [projectImageFile, toast]);
-
-  const handleProductImageUploadComplete = useCallback(
-    (nextUrl: string) => {
-      setProductImageDraftUrl(nextUrl);
-      toast({
-        description: "Immagine caricata. Premi Salva per confermare.",
-      });
-    },
-    [toast]
-  );
-
-  const handleSaveProductImage = useCallback(() => {
-    const productId = selectedProjectProduct?.id;
-    if (!productId || !siteId) {
-      toast({
-        variant: "destructive",
-        description: "Seleziona un prodotto e assicurati che il contesto sito sia carico",
-      });
-      return;
-    }
-
-    if (!hasPendingProductImageChanges) {
-      return;
-    }
-
-    startSavingProductImage(async () => {
-      const response = await updateSellProductImageAction({
-        productId: Number(productId),
-        imageUrl: productImageDraftUrl,
-        domain,
-        siteId,
-      });
-
-      if (response?.error) {
-        toast({
-          variant: "destructive",
-          description: response.error,
-        });
-        return;
-      }
-
-      setProducts((current) =>
-        current.map((product) =>
-          product.id === Number(productId)
-            ? { ...product, image_url: productImageDraftUrl }
-            : product
-        )
-      );
-      setProductImageDraftUrl(null);
-      setProductImageUploadKey((current) => current + 1);
-      router.refresh();
-      toast({
-        description: "Immagine prodotto aggiornata",
-      });
-    });
-  }, [
-    selectedProjectProduct?.id,
-    siteId,
-    hasPendingProductImageChanges,
-    productImageDraftUrl,
-    domain,
-    router,
-    toast,
-  ]);
-
-  const handleRemoveProductImage = useCallback(() => {
-    if (hasPendingProductImageChanges) {
-      setProductImageDraftUrl(null);
-      setProductImageUploadKey((current) => current + 1);
-      toast({
-        description: "Modifica immagine annullata",
-      });
-      return;
-    }
-
-    if (!currentProductImageUrl) {
-      return;
-    }
-
-    setProductImageDraftUrl(null);
-    setProductImageUploadKey((current) => current + 1);
-    startSavingProductImage(async () => {
-      const productId = selectedProjectProduct?.id;
-      if (!productId || !siteId) {
-        toast({
-          variant: "destructive",
-          description:
-            "Seleziona un prodotto e assicurati che il contesto sito sia carico",
-        });
-        return;
-      }
-
-      const response = await updateSellProductImageAction({
-        productId: Number(productId),
-        imageUrl: null,
-        domain,
-        siteId,
-      });
-
-      if (response?.error) {
-        toast({
-          variant: "destructive",
-          description: response.error,
-        });
-        return;
-      }
-
-      setProducts((current) =>
-        current.map((product) =>
-          product.id === Number(productId)
-            ? { ...product, image_url: null }
-            : product
-        )
-      );
-      router.refresh();
-      toast({
-        description: "Immagine prodotto rimossa",
-      });
-    });
-  }, [
-    hasPendingProductImageChanges,
-    currentProductImageUrl,
-    selectedProjectProduct?.id,
-    siteId,
-    domain,
-    router,
-    toast,
-  ]);
 
   const handleOfferProductChange = (
     index: number,
@@ -1777,159 +1472,155 @@ const EditTaskKanban = ({
         <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
           <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
         <div className="grid grid-cols-2 gap-3 items-stretch">
-          <div className="h-full p-3 bg-muted dark:bg-background rounded-lg border border-slate-500 space-y-3">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-              Immagine
+          <div className="flex h-full min-h-[248px] flex-col gap-3 rounded-lg border border-slate-500 bg-muted p-3 dark:bg-background">
+            <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <User className="h-4 w-4" />
+              Info Cliente
             </h4>
-            <div className="space-y-2 rounded-md border border-slate-500 bg-background/50 dark:bg-muted/10 p-2">
-              <div className="relative w-full h-24 rounded-md border border-slate-500 overflow-hidden bg-background/60 dark:bg-muted/10">
-                {showCoverSourceBadge && (
-                  <span className="absolute right-1.5 top-1.5 z-10 rounded bg-slate-900/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
-                    {projectImagePreview.source}
-                  </span>
-                )}
-                {projectImagePreviewUrl ? (
-                  <Image
-                    src={projectImagePreviewUrl}
-                    alt="Immagine progetto"
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-muted-foreground text-xs">
-                    Nessuna immagine
+            {selectedClient ? (
+              <div className="flex flex-1 flex-col justify-between gap-3">
+                <p className="text-sm font-semibold leading-5">
+                  {selectedClient.businessName ||
+                    `${selectedClient.individualLastName || ""} ${selectedClient.individualFirstName || ""}`.trim() ||
+                    "Cliente"}
+                </p>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>Indirizzo</span>
                   </div>
-                )}
+                  {clientAddress ? (
+                    <span className="ml-6 block text-sm leading-5">{clientAddress}</span>
+                  ) : (
+                    <span className="ml-6 block text-sm italic leading-5 text-muted-foreground">
+                      Non disponibile
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>Telefono</span>
+                  </div>
+                  {contactPhone ? (
+                    <a
+                      href={`tel:${contactPhone}`}
+                      className="ml-6 block text-sm leading-5 text-primary hover:underline"
+                    >
+                      {contactPhone}
+                    </a>
+                  ) : (
+                    <span className="ml-6 block text-sm italic leading-5 text-muted-foreground">
+                      Non disponibile
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    <span>Email</span>
+                  </div>
+                  {contactEmail ? (
+                    <a
+                      href={`mailto:${contactEmail}`}
+                      className="ml-6 block break-all text-sm leading-5 text-primary hover:underline"
+                    >
+                      {contactEmail}
+                    </a>
+                  ) : (
+                    <span className="ml-6 block text-sm italic leading-5 text-muted-foreground">
+                      Non disponibile
+                    </span>
+                  )}
+                </div>
               </div>
-              <input
-                ref={projectImageInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                className="hidden"
-                onChange={handleProjectImageInputChange}
-              />
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={() => projectImageInputRef.current?.click()}
-                disabled={!siteId || !taskId || isUploadingProjectImage}
-              >
-                {isUploadingProjectImage ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Caricamento...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Carica
-                  </>
-                )}
-              </Button>
-              {projectImageUrl && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleDeleteProjectImage}
-                  disabled={isUploadingProjectImage}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Elimina immagine progetto
-                </Button>
-              )}
-            </div>
+            ) : (
+              <span className="text-sm italic leading-5 text-muted-foreground">
+                Nessun cliente selezionato
+              </span>
+            )}
           </div>
 
-          <div className="h-full p-4 bg-muted dark:bg-background rounded-lg border border-slate-500 space-y-3">
-            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+          <div className="flex h-full min-h-[248px] flex-col gap-3 rounded-lg border border-slate-500 bg-muted p-3 dark:bg-background">
+            <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Info className="h-4 w-4" />
               Info Cantiere
             </h4>
-
-            {/* Contact Phone */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>Telefono</span>
-              </div>
-              {contactPhone ? (
-                <a
-                  href={`tel:${contactPhone}`}
-                  className="text-sm text-primary hover:underline ml-6 block"
-                >
-                  {contactPhone}
-                </a>
-              ) : (
-                <span className="text-sm text-muted-foreground italic ml-6 block">
-                  Non disponibile
-                </span>
-              )}
-            </div>
-
-            {/* Construction Site Address */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>Indirizzo cantiere</span>
-              </div>
-              <div className="ml-6 grid grid-cols-1 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground" htmlFor="kanban-site-address-street">
-                    Via
-                  </label>
+            <div className="flex flex-1 flex-col justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>Via</span>
+                </div>
+                <div className="ml-6">
                   <Input
                     id="kanban-site-address-street"
                     value={siteAddressStreet}
-                    onChange={(event) => updateSiteAddress(event.target.value, siteAddressTown)}
+                    onChange={(event) =>
+                      updateSiteAddress(event.target.value, siteAddressTown)
+                    }
                     placeholder="Via / strada"
                     disabled={isSubmitting}
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground" htmlFor="kanban-site-address-town">
-                    Paese
-                  </label>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>Paese</span>
+                </div>
+                <div className="ml-6">
                   <Input
                     id="kanban-site-address-town"
                     value={siteAddressTown}
-                    onChange={(event) => updateSiteAddress(siteAddressStreet, event.target.value)}
+                    onChange={(event) =>
+                      updateSiteAddress(siteAddressStreet, event.target.value)
+                    }
                     placeholder="Paese"
                     disabled={isSubmitting}
+                    className="h-8 text-sm"
                   />
                 </div>
               </div>
-              {currentLuogo ? (
-                <span className="text-xs text-muted-foreground ml-6 block">
-                  Salvato come: {currentLuogo}
-                </span>
-              ) : clientAddress ? (
-                <span className="text-xs text-muted-foreground ml-6 block">
-                  Se vuoto, sulla mappa viene usato: {clientAddress}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground italic ml-6 block">
-                  Nessun indirizzo cliente disponibile come fallback.
-                </span>
-              )}
-            </div>
-
-            {/* Client Name for reference */}
-            {selectedClient && (
-              <div className="pt-2 border-t border-slate-500">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                  <User className="h-3 w-3" />
-                  <span>
-                    {selectedClient.businessName ||
-                      `${selectedClient.individualLastName || ""} ${selectedClient.individualFirstName || ""}`.trim() ||
-                      "Cliente"}
-                  </span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span>Persona di contatto</span>
+                </div>
+                <div className="ml-6">
+                  <Input
+                    id="kanban-site-contact-name"
+                    value={siteContactName}
+                    onChange={(event) =>
+                      updateSiteContact(event.target.value, siteContactPhone)
+                    }
+                    placeholder="Nome contatto"
+                    disabled={isSubmitting}
+                    className="h-8 text-sm"
+                  />
                 </div>
               </div>
-            )}
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>Telefono</span>
+                </div>
+                <div className="ml-6">
+                  <Input
+                    id="kanban-site-contact-phone"
+                    type="tel"
+                    value={siteContactPhone}
+                    onChange={(event) =>
+                      updateSiteContact(siteContactName, event.target.value)
+                    }
+                    placeholder="Telefono"
+                    disabled={isSubmitting}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2370,9 +2061,10 @@ const EditTaskKanban = ({
             />
           )}
 
-          {/* Pianificazione Produzione e Posa — affiancate */}
-          <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
+          {/* Pianificazione: Produzione + Fatturazione a sinistra, Posa a destra */}
+          <div className="grid grid-cols-2 gap-4 items-stretch">
+              <div className="grid grid-rows-2 gap-4 min-h-0">
+              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-2">
                 <div className="flex items-center gap-8">
                   <h3 className="text-sm font-medium">Produzione</h3>
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -2393,74 +2085,12 @@ const EditTaskKanban = ({
                     Richiede pianificazione
                   </label>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    name="produzione_data_inizio"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data inizio</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSubmitting || !productionRequired}
-                              >
-                                {productionRequired && field.value
-                                  ? field.value.toLocaleDateString("it-IT")
-                                  : productionRequired
-                                    ? "Seleziona data"
-                                    : "Non richiesto"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={(date) => productionRequired && field.onChange(date)}
-                              disabled={weekendDisabled}
-                              captionLayout="dropdown"
-                              startMonth={new Date(new Date().getFullYear(), 0)}
-                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="produzione_ora_inizio"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ora inizio</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isSubmitting || !productionRequired}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     name="produzione_data_fine"
                     control={form.control}
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Data fine</FormLabel>
+                        <FormLabel>Data fine produzione</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -2497,26 +2127,6 @@ const EditTaskKanban = ({
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    name="produzione_ora_fine"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ora fine</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isSubmitting || !productionRequired}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -2585,9 +2195,53 @@ const EditTaskKanban = ({
                 </Popover>
               </div>
 
+              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-2">
+                <h3 className="text-sm font-medium">Fatturazione</h3>
+                <FormField
+                  name="data_fatturazione"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Data di fatturazione</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={isSubmitting}
+                            >
+                              {field.value
+                                ? field.value.toLocaleDateString("it-IT")
+                                : "Seleziona data"}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value || undefined}
+                            onSelect={field.onChange}
+                            captionLayout="dropdown"
+                            startMonth={new Date(new Date().getFullYear(), 0)}
+                            endMonth={new Date(new Date().getFullYear() + 5, 11)}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              </div>
+
               <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
                 <h3 className="text-sm font-medium">Posa</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
                   <FormField
                     name="posa_data_inizio"
                     control={form.control}
@@ -2629,25 +2283,6 @@ const EditTaskKanban = ({
                     )}
                   />
                   <FormField
-                    name="posa_ora_inizio"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ora inizio</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isSubmitting}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
                     name="posa_data_fine"
                     control={form.control}
                     render={({ field }) => (
@@ -2683,25 +2318,6 @@ const EditTaskKanban = ({
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    name="posa_ora_fine"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ora fine</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="time"
-                            {...field}
-                            value={field.value ?? ""}
-                            disabled={isSubmitting}
-                            onChange={(e) => field.onChange(e.target.value || null)}
-                          />
-                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

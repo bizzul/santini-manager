@@ -273,8 +273,9 @@ export async function PATCH(
     // List of allowed fields to update
     const allowedFields = [
       'unique_code', 'title', 'name', 'luogo', 'description',
+      'cantiere_contatto', 'cantiere_telefono',
       'clientId', 'sellProductId', 'sellPrice',
-      'deliveryDate', 'termine_produzione', 'offer_send_date',
+      'deliveryDate', 'termine_produzione', 'offer_send_date', 'data_fatturazione',
       'produzione_data_inizio', 'produzione_data_fine',
       'posa_data_inizio', 'posa_data_fine',
       'produzione_ora_inizio', 'produzione_ora_fine',
@@ -303,6 +304,7 @@ export async function PATCH(
           field === 'produzione_data_fine' ||
           field === 'posa_data_inizio' ||
           field === 'posa_data_fine' ||
+          field === 'data_fatturazione' ||
           field === 'service_data_inizio' ||
           field === 'service_data_fine' ||
           field === 'offer_send_date'
@@ -371,6 +373,9 @@ export async function PATCH(
         updateError.message?.includes("produzione_data_fine") ||
         updateError.message?.includes("posa_data_inizio") ||
         updateError.message?.includes("posa_data_fine") ||
+        updateError.message?.includes("data_fatturazione") ||
+        updateError.message?.includes("cantiere_contatto") ||
+        updateError.message?.includes("cantiere_telefono") ||
         updateError.message?.includes("produzione_ora_inizio") ||
         updateError.message?.includes("produzione_ora_fine") ||
         updateError.message?.includes("posa_ora_inizio") ||
@@ -394,6 +399,9 @@ export async function PATCH(
       delete updateData.produzione_data_fine;
       delete updateData.posa_data_inizio;
       delete updateData.posa_data_fine;
+      delete updateData.data_fatturazione;
+      delete updateData.cantiere_contatto;
+      delete updateData.cantiere_telefono;
       delete updateData.produzione_ora_inizio;
       delete updateData.produzione_ora_fine;
       delete updateData.posa_ora_inizio;

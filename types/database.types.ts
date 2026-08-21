@@ -4436,6 +4436,8 @@ export type Database = {
           assigned_collaborator_ids: Json | null
           auto_archive_at: string | null
           clientId: number | null
+          cantiere_contatto: string | null
+          cantiere_telefono: string | null
           cloud_folder_url: string | null
           column_id: number | null
           column_position: number | null
@@ -4443,6 +4445,7 @@ export type Database = {
           consuntivo_default_hourly_rate: number | null
           consuntivo_material_cost: number | null
           created_at: string
+          data_fatturazione: string | null
           deliveryDate: string | null
           display_mode: string | null
           draft_category_ids: number[] | null
@@ -4509,6 +4512,8 @@ export type Database = {
           assigned_collaborator_ids?: Json | null
           auto_archive_at?: string | null
           clientId?: number | null
+          cantiere_contatto?: string | null
+          cantiere_telefono?: string | null
           cloud_folder_url?: string | null
           column_id?: number | null
           column_position?: number | null
@@ -4516,6 +4521,7 @@ export type Database = {
           consuntivo_default_hourly_rate?: number | null
           consuntivo_material_cost?: number | null
           created_at?: string
+          data_fatturazione?: string | null
           deliveryDate?: string | null
           display_mode?: string | null
           draft_category_ids?: number[] | null
@@ -4582,6 +4588,8 @@ export type Database = {
           assigned_collaborator_ids?: Json | null
           auto_archive_at?: string | null
           clientId?: number | null
+          cantiere_contatto?: string | null
+          cantiere_telefono?: string | null
           cloud_folder_url?: string | null
           column_id?: number | null
           column_position?: number | null
@@ -4589,6 +4597,7 @@ export type Database = {
           consuntivo_default_hourly_rate?: number | null
           consuntivo_material_cost?: number | null
           created_at?: string
+          data_fatturazione?: string | null
           deliveryDate?: string | null
           display_mode?: string | null
           draft_category_ids?: number[] | null

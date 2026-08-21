@@ -238,6 +238,9 @@ export async function POST(req: NextRequest) {
           produzione_data_fine: toDateString(result.data.produzione_data_fine),
           posa_data_inizio: toDateString(result.data.posa_data_inizio),
           posa_data_fine: toDateString(result.data.posa_data_fine),
+          data_fatturazione: toDateString(result.data.data_fatturazione),
+          cantiere_contatto: result.data.cantiere_contatto?.trim() || null,
+          cantiere_telefono: result.data.cantiere_telefono?.trim() || null,
           produzione_ora_inizio: result.data.produzione_ora_inizio ?? null,
           produzione_ora_fine: result.data.produzione_ora_fine ?? null,
           posa_ora_inizio: result.data.posa_ora_inizio ?? null,
@@ -286,6 +289,9 @@ export async function POST(req: NextRequest) {
             error.message?.includes("produzione_data_fine") ||
             error.message?.includes("posa_data_inizio") ||
             error.message?.includes("posa_data_fine") ||
+            error.message?.includes("data_fatturazione") ||
+            error.message?.includes("cantiere_contatto") ||
+            error.message?.includes("cantiere_telefono") ||
             error.message?.includes("produzione_ora_inizio") ||
             error.message?.includes("produzione_ora_fine") ||
             error.message?.includes("posa_ora_inizio") ||
@@ -306,6 +312,9 @@ export async function POST(req: NextRequest) {
           delete insertData.produzione_data_fine;
           delete insertData.posa_data_inizio;
           delete insertData.posa_data_fine;
+          delete insertData.data_fatturazione;
+          delete insertData.cantiere_contatto;
+          delete insertData.cantiere_telefono;
           delete insertData.produzione_ora_inizio;
           delete insertData.produzione_ora_fine;
           delete insertData.posa_ora_inizio;
