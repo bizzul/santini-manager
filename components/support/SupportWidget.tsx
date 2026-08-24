@@ -324,16 +324,20 @@ export function SupportWidget({ enabled }: { enabled: boolean }) {
 
   return (
     <>
-      <Button
-        type="button"
-        size="icon"
-        aria-label="Apri supporto tecnico"
-        title="Supporto tecnico"
-        className="fixed right-5 bottom-5 z-40 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg"
-        onClick={() => setOpen(true)}
-      >
-        <Headset className="h-5 w-5" />
-      </Button>
+      {/* Anchored on the same corner as GlobalVoiceAssistant; spacer keeps this FAB in the slot above the mic. */}
+      <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+        <Button
+          type="button"
+          size="icon"
+          aria-label="Apri supporto tecnico"
+          title="Supporto tecnico"
+          className="pointer-events-auto h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg"
+          onClick={() => setOpen(true)}
+        >
+          <Headset className="h-5 w-5" />
+        </Button>
+        <span className="h-12 w-12" aria-hidden="true" />
+      </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="flex w-full flex-col sm:max-w-md bg-card">
