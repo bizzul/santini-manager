@@ -1,7 +1,8 @@
 "use client";
 
 import { Component, ReactNode } from "react";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Headset, RefreshCw } from "lucide-react";
+import { openSupportWidget } from "@/lib/support/error-buffer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -120,6 +121,18 @@ export function PageErrorFallback({ reset }: { reset?: () => void }) {
         <Button onClick={() => window.location.reload()}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Ricarica pagina
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() =>
+            openSupportWidget({
+              source: "error_boundary",
+              query: "Si è verificato un errore inaspettato sulla pagina corrente.",
+            })
+          }
+        >
+          <Headset className="mr-2 h-4 w-4" />
+          Segnala questo errore
         </Button>
         {reset && (
           <Button variant="outline" onClick={reset}>

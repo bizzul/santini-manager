@@ -5,6 +5,7 @@
 import {
   Building,
   Globe,
+  Headset,
   KanbanSquare,
   LayoutDashboard,
   QrCode,
@@ -56,6 +57,13 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     href: "/administration/users",
     icon: Users,
     superadminOnly: false,
+  },
+  {
+    key: "support",
+    label: "Supporto",
+    href: "/administration/support",
+    icon: Headset,
+    superadminOnly: true,
   },
   {
     key: "demos",

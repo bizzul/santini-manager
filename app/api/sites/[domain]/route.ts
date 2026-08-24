@@ -7,6 +7,10 @@ import {
     parseCommandDeckEnabled,
 } from "@/lib/command-deck-settings";
 import {
+    SUPPORT_BOT_SETTING_KEY,
+    parseSupportBotEnabled,
+} from "@/lib/support/settings";
+import {
     resolveSiteLocale,
     SITE_LANGUAGE_SETTING_KEY,
 } from "@/lib/i18n/config";
@@ -31,6 +35,7 @@ export async function GET(
             { data: siteVertical },
             { data: commandDeckSetting },
             { data: languageSetting },
+            { data: supportBotSetting },
         ] = await Promise.all([
             supabase
                 .from("site_settings")
@@ -50,6 +55,12 @@ export async function GET(
                 .eq("site_id", id)
                 .eq("setting_key", SITE_LANGUAGE_SETTING_KEY)
                 .maybeSingle(),
+            supabase
+                .from("site_settings")
+                .select("setting_value")
+                .eq("site_id", id)
+                .eq("setting_key", SUPPORT_BOT_SETTING_KEY)
+                .maybeSingle(),
         ]);
 
         return NextResponse.json({
@@ -65,6 +76,9 @@ export async function GET(
             },
             commandDeckEnabled: parseCommandDeckEnabled(
                 commandDeckSetting?.setting_value,
+            ),
+            supportBotEnabled: parseSupportBotEnabled(
+                supportBotSetting?.setting_value,
             ),
             siteLocale: resolveSiteLocale(languageSetting?.setting_value),
         });

@@ -179,6 +179,8 @@ type SiteDataQueryResult = {
   organization: { name: string };
   /** Per-site Command Deck toggle, persisted in `site_settings`. */
   commandDeckEnabled?: boolean;
+  /** Per-site technical support widget toggle. */
+  supportBotEnabled?: boolean;
   /** 'azienda' (default) | 'campagna_elettorale'. Drives the campaign menu. */
   siteType?: string;
 };
@@ -196,6 +198,7 @@ async function fetchSiteData(domain: string): Promise<SiteDataQueryResult> {
     verticalProfile: data.verticalProfile || null,
     organization: { name: data.organization?.name || "" },
     commandDeckEnabled: Boolean(data.commandDeckEnabled),
+    supportBotEnabled: Boolean(data.supportBotEnabled),
     siteType: data.site_type || "azienda",
   };
 }
@@ -654,8 +657,8 @@ export function AppSidebar() {
   );
 
   const resolvedNavGroups = useMemo(
-    () =>
-      buildSiteNavigation({
+    () => {
+      const groups = buildSiteNavigation({
         basePath,
         enabledModules: enabledModules.map((m) => m.name),
         role: userContext?.role as NavMinRole | undefined,
@@ -663,8 +666,18 @@ export function AppSidebar() {
         navLabels,
         settingsHref,
         includeMatrisHome: basePath === "/sites/matrispro",
-      }),
-    [basePath, enabledModules, userContext?.role, t, navLabels, settingsHref]
+      });
+      if (siteData?.supportBotEnabled) return groups;
+      return groups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter(
+            (item) => item.key !== "support" && item.key !== "my-tickets",
+          ),
+        }))
+        .filter((group) => group.items.length > 0);
+    },
+    [basePath, enabledModules, userContext?.role, t, navLabels, settingsHref, siteData?.supportBotEnabled]
   );
 
   const navGroups = useMemo(

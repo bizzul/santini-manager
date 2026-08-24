@@ -86,6 +86,9 @@ export const deMessages: DeepPartialWiden<Messages> = {
     users: "Benutzer",
     sites: "Sites",
     settings: "Einstellungen",
+    myTickets: "Meine Tickets",
+    support: "Support",
+    supportKb: "Wissensdatenbank",
     administration: "Verwaltung",
   },
   topbar: {

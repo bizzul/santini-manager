@@ -118,6 +118,13 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
         icon: "faSquarePollVertical",
         moduleName: "dashboard-forecast",
       },
+      {
+        key: "my-tickets",
+        labelKey: "nav.myTickets",
+        href: "/supporto",
+        icon: "faExclamation",
+        lucideIcon: "Headset",
+      },
     ],
   },
   {
@@ -320,6 +327,13 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
         href: SETTINGS_HREF_TOKEN,
         icon: "faWrench",
         lucideIcon: "Settings",
+      },
+      {
+        key: "support",
+        labelKey: "nav.support",
+        href: "/supporto/gestione",
+        icon: "faExclamation",
+        lucideIcon: "Headset",
       },
     ],
   },

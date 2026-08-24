@@ -31,6 +31,24 @@ stato persistito (localStorage) o differenze di configurazione.
   - `staging`: opzionale per QA visivo
   - `development`: `true` se stai lavorando sul resolver copertina
 
+## Flag supporto tecnico
+
+### Sorgente di verita: `site_settings.support_bot_enabled`
+- **Tipo:** boolean JSONB (`true` / `false`). Assente = **disabilitato**.
+- **Dove si imposta:** superadmin, card "Assistenza e abbonamenti" in
+  `/administration/sites/{id}/edit` (`SiteSupportAndSubscriptionModal`).
+- **Dove si legge:**
+  - Server: `getSupportBotEnabledForSite(siteId)` in
+    `lib/support/settings.server.ts`, usato dal layout dello Spazio.
+  - API: `GET /api/sites/[domain]` include `supportBotEnabled`.
+  - Client: widget `SupportWidget` e voci menù "I miei ticket" / "Supporto".
+- **Comportamento:**
+  - `true` → FAB in basso a destra, KB self-service, ticketing, voci menù.
+  - `false` / assente → nessuna UI, le tabelle restano (additivo).
+- **Rollback:** impostare `support_bot_enabled = false` sul sito, senza
+  drop delle migration.
+- **Raccomandazione:** accendere prima su Santini / staging, resto off.
+
 ## Flag Command Deck
 
 ### Sorgente di verita: `site_settings.command_deck_enabled`

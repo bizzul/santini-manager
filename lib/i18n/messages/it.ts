@@ -86,6 +86,9 @@ export const itMessages = {
     users: "Utenti",
     sites: "Sites",
     settings: "Impostazioni",
+    myTickets: "I miei ticket",
+    support: "Supporto",
+    supportKb: "Knowledge base",
     administration: "Administration",
   },
   topbar: {

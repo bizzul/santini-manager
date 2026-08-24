@@ -41,6 +41,7 @@ describe("SITE_NAV_GROUPS", () => {
     expect(SITE_NAV_GROUPS[0].items.map((item) => item.key)).toEqual([
       "overview",
       "forecast",
+      "my-tickets",
     ]);
     expect(SITE_NAV_GROUPS[1].items.map((item) => item.key)).toEqual([
       "projects",
@@ -63,6 +64,7 @@ describe("SITE_NAV_GROUPS", () => {
     expect(SITE_NAV_GROUPS[5].items.map((item) => item.key)).toEqual([
       "categories",
       "settings",
+      "support",
     ]);
   });
 

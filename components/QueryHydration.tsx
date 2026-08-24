@@ -14,6 +14,8 @@ interface SiteDataForHydration {
   verticalProfile?: unknown;
   /** When `true`, the Command Deck page and launcher are available. */
   commandDeckEnabled?: boolean;
+  /** When `true`, the technical support widget is available. */
+  supportBotEnabled?: boolean;
   /** Per-site interface locale, resolved on the server. */
   siteLocale?: unknown;
 }
@@ -71,13 +73,14 @@ export function QueryHydration({ data }: { data: HydrationData }) {
       ]);
       if (!existingSiteData) {
         queryClient.setQueryData(["site-data", data.domain], data.siteData);
-      } else if (existingSiteData.commandDeckEnabled === undefined) {
-        // Back-compat: persistent caches from pre-v3 builds may be missing
-        // the `commandDeckEnabled` flag. Patch it from the server payload
-        // without overwriting any fresher fields (e.g. realtime name/logo).
+      } else if (
+        existingSiteData.commandDeckEnabled === undefined ||
+        existingSiteData.supportBotEnabled === undefined
+      ) {
         queryClient.setQueryData(["site-data", data.domain], {
           ...existingSiteData,
           commandDeckEnabled: data.siteData.commandDeckEnabled,
+          supportBotEnabled: data.siteData.supportBotEnabled,
         });
       }
     }

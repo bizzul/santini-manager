@@ -13,6 +13,8 @@ import { cookies } from "next/headers";
 import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
 import { GlobalKanbanModal } from "@/components/kanbans/GlobalKanbanModal";
+import { SupportWidget } from "@/components/support/SupportWidget";
+import { SupportErrorBuffer } from "@/components/support/SupportErrorBuffer";
 import { createClient } from "@/utils/supabase/server";
 import { QuickActionsProvider } from "@/components/quick-actions";
 import { logger } from "@/lib/logger";
@@ -25,6 +27,7 @@ import {
 } from "@/lib/site-theme";
 import { SiteThemeStyle } from "@/components/site-theme-style";
 import { getCommandDeckEnabledForSite } from "@/lib/command-deck-settings.server";
+import { getSupportBotEnabledForSite } from "@/lib/support/settings.server";
 import { getSiteLocale } from "@/lib/i18n/server";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { hasPersonalManagerCapability } from "@/lib/personal-manager/server-context";
@@ -176,6 +179,7 @@ export default async function SiteLayout({
     // reader is React.cache()-wrapped, so calling it again from the page
     // server component is free.
     const commandDeckEnabled = await getCommandDeckEnabledForSite(data.id);
+    const supportBotEnabled = await getSupportBotEnabledForSite(data.id);
 
     // Per-site interface language (default `it`). Drives the shell + any
     // translated page through the client I18nProvider.
@@ -203,6 +207,7 @@ export default async function SiteLayout({
                   verticalProfile: data.verticalProfile || null,
                   organization: { name: data.organization?.name || "" },
                   commandDeckEnabled,
+                  supportBotEnabled,
                   siteLocale,
                 },
                 domain,
@@ -231,6 +236,8 @@ export default async function SiteLayout({
 
                 {/* Global Kanban Modal */}
                 <GlobalKanbanModal />
+                <SupportErrorBuffer />
+                <SupportWidget enabled={supportBotEnabled} />
               </I18nProvider>
             </ManagerGuideProvider>
           </SidebarProvider>
