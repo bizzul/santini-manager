@@ -81,13 +81,23 @@ export const validation = z.object({
     z.number().nullable(),
   ).optional(),
   other: optionalString,
-  typed_comments: z
+  typed_comments: z.preprocess((val) => {
+    if (val == null) return undefined;
+    if (typeof val !== "object" || Array.isArray(val)) return undefined;
+    const record = val as Record<string, unknown>;
+    return {
+      produzione: typeof record.produzione === "string" ? record.produzione : "",
+      posa: typeof record.posa === "string" ? record.posa : "",
+      fatturazione:
+        typeof record.fatturazione === "string" ? record.fatturazione : "",
+    };
+  }, z
     .object({
       produzione: z.string().optional(),
       posa: z.string().optional(),
       fatturazione: z.string().optional(),
     })
-    .optional(),
+    .optional()),
   offerProducts: z.array(z.object({
     productId: z.preprocess(
       (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
@@ -120,8 +130,11 @@ export const validation = z.object({
   position7: z.string().optional(),
   position8: z.string().optional(),
   kanbanId: z
-    .preprocess((val) => Number(val), z.number())
-    .refine((val) => val !== null && val !== undefined, {
+    .preprocess(
+      (val) => (val === "" || val === null || val === undefined ? NaN : Number(val)),
+      z.number(),
+    )
+    .refine((val) => Number.isFinite(val) && val > 0, {
       message: "È necessario selezionare un kanban",
     }),
   kanbanColumnId: z

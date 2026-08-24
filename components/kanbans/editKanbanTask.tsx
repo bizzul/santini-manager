@@ -793,6 +793,15 @@ const EditTaskKanban = ({
       return;
     }
 
+    const resolvedKanbanId = selectedKanbanId || resource?.kanbanId || null;
+    if (!resolvedKanbanId) {
+      toast({
+        variant: "destructive",
+        description: "Errore! Kanban non disponibile. Ricarica la pagina e riprova.",
+      });
+      return;
+    }
+
     if (pendingSupplierUpdatesRef.current.size > 0) {
       await Promise.allSettled(Array.from(pendingSupplierUpdatesRef.current));
     }
@@ -866,45 +875,84 @@ const EditTaskKanban = ({
       squadra: null,
       typed_comments: typedComments,
       other: serializeTypedCommentsToOther(typedComments) || "",
-      kanbanId: selectedKanbanId || resource?.kanbanId || null,
+      kanbanId: resolvedKanbanId,
       kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
       offer_products: offerProductsToSave,
       offerProducts: offerProductsToSave,
       is_draft: false,
       isDraft: false,
       task_type: resource?.task_type || resource?.taskType || (isCreate ? "OFFERTA" : undefined),
+      ...(domain ? { domain } : {}),
+      ...(siteId ? { siteId } : {}),
     };
 
-    const response = await fetch(
-      isCreate ? "/api/kanban/tasks/create" : `/api/kanban/tasks/${taskId}`,
-      {
-        method: isCreate ? "POST" : "PATCH",
-        headers,
-        body: JSON.stringify(payload),
-      },
-    );
+    try {
+      const response = await fetch(
+        isCreate ? "/api/kanban/tasks/create" : `/api/kanban/tasks/${taskId}`,
+        {
+          method: isCreate ? "POST" : "PATCH",
+          headers,
+          body: JSON.stringify(payload),
+        },
+      );
 
-    const responseData = await response.json();
+      let responseData: any = null;
+      try {
+        responseData = await response.json();
+      } catch {
+        responseData = null;
+      }
 
-    if (!response.ok || responseData?.status >= 400 || responseData?.error) {
-      const errorMessage =
-        (typeof responseData?.message === "string" && responseData.message) ||
-        (typeof responseData?.error === "string" && responseData.error) ||
-        "Salvataggio non riuscito";
-      toast({
-        variant: "destructive",
-        description: `Errore! ${errorMessage}`,
-      });
-    } else {
+      const apiErrorMessage = (() => {
+        if (typeof responseData?.message === "string" && responseData.message) {
+          return responseData.message;
+        }
+        if (typeof responseData?.error === "string" && responseData.error) {
+          return responseData.error;
+        }
+        if (Array.isArray(responseData?.issues) && responseData.issues.length > 0) {
+          return responseData.issues
+            .map((issue: { path?: Array<string | number>; message?: string }) => {
+              const path = Array.isArray(issue.path) ? issue.path.join(".") : "";
+              return `${path ? `${path}: ` : ""}${issue.message || "non valido"}`;
+            })
+            .join(", ");
+        }
+        if (!response.ok) {
+          return `Salvataggio non riuscito (HTTP ${response.status})`;
+        }
+        return "Salvataggio non riuscito";
+      })();
+
+      if (!response.ok || responseData?.status >= 400 || responseData?.error) {
+        console.error("Task save failed:", {
+          status: response.status,
+          responseData,
+        });
+        toast({
+          variant: "destructive",
+          description: `Errore! ${apiErrorMessage}`,
+        });
+        return;
+      }
+
       router.refresh();
       onTaskUpdated?.();
       handleClose(false);
       toast({
         description: isCreate
-          ? `Offerta ${d.unique_code} creata correttamente!`
+          ? `Offerta ${responseData?.data?.unique_code || d.unique_code || ""} creata correttamente!`
           : `Elemento ${d.unique_code} aggiornato correttamente!`,
       });
       form.reset();
+    } catch (error) {
+      console.error("Task save request failed:", error);
+      toast({
+        variant: "destructive",
+        description: `Errore! ${
+          error instanceof Error ? error.message : "Salvataggio non riuscito"
+        }`,
+      });
     }
   };
 

@@ -17,6 +17,59 @@ import {
   sumOfferProductsTotal,
 } from "@/lib/offers";
 
+const OPTIONAL_STRING_KEYS = [
+  "unique_code",
+  "name",
+  "luogo",
+  "other",
+  "cantiere_contatto",
+  "cantiere_telefono",
+  "offerLossReason",
+  "offerLossCompetitorName",
+] as const;
+
+/** Coerce null/empty optional strings before Zod, so JSON forms don't fail validation. */
+function normalizeCreateBody(body: Record<string, unknown>) {
+  const normalized: Record<string, unknown> = { ...body };
+
+  for (const key of OPTIONAL_STRING_KEYS) {
+    const value = normalized[key];
+    if (value === null || value === "") {
+      // unique_code empty → omit so the server generates it
+      if (key === "unique_code") {
+        delete normalized[key];
+      } else {
+        normalized[key] = undefined;
+      }
+    }
+  }
+
+  if (
+    normalized.typed_comments &&
+    typeof normalized.typed_comments === "object" &&
+    !Array.isArray(normalized.typed_comments)
+  ) {
+    const comments = normalized.typed_comments as Record<string, unknown>;
+    normalized.typed_comments = {
+      produzione: typeof comments.produzione === "string" ? comments.produzione : "",
+      posa: typeof comments.posa === "string" ? comments.posa : "",
+      fatturazione:
+        typeof comments.fatturazione === "string" ? comments.fatturazione : "",
+    };
+  }
+
+  return normalized;
+}
+
+function errorResponse(message: string, status: number, extra?: Record<string, unknown>) {
+  // Always put the human message in `error` (string), never `error: true`.
+  // Older clients toast `error || message` and would show "true" otherwise.
+  return NextResponse.json(
+    { error: message, message, ...extra },
+    { status },
+  );
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -24,36 +77,59 @@ export async function POST(req: NextRequest) {
     // Get the current user from Supabase auth
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return errorResponse("Unauthorized", 401);
     }
 
-    const body = await req.json();
-    const result = validation.safeParse(body); //? <---Veryfing body against validation schema
+    const rawBody = await req.json();
+    const body = normalizeCreateBody(
+      rawBody && typeof rawBody === "object" ? (rawBody as Record<string, unknown>) : {},
+    );
+    const result = validation.safeParse(body);
 
     // Extract site_id from request headers or body
     let siteId = null;
     const siteIdFromHeader = req.headers.get("x-site-id");
-    const siteIdFromBody = body.siteId;
-    const domain = req.headers.get("host");
+    const siteIdFromBody =
+      typeof body.siteId === "string"
+        ? body.siteId
+        : typeof body.siteId === "number"
+          ? String(body.siteId)
+          : null;
+    const domainHeader = req.headers.get("host");
+    const domainFromBody =
+      typeof body.domain === "string"
+        ? body.domain
+        : typeof body.siteDomain === "string"
+          ? body.siteDomain
+          : null;
 
     if (siteIdFromHeader) {
       siteId = siteIdFromHeader;
     } else if (siteIdFromBody) {
       siteId = siteIdFromBody;
-    } else if (domain) {
-      try {
-        const siteResult = await getSiteData(domain);
-        if (siteResult?.data) {
-          siteId = siteResult.data.id;
+    } else {
+      for (const candidate of [domainFromBody, domainHeader]) {
+        if (!candidate) continue;
+        try {
+          const siteResult = await getSiteData(String(candidate));
+          if (siteResult?.data) {
+            siteId = siteResult.data.id;
+            break;
+          }
+        } catch (error) {
+          console.error("Error fetching site data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching site data:", error);
       }
     }
 
     if (result.success) {
       // Check if a specific kanbanId was provided
-      const providedKanbanId = body.kanbanId || result.data.kanbanId;
+      const providedKanbanId =
+        (typeof body.kanbanId === "number" || typeof body.kanbanId === "string"
+          ? Number(body.kanbanId)
+          : null) ||
+        result.data.kanbanId ||
+        null;
       
       let kanban: { 
         id: number; 
@@ -87,10 +163,10 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (kanbanError || !kanbanData) {
-          return NextResponse.json({
-            error: true,
-            message: `Kanban non trovato con ID ${providedKanbanId}: ${kanbanError?.message || "Non trovato"}`,
-          }, { status: 404 });
+          return errorResponse(
+            `Kanban non trovato con ID ${providedKanbanId}: ${kanbanError?.message || "Non trovato"}`,
+            404,
+          );
         }
         
         // Normalize category (Supabase may return array for joins)
@@ -125,10 +201,10 @@ export async function POST(req: NextRequest) {
         const { data: kanbanData, error: kanbanError } = await kanbanQuery.single();
 
         if (kanbanError || !kanbanData) {
-          return NextResponse.json({
-            error: true,
-            message: `Kanban PRODUCTION non trovato: ${kanbanError?.message || "Non trovato"}`,
-          }, { status: 404 });
+          return errorResponse(
+            `Kanban PRODUCTION non trovato: ${kanbanError?.message || "Non trovato"}`,
+            404,
+          );
         }
         kanban = kanbanData;
       }
@@ -148,15 +224,20 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (columnError || !firstColumn) {
-        return NextResponse.json({
-          error: true,
-          message: `Colonna kanban non trovata: ${columnError?.message || "Nessuna colonna"}`,
-        }, { status: 404 });
+        return errorResponse(
+          `Colonna kanban non trovata: ${columnError?.message || "Nessuna colonna"}`,
+          404,
+        );
       }
 
       let column = firstColumn;
       const requestedColumnId =
-        body.kanbanColumnId || result.data.kanbanColumnId || null;
+        (typeof body.kanbanColumnId === "number" ||
+        typeof body.kanbanColumnId === "string"
+          ? Number(body.kanbanColumnId)
+          : null) ||
+        result.data.kanbanColumnId ||
+        null;
       if (requestedColumnId) {
         const { data: requestedColumn } = await supabase
           .from("KanbanColumn")
@@ -189,10 +270,14 @@ export async function POST(req: NextRequest) {
       if (isInternalCategory) {
         taskType = "INTERNO";
       } else {
+        const bodyTaskType =
+          typeof body.task_type === "string"
+            ? body.task_type
+            : typeof body.taskType === "string"
+              ? body.taskType
+              : null;
         taskType =
-          body.task_type ||
-          body.taskType ||
-          (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
+          bodyTaskType || (kanban?.is_offer_kanban ? "OFFERTA" : "LAVORO");
       }
 
       // Generate unique code using atomic sequence (always incremental)
@@ -203,15 +288,26 @@ export async function POST(req: NextRequest) {
       const maxRetries = 6;
       let retryCount = 0;
 
+      if (!siteId) {
+        return errorResponse(
+          "Impossibile determinare il sito per generare il codice offerta. Ricarica la pagina e riprova.",
+          400,
+        );
+      }
+
       while (retryCount < maxRetries && !taskCreate) {
-        // Generate new code if siteId exists (always regenerate to ensure uniqueness)
-        if (siteId) {
-          // Use internal code generator for internal categories
-          if (isInternalCategory && internalCategoryId && internalBaseCode) {
-            uniqueCode = await generateInternalTaskCode(siteId, internalCategoryId, internalBaseCode);
-          } else {
-            uniqueCode = await generateTaskCode(siteId, taskType);
-          }
+        // Always regenerate when siteId exists to ensure uniqueness
+        if (isInternalCategory && internalCategoryId && internalBaseCode) {
+          uniqueCode = await generateInternalTaskCode(siteId, internalCategoryId, internalBaseCode);
+        } else {
+          uniqueCode = await generateTaskCode(siteId, taskType);
+        }
+
+        if (!uniqueCode) {
+          return errorResponse(
+            "Impossibile generare un codice univoco per l'offerta",
+            500,
+          );
         }
 
         // Prepare insert data with site_id
@@ -385,10 +481,10 @@ export async function POST(req: NextRequest) {
       }
 
       if (taskError && !taskCreate) {
-        return NextResponse.json({
-          error: true,
-          message: `Errore nella creazione del task: ${taskError.message}`,
-        }, { status: 500 });
+        return errorResponse(
+          `Errore nella creazione del task: ${taskError.message}`,
+          500,
+        );
       }
 
       // Success
@@ -418,14 +514,14 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        if (body.fileIds && Array.isArray(body.fileIds) && body.fileIds.length > 0) {
+        if (Array.isArray(body.fileIds) && body.fileIds.length > 0) {
           // Save the Cloudinary IDs of the uploaded files to the task record
           await Promise.all(
-            body.fileIds.map((fileId: number) => {
+            body.fileIds.map((fileId) => {
               return supabase
                 .from("files")
                 .update({ task_id: taskCreate.id })
-                .eq("id", fileId);
+                .eq("id", Number(fileId));
             }),
           );
         }
@@ -457,25 +553,25 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ data: taskCreate, status: 200 });
       } else {
-        return NextResponse.json({ error: result, status: 500 });
+        return errorResponse("Creazione task non riuscita", 500);
       }
     } else {
       //Input invalid
-      const errorMessages = result.error.issues.map((issue) => issue.message)
+      const errorMessages = result.error.issues
+        .map((issue) => `${issue.path.join(".") || "campo"}: ${issue.message}`)
         .join(", ");
-      return NextResponse.json({
-        error: true,
-        message: `Dati non validi: ${errorMessages}`,
+      console.error("Task create validation failed:", result.error.issues);
+      return errorResponse(`Dati non validi: ${errorMessages}`, 400, {
         issues: result.error.issues,
-      }, { status: 400 });
+      });
     }
   } catch (error) {
     console.error("Error creating task:", error);
-    return NextResponse.json({
-      error: true,
-      message: error instanceof Error
+    return errorResponse(
+      error instanceof Error
         ? error.message
         : "Errore sconosciuto durante la creazione del task",
-    }, { status: 500 });
+      500,
+    );
   }
 }
