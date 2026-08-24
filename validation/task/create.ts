@@ -20,9 +20,18 @@ const parseDate = (value: any) => {
   return null;
 };
 
+/** Optional string fields often arrive as null from JSON forms; treat null/"" as unset. */
+const optionalString = z.preprocess(
+  (val) => (val === null || val === undefined ? undefined : val),
+  z.string().optional(),
+);
+
 export const validation = z.object({
   // unique_code è opzionale: se non fornito, viene generato automaticamente dal server
-  unique_code: z.string().min(1).optional(),
+  unique_code: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? undefined : val),
+    z.string().min(1).optional(),
+  ),
   clientId: z
     .preprocess(
       (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
@@ -63,12 +72,15 @@ export const validation = z.object({
   ora_inizio: z.preprocess((v) => (v === "" || v == null ? null : v), z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional().nullable()),
   ora_fine: z.preprocess((v) => (v === "" || v == null ? null : v), z.string().regex(/^\d{1,2}:\d{2}(:\d{2})?$/).optional().nullable()),
   squadra: z.preprocess((val) => (val ? Number(val) : null), z.union([z.literal(1), z.literal(2)]).optional().nullable()),
-  name: z.string().optional(),
-  luogo: z.string().optional(),
+  name: optionalString,
+  luogo: optionalString,
   sellPrice: z.preprocess((val) => Number(val), z.number()),
-  numero_pezzi: z.preprocess((val) => (val ? Number(val) : null), z.number())
-    .optional().nullable(),
-  other: z.string().optional(),
+  // Keep 0 as a valid quantity; only blank/null/undefined become null.
+  numero_pezzi: z.preprocess(
+    (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+    z.number().nullable(),
+  ).optional(),
+  other: optionalString,
   typed_comments: z
     .object({
       produzione: z.string().optional(),

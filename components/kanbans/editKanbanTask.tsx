@@ -832,9 +832,11 @@ const EditTaskKanban = ({
       typed_comments: d.typed_comments,
     });
     const payload = {
-      unique_code: d.unique_code || null,
-      name: d.name || null,
-      luogo: normalizedSiteAddress || null,
+      // Omit empty unique_code so the server can generate it; never send null
+      // (Zod optional strings reject null and empty unique_code fails min(1)).
+      ...(d.unique_code ? { unique_code: d.unique_code } : {}),
+      name: d.name || "",
+      luogo: normalizedSiteAddress || "",
       cantiere_contatto: siteContactName.trim() || null,
       cantiere_telefono: siteContactPhone.trim() || null,
       clientId: d.clientId || null,
@@ -863,7 +865,7 @@ const EditTaskKanban = ({
       // Deprecated field - intentionally nulled because assignment now uses collaborators list
       squadra: null,
       typed_comments: typedComments,
-      other: serializeTypedCommentsToOther(typedComments) || null,
+      other: serializeTypedCommentsToOther(typedComments) || "",
       kanbanId: selectedKanbanId || resource?.kanbanId || null,
       kanbanColumnId: selectedColumnId || resource?.kanbanColumnId || null,
       offer_products: offerProductsToSave,
@@ -885,13 +887,13 @@ const EditTaskKanban = ({
     const responseData = await response.json();
 
     if (!response.ok || responseData?.status >= 400 || responseData?.error) {
+      const errorMessage =
+        (typeof responseData?.message === "string" && responseData.message) ||
+        (typeof responseData?.error === "string" && responseData.error) ||
+        "Salvataggio non riuscito";
       toast({
         variant: "destructive",
-        description: `Errore! ${
-          responseData?.error ||
-          responseData?.message ||
-          "Salvataggio non riuscito"
-        }`,
+        description: `Errore! ${errorMessage}`,
       });
     } else {
       router.refresh();
