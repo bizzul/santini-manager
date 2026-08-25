@@ -54,6 +54,7 @@ import { SellProductWithAction } from "./columns";
 import { SellProductCategory } from "@/types/supabase";
 import { cn } from "@/lib/utils";
 import { isArchivedSellCategoryName } from "@/lib/sell-product-active";
+import { MobileTableCards } from "@/components/table/responsive-data-table";
 
 type EmbeddedColumnPreset = "categoryDrilldown";
 
@@ -506,9 +507,10 @@ export function DataTable<TData extends { id: number }, TValue>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <MobileTableCards table={table} emptyMessage="Nessun risultato." />
       <div
         className={cn(
-          "rounded-lg border bg-card shadow-sm",
+          "hidden rounded-lg border bg-card shadow-sm md:block",
           denseLayout ? "overflow-x-auto" : "overflow-visible",
         )}
       >

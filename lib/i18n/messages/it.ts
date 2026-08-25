@@ -91,6 +91,14 @@ export const itMessages = {
     supportKb: "Knowledge base",
     administration: "Administration",
   },
+  mobile: {
+    navLabel: "Navigazione principale",
+    navHome: "Home",
+    navWork: "Lavoro",
+    navRecords: "Anagrafiche",
+    navMenu: "Menu",
+    addMedia: "Aggiungi foto / Documento",
+  },
   topbar: {
     fallbackSection: "Spazio operativo",
     brand: "Full Data Manager",

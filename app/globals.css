@@ -903,3 +903,42 @@ body:has(.home-gradient-bg) {
 [data-collapsible="icon"] .sidebar-nav-group {
   border-color: transparent !important;
 }
+
+/* Full Data Manager — mobile shell (phones only; desktop unchanged). */
+:root {
+  --fdm-bottom-nav-height: 0px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --fdm-bottom-nav-height: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .fdm-site-main {
+    padding-bottom: var(--fdm-bottom-nav-height);
+  }
+
+  /* Prefer 44px targets without blowing up dense desktop toolbars. */
+  [data-slot="button"]:not([data-sidebar="trigger"]) {
+    min-height: 44px;
+  }
+
+  [data-slot="input"],
+  input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+}
+
+/* Desktop: keep filter panels expanded even if the <details> is closed. */
+@media (min-width: 768px) {
+  details.fdm-mobile-filters > :not(summary) {
+    display: block !important;
+  }
+
+  details.fdm-mobile-filters > summary {
+    display: none;
+  }
+}

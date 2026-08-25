@@ -32,8 +32,10 @@ import {
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
 import { createClient } from "@/utils/supabase/client";
-import { Loader2, Paperclip, X } from "lucide-react";
+import { X } from "lucide-react";
 import { VoiceDictationButton } from "@/components/voice-input/VoiceDictationButton";
+import { MobileMediaCapture } from "@/components/media/mobile-media-capture";
+import { useMediaCaptureOptional } from "@/components/media/media-capture-context";
 
 export interface ClienteOption {
   id: number;
@@ -163,6 +165,7 @@ export function DocumentCreateForm({
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateErrors, setGenerateErrors] = useState<string[]>([]);
+  const capture = useMediaCaptureOptional();
 
   const showGenerateErrors = (errors: string[]) => {
     const list = errors.length > 0 ? errors : ["Errore sconosciuto durante la generazione"];
@@ -315,6 +318,19 @@ export function DocumentCreateForm({
     },
     [siteId, toast],
   );
+
+  useEffect(() => {
+    if (!capture) return;
+    return capture.registerSink({
+      label: "Allegati documento",
+      accept: ".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp",
+      onFiles: async (files) => {
+        for (const file of files) {
+          await uploadAttachment(file);
+        }
+      },
+    });
+  }, [capture, uploadAttachment]);
 
   const handleGenerate = async () => {
     if (!oggetto.trim() || !testo.trim() || !ragioneSociale.trim()) {
@@ -599,34 +615,19 @@ export function DocumentCreateForm({
         <Label>Allegati (opzionale)</Label>
         <p className="text-xs text-muted-foreground">
           Max {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB. PDF, Word,
-          Excel, testo o immagini.
+          Excel, testo o immagini. Scatta una foto o scegli un file.
         </p>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isUploading}
-            onClick={() => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.accept =
-                ".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp";
-              input.onchange = () => {
-                const file = input.files?.[0];
-                if (file) void uploadAttachment(file);
-              };
-              input.click();
-            }}
-          >
-            {isUploading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Paperclip className="mr-2 h-4 w-4" />
-            )}
-            Aggiungi allegato
-          </Button>
-        </div>
+        <MobileMediaCapture
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,image/*"
+          multiple
+          busy={isUploading}
+          confirmLabel="Aggiungi allegato"
+          onConfirm={async (files) => {
+            for (const file of files) {
+              await uploadAttachment(file);
+            }
+          }}
+        />
         {allegati.length > 0 ? (
           <ul className="space-y-1">
             {allegati.map((a, i) => (
@@ -639,7 +640,7 @@ export function DocumentCreateForm({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-11 w-11 md:h-7 md:w-7"
                   onClick={() =>
                     setAllegati((prev) => prev.filter((_, idx) => idx !== i))
                   }

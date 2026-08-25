@@ -65,7 +65,7 @@ export function DetailSheetLayout({
         <div className="mb-6">
           <Link
             href={backHref}
-            className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground md:min-h-0"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             {backLabel}

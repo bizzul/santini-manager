@@ -91,6 +91,14 @@ export const deMessages: DeepPartialWiden<Messages> = {
     supportKb: "Wissensdatenbank",
     administration: "Verwaltung",
   },
+  mobile: {
+    navLabel: "Hauptnavigation",
+    navHome: "Home",
+    navWork: "Arbeit",
+    navRecords: "Stammdaten",
+    navMenu: "Menü",
+    addMedia: "Foto / Dokument hinzufügen",
+  },
   topbar: {
     fallbackSection: "Arbeitsbereich",
     brand: "Full Data Manager",

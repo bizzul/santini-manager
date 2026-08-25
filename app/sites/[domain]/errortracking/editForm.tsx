@@ -505,6 +505,7 @@ const EditProductForm = ({ handleClose, data }: Props) => {
               onError={handleUploadError}
               accept="image/*"
               multiple
+              sinkLabel="Foto segnalazione"
             />
             <UploadedFilesList files={uploadedFiles} />
             {data.files && data.files.length > 0 && (

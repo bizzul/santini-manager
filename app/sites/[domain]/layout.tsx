@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { getSiteData } from "@/lib/fetchers";
@@ -9,6 +9,9 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { SiteTopbar } from "@/components/site-topbar";
+import { SiteMobileNav } from "@/components/layout/site-mobile-nav";
+import { MediaCaptureProvider } from "@/components/media/media-capture-context";
+import { AddMediaSheet } from "@/components/media/add-media-sheet";
 import { cookies } from "next/headers";
 import { getUserContext, type UserContext } from "@/lib/auth-utils";
 import { KanbanModalProvider } from "@/components/kanbans/KanbanModalContext";
@@ -225,19 +228,27 @@ export default async function SiteLayout({
               userId={userContext.userId || userContext.user.id}
             >
               <I18nProvider locale={siteLocale}>
-                <AppSidebar />
-                <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
-                  <SiteTopbar
-                    siteName={data.name || domain}
-                    personalManagerEnabled={personalManagerEnabled}
-                  />
-                  <div className="flex-1 overflow-auto bg-[hsl(var(--page))]">{children}</div>
-                </SidebarInset>
+                <MediaCaptureProvider>
+                  <AppSidebar />
+                  <SidebarInset className="flex h-screen flex-col overflow-hidden bg-[hsl(var(--page))]">
+                    <SiteTopbar
+                      siteName={data.name || domain}
+                      personalManagerEnabled={personalManagerEnabled}
+                    />
+                    <div className="fdm-site-main flex-1 overflow-auto bg-[hsl(var(--page))]">
+                      {children}
+                    </div>
+                    <SiteMobileNav />
+                  </SidebarInset>
+                  <Suspense fallback={null}>
+                    <AddMediaSheet />
+                  </Suspense>
 
-                {/* Global Kanban Modal */}
-                <GlobalKanbanModal />
-                <SupportErrorBuffer />
-                <SupportWidget enabled={supportBotEnabled} />
+                  {/* Global Kanban Modal */}
+                  <GlobalKanbanModal />
+                  <SupportErrorBuffer />
+                  <SupportWidget enabled={supportBotEnabled} />
+                </MediaCaptureProvider>
               </I18nProvider>
             </ManagerGuideProvider>
           </SidebarProvider>

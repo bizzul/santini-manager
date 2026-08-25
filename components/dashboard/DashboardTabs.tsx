@@ -92,7 +92,7 @@ export default function DashboardTabs({
                 key={tab.name}
                 href={`${basePath}${tabPath}`}
                 className={cn(
-                  "flex h-9 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
+                  "flex h-11 flex-shrink-0 items-center gap-2 whitespace-nowrap rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 md:h-9",
                   isActive
                     ? "bg-blue-500 text-white shadow-sm"
                     : "text-slate-300 hover:bg-slate-800 hover:text-white"

@@ -42,6 +42,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TableColGroup } from "@/components/table/table-colgroup";
+import { MobileTableCards } from "@/components/table/responsive-data-table";
+import { MobileFilters } from "@/components/layout/mobile-filters";
 import {
   getInventoryArticlesCellClassName,
   getInventoryArticlesHeadClassName,
@@ -402,10 +404,11 @@ export function DataTable<TData, TValue>({
   return (
     <>
       {/* Filter and Search Bar - Contained in rounded border */}
-      <div className="rounded-lg border bg-card p-3 mb-3 shadow-sm">
+      <div className="mb-3 rounded-lg border bg-card p-3 shadow-sm">
+        <MobileFilters title="Filtri categoria">
         {/* Category Filter Row */}
         {!embeddedMode && categories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium">Categoria:</span>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center space-x-2">
@@ -448,16 +451,19 @@ export function DataTable<TData, TValue>({
             </div>
           </div>
         )}
+        </MobileFilters>
 
         {/* Search Row with Clear Button and Bulk Delete */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative w-full flex-1 sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <DebouncedInput
               value={globalFilter ?? ""}
               onChange={(value) => setGlobalFilter(String(value))}
-              className="pl-9"
+              className="h-11 pl-9"
               placeholder="Cerca per codice, nome, fornitore..."
+              type="search"
+              inputMode="search"
             />
           </div>
           {(globalFilter || !allCategoriesSelected) && (
@@ -506,8 +512,9 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
+      <MobileTableCards table={table} emptyMessage="Nessun risultato." />
       {/* Table Container - Contained in rounded border */}
-      <div className="w-full min-w-0 rounded-lg border bg-card shadow-sm overflow-y-visible">
+      <div className="hidden w-full min-w-0 overflow-y-visible rounded-lg border bg-card shadow-sm md:block">
         <div
           className={
             denseLayout

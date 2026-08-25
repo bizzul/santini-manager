@@ -2,7 +2,6 @@
 
 import {
   ColumnDef,
-  flexRender,
   getCoreRowModel,
   useReactTable,
   getPaginationRowModel,
@@ -12,16 +11,8 @@ import {
   getFilteredRowModel,
   RowSelectionState,
 } from "@tanstack/react-table";
-
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useState } from "react";
+
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { Button } from "@/components/ui/button";
@@ -30,6 +21,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { batchDeleteClients } from "./actions/delete-item.action";
 import { useRouter } from "next/navigation";
 import { useT } from "@/components/i18n/i18n-provider";
+import { ResponsiveDataTable } from "@/components/table/responsive-data-table";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -128,8 +120,10 @@ export function DataTable<TData extends { id: number }, TValue>({
         <DebouncedInput
           value={globalFilter ?? ""}
           onChange={(value) => setGlobalFilter(String(value))}
-          className="max-w-sm"
+          className="h-11 w-full max-w-full sm:max-w-sm"
           placeholder={t("clients.searchPlaceholder")}
+          type="search"
+          inputMode="search"
         />
 
         {selectedCount > 0 && (
@@ -179,56 +173,11 @@ export function DataTable<TData extends { id: number }, TValue>({
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  {t("clients.noResults")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveDataTable
+        table={table}
+        columnCount={columns.length}
+        emptyMessage={t("clients.noResults")}
+      />
       <div className="pt-8">
         {/* Pagination controls */}
         <DataTablePagination table={table} />

@@ -160,6 +160,7 @@ export function ProductImageCard({
           disabled={isSaving}
           dropzoneLabel="Trascina un'immagine qui o clicca per selezionare"
           dropzoneHint="PNG, JPG, WEBP - Max 10MB"
+          sinkLabel="Immagine prodotto"
         />
 
         {hasPendingChanges && (

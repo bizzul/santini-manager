@@ -412,7 +412,84 @@ export function DocumentiPageClient({
             }
           />
         ) : (
-          <div className="rounded-lg border bg-card shadow-sm">
+          <>
+            <div className="flex flex-col gap-3 md:hidden">
+              {documentiList.map((doc) => (
+                <article
+                  key={doc.id}
+                  className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                >
+                  <p className="text-base font-semibold">
+                    {doc.oggetto ?? getTipoDocumentoLabel(doc.tipo_documento)}
+                  </p>
+                  <dl className="mt-2 space-y-1.5 text-sm">
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-xs uppercase text-muted-foreground">Tipo</dt>
+                      <dd>{getTipoDocumentoLabel(doc.tipo_documento)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-xs uppercase text-muted-foreground">Numero</dt>
+                      <dd>{doc.numero ?? "—"}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-xs uppercase text-muted-foreground">Destinatario</dt>
+                      <dd className="max-w-[60%] truncate text-right">
+                        {doc.destinatario?.ragioneSociale ?? "—"}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-xs uppercase text-muted-foreground">Totale</dt>
+                      <dd>
+                        {doc.totale_chf != null
+                          ? Number(doc.totale_chf).toFixed(2)
+                          : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 flex min-h-11 items-center justify-end border-t border-border pt-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="h-11">
+                          Azioni
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setViewDocumento(doc);
+                            setStep("view");
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Visualizza
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={actionLoading === `pdf-${doc.id}`}
+                          onClick={() =>
+                            void downloadPdf(
+                              doc.id,
+                              `${doc.tipo_documento}-${doc.numero ?? doc.id}.pdf`,
+                            )
+                          }
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Scarica PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(doc)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Modifica
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => sendMailto(doc)}>
+                          <Mail className="mr-2 h-4 w-4" />
+                          Invia via email
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden rounded-lg border bg-card shadow-sm md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -503,7 +580,8 @@ export function DocumentiPageClient({
                 ))}
               </TableBody>
             </Table>
-          </div>
+            </div>
+          </>
         )}
       </PageContent>
     </PageLayout>

@@ -303,6 +303,7 @@ export const EditModal: FC<Props> = ({
                       onError={handleUploadError}
                       accept="image/*"
                       multiple
+                      sinkLabel="Foto segnalazione"
                     />
                     <UploadedFilesList files={uploadedFiles} />
                   </div>

@@ -409,6 +409,7 @@ export const CreateModal: FC<Props> = ({
                   onError={handleUploadError}
                   accept="*/*"
                   multiple
+                  sinkLabel="Allegati scheda"
                 />
                 <UploadedFilesList files={uploadedFiles} />
               </div>

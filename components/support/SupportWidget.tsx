@@ -325,7 +325,7 @@ export function SupportWidget({ enabled }: { enabled: boolean }) {
   return (
     <>
       {/* Anchored on the same corner as GlobalVoiceAssistant; spacer keeps this FAB in the slot above the mic. */}
-      <div className="pointer-events-none fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className="pointer-events-none fixed bottom-24 right-4 z-50 flex flex-col items-end gap-3 md:bottom-6 md:right-6">
         <Button
           type="button"
           size="icon"

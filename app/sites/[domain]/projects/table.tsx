@@ -26,6 +26,8 @@ import { useState, useMemo, useCallback } from "react";
 import { DataTablePagination } from "@/components/table/pagination";
 import { DebouncedInput } from "@/components/debouncedInput";
 import { cn } from "@/lib/utils";
+import { MobileTableCards } from "@/components/table/responsive-data-table";
+import { MobileFilters } from "@/components/layout/mobile-filters";
 import { SellProductCategory } from "@/types/supabase";
 import { Search, X, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -299,7 +301,8 @@ export function DataTable<TData, TValue>({
       )}
 
       {/* Filter and Search Bar - Contained in rounded border */}
-      <div className="rounded-lg border bg-card p-4 mb-4 shadow-sm">
+      <div className="mb-4 rounded-lg border bg-card p-4 shadow-sm">
+        <MobileFilters title="Filtri">
         {/* Archived Filter Row */}
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <span className="text-sm font-medium">Stato:</span>
@@ -429,16 +432,19 @@ export function DataTable<TData, TValue>({
             </SelectContent>
           </Select>
         </div>
+        </MobileFilters>
 
         {/* Search Row with Clear Button */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full flex-1 sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <DebouncedInput
               value={globalFilter ?? ""}
               onChange={(value) => setGlobalFilter(String(value))}
-              className="pl-9"
+              className="h-11 pl-9"
               placeholder="Cerca per codice, cliente, oggetto, CAP..."
+              type="search"
+              inputMode="search"
             />
           </div>
           {hasActiveFilters && (
@@ -446,7 +452,7 @@ export function DataTable<TData, TValue>({
               variant="outline"
               size="sm"
               onClick={clearAllFilters}
-              className="h-9 gap-1"
+              className="h-11 gap-1 md:h-9"
             >
               <X className="h-4 w-4" />
               Cancella filtri
@@ -455,8 +461,9 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
+      <MobileTableCards table={table} emptyMessage="Nessun risultato." />
       {/* Table Container - Contained in rounded border */}
-      <div className="rounded-lg border bg-card shadow-sm overflow-y-visible">
+      <div className="hidden overflow-y-visible rounded-lg border bg-card shadow-sm md:block">
         <div className="overflow-x-auto">
           <Table style={{ width: table.getCenterTotalSize() }}>
             <TableHeader>

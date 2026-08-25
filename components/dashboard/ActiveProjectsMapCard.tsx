@@ -7,6 +7,7 @@ import type { DashboardProjectLocation } from "@/lib/server-data";
 import type { MapData } from "@/lib/momentum-data";
 import type { MomentumMapPoint } from "@/components/dashboard/ActiveProjectsMap";
 import { useActiveProjectMap } from "@/hooks/use-active-project-map";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import CountryPresenceOverlay from "@/components/dashboard/CountryPresenceOverlay";
 import {
@@ -127,6 +128,8 @@ export default function ActiveProjectsMapCard({
   highlightCountries,
   momentumData,
 }: ActiveProjectsMapCardProps) {
+  const isMobile = useIsMobile();
+  const resolvedMapHeight = isMobile ? Math.min(mapHeightPx, 280) : mapHeightPx;
   const [isExpanded, setIsExpanded] = useState(false);
   const [presenceCountry, setPresenceCountry] = useState<SelectedCountry | null>(
     null,
@@ -518,7 +521,7 @@ export default function ActiveProjectsMapCard({
           "relative overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/60",
           isExpanded ? "flex-1 min-h-0" : "",
         )}
-        style={!isExpanded ? { height: mapHeightPx } : undefined}
+        style={!isExpanded ? { height: resolvedMapHeight } : undefined}
       >
         <ActiveProjectsMap
           key={domain}

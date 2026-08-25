@@ -54,22 +54,22 @@ export function SiteTopbar({
   );
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-slate-600/70 bg-[hsl(var(--page)/0.96)] px-4 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)]">
-      <div className="flex min-w-0 items-center gap-3">
-        <SidebarTrigger className="-ml-1 h-8 w-8 rounded-xl" />
-        <div className="hidden min-w-0 items-center gap-2 text-sm sm:flex">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-[hsl(var(--page)/0.96)] px-3 backdrop-blur supports-backdrop-filter:bg-[hsl(var(--page)/0.82)] md:h-12 md:px-4">
+      <div className="flex min-w-0 items-center gap-2 md:gap-3">
+        <SidebarTrigger className="h-11 w-11 rounded-xl md:h-8 md:w-8" />
+        <div className="flex min-w-0 items-center gap-2 text-sm">
           <span className="truncate font-semibold text-foreground">{sectionLabel}</span>
-          <span className="text-muted-foreground">/</span>
-          <span className="truncate text-muted-foreground">{siteName}</span>
+          <span className="hidden text-muted-foreground sm:inline">/</span>
+          <span className="hidden truncate text-muted-foreground sm:inline">{siteName}</span>
           {displayName && (
             <>
-              <span className="text-muted-foreground">·</span>
-              <span className="truncate font-medium text-foreground">{displayName}</span>
+              <span className="hidden text-muted-foreground md:inline">·</span>
+              <span className="hidden truncate font-medium text-foreground md:inline">{displayName}</span>
             </>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         {personalManagerEnabled && (
           <ViewSwitcher current="spazi" lastSpaceHref={pathname} />
         )}
@@ -81,7 +81,7 @@ export function SiteTopbar({
           size="sm"
           onClick={logout}
           aria-label={t("topbar.exit")}
-          className="h-8 gap-2 px-2 text-muted-foreground hover:text-foreground"
+          className="h-11 gap-2 px-3 text-muted-foreground hover:text-foreground md:h-8 md:px-2"
         >
           <LogOut className="h-4 w-4" />
           <span className="hidden sm:inline">{t("topbar.logout")}</span>

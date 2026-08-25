@@ -378,6 +378,7 @@ const CreateProductForm = ({
             accept="image/*"
             bucket="files"
             multiple
+            sinkLabel="Foto segnalazione"
           />
           <UploadedFilesList files={uploadedFiles} />
         </div>
