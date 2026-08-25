@@ -34,6 +34,7 @@ export async function updateSession(request: NextRequest) {
     "/quick-login",
     "/setup-organization",
     "/unauthorized",
+    "/offline",
     "/favicon.ico",
     "/api/auth/callback",
     "/api/auth/refresh",
