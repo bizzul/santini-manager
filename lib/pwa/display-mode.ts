@@ -22,3 +22,22 @@ export function isIosSafari(userAgent: string): boolean {
 }
 
 export const PWA_INSTALL_DISMISSED_KEY = "fdm-pwa-install-dismissed";
+
+/** Home-screen install is for phones/tablets, not desktop browsers. */
+export function isMobileUserAgent(userAgent: string): boolean {
+  const ua = userAgent;
+  return (
+    /Android|iPhone|iPod|iPad|Windows Phone|BlackBerry|Mobile/i.test(ua) ||
+    (ua.includes("Mac") && ua.includes("Mobile"))
+  );
+}
+
+export function shouldShowPwaInstallPrompt(input: {
+  userAgent?: string;
+  matchMedia?: (query: string) => { matches: boolean };
+  navigator?: { userAgent?: string };
+}): boolean {
+  const ua = input.userAgent ?? input.navigator?.userAgent ?? "";
+  if (isMobileUserAgent(ua)) return true;
+  return Boolean(input.matchMedia?.("(max-width: 767px)")?.matches);
+}

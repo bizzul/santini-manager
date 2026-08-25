@@ -34,6 +34,8 @@ import { getSupportBotEnabledForSite } from "@/lib/support/settings.server";
 import { getSiteLocale } from "@/lib/i18n/server";
 import { I18nProvider } from "@/components/i18n/i18n-provider";
 import { hasPersonalManagerCapability } from "@/lib/personal-manager/server-context";
+import { TimetrackingAppShell } from "@/components/layout/timetracking-app-shell";
+import { PWA_HOME_COOKIE } from "@/lib/pwa/home-mode";
 
 /**
  * Check if user has access to a specific site
@@ -168,6 +170,7 @@ export default async function SiteLayout({
 
     const cookieStore = await cookies();
     const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
+    const isOreShell = cookieStore.get(PWA_HOME_COOKIE)?.value === "ore";
     const supabase = await createClient();
     const { data: themeSetting } = await supabase
       .from("site_settings")
@@ -193,29 +196,52 @@ export default async function SiteLayout({
       userContext.userId || userContext.user.id,
     );
 
+    const hydration = (
+      <QueryHydration
+        data={{
+          userContext,
+          siteData: {
+            id: data.id,
+            name: data.name || domain,
+            image: data.image || null,
+            logo: data.logo || null,
+            verticalProfile: data.verticalProfile || null,
+            organization: { name: data.organization?.name || "" },
+            commandDeckEnabled,
+            supportBotEnabled,
+            siteLocale,
+          },
+          domain,
+        }}
+      />
+    );
+
+    if (isOreShell) {
+      return (
+        <>
+          <SiteThemeStyle themeSettings={siteThemeSettings} />
+          {hydration}
+          {isImpersonating && impersonatedUser && originalSuperadminId && (
+            <ImpersonationBanner
+              impersonatedUser={impersonatedUser}
+              originalSuperadminId={originalSuperadminId}
+            />
+          )}
+          <I18nProvider locale={siteLocale}>
+            <TimetrackingAppShell siteName={data.name || domain}>
+              {children}
+            </TimetrackingAppShell>
+          </I18nProvider>
+        </>
+      );
+    }
+
     return (
       <KanbanModalProvider>
         <QuickActionsProvider>
           <SidebarProvider defaultOpen={defaultOpen}>
             <SiteThemeStyle themeSettings={siteThemeSettings} />
-            {/* Hydrate React Query cache with server-side data to avoid duplicate fetches */}
-            <QueryHydration
-              data={{
-                userContext,
-                siteData: {
-                  id: data.id,
-                  name: data.name || domain,
-                  image: data.image || null,
-                  logo: data.logo || null,
-                  verticalProfile: data.verticalProfile || null,
-                  organization: { name: data.organization?.name || "" },
-                  commandDeckEnabled,
-                  supportBotEnabled,
-                  siteLocale,
-                },
-                domain,
-              }}
-            />
+            {hydration}
 
             {isImpersonating && impersonatedUser && originalSuperadminId && (
               <ImpersonationBanner

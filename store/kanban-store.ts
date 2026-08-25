@@ -22,6 +22,8 @@ export interface Kanban {
   icon?: string;
   category_id?: number | null;
   category?: KanbanCategory | null;
+  /** Non-archived tasks currently on this board. */
+  projectCount?: number;
   columns: {
     id?: number;
     title: string;

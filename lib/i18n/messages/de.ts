@@ -105,6 +105,11 @@ export const deMessages: DeepPartialWiden<Messages> = {
     logout: "Abmelden",
     exit: "Abmelden",
   },
+  pwa: {
+    changeView: "Ansicht wechseln",
+    manager: "Vollständiger Manager",
+    hours: "Nur Stunden",
+  },
   dashboard: {
     countryTitle: "Dashboard {country}",
     capital: "Hauptstadt",

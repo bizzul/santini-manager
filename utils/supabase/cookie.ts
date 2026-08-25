@@ -16,11 +16,13 @@ const getCookieDomain = (): string | undefined => {
 };
 
 // Cookie options for Supabase SSR
-// Note: Don't override the cookie 'name' - let Supabase manage cookie names
+// Note: Don't override the cookie 'name' - let Supabase manage cookie names.
+// Explicit maxAge is required so iOS/Android home-screen PWAs keep the
+// session after the standalone process is killed (session cookies are dropped).
 export const COOKIE_OPTIONS: CookieOptions = {
   domain: getCookieDomain(),
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax",
   path: "/",
-  // maxAge is managed by Supabase based on session expiry
+  maxAge: 60 * 60 * 24 * 60, // 60 days
 };

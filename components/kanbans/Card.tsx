@@ -1421,7 +1421,7 @@ function Card({
 
       <Dialog open={showModal} onOpenChange={(open) => setShowModal(open)}>
         <DialogContent
-          className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll !bg-background dark:!bg-muted"
+          className="w-[95vw] max-w-[1040px] sm:max-w-[1040px] max-h-[90%] min-w-0 overflow-x-hidden overflow-y-auto !bg-background dark:!bg-muted"
           onPointerDown={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >

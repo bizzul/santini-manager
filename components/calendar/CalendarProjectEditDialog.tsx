@@ -37,7 +37,7 @@ export function CalendarProjectEditDialog({
         }
       }}
     >
-      <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
+      <DialogContent className="w-[95vw] max-w-[1040px] sm:max-w-[1040px] max-h-[90%] min-w-0 overflow-x-hidden overflow-y-auto">
         <DialogHeader className="space-y-0">
           <div className="flex flex-wrap items-center gap-2">
             <Button

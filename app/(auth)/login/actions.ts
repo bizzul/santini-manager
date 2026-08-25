@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { nukeCookies } from "@/utils/nukeCookie";
+import { sanitizeInternalNextPath } from "@/lib/pwa/home-mode";
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
@@ -28,7 +29,9 @@ export async function signIn(formData: FormData) {
   // After successful login, hand off to the landing resolver: it applies
   // landing_preferita / mobile / last-space rules server-side.
   revalidatePath("/sites/select", "page");
-  return redirect("/launch");
+  const next =
+    sanitizeInternalNextPath(String(formData.get("next") ?? "")) ?? "/launch";
+  return redirect(next);
 }
 
 export async function logout() {

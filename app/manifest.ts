@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "FDM",
     description:
       "Gestione operativa, anagrafiche, documenti e foto da smartphone o desktop.",
-    start_url: "/",
+    start_url: "/launch?source=pwa",
     scope: "/",
     display: "standalone",
     orientation: "any",
@@ -50,6 +50,18 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
     shortcuts: [
+      {
+        name: "Manager completo",
+        short_name: "Manager",
+        url: "/launch?home=manager&source=pwa",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
+      {
+        name: "Le mie ore",
+        short_name: "Ore",
+        url: "/launch?home=ore&source=pwa",
+        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+      },
       {
         name: "I miei spazi",
         short_name: "Spazi",

@@ -10,6 +10,8 @@ import { Suspense, useState, useEffect } from "react";
 import { GlobalVoiceAssistant } from "@/components/voice-assistant/GlobalVoiceAssistant";
 import { GlobalSupportAssistant } from "@/components/assistance/GlobalSupportAssistant";
 import { PwaRegister } from "@/components/pwa/pwa-register";
+import { PwaHomeGate } from "@/components/pwa/pwa-home-gate";
+import { OreModeGate } from "@/components/pwa/ore-mode-gate";
 import { QUERY_CACHE_PERSIST_KEY } from "@/lib/cache-keys";
 
 // Query keys that should be persisted to localStorage
@@ -82,6 +84,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <GlobalVoiceAssistant />
         </Suspense>
         <PwaRegister />
+        <PwaHomeGate />
+        <OreModeGate />
         {children}
       </ThemeProviders>
     </ModalProvider>

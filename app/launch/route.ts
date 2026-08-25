@@ -10,10 +10,18 @@ import {
   LAST_SPACE_COOKIE,
   VISTA_COOKIE,
 } from "@/lib/personale/vista";
+import {
+  decidePwaLaunch,
+  isPwaHomeMode,
+  pwaHomeCookieOptions,
+  PWA_HOME_COOKIE,
+  sanitizeInternalNextPath,
+} from "@/lib/pwa/home-mode";
 
 /**
  * Resolver di landing post-login. Regole, in ordine di precedenza:
  *
+ * 0. PWA home mode (manager | ore) — scelta dell'app sulla Home
  * 1. landing_preferita = 'personale'     -> /personale/focus (VOICE-FIRST v0.2)
  * 2. landing_preferita = 'ultimo_spazio' -> ultimo spazio (o selettore)
  * 3. landing_preferita = 'auto':
@@ -40,13 +48,50 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/login`);
+    const login = new URL(`${origin}/login`);
+    const returnTo = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    const safeNext = sanitizeInternalNextPath(returnTo);
+    if (safeNext) {
+      login.searchParams.set("next", safeNext);
+    }
+    return NextResponse.redirect(login);
   }
 
   const cookieStore = await cookies();
   const lastSpace = cookieStore.get(LAST_SPACE_COOKIE)?.value;
   const vistaRaw = cookieStore.get(VISTA_COOKIE)?.value;
   const vista = isVista(vistaRaw) ? vistaRaw : undefined;
+  const homeCookie = cookieStore.get(PWA_HOME_COOKIE)?.value;
+  const homeParam = request.nextUrl.searchParams.get("home");
+  const sourcePwa = request.nextUrl.searchParams.get("source") === "pwa";
+  const pwaDecision = decidePwaLaunch({
+    homeMode: isPwaHomeMode(homeCookie) ? homeCookie : undefined,
+    homeParam,
+    sourcePwa,
+    lastSpace,
+  });
+
+  const persistHomeMode = isPwaHomeMode(homeParam) ? homeParam : undefined;
+  const redirectTo = (path: string) => {
+    const response = NextResponse.redirect(
+      path.startsWith("http") ? path : `${origin}${path}`,
+    );
+    if (persistHomeMode) {
+      response.cookies.set(
+        PWA_HOME_COOKIE,
+        persistHomeMode,
+        pwaHomeCookieOptions(),
+      );
+    }
+    return response;
+  };
+
+  if (pwaDecision.type === "chooser") {
+    return redirectTo("/pwa/home");
+  }
+  if (pwaDecision.type === "ore") {
+    return redirectTo(pwaDecision.path);
+  }
 
   const spacesTarget = lastSpace
     ? `${origin}/sites/${lastSpace}/dashboard`
@@ -71,23 +116,23 @@ export async function GET(request: NextRequest) {
 
   // 1-2. Preferenza esplicita dell'utente: vale sempre, mobile o desktop.
   if (landing === "personale" && enabled) {
-    return NextResponse.redirect(personalTarget);
+    return redirectTo(personalTarget);
   }
   if (landing === "ultimo_spazio") {
-    return NextResponse.redirect(spacesTarget);
+    return redirectTo(spacesTarget);
   }
 
   // 3. Auto: la scelta di sessione gia' espressa vince sull'automatismo.
   if (vista === "personale" && enabled) {
-    return NextResponse.redirect(personalTarget);
+    return redirectTo(personalTarget);
   }
   if (vista === "spazi") {
-    return NextResponse.redirect(spacesTarget);
+    return redirectTo(spacesTarget);
   }
 
   const mobile = isMobileUserAgent(request.headers.get("user-agent"));
   if (mobile && enabled) {
-    return NextResponse.redirect(personalTarget);
+    return redirectTo(personalTarget);
   }
-  return NextResponse.redirect(spacesTarget);
+  return redirectTo(spacesTarget);
 }

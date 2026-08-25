@@ -8,6 +8,7 @@ import {
   PWA_INSTALL_DISMISSED_KEY,
   isIosSafari,
   isStandaloneDisplay,
+  shouldShowPwaInstallPrompt,
 } from "@/lib/pwa/display-mode";
 
 type BeforeInstallPromptEvent = Event & {
@@ -28,6 +29,7 @@ export function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (isStandaloneDisplay(window)) return;
+    if (!shouldShowPwaInstallPrompt(window)) return;
     if (localStorage.getItem(PWA_INSTALL_DISMISSED_KEY) === "1") return;
 
     const onBeforeInstall = (event: Event) => {

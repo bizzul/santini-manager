@@ -9,6 +9,10 @@ import {
   mockKanbanCategoryData 
 } from '../setup/mocks';
 
+function withZeroProjectCounts<T extends object>(kanbans: T[]) {
+  return kanbans.map((kanban) => ({ ...kanban, projectCount: 0 }));
+}
+
 // Mock dependencies
 jest.mock('@/utils/supabase/server');
 jest.mock('@/lib/fetchers');
@@ -48,8 +52,65 @@ describe('Kanban - getKanbans', () => {
 
     const result = await getKanbans('test-domain');
 
-    expect(result).toEqual(mockKanbans);
+    expect(result).toEqual(withZeroProjectCounts(mockKanbans));
     expect(getSiteData).toHaveBeenCalledWith('test-domain');
+  });
+
+  it('should attach non-archived project counts per kanban', async () => {
+    const mockKanbans = [
+      {
+        ...mockKanbanData({ id: 1, title: 'AVOR' }),
+        columns: [],
+        category: null,
+      },
+      {
+        ...mockKanbanData({ id: 2, title: 'Offerte' }),
+        columns: [],
+        category: null,
+      },
+    ];
+
+    mockSupabase.mockFrom.mockImplementation((table: string) => {
+      if (table === 'Task') {
+        const taskQuery: any = {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          then: (
+            resolve: (value: { data: unknown; error: null }) => void,
+          ) =>
+            resolve({
+              data: [
+                { kanbanId: 1 },
+                { kanbanId: 1 },
+                { kanbanId: 1 },
+                { kanbanId: 2 },
+              ],
+              error: null,
+            }),
+        };
+        return taskQuery;
+      }
+
+      return {
+        select: jest.fn().mockReturnValue({
+          order: jest.fn().mockReturnValue({
+            order: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({
+                data: mockKanbans,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    });
+
+    const result = await getKanbans('test-domain');
+
+    expect(result).toEqual([
+      { ...mockKanbans[0], projectCount: 3 },
+      { ...mockKanbans[1], projectCount: 1 },
+    ]);
   });
 
   it('should return empty array when no kanbans found', async () => {
@@ -250,7 +311,7 @@ describe('Kanban - getKanbans', () => {
 
     const result = await getKanbans();
 
-    expect(result).toEqual(mockKanbans);
+    expect(result).toEqual(withZeroProjectCounts(mockKanbans));
     expect(getSiteData).not.toHaveBeenCalled();
   });
 });

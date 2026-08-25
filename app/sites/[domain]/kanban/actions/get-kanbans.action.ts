@@ -4,10 +4,37 @@ import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { getUserContext } from "@/lib/auth-utils";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
+import {
+  tallyProjectsByKanbanId,
+  withProjectCounts,
+} from "@/lib/kanban/project-counts";
 
 interface GetKanbansOptions {
   domain?: string;
   siteId?: string;
+}
+
+async function fetchProjectCountRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  siteId: string | null,
+) {
+  try {
+    let query = supabase
+      .from("Task")
+      .select("kanbanId")
+      .eq("archived", false);
+
+    if (siteId && typeof (query as { eq?: unknown }).eq === "function") {
+      query = query.eq("site_id", siteId);
+    }
+
+    const { data, error } = await query;
+    if (error || !Array.isArray(data)) return [];
+    return data;
+  } catch (error) {
+    console.warn("Unable to fetch kanban project counts:", error);
+    return [];
+  }
 }
 
 export async function getKanbans(options?: string | GetKanbansOptions) {
@@ -70,16 +97,26 @@ export async function getKanbans(options?: string | GetKanbansOptions) {
       kanbanQuery = kanbanQuery.eq("site_id", siteId);
     }
 
-    const { data: kanbans, error: kanbansError } = await kanbanQuery;
+    const [kanbansResult, projectCountRows] = await Promise.all([
+      kanbanQuery,
+      fetchProjectCountRows(supabase, siteId),
+    ]);
+
+    const { data: kanbans, error: kanbansError } = kanbansResult;
 
     if (kanbansError) {
       console.error("Error fetching kanbans:", kanbansError);
       throw new Error("Failed to fetch kanbans");
     }
 
+    const kanbansWithCounts = withProjectCounts(
+      kanbans || [],
+      tallyProjectsByKanbanId(projectCountRows),
+    );
+
     // If admin/superadmin, return all kanbans
     if (isAdmin || !userContext?.userId) {
-      return kanbans || [];
+      return kanbansWithCounts;
     }
 
     // For regular users, filter based on permissions
@@ -103,7 +140,7 @@ export async function getKanbans(options?: string | GetKanbansOptions) {
 
     // Filter kanbans: user can see a kanban if they have direct permission
     // OR if they have permission on the kanban's category
-    const filteredKanbans = (kanbans || []).filter((kanban) => {
+    const filteredKanbans = kanbansWithCounts.filter((kanban) => {
       // Check direct kanban permission
       if (allowedKanbanIds.has(kanban.id)) {
         return true;

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_OPTIONS } from "./cookie";
+import { sanitizeInternalNextPath } from "@/lib/pwa/home-mode";
 
 // Use consistent environment variables with fallback
 // This ensures client and server always use the same Supabase instance
@@ -132,6 +133,13 @@ export async function updateSession(request: NextRequest) {
     // no user, redirect to login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
+    const safeNext = sanitizeInternalNextPath(
+      `${pathname}${request.nextUrl.search}`,
+    );
+    if (safeNext) {
+      url.searchParams.set("next", safeNext);
+    }
     const response = NextResponse.redirect(url);
 
     // Ensure Supabase cookies are set even on redirect

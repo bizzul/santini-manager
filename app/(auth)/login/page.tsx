@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { LogIn, UserX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { sanitizeInternalNextPath } from "@/lib/pwa/home-mode";
 
 const GUIDE_PENDING_LOGIN_KEY = "santini-manager-guide-pending-login";
 
@@ -87,6 +88,11 @@ function LoginContent() {
           }
         >
           <form className="flex flex-col gap-4">
+            <input
+              type="hidden"
+              name="next"
+              value={sanitizeInternalNextPath(searchParams.get("next")) ?? "/launch"}
+            />
             <div className="space-y-2">
               <label
                 htmlFor="email"

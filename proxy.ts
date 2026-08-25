@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 import { isVista, LAST_SPACE_COOKIE, VISTA_COOKIE } from "@/lib/personale/vista";
+import {
+  isPwaHomeMode,
+  oreRedirectPath,
+  PWA_HOME_COOKIE,
+} from "@/lib/pwa/home-mode";
 
 export const config = {
   matcher: ["/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)"],
@@ -83,6 +88,28 @@ export default async function proxy(req: NextRequest) {
     }
     return response;
   };
+
+  const homeModeRaw = req.cookies.get(PWA_HOME_COOKIE)?.value;
+  const alreadyRedirecting = [301, 302, 303, 307, 308].includes(
+    supabaseResponse.status,
+  );
+  if (
+    !alreadyRedirecting &&
+    isPwaHomeMode(homeModeRaw) &&
+    homeModeRaw === "ore"
+  ) {
+    const logicalPath =
+      subdomain && !pathname.startsWith("/sites/")
+        ? `/sites/${subdomain}${pathname === "/" ? "" : pathname}`
+        : pathname;
+    const target = oreRedirectPath(logicalPath, visitedSpace ?? undefined);
+    if (target && target !== pathname && target !== logicalPath) {
+      const url = req.nextUrl.clone();
+      url.pathname = target;
+      url.search = "";
+      return ensureCookies(NextResponse.redirect(url));
+    }
+  }
 
   if (subdomain) {
     // Block access to admin page from subdomains

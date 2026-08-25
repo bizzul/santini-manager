@@ -7,6 +7,7 @@ import {
   ChevronsUpDown,
   LogOut,
   ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import { memo } from "react";
 
@@ -34,6 +35,7 @@ import { useLogout } from "@/hooks/use-logout";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useAssistantVisibility } from "@/hooks/use-assistant-visibility";
 import { ManagerGuideMascot, useManagerGuide } from "@/components/manager-guide";
+import { useT } from "@/components/i18n/i18n-provider";
 
 export const NavUser = memo(function NavUser({
   user,
@@ -48,6 +50,7 @@ export const NavUser = memo(function NavUser({
   const { openGuide, showOnLogin, setShowOnLogin } = useManagerGuide();
   const { visible: assistantVisible, setVisible: setAssistantVisible } =
     useAssistantVisibility();
+  const t = useT();
 
   // Extract user information from the context
   const userData = user.user;
@@ -166,6 +169,12 @@ export const NavUser = memo(function NavUser({
               >
                 Mostra assistente
               </DropdownMenuCheckboxItem>
+              <DropdownMenuItem asChild>
+                <Link href="/pwa/home" className="w-full cursor-pointer">
+                  <Smartphone />
+                  {t("pwa.changeView")}
+                </Link>
+              </DropdownMenuItem>
               {(user.role === "admin" || user.role === "superadmin") && (
                 <DropdownMenuItem asChild>
                   <Link

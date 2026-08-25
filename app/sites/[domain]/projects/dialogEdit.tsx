@@ -26,7 +26,7 @@ function DialogEdit({ data, setData, isOpen = false, setOpen }: Props) {
 
   return (
     <Dialog open={isOpen} onOpenChange={() => handleClose()}>
-      <DialogContent className="w-[95vw] max-w-[1100px] max-h-[90%] overflow-scroll">
+      <DialogContent className="w-[95vw] max-w-[1040px] sm:max-w-[1040px] max-h-[90%] min-w-0 overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Modifica {data?.unique_code || "progetto"}</DialogTitle>
         </DialogHeader>

@@ -242,6 +242,65 @@ function getAvatarColor(seed: string): string {
   return `hsl(${hue} 72% 46%)`;
 }
 
+function PlanningDateField({
+  name,
+  label,
+  control,
+  disabled,
+  weekendDisabled,
+  emptyLabel = "Seleziona data",
+}: {
+  name: string;
+  label: string;
+  control: any;
+  disabled?: boolean;
+  weekendDisabled?: (date: Date) => boolean;
+  emptyLabel?: string;
+}) {
+  return (
+    <FormField
+      name={name as any}
+      control={control}
+      render={({ field }) => (
+        <FormItem className="min-w-0 flex flex-col">
+          <FormLabel>{label}</FormLabel>
+          <Popover>
+            <PopoverTrigger asChild>
+              <FormControl>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full min-w-0 pl-3 text-left font-normal",
+                    !field.value && "text-muted-foreground",
+                  )}
+                  disabled={disabled}
+                >
+                  {field.value
+                    ? field.value.toLocaleDateString("it-IT")
+                    : emptyLabel}
+                  <CalendarIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </FormControl>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={field.value || undefined}
+                onSelect={(date) => !disabled && field.onChange(date)}
+                disabled={weekendDisabled}
+                captionLayout="dropdown"
+                startMonth={new Date(new Date().getFullYear(), 0)}
+                endMonth={new Date(new Date().getFullYear() + 5, 11)}
+              />
+            </PopoverContent>
+          </Popover>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+  );
+}
+
 const EditTaskKanban = ({
   handleClose,
   resource,
@@ -1513,23 +1572,23 @@ const EditTaskKanban = ({
   return (
     <>
     <Form {...form}>
-      <form className="w-full space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+      <form className="w-full min-w-0 max-w-full space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
         {!isCreate && domain && taskId ? (
           <div className="flex items-center justify-end">
             <ProjectSummaryPdfButton domain={domain} taskId={taskId} />
           </div>
         ) : null}
-        <div className="flex flex-row-reverse flex-nowrap gap-6 w-full items-start">
-          <div className="flex w-1/2 min-w-0 shrink-0 flex-col gap-4">
-        <div className="grid grid-cols-2 gap-3 items-stretch">
-          <div className="flex h-full min-h-[248px] flex-col gap-3 rounded-lg border border-slate-500 bg-muted p-3 dark:bg-background">
+        <div className="flex w-full min-w-0 flex-row-reverse flex-nowrap items-start gap-6">
+          <div className="flex min-w-0 flex-1 basis-0 flex-col gap-4">
+        <div className="grid grid-cols-2 items-stretch gap-3">
+          <div className="flex h-full min-h-[248px] min-w-0 flex-col gap-3 rounded-lg border border-slate-500 bg-muted p-3 dark:bg-background">
             <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <User className="h-4 w-4" />
-              Info Cliente
+              Info cliente
             </h4>
             {selectedClient ? (
               <div className="flex flex-1 flex-col justify-between gap-3">
-                <p className="text-sm font-semibold leading-5">
+                <p className="break-words text-sm font-semibold leading-5">
                   {selectedClient.businessName ||
                     `${selectedClient.individualLastName || ""} ${selectedClient.individualFirstName || ""}`.trim() ||
                     "Cliente"}
@@ -1591,18 +1650,36 @@ const EditTaskKanban = ({
             )}
           </div>
 
-          <div className="flex h-full min-h-[248px] flex-col gap-3 rounded-lg border border-slate-500 bg-muted p-3 dark:bg-background">
+          <div className="flex h-full min-h-[248px] min-w-0 flex-col gap-3 rounded-lg border border-slate-500 bg-muted p-3 dark:bg-background">
             <h4 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Info className="h-4 w-4" />
               Info Cantiere
             </h4>
             <div className="flex flex-1 flex-col justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>Via</span>
-                </div>
-                <div className="ml-6">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Telefono</span>
+              </div>
+              {contactPhone ? (
+                <a
+                  href={`tel:${contactPhone}`}
+                  className="ml-6 block text-sm text-primary hover:underline"
+                >
+                  {contactPhone}
+                </a>
+              ) : (
+                <span className="ml-6 block text-sm italic text-muted-foreground">
+                  Non disponibile
+                </span>
+              )}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Via</span>
+              </div>
+              <div className="ml-6">
                   <Input
                     id="kanban-site-address-street"
                     value={siteAddressStreet}
@@ -1613,14 +1690,14 @@ const EditTaskKanban = ({
                     disabled={isSubmitting}
                     className="h-8 text-sm"
                   />
-                </div>
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>Paese</span>
-                </div>
-                <div className="ml-6">
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Paese</span>
+              </div>
+              <div className="ml-6">
                   <Input
                     id="kanban-site-address-town"
                     value={siteAddressTown}
@@ -1631,45 +1708,20 @@ const EditTaskKanban = ({
                     disabled={isSubmitting}
                     className="h-8 text-sm"
                   />
+              </div>
+            </div>
+            {selectedClient && (
+              <div className="border-t border-slate-500 pt-2">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <User className="h-3 w-3 shrink-0" />
+                  <span className="truncate">
+                    {selectedClient.businessName ||
+                      `${selectedClient.individualLastName || ""} ${selectedClient.individualFirstName || ""}`.trim() ||
+                      "Cliente"}
+                  </span>
                 </div>
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span>Persona di contatto</span>
-                </div>
-                <div className="ml-6">
-                  <Input
-                    id="kanban-site-contact-name"
-                    value={siteContactName}
-                    onChange={(event) =>
-                      updateSiteContact(event.target.value, siteContactPhone)
-                    }
-                    placeholder="Nome contatto"
-                    disabled={isSubmitting}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>Telefono</span>
-                </div>
-                <div className="ml-6">
-                  <Input
-                    id="kanban-site-contact-phone"
-                    type="tel"
-                    value={siteContactPhone}
-                    onChange={(event) =>
-                      updateSiteContact(siteContactName, event.target.value)
-                    }
-                    placeholder="Telefono"
-                    disabled={isSubmitting}
-                    className="h-8 text-sm"
-                  />
-                </div>
-              </div>
+            )}
             </div>
           </div>
         </div>
@@ -1910,10 +1962,10 @@ const EditTaskKanban = ({
           )}
         </div>
           </div>
-          <div className="space-y-4 w-1/2 min-w-0">
+          <div className="min-w-0 flex-1 basis-0 space-y-4">
             {/* Row 1+2: Codice + Cliente + Nome + Valore */}
-          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
+            <div className="grid min-w-0 grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="unique_code"
@@ -2112,10 +2164,10 @@ const EditTaskKanban = ({
           )}
 
           {/* Pianificazione: Produzione + Fatturazione a sinistra, Posa a destra */}
-          <div className="grid grid-cols-2 gap-4 items-stretch">
-              <div className="grid grid-rows-2 gap-4 min-h-0">
-              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-2">
-                <div className="flex items-center gap-8">
+          <div className="grid min-w-0 grid-cols-2 items-stretch gap-4">
+              <div className="grid min-h-0 min-w-0 grid-rows-2 gap-4">
+              <div className="min-w-0 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-sm font-medium">Produzione</h3>
                   <label className="flex items-center gap-2 text-xs text-muted-foreground">
                     <input
@@ -2135,48 +2187,14 @@ const EditTaskKanban = ({
                     Richiede pianificazione
                   </label>
                 </div>
-                  <FormField
-                    name="produzione_data_fine"
-                    control={form.control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data fine produzione</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSubmitting || !productionRequired}
-                              >
-                                {productionRequired && field.value
-                                  ? field.value.toLocaleDateString("it-IT")
-                                  : productionRequired
-                                    ? "Seleziona data"
-                                    : "Non richiesto"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={(date) => productionRequired && field.onChange(date)}
-                              disabled={weekendDisabled}
-                              captionLayout="dropdown"
-                              startMonth={new Date(new Date().getFullYear(), 0)}
-                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <PlanningDateField
+                  name="produzione_data_fine"
+                  label="Data fine produzione"
+                  control={form.control}
+                  disabled={isSubmitting || !productionRequired}
+                  weekendDisabled={weekendDisabled}
+                  emptyLabel={productionRequired ? "Seleziona data" : "Non richiesto"}
+                />
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -2245,132 +2263,33 @@ const EditTaskKanban = ({
                 </Popover>
               </div>
 
-              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-2">
+              <div className="min-w-0 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-2">
                 <h3 className="text-sm font-medium">Fatturazione</h3>
-                <FormField
+                <PlanningDateField
                   name="data_fatturazione"
+                  label="Data di fatturazione"
                   control={form.control}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Data di fatturazione</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                              disabled={isSubmitting}
-                            >
-                              {field.value
-                                ? field.value.toLocaleDateString("it-IT")
-                                : "Seleziona data"}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            captionLayout="dropdown"
-                            startMonth={new Date(new Date().getFullYear(), 0)}
-                            endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  disabled={isSubmitting}
                 />
               </div>
               </div>
 
-              <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
+              <div className="min-w-0 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
                 <h3 className="text-sm font-medium">Posa</h3>
                 <div className="space-y-3">
-                  <FormField
+                  <PlanningDateField
                     name="posa_data_inizio"
+                    label="Data inizio"
                     control={form.control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data inizio</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSubmitting}
-                              >
-                                {field.value
-                                  ? field.value.toLocaleDateString("it-IT")
-                                  : "Seleziona data"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              disabled={weekendDisabled}
-                              captionLayout="dropdown"
-                              startMonth={new Date(new Date().getFullYear(), 0)}
-                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    disabled={isSubmitting}
+                    weekendDisabled={weekendDisabled}
                   />
-                  <FormField
+                  <PlanningDateField
                     name="posa_data_fine"
+                    label="Data fine"
                     control={form.control}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Data fine</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  "w-full pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
-                                disabled={isSubmitting}
-                              >
-                                {field.value
-                                  ? field.value.toLocaleDateString("it-IT")
-                                  : "Seleziona data"}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto min-w-[280px] p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={field.onChange}
-                              disabled={weekendDisabled}
-                              captionLayout="dropdown"
-                              startMonth={new Date(new Date().getFullYear(), 0)}
-                              endMonth={new Date(new Date().getFullYear() + 5, 11)}
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    disabled={isSubmitting}
+                    weekendDisabled={weekendDisabled}
                   />
                 </div>
                 <Popover>
@@ -2443,8 +2362,8 @@ const EditTaskKanban = ({
           </div>
 
           {/* Row 5: Kanban + Colonna */}
-          <div className="rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3">
+            <div className="grid min-w-0 grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Kanban</label>
                 <Select

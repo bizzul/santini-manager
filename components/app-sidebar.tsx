@@ -239,7 +239,44 @@ type MenuItem = {
   lucideIcon?: string; // Lucide icon name for kanban categories
   color?: string; // Color for category icons
   logoSrc?: string; // Optional logo image shown instead of the FontAwesome icon
+  /** Non-archived project count shown to the right of a kanban board name. */
+  count?: number;
 };
+
+function KanbanBoardNavLabel({
+  label,
+  lucideIcon,
+  fallbackIcon,
+  count,
+}: {
+  label: string;
+  lucideIcon?: string;
+  fallbackIcon: NavIconName;
+  count?: number;
+}) {
+  const LucideIcon = lucideIcon ? getKanbanIcon(lucideIcon) : null;
+
+  return (
+    <>
+      {LucideIcon ? (
+        <LucideIcon className="h-4 w-4 shrink-0" />
+      ) : (
+        <FontAwesomeIcon
+          icon={iconMap[fallbackIcon]}
+          className="h-4 w-4 shrink-0"
+        />
+      )}
+      <span className="min-w-0 flex-1 whitespace-normal wrap-break-words [overflow-wrap:anywhere] line-clamp-2">
+        {label}
+      </span>
+      {typeof count === "number" && Number.isFinite(count) && (
+        <span className="ml-auto shrink-0 pl-1 tabular-nums text-[11px] font-medium text-[hsl(var(--sidebar-foreground)/0.48)] dark:text-white/42">
+          {count}
+        </span>
+      )}
+    </>
+  );
+}
 
 function toMenuItem(item: ResolvedNavItem): MenuItem {
   return {
@@ -518,6 +555,7 @@ export function AppSidebar() {
                   href: `${basePath}/kanban?name=${kanban.identifier}`,
                   alert: false,
                   id: kanban.id || kanban.identifier,
+                  count: kanban.projectCount ?? 0,
                 }))),
           ...(isSuperAdmin
             ? [
@@ -581,6 +619,7 @@ export function AppSidebar() {
                       href: `${basePath}/kanban?name=${kanban.identifier}&category=${category.identifier}`,
                       alert: false,
                       id: kanban.id || kanban.identifier,
+                      count: kanban.projectCount ?? 0,
                     }))),
               ...(isSuperAdmin
                 ? [
@@ -627,6 +666,7 @@ export function AppSidebar() {
                     href: `${basePath}/kanban?name=${kanban.identifier}`,
                     alert: false,
                     id: kanban.id || kanban.identifier,
+                    count: kanban.projectCount ?? 0,
                   }))),
             ...(isSuperAdmin
               ? [
@@ -947,7 +987,7 @@ export function AppSidebar() {
                                       className={
                                         nestedItem.action
                                           ? "[&>div>span]:line-clamp-2"
-                                          : "[&>span:last-child]:line-clamp-2"
+                                          : "w-full"
                                       }
                                     >
                                       {nestedItem.action ? (
@@ -973,22 +1013,12 @@ export function AppSidebar() {
                                         </div>
                                       ) : (
                                         <Link href={nestedItem.href!}>
-                                          {nestedItem.lucideIcon ? (
-                                            (() => {
-                                              const LucideIcon = getKanbanIcon(
-                                                nestedItem.lucideIcon
-                                              );
-                                              return (
-                                                <LucideIcon className="w-4 h-4" />
-                                              );
-                                            })()
-                                          ) : (
-                                            <FontAwesomeIcon
-                                              icon={iconMap[nestedItem.icon]}
-                                              className="w-4 h-4"
-                                            />
-                                          )}
-                                          <span>{nestedItem.label}</span>
+                                          <KanbanBoardNavLabel
+                                            label={nestedItem.label}
+                                            lucideIcon={nestedItem.lucideIcon}
+                                            fallbackIcon={nestedItem.icon}
+                                            count={nestedItem.count}
+                                          />
                                         </Link>
                                       )}
                                     </SidebarMenuSubButton>
@@ -1022,7 +1052,7 @@ export function AppSidebar() {
                           className={
                             subItem.action
                               ? "[&>div>span]:line-clamp-2"
-                              : "[&>span:last-child]:line-clamp-2"
+                              : "w-full"
                           }
                         >
                           {subItem.action ? (
@@ -1048,20 +1078,12 @@ export function AppSidebar() {
                             </div>
                           ) : (
                             <Link href={subItem.href!}>
-                              {subItem.lucideIcon ? (
-                                (() => {
-                                  const LucideIcon = getKanbanIcon(
-                                    subItem.lucideIcon
-                                  );
-                                  return <LucideIcon className="w-4 h-4" />;
-                                })()
-                              ) : (
-                                <FontAwesomeIcon
-                                  icon={iconMap[subItem.icon]}
-                                  className="w-4 h-4"
-                                />
-                              )}
-                              <span>{subItem.label}</span>
+                              <KanbanBoardNavLabel
+                                label={subItem.label}
+                                lucideIcon={subItem.lucideIcon}
+                                fallbackIcon={subItem.icon}
+                                count={subItem.count}
+                              />
                             </Link>
                           )}
                         </SidebarMenuSubButton>

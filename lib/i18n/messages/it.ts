@@ -105,6 +105,11 @@ export const itMessages = {
     logout: "Logout",
     exit: "Esci",
   },
+  pwa: {
+    changeView: "Cambia vista",
+    manager: "Manager completo",
+    hours: "Solo ore",
+  },
   dashboard: {
     countryTitle: "Dashboard {country}",
     capital: "Capitale",
