@@ -16,6 +16,7 @@ interface AttendanceMonthlyViewProps {
     attendance: Record<string, Record<string, AttendanceEntry>>;
     isAdmin: boolean;
     onStatusChange?: (userId: string, date: string, status: AttendanceStatus) => void;
+    onDelete?: (userId: string, date: string) => void;
 }
 
 export function AttendanceMonthlyView({
@@ -25,6 +26,7 @@ export function AttendanceMonthlyView({
     attendance,
     isAdmin,
     onStatusChange,
+    onDelete,
 }: AttendanceMonthlyViewProps) {
     const daysInMonth = new Date(year, month, 0).getDate();
     const today = new Date();
@@ -103,6 +105,9 @@ export function AttendanceMonthlyView({
                                                 size="md"
                                                 onStatusChange={(status) =>
                                                     onStatusChange?.(user.id, dateStr, status)
+                                                }
+                                                onDelete={() =>
+                                                    onDelete?.(user.id, dateStr)
                                                 }
                                             />
                                         </div>

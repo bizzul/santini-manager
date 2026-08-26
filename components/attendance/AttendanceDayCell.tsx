@@ -12,9 +12,11 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+import { Trash2 } from "lucide-react";
 import {
     AttendanceStatus,
     AttendanceEntry,
@@ -30,6 +32,7 @@ interface AttendanceDayCellProps {
     isAdmin: boolean;
     size?: "sm" | "md";
     onStatusChange?: (status: AttendanceStatus) => void;
+    onDelete?: () => void;
 }
 
 export function AttendanceDayCell({
@@ -41,10 +44,16 @@ export function AttendanceDayCell({
     isAdmin,
     size = "md",
     onStatusChange,
+    onDelete,
 }: AttendanceDayCellProps) {
     const [open, setOpen] = React.useState(false);
     const showWeekendState = isSunday || (isWeekend && !entry);
     const canEdit = isAdmin && !isSunday;
+    // La rimozione riguarda solo gli inserimenti salvati manualmente. Le
+    // presenze auto-rilevate dal timetracking non hanno un record da
+    // cancellare (verrebbero ricalcolate al refresh), quindi non mostriamo
+    // la voce per quei casi.
+    const canRemove = Boolean(entry) && !entry?.autoDetected;
 
     const statusKey = showWeekendState ? "weekend" : entry?.status;
     const config = statusKey ? STATUS_CONFIG[statusKey] : null;
@@ -114,6 +123,23 @@ export function AttendanceDayCell({
                                     {STATUS_CONFIG[status as AttendanceStatus].label}
                                 </Button>
                             ))}
+                        {canRemove && (
+                            <>
+                                <Separator className="my-1" />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start gap-2 h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => {
+                                        onDelete?.();
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                    Rimuovi inserimento
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </PopoverContent>
             </Popover>

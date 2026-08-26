@@ -15,6 +15,7 @@ interface AttendanceAnnualViewProps {
     attendance: Record<string, Record<string, AttendanceEntry>>;
     isAdmin: boolean;
     onStatusChange?: (userId: string, date: string, status: AttendanceStatus) => void;
+    onDelete?: (userId: string, date: string) => void;
 }
 
 const MONTH_NAMES = [
@@ -28,6 +29,7 @@ export function AttendanceAnnualView({
     attendance,
     isAdmin,
     onStatusChange,
+    onDelete,
 }: AttendanceAnnualViewProps) {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -89,6 +91,9 @@ export function AttendanceAnnualView({
                                                     size="sm"
                                                     onStatusChange={(status) =>
                                                         onStatusChange?.(user.id, dateStr, status)
+                                                    }
+                                                    onDelete={() =>
+                                                        onDelete?.(user.id, dateStr)
                                                     }
                                                 />
                                             ))}

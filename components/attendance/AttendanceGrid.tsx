@@ -113,6 +113,37 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
         },
     });
 
+    const deleteAttendance = useMutation({
+        mutationFn: async ({
+            userId,
+            date,
+        }: {
+            userId: string;
+            date: string;
+        }) => {
+            const response = await fetch(`/api/sites/${domain}/attendance`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId, date }),
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || "Errore");
+            }
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["attendance", domain] });
+            toast({ description: "Inserimento rimosso" });
+        },
+        onError: (error: Error) => {
+            toast({
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
     const reviewLeave = useMutation({
         mutationFn: async ({
             id,
@@ -157,6 +188,13 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
             updateAttendance.mutate({ userId, date, status });
         },
         [updateAttendance]
+    );
+
+    const handleStatusDelete = useCallback(
+        (userId: string, date: string) => {
+            deleteAttendance.mutate({ userId, date });
+        },
+        [deleteAttendance]
     );
 
     const handlePrevMonth = () => {
@@ -329,6 +367,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                             attendance={attendance}
                             isAdmin={isAdmin}
                             onStatusChange={handleStatusChange}
+                            onDelete={handleStatusDelete}
                         />
                     ) : (
                         <AttendanceAnnualView
@@ -337,6 +376,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                             attendance={attendance}
                             isAdmin={isAdmin}
                             onStatusChange={handleStatusChange}
+                            onDelete={handleStatusDelete}
                         />
                     )}
                 </CardContent>

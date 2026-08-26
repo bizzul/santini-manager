@@ -196,17 +196,21 @@ export async function GET(
                     return false;
                 }
 
-                const authUserId = user.authId || "";
-
-                // I collaboratori assegnati direttamente al sito restano
-                // visibili anche se disabilitati (es. profili draft/demo),
-                // in linea con la pagina Collaboratori.
-                if (directSiteUserSet.has(authUserId)) {
-                    return true;
-                }
-
+                // La griglia Presenze elenca solo i collaboratori
+                // attualmente attivi del sito. I disabilitati non vengono
+                // mostrati né conteggiati: il filtro è sullo stato corrente
+                // (`enabled`), non sulla data di disabilitazione. I record di
+                // presenza già salvati restano comunque in DB.
                 if (!user.enabled) {
                     return false;
+                }
+
+                const authUserId = user.authId || "";
+
+                // Collaboratori assegnati direttamente al sito, in linea con
+                // la pagina Collaboratori.
+                if (directSiteUserSet.has(authUserId)) {
+                    return true;
                 }
 
                 return (
@@ -358,6 +362,52 @@ export async function POST(
         return NextResponse.json({ success: true, data });
     } catch (error) {
         console.error("Error updating attendance:", error);
+        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    }
+}
+
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ domain: string }> }
+) {
+    try {
+        const { domain } = await params;
+        const siteResponse = await getSiteData(domain);
+        if (!siteResponse?.data) {
+            return NextResponse.json({ error: "Site not found" }, { status: 404 });
+        }
+
+        const siteId = siteResponse.data.id;
+        const supabase = await createClient();
+        const userContext = await getUserContext();
+        if (!userContext || !isAdminOrSuperadmin(userContext.role)) {
+            return NextResponse.json({ error: "Solo admin possono modificare le presenze" }, { status: 403 });
+        }
+
+        const body = await request.json();
+        const { user_id, date } = body;
+
+        if (!user_id || !date) {
+            return NextResponse.json({ error: "user_id e date sono obbligatori" }, { status: 400 });
+        }
+
+        // Rimuove l'inserimento manuale della presenza per quel giorno.
+        // Scoped al sito corrente (multi-tenant). Idempotente: se il record
+        // non esiste è un no-op che non genera errori lato UI.
+        const { error } = await supabase
+            .from("attendance_entries")
+            .delete()
+            .eq("site_id", siteId)
+            .eq("user_id", user_id)
+            .eq("date", date);
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting attendance:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }
