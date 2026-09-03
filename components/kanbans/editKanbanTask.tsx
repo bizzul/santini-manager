@@ -249,6 +249,7 @@ function PlanningDateField({
   disabled,
   weekendDisabled,
   emptyLabel = "Seleziona data",
+  className,
 }: {
   name: string;
   label: string;
@@ -256,13 +257,14 @@ function PlanningDateField({
   disabled?: boolean;
   weekendDisabled?: (date: Date) => boolean;
   emptyLabel?: string;
+  className?: string;
 }) {
   return (
     <FormField
       name={name as any}
       control={control}
       render={({ field }) => (
-        <FormItem className="min-w-0 flex flex-col">
+        <FormItem className={cn("min-w-0 flex flex-col", className)}>
           <FormLabel>{label}</FormLabel>
           <Popover>
             <PopoverTrigger asChild>
@@ -275,9 +277,11 @@ function PlanningDateField({
                   )}
                   disabled={disabled}
                 >
-                  {field.value
-                    ? field.value.toLocaleDateString("it-IT")
-                    : emptyLabel}
+                  <span className="min-w-0 truncate">
+                    {field.value
+                      ? field.value.toLocaleDateString("it-IT")
+                      : emptyLabel}
+                  </span>
                   <CalendarIcon className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </FormControl>
@@ -297,6 +301,81 @@ function PlanningDateField({
           <FormMessage />
         </FormItem>
       )}
+    />
+  );
+}
+
+// Native <input type="time"> pickers ignore the `step` attribute in their
+// graphical dropdown (Chromium only honors it for keyboard stepping), so we use
+// a Select limited to quarter-hour slots to guarantee 00/15/30/45 minutes.
+const PLANNING_TIME_NONE = "__none__";
+const PLANNING_TIME_START_HOUR = 6;
+const PLANNING_TIME_END_HOUR = 20;
+const PLANNING_TIME_OPTIONS: string[] = (() => {
+  const options: string[] = [];
+  for (let hour = PLANNING_TIME_START_HOUR; hour <= PLANNING_TIME_END_HOUR; hour += 1) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      if (hour === PLANNING_TIME_END_HOUR && minute > 0) break;
+      options.push(
+        `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+      );
+    }
+  }
+  return options;
+})();
+
+function PlanningTimeField({
+  name,
+  label,
+  control,
+  disabled,
+  className,
+}: {
+  name: string;
+  label: string;
+  control: any;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <FormField
+      name={name as any}
+      control={control}
+      render={({ field }) => {
+        const current = field.value ? String(field.value).slice(0, 5) : "";
+        // Keep legacy/off-grid values selectable so we never hide saved data.
+        const options =
+          current && !PLANNING_TIME_OPTIONS.includes(current)
+            ? [...PLANNING_TIME_OPTIONS, current].sort()
+            : PLANNING_TIME_OPTIONS;
+        return (
+          <FormItem className={cn("min-w-0 flex flex-col", className)}>
+            <FormLabel>{label}</FormLabel>
+            <Select
+              value={current || PLANNING_TIME_NONE}
+              onValueChange={(value) =>
+                field.onChange(value === PLANNING_TIME_NONE ? null : value)
+              }
+              disabled={disabled}
+            >
+              <FormControl>
+                <SelectTrigger className="h-9 w-full px-2 text-sm">
+                  <SelectValue placeholder="--:--" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent className="max-h-[240px]">
+                <SelectItem value={PLANNING_TIME_NONE}>--:--</SelectItem>
+                {options.map((time) => (
+                  <SelectItem key={time} value={time}>
+                    {time}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        );
+      }}
     />
   );
 }
@@ -915,8 +994,8 @@ const EditTaskKanban = ({
       // Legacy fields kept in sync for existing views
       deliveryDate: d.posa_data_fine || null,
       termine_produzione: productionRequired ? d.produzione_data_fine || null : null,
-      ora_inizio: null,
-      ora_fine: null,
+      ora_inizio: d.posa_ora_inizio || null,
+      ora_fine: d.posa_ora_fine || null,
       // New planning fields
       produzione_data_inizio: productionRequired ? d.produzione_data_fine || null : null,
       produzione_data_fine: productionRequired ? d.produzione_data_fine || null : null,
@@ -925,8 +1004,8 @@ const EditTaskKanban = ({
       data_fatturazione: d.data_fatturazione || null,
       produzione_ora_inizio: null,
       produzione_ora_fine: null,
-      posa_ora_inizio: null,
-      posa_ora_fine: null,
+      posa_ora_inizio: d.posa_ora_inizio || null,
+      posa_ora_fine: d.posa_ora_fine || null,
       produzione_collaborator_ids: selectedProductionCollaborators,
       posa_collaborator_ids: selectedPosaCollaborators,
       assigned_collaborator_ids: assignedCollaboratorIds,
@@ -1661,18 +1740,19 @@ const EditTaskKanban = ({
                 <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>Telefono</span>
               </div>
-              {contactPhone ? (
-                <a
-                  href={`tel:${contactPhone}`}
-                  className="ml-6 block text-sm text-primary hover:underline"
-                >
-                  {contactPhone}
-                </a>
-              ) : (
-                <span className="ml-6 block text-sm italic text-muted-foreground">
-                  Non disponibile
-                </span>
-              )}
+              <div className="ml-6">
+                <Input
+                  id="kanban-site-contact-phone"
+                  type="tel"
+                  value={siteContactPhone}
+                  onChange={(event) =>
+                    updateSiteContact(siteContactName, event.target.value)
+                  }
+                  placeholder="Telefono cantiere"
+                  disabled={isSubmitting}
+                  className="h-8 text-sm"
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -2277,20 +2357,40 @@ const EditTaskKanban = ({
               <div className="min-w-0 rounded-lg border border-slate-500 bg-muted dark:bg-background p-3 space-y-3">
                 <h3 className="text-sm font-medium">Posa</h3>
                 <div className="space-y-3">
-                  <PlanningDateField
-                    name="posa_data_inizio"
-                    label="Data inizio"
-                    control={form.control}
-                    disabled={isSubmitting}
-                    weekendDisabled={weekendDisabled}
-                  />
-                  <PlanningDateField
-                    name="posa_data_fine"
-                    label="Data fine"
-                    control={form.control}
-                    disabled={isSubmitting}
-                    weekendDisabled={weekendDisabled}
-                  />
+                  <div className="flex min-w-0 items-start gap-2">
+                    <PlanningDateField
+                      name="posa_data_inizio"
+                      label="Data inizio"
+                      control={form.control}
+                      disabled={isSubmitting}
+                      weekendDisabled={weekendDisabled}
+                      className="flex-1"
+                    />
+                    <PlanningTimeField
+                      name="posa_ora_inizio"
+                      label="Ora"
+                      control={form.control}
+                      disabled={isSubmitting}
+                      className="w-[92px] shrink-0"
+                    />
+                  </div>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <PlanningDateField
+                      name="posa_data_fine"
+                      label="Data fine"
+                      control={form.control}
+                      disabled={isSubmitting}
+                      weekendDisabled={weekendDisabled}
+                      className="flex-1"
+                    />
+                    <PlanningTimeField
+                      name="posa_ora_fine"
+                      label="Ora"
+                      control={form.control}
+                      disabled={isSubmitting}
+                      className="w-[92px] shrink-0"
+                    />
+                  </div>
                 </div>
                 <Popover>
                   <PopoverTrigger asChild>
