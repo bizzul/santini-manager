@@ -2371,7 +2371,7 @@ const EditTaskKanban = ({
                       label="Ora"
                       control={form.control}
                       disabled={isSubmitting}
-                      className="w-[92px] shrink-0"
+                      className="w-[72px] shrink-0"
                     />
                   </div>
                   <div className="flex min-w-0 items-start gap-2">
@@ -2388,7 +2388,7 @@ const EditTaskKanban = ({
                       label="Ora"
                       control={form.control}
                       disabled={isSubmitting}
-                      className="w-[92px] shrink-0"
+                      className="w-[72px] shrink-0"
                     />
                   </div>
                 </div>
