@@ -376,3 +376,226 @@ where schemaname = 'public'
   and (qual like '%us.site_id = us.site_id%'
        or (qual = 'true' and roles::text like '%public%'));
 ```
+
+---
+---
+
+# REPORT FINALE
+
+Stato: **tutte le migration sono scritte e committate, nessuna e' stata applicata**.
+Il DB remoto `jzxffusiwtrvjwmpjztu` e' stato interrogato solo in lettura.
+
+## R1. Tabella riassuntiva
+
+Le condizioni delle policy sono per esteso nelle migration, ognuna commentata.
+In sintesi il criterio e':
+
+- **ondata A** — `site_id is not null and user_can_access_site(site_id)` su tutte e quattro
+  le operazioni (eccezioni: `Action`/`Errortracking` in SELECT, `site_modules` in scrittura)
+- **ondata B** — `exists (… padre … and user_can_access_site(padre.site_id))`
+- **ondata C** — criteri di identita' e tenancy, uno per tabella
+
+Colonna "RLS attiva": stato risultante **dopo** l'applicazione di tutte le migration.
+
+| Tabella | Ondata | Policy create | RLS attiva | Migration |
+|---|---|---|---|---|
+| `Task` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092000_rls_a_task_kanban |
+| `Client` | A | policy preesistenti `client_*_site_access`, non duplicate | si' | — |
+| `Kanban` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092000_rls_a_task_kanban |
+| `KanbanCategory` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092000_rls_a_task_kanban |
+| `Timetracking` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `Supplier` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092100_rls_a_anagrafiche |
+| `Product` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092100_rls_a_anagrafiche |
+| `Product_category` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092100_rls_a_anagrafiche |
+| `Department` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092100_rls_a_anagrafiche |
+| `Exit_checklist` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `PackingControl` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `PackingMasterItem` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `QcMasterItem` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `QualityControl` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `site_modules` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923093100_rls_a_site_modules |
+| `inventory_categories` | A | policy create allo Step 2 · 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923091000_rls_fix_policy_errate |
+| `inventory_items` | A | policy create allo Step 2 · 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923091000_rls_fix_policy_errate |
+| `inventory_item_variants` | A | policy create allo Step 2 · 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923091000_rls_fix_policy_errate |
+| `inventory_suppliers` | A | policy create allo Step 2 · 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923091000_rls_fix_policy_errate |
+| `inventory_warehouses` | A | policy create allo Step 2 · 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923091000_rls_fix_policy_errate |
+| `inventory_subcategory_images` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923093000_rls_a_inventory |
+| `Action` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `Errortracking` | A | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923092200_rls_a_ore_errori_qualita |
+| `KanbanColumn` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `TaskHistory` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094100_rls_b_taskhistory |
+| `TaskSupplier` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `ClientAddress` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `File` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `PackingItem` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `Qc_item` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `_RolesToTimetracking` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `_RolesToUser` | B | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923094000_rls_b_figlie |
+| `Checklist_item` | B | 1 (ALL) | si' | 20260923094000_rls_b_figlie |
+| `User` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095000_rls_c_user |
+| `sites` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095100_rls_c_sites_organizations |
+| `organizations` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095100_rls_c_sites_organizations |
+| `user_sites` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095200_rls_c_user_sites_organizations |
+| `user_organizations` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095200_rls_c_user_sites_organizations |
+| `audit_logs` | C | 2 (INSERT SELECT) | si' | 20260923095300_rls_c_audit_roles_units |
+| `Roles` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095300_rls_c_audit_roles_units |
+| `inventory_units` | C | 4 (DELETE INSERT SELECT UPDATE) | si' | 20260923095300_rls_c_audit_roles_units |
+| `attendance_entries` | fix | RLS gia' attiva prima della lavorazione · 4 (DELETE INSERT SELECT UPDATE) | si' (gia' attiva) | 20260923091000_rls_fix_policy_errate |
+
+Verifica strutturale eseguita sui file: **41 tabelle su 41 ricevono
+`enable row level security`**, nessuna in piu' e nessuna in meno rispetto all'elenco
+del piano. `attendance_entries` e' l'unica con policy ma senza `enable`, perche' la RLS
+era gia' attiva.
+
+### Esito test
+
+| Cosa | Esito |
+|---|---|
+| `npm run typecheck` | **pulito** |
+| `npm test` | **461 passati, 7 skip, 0 falliti** (73 suite) |
+| `npm run build` | **ok** |
+| `npm run lint` | nessun rilievo sui file toccati. Restano 2 errori `prefer-const` **preesistenti** in `app/api/fatturazione/tasks/[taskId]/supplementi/route.ts:146` e `app/api/support/kb/route.ts:50`, file fuori perimetro: non toccati |
+| Sintassi SQL delle 12 migration + 12 rollback + 2 file manuali | **validata** con il parser di PostgreSQL (`libpg_query`) |
+| `scripts/zztest-rls-isolation.ts` | **scritto e typecheckato, MAI ESEGUITO** — vedi R6 |
+
+## R2. Ordine di applicazione manuale
+
+Le migration sono numerate per essere applicate in ordine di nome file.
+Ogni riga ha il suo rollback gemello in `supabase/rollback/`, stesso nome + `_rollback.sql`.
+
+| # | Migration | Cosa verificare nell'app dopo | Rollback |
+|---|---|---|---|
+| 1 | `20260923090000_rls_helpers_indici.sql` | nulla cambia per l'utente. Controllare che `support_*` e `pm_*` continuino a funzionare per i superadmin (`is_superadmin()` viene ridefinita) | `..._rls_helpers_indici_rollback.sql` — **ripristina** `is_superadmin()`, non la droppa |
+| 2 | `20260923091000_rls_fix_policy_errate.sql` | **Presenze**: lettura (usa il service role, non deve cambiare), inserimento e cancellazione da admin. Magazzino: ancora invariato, la RLS e' spenta | `..._rls_fix_policy_errate_rollback.sql` |
+| — | `supabase/manual/20260923_taskhistory_taskid_idx.sql` | **no-op sul remoto**, l'indice esiste gia'. Eseguire solo il blocco 1 (verifica) | — |
+| 3 | `20260923092000_rls_a_task_kanban.sql` | **Kanban**: apertura board, drag & drop fra colonne, realtime sui Task fra due browser. Calendari | `..._rls_a_task_kanban_rollback.sql` |
+| 4 | `20260923092100_rls_a_anagrafiche.sql` | **Clienti** (lista, creazione, modifica), **Fornitori**, **Prodotti**, import CSV clienti e fornitori | `..._rls_a_anagrafiche_rollback.sql` |
+| 5 | `20260923092200_rls_a_ore_errori_qualita.sql` | **Ore** (registrazione, modifica, report), **Errori**, **Qualita'**, **Imballaggio**, **Fatturazione** | `..._rls_a_ore_errori_qualita_rollback.sql` |
+| 6 | `20260923093000_rls_a_inventory.sql` | **Magazzino**: categorie, articoli, varianti, fornitori, depositi, immagini sottocategoria | `..._rls_a_inventory_rollback.sql` |
+| 7 | `20260923093100_rls_a_site_modules.sql` | menu e moduli visibili per ogni spazio; `/administration` → attivazione moduli da superadmin | `..._rls_a_site_modules_rollback.sql` |
+| — | **24 h di osservazione** | log Supabase: cercare `42501` e `row-level security`. Prima di proseguire | — |
+| 8 | `20260923094000_rls_b_figlie.sql` | colonne kanban, allegati (upload, collegamento a errore/progetto, cancellazione), indirizzi cliente, ruoli sulle ore | `..._rls_b_figlie_rollback.sql` |
+| 9 | `20260923094100_rls_b_taskhistory.sql` | **snapshot kanban** e cronologia progetto. Misurare la `explain` in fondo alla migration | `..._rls_b_taskhistory_rollback.sql` |
+| — | **24 h di osservazione** | idem | — |
+| 10 | `20260923095000_rls_c_user.sql` | login, `/sites/select`, **dropdown collaboratori e assegnatari**, realtime su User, invito collaboratore | `..._rls_c_user_rollback.sql` |
+| 11 | `20260923095100_rls_c_sites_organizations.sql` | risoluzione dominio, `/sites/select`, `/administration` organizzazioni e siti | `..._rls_c_sites_organizations_rollback.sql` |
+| 12 | `20260923095200_rls_c_user_sites_organizations.sql` | pagina **Collaboratori**: elenco, aggiunta, rimozione, invito. Accettazione invito | `..._rls_c_user_sites_organizations_rollback.sql` |
+| 13 | `20260923095300_rls_c_audit_roles_units.sql` | ruoli aziendali (creazione, modifica, assegnazione), unita' di misura a magazzino | `..._rls_c_audit_roles_units_rollback.sql` |
+
+**Da fare prima del punto 3** (ondata A): decidere D-5, il cron `auto-archive`. Vedi R5.
+
+Dopo il punto 13, la verifica di accettazione:
+
+```sql
+select relname from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;
+```
+
+## R3. File applicativi modificati
+
+Due soli file, entrambi nello Step 7.
+
+| File | Modifica | Perche' |
+|---|---|---|
+| `components/kanbans/KanbanBoard.tsx:1168` | `saveState()` → `saveState(domain)` | senza dominio la action legge i `Task` di **tutti** gli spazi. Con la RLS ne leggerebbe comunque solo quelli accessibili, ma lo snapshot resterebbe sporco fra spazi diversi |
+| `app/sites/[domain]/kanban/actions/save-kanban-state.action.ts` | rimossi il filtro `.eq("site_id", …)` e il campo `site_id` nell'insert **su `TaskHistory`** | `TaskHistory` non ha quella colonna: le sue colonne sono `(id, "taskId", snapshot, "createdAt")`. I due rami non erano mai stati eseguiti perche' `siteId` restava `null`; passando il dominio avrebbero prodotto un errore `42703`. Lo scoping arriva dai `Task` filtrati a monte e, dopo l'ondata B, dalla policy via `Task` |
+
+La logica degli snapshot **non** e' stata toccata: resta il lavoro separato indicato dal piano.
+Aggiunti 3 test in `__tests__/kanban/save-kanban-state.test.ts` che bloccano la regressione.
+
+**Nessun nuovo uso di `createServiceClient()`.**
+
+## R4. Percorsi non autenticati o service-role ancora da proteggere (F-001)
+
+Restano esposti **dopo** la RLS, perche' il service role la bypassa.
+
+| Percorso | Client | Gate attuale | Cosa espone |
+|---|---|---|---|
+| `app/api/debug/database-tables/route.ts` | service | **nessuno** | enumerazione delle tabelle del DB |
+| `app/api/debug/site-lookup/route.ts` | service | **nessuno** | lookup arbitrario su `sites` |
+| `app/api/debug/vercel-env/route.ts` | service | **nessuno** | informazioni di ambiente e connettivita' |
+| `lib/fetchers.ts::getSiteData()` | service | nessuno | risolve qualunque sottodominio a un `sites.*` completo, senza verificare la membership del chiamante. E' il cuore di `lib/site-context.ts` |
+| `app/(auth)/quick-login/data.ts` | service | nessuno | elenco utenti non superadmin di uno spazio, per la quick-login |
+| `app/api/sites/[domain]/attendance/route.ts` (GET) | service | `getUserContext()` presente ma la lettura bypassa la RLS | presenze dello spazio |
+| altri 72 file con `createServiceClient()` | service | vario | elenco completo in [`accessi-completi.md`](rls-hardening/accessi-completi.md), righe con client `service` |
+
+Le route `app/api/debug/{kanbans,basic,user-context,site-flow,site-navigation}` usano
+il client di sessione: dopo la RLS restituiranno 0 righe agli anonimi. Miglioramento,
+non regressione.
+
+## R5. Decisioni che servono da Matteo
+
+| # | Decisione | Stato | Raccomandazione |
+|---|---|---|---|
+| **D-1** | Backfill `Action.site_id` | proposta pronta, **non eseguita**, in `supabase/manual/20260923_action_backfill_site_id_PROPOSTA.sql` | recupera **18 righe su 1 867**: 34 in piu' da `clientId`, le restanti 1 815 non hanno nessun padre. Il ritorno e' basso, si puo' anche non fare nulla: restano visibili al superadmin |
+| **D-2** | DELETE presenze: admin o collaboratore | **risolta dal codice**: POST e DELETE sono gia' entrambe gated da `isAdminOrSuperadmin()`. Applicato `user_is_site_admin(site_id)` | serve solo conferma |
+| **D-3** | Risoluzione dominio → sito prima del login | **risolta**: usa il service role, il middleware non legge tabelle. Nessuno stop | resta F-001 da chiudere a parte |
+| **D-4** | Migration solo sul remoto | 3 migration CRM del 10.09.2026, tutte su tabelle fuori perimetro con RLS gia' attiva | recuperarle in locale con `supabase db pull`, lavoro separato |
+| **D-5** | **Cron `auto-archive`** | `app/api/cron/auto-archive/route.ts` usa `createClient()` (sessione) ma gira da Vercel Cron **senza utente**: dopo l'ondata A leggera' 0 `Task` e smettera' di archiviare, in silenzio | **da decidere PRIMA dell'ondata A.** Le opzioni sono: passare a `createServiceClient()` tenendo `CRON_SECRET` come unico gate, oppure dare al cron un utente di servizio. Non l'ho toccato: il vincolo chiede `withSiteAuth` per ogni nuovo service role, e a un cron non si applica |
+| **D-6** | Fallback per email in `complete-signup` | `components/complete-signup.tsx:203` legge `User` per email **senza sessione**. Oggi funziona perche' la RLS e' spenta, cioe' oggi chiunque puo' leggere tutta la tabella `User` | dopo la RLS restituira' 0 righe. Nel flusso normale il fallback non viene percorso (la sessione esiste gia'). Va sostituito con una server action sulla sessione, o rimosso |
+| **D-7** | `File` senza padre accessibili agli autenticati | scostamento applicato, motivato in migration | il fix strutturale e' aggiungere `site_id` (o `created_by`) alla tabella `File`. Fuori perimetro |
+| **D-8** | Scrittura su `Roles` e `_RolesToUser` consentita agli admin, non ai soli superadmin | scostamento applicato, motivato in migration | per stringere a soli superadmin va prima cambiato il gate applicativo in `app/api/roles/**` e `app/api/users/[userId]/company-roles/`, altrimenti si rompe una funzione in uso |
+
+## R6. Rischi residui e cosa non ho fatto
+
+### Non ho eseguito il test di isolamento
+
+`scripts/zztest-rls-isolation.ts` e' scritto, typecheckato e pronto, ma **non e' mai girato**:
+su questa macchina **Docker non e' disponibile**, quindi `supabase start` non parte, e non
+esiste un server PostgreSQL locale (c'e' solo il client `libpq`). Le alternative erano
+applicare al remoto o creare un branch Supabase: entrambe vietate dai vincoli.
+
+Quello che ho potuto verificare senza eseguire:
+
+- la **sintassi** di tutti i 26 file SQL, con il parser di PostgreSQL (`libpg_query`);
+- che le 41 tabelle ricevano tutte `enable row level security`, con un controllo automatico
+  sui file confrontato con l'elenco del piano;
+- lo **schema reale** di ogni tabella toccata (colonne, tipi, NOT NULL, indici, FK), letto
+  dal remoto, cosi' che le policy e le fixture del test usino nomi di colonna esistenti.
+
+Quello che **non** e' verificato e va verificato eseguendo lo script:
+
+- che nessuna policy vada in ricorsione a runtime (le tre a rischio — `user_sites`,
+  `user_organizations`, `organizations` — passano da helper `SECURITY DEFINER` apposta,
+  ma la prova e' l'esecuzione);
+- il corpo PL/pgSQL dei due blocchi `DO` (creazione indici, guardia su `TaskHistory`):
+  il parser valida l'istruzione esterna, non il body;
+- il costo reale della policy su `TaskHistory`.
+
+**Va fatto prima di applicare al remoto.** La via piu' rapida: avviare Docker, poi
+`supabase start && supabase db reset` e lanciare lo script. In alternativa un branch
+Supabase dedicato (decisione tua, come previsto dal piano).
+
+### Scostamenti dal piano applicati
+
+Sette, tutti motivati da evidenze dello Step 0 e commentati nelle migration:
+
+1. `is_superadmin()` **esisteva gia'**: ridefinita invece che creata; il rollback la ripristina anziche' droppare.
+2. Gli indici su `TaskHistory("taskId")`, `user_sites` e `user_organizations` **esistevano gia'**: la migration usa un blocco `DO` che crea solo cio' che manca davvero.
+3. Aggiunti tre helper nuovi (`user_in_organization`, `user_shares_tenancy_with`, `user_is_admin`): senza, le policy su `user_organizations` andrebbero in ricorsione e le dropdown collaboratori resterebbero vuote.
+4. `File` senza padre: accessibili agli autenticati invece che ai soli superadmin (D-7).
+5. `_RolesToUser` e `Roles`: scrittura agli admin, non ai soli superadmin (D-8).
+6. `User` INSERT/DELETE e `user_organizations` INSERT: agli admin, non ai soli superadmin — invito collaboratori e cancellazione utenti passano dal client di sessione, non dal service role come ipotizzato dal piano.
+7. Il test ZZTEST usa **due organizzazioni** invece di una: `user_can_access_site()` concede l'accesso anche per appartenenza all'organizzazione, quindi due siti nella stessa organizzazione sono reciprocamente accessibili **per disegno**. Con il setup del piano il test avrebbe fallito su una cosa corretta. Lo script verifica esplicitamente questo comportamento e lo stampa.
+
+### Rischi residui
+
+| Rischio | Gravita' | Mitigazione |
+|---|---|---|
+| Cron `auto-archive` si ferma in silenzio dopo l'ondata A | **alta** | D-5, da chiudere prima |
+| `File` senza padre leggibili da qualunque autenticato | bassa (4 righe, nessun dato di tenant) | D-7 |
+| Un admin puo' creare un `Roles` globale visibile ad altri spazi | bassa (e' il comportamento odierno) | D-8 |
+| Insert su `Action` senza `site_id` vengono rifiutati | bassa (5 righe su 173 a settembre; l'esito non e' mai bloccante nel codice) | nessuna: e' il comportamento corretto |
+| `user_is_site_admin()` richiede `enabled = true`: 1 admin sul DB ha `enabled = false` | trascurabile | quell'utente non supera comunque il gate applicativo |
+| Costo della policy su `TaskHistory` (592k righe) non misurato | media | misurare con la `explain` in fondo alla migration; rollback dedicato pronto |
+| Il service role resta il buco principale (78 file, 3 route di debug aperte) | **alta, ma fuori perimetro** | F-001, R4 |
+
+### Cosa e' rimasto fuori per scelta
+
+- Le 3 route di debug con service role senza gate: fuori perimetro, sono F-001.
+- Le 3 migration CRM presenti solo sul remoto: non create, non modificate (D-4).
+- Nessun `FORCE ROW LEVEL SECURITY`, nessuna modifica ai GRANT sulle tabelle.
+  L'unica `revoke`/`grant` riguarda le funzioni nuove e `is_superadmin()`.
+- Nessuna modifica a UI, icone, naming, `types/supabase.ts`, tabelle fuori perimetro.
+- Nessuna modifica ai dati reali.
