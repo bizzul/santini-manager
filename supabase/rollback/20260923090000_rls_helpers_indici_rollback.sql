@@ -27,6 +27,7 @@ grant execute on function public.is_superadmin() to service_role;
 
 -- Helper introdotti da questa migration: non esistevano prima, si possono droppare.
 drop function if exists public.user_shares_tenancy_with(uuid);
+drop function if exists public.user_is_admin();
 drop function if exists public.user_in_organization(uuid);
 
 -- Indici: i nomi sono esclusivi di questa migration. Quelli preesistenti

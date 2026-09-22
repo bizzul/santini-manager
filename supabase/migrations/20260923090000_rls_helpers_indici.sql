@@ -56,6 +56,35 @@ revoke all on function public.user_in_organization(uuid) from public, anon;
 grant execute on function public.user_in_organization(uuid) to authenticated;
 
 -- -----------------------------------------------------------------------------
+-- user_is_admin(): l'utente corrente e' admin o superadmin ed e' abilitato.
+--
+-- E' la trasposizione in SQL di isAdminOrSuperadmin() (lib/permissions.ts:14),
+-- gia' usata come gate applicativo su invito collaboratori, cancellazione
+-- utenti, ruoli aziendali e presenze. Serve nei casi in cui non c'e' un
+-- site_id su cui chiamare user_is_site_admin(): per esempio l'insert su
+-- "User" di un collaboratore appena invitato, che non ha ancora nessun
+-- user_sites.
+-- -----------------------------------------------------------------------------
+create or replace function public.user_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public."User" u
+    where u.auth_id = (select auth.uid())
+      and u.enabled = true
+      and u.role in ('admin', 'superadmin')
+  );
+$$;
+
+revoke all on function public.user_is_admin() from public, anon;
+grant execute on function public.user_is_admin() to authenticated;
+
+-- -----------------------------------------------------------------------------
 -- user_shares_tenancy_with(): l'utente corrente e l'utente target condividono
 -- almeno un'organizzazione o almeno un sito.
 --
