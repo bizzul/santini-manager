@@ -1164,8 +1164,11 @@ function KanbanBoardInner({
         });
       }
 
-      // Save state after successful move
-      await saveState();
+      // Save state after successful move.
+      // Il dominio va passato: senza, saveState() legge i Task di tutti gli
+      // spazi. Con la RLS attiva ne leggerebbe comunque solo quelli
+      // accessibili, ma lo snapshot resterebbe sporco fra spazi diversi.
+      await saveState(domain);
     } catch (error) {
       console.error("Error moving card:", error);
       // Revert optimistic update on error

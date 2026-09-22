@@ -52,13 +52,17 @@ async function saveKanbanState(supabase: any, domain?: string) {
       throw new Error("Failed to fetch current tasks");
     }
 
-    // Get the latest snapshot timestamp (filter by site_id if available)
+    // Get the latest snapshot timestamp.
+    // TaskHistory NON ha una colonna site_id: le sue colonne sono
+    // (id, "taskId", snapshot, "createdAt"). Il filtro per site_id che c'era
+    // qui non e' mai stato eseguito perche' saveState() veniva chiamata senza
+    // dominio, quindi siteId restava null; ora che il dominio viene passato
+    // avrebbe prodotto un errore 42703 "column TaskHistory.site_id does not
+    // exist". Lo scoping per spazio arriva dai Task filtrati sopra e, dopo
+    // l'ondata B, dalla policy RLS via Task.
     let snapshotQuery = supabase
       .from("TaskHistory")
       .select("*");
-    if (siteId && typeof (snapshotQuery as any).eq === "function") {
-      snapshotQuery = snapshotQuery.eq("site_id", siteId);
-    }
     if (typeof (snapshotQuery as any).order === "function") {
       snapshotQuery = (snapshotQuery as any).order("createdAt", { ascending: false });
     }
@@ -101,12 +105,12 @@ async function saveKanbanState(supabase: any, domain?: string) {
           },
         };
 
+        // Nessun site_id: la colonna non esiste su TaskHistory.
         return supabase
           .from("TaskHistory")
           .insert({
             taskId: task.id,
             snapshot: snapshotData,
-            ...(siteId && { site_id: siteId }),
           })
           .select()
           .single();
