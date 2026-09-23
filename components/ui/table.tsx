@@ -70,7 +70,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "sticky z-10 h-12 bg-background/95 px-4 text-left align-middle font-medium text-muted-foreground [top:var(--table-sticky-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/60 [&:has([role=checkbox])]:pr-0",
+      "sticky z-10 h-12 bg-background/95 px-4 text-left align-middle font-medium text-muted-foreground data-[numeric=true]:text-right data-[numeric=true]:tabular-nums [top:var(--table-sticky-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/60 [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -84,7 +84,10 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      "p-4 align-middle data-[numeric=true]:text-right data-[numeric=true]:tabular-nums [&:has([role=checkbox])]:pr-0",
+      className
+    )}
     {...props}
   />
 ));
