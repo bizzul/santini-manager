@@ -146,7 +146,43 @@ justify-end pt-12">` come wrapper del trigger.
 <PageHeader title="Categorie" actions={<DialogCreate />} />
 ```
 
-## 7. Audit rapido
+## 7. Design system desktop (token e componenti, settembre 2026)
+
+Token in `app/globals.css` (sezione "FDM design system"). Usarli invece di
+valori arbitrari:
+
+- Tipografia: `text-caption` (12px, minimo assoluto), `text-body-sm`,
+  `text-body`, `text-title-sm`, `text-title`, `text-display`.
+  Vietati nuovi `text-[9px]`, `text-[10px]`, `text-[11px]`.
+- Raggi: `rounded-control` (campi, pulsanti), `rounded-card`, `rounded-panel`.
+- Ombre: `shadow-card`, `shadow-raised` (drag, hover), `shadow-overlay`
+  (modali, pannelli).
+- Testo posato direttamente sullo sfondo pagina (titoli, breadcrumb,
+  barre fuori dalle card): `text-page-foreground`,
+  `text-page-muted-foreground`. Lo sfondo pagina e' per-spazio e puo'
+  essere scuro anche in tema chiaro.
+- Stati: `status-late | status-progress | status-waiting | status-done |
+  status-draft | status-invoiced`, semaforo `readiness-ok |
+  readiness-pending`. Usare i componenti `StatusBadge` e `ReadinessDot`
+  (`components/ui/status-badge.tsx`), non colori pieni sulle card.
+  Il bordo sinistro delle card Kanban resta dedicato alla % di progresso.
+- Durate: `var(--duration-fast|base|slow)`, curva `ease-standard`.
+  `prefers-reduced-motion` e' rispettato globalmente.
+
+Layout:
+
+- `PageLayout width="contained"` (default) centra testata e contenuto entro
+  `--content-max` (1680px). `width="full"` solo per calendari, board e mappe.
+- Ricerca/filtri/azioni in una sola `FilterBar`
+  (`components/layout/filter-bar.tsx`). Nessun pulsante "Indietro" su
+  pagine raggiunte dal menu.
+- Tabelle: colonne numeriche con `data-numeric` su `TableHead`/`TableCell`;
+  azioni di riga dentro un contenitore `row-actions` (visibile al passaggio
+  del mouse / focus su desktop).
+- Importi: `formatCHF` / `formatCHFCompact` da `lib/i18n/format.ts`
+  ("CHF 17'930.97", "CHF 871k", "CHF 1.35 Mio"). Solo visualizzazione.
+
+## 8. Audit rapido
 
 ```bash
 rg -n "bg-white|bg-black|bg-slate-|bg-gray-|text-slate-|text-gray-|dark:bg-slate-|bg-\\[#" app/ components/
