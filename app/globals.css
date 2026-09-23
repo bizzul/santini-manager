@@ -98,6 +98,144 @@
 */
 @custom-variant dark (&:is(.dark *));
 
+/*
+  ---break---
+*/
+
+/* ==========================================================================
+   FDM design system — token desktop (template globale, validi per ogni spazio)
+   Colori di superficie (--page, --card, --sidebar*) restano per-spazio:
+   li imposta SiteThemeStyle. Qui solo scala, forma, movimento e stati.
+   ========================================================================== */
+:root {
+  /* Layout */
+  --content-max: 1680px;
+  --page-gutter: 2rem;
+
+  /* Movimento */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+
+  /* Focus: accento unico grigio-azzurro del menu approvato */
+  --focus-ring: 208 22% 58%;
+
+  /* Testo direttamente sullo sfondo pagina (titoli, breadcrumb).
+     Sovrascritti da SiteThemeStyle in base al colore di sfondo dello spazio. */
+  --page-foreground: var(--foreground);
+  --page-muted-foreground: var(--muted-foreground);
+
+  /* Stati semantici (canali HSL). Distinti dal bordo sinistro di progresso. */
+  --status-late: 0 72% 51%;
+  --status-progress: 217 91% 60%;
+  --status-waiting: 38 92% 50%;
+  --status-done: 152 60% 40%;
+  --status-draft: 215 14% 52%;
+  --status-invoiced: 262 60% 58%;
+  --readiness-ok: 152 60% 40%;
+  --readiness-pending: 0 72% 51%;
+}
+
+.dark {
+  --focus-ring: 208 30% 70%;
+  --status-late: 0 80% 62%;
+  --status-progress: 217 91% 66%;
+  --status-waiting: 38 92% 58%;
+  --status-done: 152 55% 50%;
+  --status-draft: 215 16% 64%;
+  --status-invoiced: 262 70% 72%;
+  --readiness-ok: 152 55% 50%;
+  --readiness-pending: 0 80% 62%;
+}
+
+@theme {
+  /* Scala tipografica: minimo 12px per uso prolungato */
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-title-sm: 1.0625rem;
+  --text-title-sm--line-height: 1.5rem;
+  --text-title: 1.5rem;
+  --text-title--line-height: 2rem;
+  --text-display: 1.875rem;
+  --text-display--line-height: 2.25rem;
+
+  /* Raggi (allineati ai riquadri del menu) */
+  --radius-control: 0.5rem;
+  --radius-card: 0.875rem;
+  --radius-panel: 1rem;
+
+  /* Ombre */
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 1px rgb(15 23 42 / 0.04);
+  --shadow-raised: 0 6px 16px -4px rgb(15 23 42 / 0.18), 0 2px 4px rgb(15 23 42 / 0.08);
+  --shadow-overlay: 0 18px 40px -8px rgb(2 6 23 / 0.35), 0 4px 10px rgb(2 6 23 / 0.12);
+
+  /* Curva di movimento standard */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@theme inline {
+  --color-page-foreground: hsl(var(--page-foreground));
+  --color-page-muted-foreground: hsl(var(--page-muted-foreground));
+  --color-focus: hsl(var(--focus-ring));
+  --color-status-late: hsl(var(--status-late));
+  --color-status-progress: hsl(var(--status-progress));
+  --color-status-waiting: hsl(var(--status-waiting));
+  --color-status-done: hsl(var(--status-done));
+  --color-status-draft: hsl(var(--status-draft));
+  --color-status-invoiced: hsl(var(--status-invoiced));
+  --color-readiness-ok: hsl(var(--readiness-ok));
+  --color-readiness-pending: hsl(var(--readiness-pending));
+}
+
+@layer base {
+  /* Focus visibile da tastiera per link ed elementi senza ring proprio */
+  a:focus-visible,
+  summary:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid hsl(var(--focus-ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Numeri in tabella: allineati a destra con cifre a larghezza fissa */
+  .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Azioni di riga: visibili al passaggio del mouse o al focus (solo desktop) */
+  @media (hover: hover) and (min-width: 768px) {
+    .row-actions {
+      opacity: 0;
+      transition: opacity var(--duration-fast) ease;
+    }
+    tr:hover .row-actions,
+    tr:focus-within .row-actions,
+    .group\/row:hover .row-actions,
+    .group\/row:focus-within .row-actions {
+      opacity: 1;
+    }
+  }
+}
+
+/* Rispetto di prefers-reduced-motion su tutto il gestionale */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @config '../tailwind.config.js';
 
 /*
@@ -143,7 +281,7 @@
   .sidebar-nav-group {
     @apply block w-full min-w-0 overflow-hidden rounded-2xl shadow-none;
     @apply bg-white/80 dark:bg-white/10;
-    border: 1px solid #3a3f48;
+    border: 1px solid var(--sidebar-nav-frame-border);
     background-image: linear-gradient(
       155deg,
       color-mix(in srgb, var(--sidebar-nav-accent) 18%, transparent),
@@ -160,7 +298,7 @@
   .sidebar-nav-category {
     @apply mb-2 block w-full min-w-0 overflow-hidden rounded-[14px] p-1 last:mb-0;
     @apply bg-white/70 dark:bg-white/[0.08];
-    border: 1px solid #3a3f48;
+    border: 1px solid var(--sidebar-nav-frame-border);
     background-image: linear-gradient(
       155deg,
       color-mix(in srgb, var(--sidebar-nav-accent) 22%, transparent),
@@ -170,7 +308,7 @@
 
   .sidebar-nav-category-active {
     @apply dark:bg-white/[0.14];
-    border-color: #4b5160;
+    border-color: var(--sidebar-nav-frame-border-active);
     background-image: linear-gradient(
       155deg,
       color-mix(in srgb, var(--sidebar-nav-accent) 36%, transparent),
@@ -487,7 +625,9 @@ body:has(.home-gradient-bg) {
   --sidebar-border: 35 18% 82%;
   --sidebar-ring: 217.2 91.2% 59.8%;
   --sidebar-nav-accent: #7e96ab;
-  --sidebar-nav-frame-border: #6b6560;
+  /* Bordo riquadri menu: stesso valore nei due temi (design approvato). */
+  --sidebar-nav-frame-border: #3a3f48;
+  --sidebar-nav-frame-border-active: #4b5160;
 }
 
 /*
@@ -509,6 +649,7 @@ body:has(.home-gradient-bg) {
   --sidebar-ring: 217.2 91.2% 59.8%;
   --sidebar-nav-accent: #9fb4c7;
   --sidebar-nav-frame-border: #3a3f48;
+  --sidebar-nav-frame-border-active: #4b5160;
 }
 
 [data-collapsible="icon"] .sidebar-nav-group {
@@ -891,12 +1032,12 @@ body:has(.home-gradient-bg) {
 
 .sidebar-nav-group,
 .sidebar-nav-category {
-  border-color: #3a3f48 !important;
+  border-color: var(--sidebar-nav-frame-border) !important;
   outline: none;
 }
 
 .sidebar-nav-category-active {
-  border-color: #4b5160 !important;
+  border-color: var(--sidebar-nav-frame-border-active) !important;
 }
 
 .group[data-collapsible="icon"] .sidebar-nav-group,

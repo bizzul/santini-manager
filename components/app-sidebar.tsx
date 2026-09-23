@@ -87,25 +87,25 @@ const SIDEBAR_KANBAN_OPENED_KEY = "santini-sidebar-kanban-opened";
 const NAV_GROUP_UNBOXED =
   "rounded-none border-0 bg-transparent p-0.5 shadow-none dark:border-0 dark:bg-transparent dark:shadow-none group-data-[collapsible=icon]:rounded-none group-data-[collapsible=icon]:p-0.5";
 const NAV_GROUP_FRAME =
-  "sidebar-nav-group w-full min-w-0 overflow-hidden rounded-2xl border border-[#3a3f48] bg-white/80 shadow-none dark:bg-white/10 group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent";
+  "sidebar-nav-group w-full min-w-0 overflow-hidden rounded-2xl border border-[var(--sidebar-nav-frame-border)] bg-white/80 shadow-none dark:bg-white/10 group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:bg-transparent";
 const NAV_GROUP_FRAME_STYLE: React.CSSProperties = {
-  borderColor: "#3a3f48",
+  borderColor: "var(--sidebar-nav-frame-border)",
   backgroundImage:
     "linear-gradient(155deg, color-mix(in srgb, var(--sidebar-nav-accent) 18%, transparent), color-mix(in srgb, var(--sidebar-nav-accent) 5%, transparent))",
 };
 const NAV_GROUP_LABEL =
   "flex h-auto w-full cursor-pointer items-center gap-1 bg-transparent py-3 pl-5 pr-3.5 text-left text-[13px] font-bold uppercase leading-none tracking-[0.08em] text-[hsl(var(--sidebar-foreground)/0.72)] outline-none ring-0 hover:bg-transparent hover:text-[hsl(var(--sidebar-foreground)/0.92)] focus-visible:outline-none focus-visible:ring-0 dark:text-white/70 dark:hover:bg-transparent dark:hover:text-white [&>svg]:size-[13px] [&>svg]:shrink-0 [&>svg]:translate-y-px [&>svg]:text-current";
 const NAV_CATEGORY_FRAME =
-  "sidebar-nav-category mb-2 last:mb-0 block w-full min-w-0 overflow-hidden rounded-[14px] border border-[#3a3f48] bg-white/70 p-1 dark:bg-white/[0.08]";
+  "sidebar-nav-category mb-2 last:mb-0 block w-full min-w-0 overflow-hidden rounded-[14px] border border-[var(--sidebar-nav-frame-border)] bg-white/70 p-1 dark:bg-white/[0.08]";
 const NAV_CATEGORY_FRAME_ACTIVE =
-  "sidebar-nav-category-active border-[#4b5160] dark:bg-white/[0.14]";
+  "sidebar-nav-category-active border-[var(--sidebar-nav-frame-border-active)] dark:bg-white/[0.14]";
 const NAV_CATEGORY_FRAME_STYLE: React.CSSProperties = {
-  borderColor: "#3a3f48",
+  borderColor: "var(--sidebar-nav-frame-border)",
   backgroundImage:
     "linear-gradient(155deg, color-mix(in srgb, var(--sidebar-nav-accent) 22%, transparent), color-mix(in srgb, var(--sidebar-nav-accent) 6%, transparent))",
 };
 const NAV_CATEGORY_FRAME_ACTIVE_STYLE: React.CSSProperties = {
-  borderColor: "#4b5160",
+  borderColor: "var(--sidebar-nav-frame-border-active)",
   backgroundImage:
     "linear-gradient(155deg, color-mix(in srgb, var(--sidebar-nav-accent) 36%, transparent), color-mix(in srgb, var(--sidebar-nav-accent) 12%, transparent))",
 };
