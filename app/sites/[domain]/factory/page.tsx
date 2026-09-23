@@ -64,7 +64,7 @@ export default async function FactoryPage({
   const factoryData = await fetchFactoryDashboardData(siteContext.siteId);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <PageHeader
         title="Fabbrica"
         subtitle="Panoramica reparti, macchinari e stato prodotti in tempo reale."

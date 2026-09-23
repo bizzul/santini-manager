@@ -19,7 +19,7 @@ export default async function MomentumPlan({
   const eventi = await fetchEventiPlan(siteId);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <div className="border-b bg-page/95 px-4 py-4 md:px-6 lg:px-8">
         <MomentumHeader subtitle="Plan — pianificazione eventi" />
       </div>

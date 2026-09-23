@@ -224,6 +224,12 @@
   }
 }
 
+/* Larghezza massima dei contenuti sui monitor larghi: padding laterale che
+   centra il contenuto entro --content-max senza aggiungere wrapper nel DOM. */
+@utility page-inline-contained {
+  padding-inline: max(var(--page-gutter), calc((100% - var(--content-max)) / 2));
+}
+
 /* Rispetto di prefers-reduced-motion su tutto il gestionale */
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -16,7 +16,7 @@ export default async function CalendarioPage({
   const eventi = await fetchEventi(siteId);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <PageHeader
         title="Calendario"
         subtitle="Eventi, comizi, pubblicazioni e scadenze legali della campagna"

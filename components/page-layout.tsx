@@ -1,13 +1,30 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { createContext, useContext } from "react";
 
 import { PageTitle, PageSubtitle } from "@/components/ui/typography";
+
+/**
+ * Larghezza della pagina su desktop:
+ *  - "contained" (default): contenuto centrato entro --content-max (1680px);
+ *    fino a 1920px di schermo non cambia nulla, sui monitor larghi evita
+ *    tabelle e form stirati su 2000+ px.
+ *  - "full": tutta la larghezza disponibile (calendari, board, mappe).
+ */
+export type PageWidth = "contained" | "full";
+
+const PageWidthContext = createContext<PageWidth>("contained");
+
+const INLINE_PADDING: Record<PageWidth, string> = {
+  contained: "px-4 md:px-6 lg:page-inline-contained",
+  full: "px-4 md:px-6 lg:px-8",
+};
 
 interface PageLayoutProps {
   children: React.ReactNode;
   className?: string;
+  width?: PageWidth;
 }
 
 interface PageHeaderProps {
@@ -50,11 +67,20 @@ interface PageContentProps {
  *     <PageContent>...</PageContent>
  *   </PageLayout>
  */
-export function PageLayout({ children, className }: PageLayoutProps) {
+export function PageLayout({
+  children,
+  className,
+  width = "contained",
+}: PageLayoutProps) {
   return (
-    <div className={cn("flex flex-col h-full w-full", className)}>
-      {children}
-    </div>
+    <PageWidthContext.Provider value={width}>
+      <div
+        data-page-width={width}
+        className={cn("flex flex-col h-full w-full", className)}
+      >
+        {children}
+      </div>
+    </PageWidthContext.Provider>
   );
 }
 
@@ -72,12 +98,14 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   const hasTypedContent = Boolean(title || subtitle || actions || breadcrumbs);
+  const width = useContext(PageWidthContext);
 
   return (
     <div
       className={cn(
         "sticky top-0 z-10 bg-page/95 backdrop-blur supports-[backdrop-filter]:bg-page/80",
-        "flex flex-col gap-2 border-b shrink-0 px-4 py-4 md:px-6 lg:px-8",
+        "flex flex-col gap-2 border-b shrink-0 py-4",
+        INLINE_PADDING[width],
         className
       )}
     >
@@ -132,10 +160,12 @@ export function PageContent({
   variant = "default",
   className,
 }: PageContentProps) {
+  const width = useContext(PageWidthContext);
   return (
     <div
       className={cn(
-        "flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8",
+        "flex-1 overflow-auto py-4",
+        INLINE_PADDING[width],
         variant === "narrow" && "[&>*]:mx-auto [&>*]:max-w-4xl",
         className
       )}

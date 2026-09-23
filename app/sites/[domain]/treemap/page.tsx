@@ -48,7 +48,7 @@ export default async function TreemapPage({
   const data = await fetchTreemapPageData(siteContext.siteId);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <PageContent>
         <TreemapPageClient data={data} domain={domain} />
       </PageContent>

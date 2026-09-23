@@ -242,7 +242,7 @@ async function Page({
   const data = await getData(siteId);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <PageContent className="flex h-full min-h-0 flex-col">
         <CalendarComponent
           tasks={data as TaskWithKanban[]}

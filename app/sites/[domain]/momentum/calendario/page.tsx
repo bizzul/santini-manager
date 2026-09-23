@@ -23,7 +23,7 @@ export default async function MomentumCalendario({
   const eventi = await fetchCalendarEvents(siteId, year);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <div className="border-b bg-page/95 px-4 py-4 md:px-6 lg:px-8">
         <MomentumHeader subtitle={`Calendario eventi ${year}`} />
       </div>

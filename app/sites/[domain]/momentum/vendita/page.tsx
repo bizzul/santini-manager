@@ -19,7 +19,7 @@ export default async function MomentumVendita({
   const offerte = await fetchOfferte(siteId);
 
   return (
-    <PageLayout>
+    <PageLayout width="full">
       <div className="border-b bg-page/95 px-4 py-4 md:px-6 lg:px-8">
         <MomentumHeader subtitle="Vendita — pipeline offerte" />
       </div>

@@ -30,7 +30,7 @@ export default async function AttendancePage({
     const { t } = await getServerT(siteResponse.data.id);
 
     return (
-        <PageLayout>
+        <PageLayout width="full">
             <PageHeader
                 title={
                     <div className="flex items-center gap-3">
