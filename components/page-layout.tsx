@@ -84,20 +84,22 @@ export function PageHeader({
       {hasTypedContent ? (
         <>
           {breadcrumbs ? (
-            <div className="text-sm text-muted-foreground">{breadcrumbs}</div>
+            <div className="text-sm text-page-muted-foreground">{breadcrumbs}</div>
           ) : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-col gap-1">
               {title ? (
                 typeof title === "string" ? (
-                  <PageTitle>{title}</PageTitle>
+                  <PageTitle className="text-page-foreground">{title}</PageTitle>
                 ) : (
                   title
                 )
               ) : null}
               {subtitle ? (
                 typeof subtitle === "string" ? (
-                  <PageSubtitle>{subtitle}</PageSubtitle>
+                  <PageSubtitle className="text-page-muted-foreground">
+                    {subtitle}
+                  </PageSubtitle>
                 ) : (
                   subtitle
                 )

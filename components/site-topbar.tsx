@@ -11,22 +11,34 @@ import { getUserDisplayName } from "@/lib/user-display-name";
 import { useT } from "@/components/i18n/i18n-provider";
 import { ViewSwitcher } from "@/components/personale/view-switcher";
 
-// Maps a path segment to a translation key in the `nav` namespace.
-const ROUTE_LABEL_KEYS: Array<[string, string]> = [
-  ["/dashboard", "nav.dashboard"],
-  ["/kanban", "nav.kanban"],
-  ["/calendar", "nav.calendars"],
-  ["/attendance", "nav.attendance"],
-  ["/clients", "nav.clients"],
-  ["/suppliers", "nav.suppliers"],
-  ["/inventory", "nav.warehouse"],
-  ["/factory", "nav.factory"],
-  ["/products", "nav.products"],
-  ["/projects", "nav.projects"],
-  ["/reports", "nav.reports"],
-  ["/errortracking", "nav.errors"],
-  ["/timetracking", "nav.hours"],
-  ["/command-deck", "nav.home"],
+// Maps a path segment to a translation key in the `nav` namespace, or to a
+// literal label when the sidebar uses a hardcoded one (Supplementi,
+// Coefficienti, Treemap). More specific segments first: matching is `includes`.
+const ROUTE_LABELS: Array<[string, { key: string } | { label: string }]> = [
+  ["/dashboard", { key: "nav.dashboard" }],
+  ["/kanban", { key: "nav.kanban" }],
+  ["/documenti", { key: "nav.documents" }],
+  ["/calendar", { key: "nav.calendars" }],
+  ["/attendance", { key: "nav.attendance" }],
+  ["/product-categories", { key: "nav.categories" }],
+  ["/supplier-categories", { key: "nav.categories" }],
+  ["/manufacturer-categories", { key: "nav.categories" }],
+  ["/categories", { key: "nav.categories" }],
+  ["/clients", { key: "nav.clients" }],
+  ["/suppliers", { key: "nav.suppliers" }],
+  ["/collaborators", { key: "nav.collaborators" }],
+  ["/inventory", { key: "nav.warehouse" }],
+  ["/factory", { key: "nav.factory" }],
+  ["/products", { key: "nav.products" }],
+  ["/projects", { key: "nav.projects" }],
+  ["/supplementi", { label: "Supplementi" }],
+  ["/coefficienti", { label: "Coefficienti" }],
+  ["/treemap", { label: "Treemap" }],
+  ["/supporto", { key: "nav.support" }],
+  ["/reports", { key: "nav.reports" }],
+  ["/errortracking", { key: "nav.errors" }],
+  ["/timetracking", { key: "nav.hours" }],
+  ["/command-deck", { key: "nav.home" }],
 ];
 
 export function SiteTopbar({
@@ -42,10 +54,12 @@ export function SiteTopbar({
   const { userContext } = useUserContext();
   const t = useT();
   const sectionLabel = useMemo(() => {
-    const match = ROUTE_LABEL_KEYS.find(([segment]) =>
+    const match = ROUTE_LABELS.find(([segment]) =>
       pathname.includes(segment),
     );
-    return match ? t(match[1]) : t("topbar.fallbackSection");
+    if (!match) return t("topbar.fallbackSection");
+    const target = match[1];
+    return "key" in target ? t(target.key) : target.label;
   }, [pathname, t]);
 
   const displayName = useMemo(
@@ -58,13 +72,13 @@ export function SiteTopbar({
       <div className="flex min-w-0 items-center gap-2 md:gap-3">
         <SidebarTrigger className="h-11 w-11 rounded-xl md:h-8 md:w-8" />
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="truncate font-semibold text-foreground">{sectionLabel}</span>
-          <span className="hidden text-muted-foreground sm:inline">/</span>
-          <span className="hidden truncate text-muted-foreground sm:inline">{siteName}</span>
+          <span className="truncate font-semibold text-page-foreground">{sectionLabel}</span>
+          <span className="hidden text-page-muted-foreground sm:inline">/</span>
+          <span className="hidden truncate text-page-muted-foreground sm:inline">{siteName}</span>
           {displayName && (
             <>
-              <span className="hidden text-muted-foreground md:inline">·</span>
-              <span className="hidden truncate font-medium text-foreground md:inline">{displayName}</span>
+              <span className="hidden text-page-muted-foreground md:inline">·</span>
+              <span className="hidden truncate font-medium text-page-foreground md:inline">{displayName}</span>
             </>
           )}
         </div>
@@ -73,7 +87,7 @@ export function SiteTopbar({
         {personalManagerEnabled && (
           <ViewSwitcher current="spazi" lastSpaceHref={pathname} />
         )}
-        <span className="hidden text-xs font-medium text-muted-foreground md:block">
+        <span className="hidden text-xs font-medium text-page-muted-foreground md:block">
           {t("topbar.brand")}
         </span>
         <Button
@@ -81,7 +95,7 @@ export function SiteTopbar({
           size="sm"
           onClick={logout}
           aria-label={t("topbar.exit")}
-          className="h-11 gap-2 px-3 text-muted-foreground hover:text-foreground md:h-8 md:px-2"
+          className="h-11 gap-2 px-3 text-page-muted-foreground hover:text-page-foreground md:h-8 md:px-2"
         >
           <LogOut className="h-4 w-4" />
           <span className="hidden sm:inline">{t("topbar.logout")}</span>

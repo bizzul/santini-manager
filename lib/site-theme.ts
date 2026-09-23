@@ -359,6 +359,35 @@ function blendHexColors(baseHex: string, mixHex: string, amount: number) {
     .toUpperCase()}`;
 }
 
+function hexToCssHsl(hex: string) {
+  return toCssHsl(hexToHsl(hex));
+}
+
+/**
+ * Testo leggibile direttamente sullo sfondo pagina (titoli, sottotitoli,
+ * breadcrumb). Lo sfondo pagina puo' essere scelto per spazio con qualsiasi
+ * colore: il testo principale e' bianco o quasi-nero (il piu' contrastato),
+ * quello secondario e' la miscela piu' tenue che resta sopra 4.5:1 (WCAG AA).
+ */
+export function getPageTextColors(pageBackgroundHex: string) {
+  const background = normalizeHexColor(pageBackgroundHex, "#FFFFFF");
+  const foregroundHex = getReadableTextColorHex(background);
+  let mutedHex = foregroundHex;
+  for (let amount = 0.35; amount >= 0; amount -= 0.05) {
+    const candidate = blendHexColors(foregroundHex, background, amount);
+    if (getContrastRatioFromHex(candidate, background) >= 4.5) {
+      mutedHex = candidate;
+      break;
+    }
+  }
+  return {
+    foreground: hexToCssHsl(foregroundHex),
+    mutedForeground: hexToCssHsl(mutedHex),
+    foregroundHex,
+    mutedHex,
+  };
+}
+
 export function resolveAdaptiveThemeColors(
   baseColors: SiteThemeColors,
   sunlightLevel: number
@@ -401,6 +430,10 @@ export function validateSiteThemeColors(colors: SiteThemeColors) {
     normalized.sidebarCard,
     normalized.sidebarBackground
   );
+  const pageBackgroundTextContrast = getContrastRatioFromHex(
+    normalized.pageBackground,
+    getReadableTextColorHex(normalized.pageBackground)
+  );
   const pageTextContrast = getContrastRatioFromHex(
     normalized.pageCard,
     getReadableTextColorHex(normalized.pageCard)
@@ -431,6 +464,11 @@ export function validateSiteThemeColors(colors: SiteThemeColors) {
     );
   }
 
+  if (pageBackgroundTextContrast < 7) {
+    warnings.push(
+      "Lo sfondo schermate ha un contrasto limitato con il testo di titoli e intestazioni: preferisci un tono piu' chiaro o piu' scuro."
+    );
+  }
   if (pageSeparation < 1.16) {
     warnings.push(
       "Il distacco tra card e sfondo schermate è minimo: potresti alzarlo per migliorare la gerarchia."
@@ -469,6 +507,7 @@ export function buildSiteThemeStyleVars(
   const sidebarCard = hexToHsl(theme.sidebarCard);
 
   const pageForeground = getReadableForegroundFromHex(theme.pageCard);
+  const pageBackgroundText = getPageTextColors(theme.pageBackground);
   const sidebarForeground = getReadableForegroundFromHex(theme.sidebarCard);
 
   return {
@@ -490,6 +529,8 @@ export function buildSiteThemeStyleVars(
     "--secondary-foreground": pageForeground,
     "--accent-foreground": pageForeground,
     "--muted-foreground": getMutedForegroundFromHex(theme.pageCard, pageForeground),
+    "--page-foreground": pageBackgroundText.foreground,
+    "--page-muted-foreground": pageBackgroundText.mutedForeground,
     "--sidebar": toCssHsl(sidebarBackground),
     "--sidebar-accent": toCssHsl(sidebarCard),
     "--sidebar-border": toCssHsl(shiftHsl(sidebarCard, { l: -12, s: -8 })),
