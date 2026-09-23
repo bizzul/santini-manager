@@ -29,15 +29,27 @@ function statusVariant(status: string) {
   return "outline" as const;
 }
 
+/**
+ * `basePath` (e.g. "/sites/santini/supporto" or "/administration/support")
+ * is used to build each ticket's detail link as `${basePath}/${ticket.id}`.
+ *
+ * NOTE: we intentionally take a plain string here instead of a `hrefFor`
+ * callback. This component is a Client Component ("use client"), and React
+ * Server Components cannot pass functions as props from a Server Component
+ * across that boundary — doing so throws at render time in production
+ * ("An error occurred in the Server Components render").
+ */
 export function SupportTicketsTable({
   tickets,
-  hrefFor,
+  basePath,
   showSite = false,
 }: {
   tickets: SupportTicketListItem[];
-  hrefFor: (ticket: SupportTicketListItem) => string;
+  basePath: string;
   showSite?: boolean;
 }) {
+  const hrefFor = (ticket: SupportTicketListItem) => `${basePath}/${ticket.id}`;
+
   if (tickets.length === 0) {
     return (
       <EmptyState

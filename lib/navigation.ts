@@ -4,7 +4,7 @@
  * Commit 1 (raggruppamento): labels of existing items stay as they are;
  * only placement changes. Routes under `app/` are not moved.
  *
- * Role hook (`minRole` on groups):
+ * Role hook (`minRole` on groups, with an optional per-item override):
  * - Existing `UserRole` is `user | admin | superadmin` (no "collaboratore"
  *   / "direttore"). `user` is treated as collaborator, `admin`/`superadmin`
  *   as space director.
@@ -12,6 +12,10 @@
  * - `minRole: "admin"` hides Listino e prezzi and Configurazione from `user`.
  * - Anagrafiche stays visible: collaborators need Clienti (and related
  *   records) for daily work.
+ * - An item's own `minRole` overrides its group's for that item only — used
+ *   for "I miei ticket" (`my-tickets`), which lives inside the admin-only
+ *   Configurazione group but stays visible to `user` so every collaborator
+ *   can still see/open their own support tickets.
  *
  * Items intentionally left out of the 6-area tree (URL + footer still work):
  * Ore, Errori, Reports, Fabbrica, Treemap, Area Collaboratore,
@@ -59,6 +63,12 @@ export type NavItemDef = {
   children?: NavItemDef[];
   moduleName?: string;
   alternativeModules?: string[];
+  /**
+   * Per-item override of the group's `minRole`. Lets one item stay visible
+   * to a lower role than the rest of its group (e.g. "I miei ticket" inside
+   * the admin-only Configurazione group, still visible to `user`).
+   */
+  minRole?: NavMinRole;
 };
 
 export type NavGroupId =
@@ -117,13 +127,6 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
         href: "/dashboard/forecast",
         icon: "faSquarePollVertical",
         moduleName: "dashboard-forecast",
-      },
-      {
-        key: "my-tickets",
-        labelKey: "nav.myTickets",
-        href: "/supporto",
-        icon: "faExclamation",
-        lucideIcon: "Headset",
       },
     ],
   },
@@ -329,6 +332,14 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
         lucideIcon: "Settings",
       },
       {
+        key: "my-tickets",
+        labelKey: "nav.myTickets",
+        href: "/supporto",
+        icon: "faExclamation",
+        lucideIcon: "Headset",
+        minRole: "user",
+      },
+      {
         key: "support",
         labelKey: "nav.support",
         href: "/supporto/gestione",
@@ -467,9 +478,12 @@ export function buildSiteNavigation({
   includeMatrisHome = false,
 }: BuildSiteNavigationOptions): ResolvedNavGroup[] {
   return SITE_NAV_GROUPS.flatMap((group) => {
-    if (!roleMeetsMin(role, group.minRole)) return [];
+    const roleFiltered = group.items.filter((item) =>
+      roleMeetsMin(role, item.minRole ?? group.minRole)
+    );
+    if (roleFiltered.length === 0) return [];
 
-    const filtered = group.items
+    const filtered = roleFiltered
       .map((item) => filterItemByModules(item, enabledModules))
       .filter((item): item is NavItemDef => item !== null);
 

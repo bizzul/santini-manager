@@ -35,7 +35,7 @@ export default async function AdminSupportInboxPage() {
       <SupportTicketsTable
         tickets={tickets}
         showSite
-        hrefFor={(ticket) => `/administration/support/${ticket.id}`}
+        basePath="/administration/support"
       />
     </div>
   );

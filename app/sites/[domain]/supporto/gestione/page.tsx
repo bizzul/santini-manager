@@ -46,7 +46,7 @@ export default async function SupportAdminPage({
       <PageContent>
         <SupportTicketsTable
           tickets={tickets}
-          hrefFor={(ticket) => `/sites/${domain}/supporto/${ticket.id}`}
+          basePath={`/sites/${domain}/supporto`}
         />
       </PageContent>
     </PageLayout>

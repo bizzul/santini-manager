@@ -23,21 +23,32 @@ export default async function MySupportTicketsPage({
   const enabled = await getSupportBotEnabledForSite(site.id);
   if (!enabled && userContext.role !== "superadmin") notFound();
 
+  const canSeeAll = userContext.role === "admin" || userContext.role === "superadmin";
+
+  // Admin/superadmin see every ticket and proposal saved on this Space, not
+  // just their own. Regular users still only get their own — enforced again
+  // server-side by the support_tickets RLS policy either way, this just
+  // avoids fetching rows that would be filtered out anyway.
   const tickets = await listSupportTickets({
     siteId: site.id,
-    createdBy: userContext.userId,
+    createdBy: canSeeAll ? undefined : userContext.userId,
   });
 
   return (
     <PageLayout>
       <PageHeader
         title="I miei ticket"
-        subtitle="Segnalazioni di supporto aperte da te su questo Spazio"
+        subtitle={
+          canSeeAll
+            ? "Tutte le segnalazioni e proposte salvate su questo Spazio"
+            : "Segnalazioni di supporto aperte da te su questo Spazio"
+        }
       />
       <PageContent>
         <SupportTicketsTable
           tickets={tickets}
-          hrefFor={(ticket) => `/sites/${domain}/supporto/${ticket.id}`}
+          basePath={`/sites/${domain}/supporto`}
+          showSite={false}
         />
       </PageContent>
     </PageLayout>
