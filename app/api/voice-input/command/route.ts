@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateObject } from "ai";
+import { generateObject, NoObjectGeneratedError } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createClient } from "@/utils/supabase/server";
@@ -170,6 +170,31 @@ Esempi:
 - "programma la card 26-044 il 15 aprile alle 08:00" -> schedule_task
 - "registra 2 ore sul progetto 26-011 reparto montaggio" -> log_time
 - "sposta il progetto 26-632 in inviata" -> move_card`;
+
+/**
+ * Estrae dettagli diagnostici da un fallimento di generateObject: se e' un
+ * NoObjectGeneratedError (schema non rispettato) espone il testo grezzo
+ * restituito dal modello e le cause Zod, cosi' i log di produzione mostrano
+ * ESATTAMENTE perche' fallisce invece del solo messaggio generico.
+ */
+function describeGenerateObjectFailure(error: unknown) {
+    if (NoObjectGeneratedError.isInstance(error)) {
+        return {
+            reason: "schema-mismatch" as const,
+            rawText: error.text,
+            cause:
+                error.cause instanceof Error
+                    ? error.cause.message
+                    : error.cause,
+            finishReason: error.finishReason,
+        };
+    }
+
+    return {
+        reason: "other" as const,
+        message: error instanceof Error ? error.message : String(error),
+    };
+}
 
 function createModelFromConfig(config: {
     provider: string;
@@ -510,14 +535,14 @@ Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
         } catch (firstError) {
             console.warn(
                 "generateObject comando vocale: primo tentativo fallito, riprovo una volta.",
-                firstError
+                JSON.stringify(describeGenerateObjectFailure(firstError))
             );
             try {
                 command = (await generateCommandObject()).object;
             } catch (secondError) {
                 console.error(
                     "generateObject comando vocale: fallito anche il ritentativo.",
-                    secondError
+                    JSON.stringify(describeGenerateObjectFailure(secondError))
                 );
                 return NextResponse.json(
                     {
