@@ -3,6 +3,7 @@ import type {
     ServerSttTranscribeOptions,
     ServerSttTranscribeResult,
 } from "../types";
+import { stripWhisperHallucinations } from "@/lib/speech/domain-vocabulary";
 
 export class WhisperSttProvider implements ServerSttProvider {
     readonly name = "whisper" as const;
@@ -54,9 +55,10 @@ export class WhisperSttProvider implements ServerSttProvider {
         }
 
         const data = (await response.json()) as { text?: string };
+        const rawText = data.text?.trim() || "";
 
         return {
-            text: data.text?.trim() || "",
+            text: stripWhisperHallucinations(rawText),
         };
     }
 }
