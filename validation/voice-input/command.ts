@@ -64,9 +64,14 @@ function coerceNullableNumber(value: unknown): number | null {
     // Rimuove tutto tranne cifre, virgola, punto e segno meno (valuta, spazi,
     // apostrofi svizzeri delle migliaia, "CHF", ecc.).
     let cleaned = trimmed.replace(/[^0-9,.-]/g, "");
+    // Suffisso dei prezzi svizzeri: "1'500.-" resta "1500.-" dopo la pulizia.
+    cleaned = cleaned.replace(/\.-$/, "");
     // Formato "1.500,00" (punto migliaia, virgola decimale): normalizza a "1500.00".
     if (/,\d{1,2}$/.test(cleaned) && cleaned.includes(".")) {
         cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else if (/^\d{1,3}(\.\d{3})+$/.test(cleaned)) {
+        // "4.500" o "1.500.000": punto come separatore delle migliaia, senza decimali.
+        cleaned = cleaned.replace(/\./g, "");
     } else {
         cleaned = cleaned.replace(",", ".");
     }
@@ -90,7 +95,36 @@ const NullableInteger = z.preprocess(
     z.number().int().nullable().catch(null)
 );
 
-export const VoiceCommandExtractionSchema = z.object({
+// Anthropic (tool-calling, schema non strict su claude-sonnet-4-6) restituisce
+// l'oggetto corretto un livello troppo in basso:
+//   { data: { intent, summary, needsClarification, data: { ...campi } } }
+// Alla radice manca `intent`, quindi Zod risponde "Required" su tutti i campi
+// e generateObject fallisce con NoObjectGeneratedError. Se l'intent e' gia'
+// alla radice, il valore resta com'e'.
+function unwrapVoiceCommandEnvelope(value: unknown): unknown {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+        return value;
+    }
+
+    const record = value as Record<string, unknown>;
+    if (typeof record.intent === "string") {
+        return value;
+    }
+
+    const nested = record.data;
+    if (
+        nested &&
+        typeof nested === "object" &&
+        !Array.isArray(nested) &&
+        typeof (nested as Record<string, unknown>).intent === "string"
+    ) {
+        return nested;
+    }
+
+    return value;
+}
+
+const VoiceCommandExtractionObjectSchema = z.object({
     intent: SafeVoiceCommandIntentSchema,
     summary: z
         .string()
@@ -142,6 +176,11 @@ export const VoiceCommandExtractionSchema = z.object({
             .catch(null),
     }),
 });
+
+export const VoiceCommandExtractionSchema = z.preprocess(
+    unwrapVoiceCommandEnvelope,
+    VoiceCommandExtractionObjectSchema
+);
 
 export type VoiceCommandIntent = z.infer<typeof VoiceCommandIntentSchema>;
 export type VoiceCommandRequest = z.infer<typeof VoiceCommandRequestSchema>;

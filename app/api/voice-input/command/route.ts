@@ -160,6 +160,8 @@ Regole:
 15. Mantieni null per i campi assenti.
 16. needsClarification deve essere sempre presente come boolean.
 17. Dentro data restituisci sempre TUTTI i campi previsti dallo schema; se un valore manca usa null.
+18. intent, summary, needsClarification e data sono chiavi dello STESSO oggetto, allo stesso livello.
+    Non avvolgere la risposta in un altro oggetto e non spostare intent dentro data.
 
 Esempi:
 - "crea offerta per Rossi serramenti a Lugano da 4500 franchi" -> create_offer (nessuna riga articolo, solo sintesi)
