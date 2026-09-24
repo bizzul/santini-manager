@@ -19,6 +19,8 @@ interface BrowseCategoryFilterProps {
   isSomeSelected: boolean;
   onToggleAll: (checked: boolean) => void;
   onToggle: (id: string) => void;
+  /** `inline` puts "Tutte le categorie" on the same row as the category boxes. */
+  layout?: "stacked" | "inline";
 }
 
 function getCompactLabel(category: BrowseCategoryFilterItem) {
@@ -34,6 +36,7 @@ export function BrowseCategoryFilter({
   isSomeSelected,
   onToggleAll,
   onToggle,
+  layout = "stacked",
 }: BrowseCategoryFilterProps) {
   if (categories.length === 0) return null;
 
@@ -84,45 +87,53 @@ export function BrowseCategoryFilter({
       ? { gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }
       : undefined;
 
-  return (
-    <div className="flex flex-col gap-3">
-      <div
-        className={cn(
-          "rounded-lg border p-3",
-          allSelected
-            ? "border-primary/50 bg-primary/5"
-            : "border-border/70 bg-background/40",
-        )}
-      >
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="browse-all-categories"
-            checked={isSomeSelected ? "indeterminate" : allSelected}
-            onCheckedChange={onToggleAll}
-            className="mt-0.5"
-          />
-          <div className="space-y-1">
-            <Label
-              htmlFor="browse-all-categories"
-              className="cursor-pointer text-sm font-medium"
-            >
-              Tutte le categorie
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Mostra l&apos;intero catalogo del sito.
-            </p>
-          </div>
-        </div>
+  const allCategoriesCard = (
+    <div
+      className={cn(
+        "h-full rounded-lg border p-3",
+        layout === "inline" && "w-auto shrink-0",
+        allSelected
+          ? "border-primary/50 bg-primary/5"
+          : "border-border/70 bg-background/40",
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Checkbox
+          id="browse-all-categories"
+          checked={isSomeSelected ? "indeterminate" : allSelected}
+          onCheckedChange={onToggleAll}
+        />
+        <Label
+          htmlFor="browse-all-categories"
+          className="cursor-pointer text-sm font-medium"
+        >
+          Tutte le categorie
+        </Label>
       </div>
+    </div>
+  );
 
-      <div className="grid gap-2" style={gridStyle}>
+  return (
+    <div
+      className={cn(
+        layout === "inline"
+          ? "flex items-stretch gap-2"
+          : "flex flex-col gap-3",
+      )}
+    >
+      {allCategoriesCard}
+
+      <div
+        className={cn("grid gap-2", layout === "inline" && "min-w-0 flex-1")}
+        style={gridStyle}
+      >
         {categories.map((category) => {
           const isSelected = selectedIds.includes(category.id);
           return (
             <div
               key={category.id}
               className={cn(
-                "rounded-lg border p-3 transition-colors",
+                "h-full rounded-lg border p-3 transition-colors",
                 isSelected
                   ? "border-primary/50 bg-primary/5"
                   : "border-border/70 bg-background/40 hover:bg-accent/40",

@@ -503,6 +503,7 @@ const SellCategoriesView = ({
           viewToggleDisabled={isPersistingView}
           showDiagramToggle
           backDomain={domain}
+          backPlacement="end"
           globalFilter={globalFilter}
           onGlobalFilterChange={setGlobalFilter}
           searchPlaceholder="Cerca per nome o descrizione..."

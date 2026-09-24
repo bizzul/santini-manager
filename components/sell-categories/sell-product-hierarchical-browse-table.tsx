@@ -666,6 +666,7 @@ export function SellProductHierarchicalBrowseTable({
         <div className="rounded-lg border bg-card p-3 shadow-sm">
           <BrowseCategoryFilter
             variant="cards"
+            layout="inline"
             categories={browseFilterItems}
             allSelected={allSelected}
             selectedIds={selectedIds}
