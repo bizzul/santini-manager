@@ -9,13 +9,23 @@ import {
 } from "next/navigation";
 import {
     AlertCircle,
+    ArrowLeft,
+    ArrowRightLeft,
     Bot,
+    CalendarClock,
     CheckCircle2,
+    Clock3,
+    FileText,
+    FolderPlus,
+    HandCoins,
     Loader2,
     Mic,
     MicOff,
+    PackagePlus,
     RefreshCw,
     Sparkles,
+    UserPlus,
+    Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,12 +45,31 @@ import {
     getVoiceCommandIntentLabel,
     getVoiceCommandIntentLabels,
     getVoiceCommandScreenContext,
+    type SupportedVoiceCommandIntent,
 } from "@/lib/voice-command-config";
 import { splitVoiceCommandTranscript } from "@/lib/voice-command-transcript";
+import { VOICE_INTENT_REQUIREMENTS } from "@/lib/site-settings-guides";
 import {
     saveVoiceDocumentPrefill,
     type VoiceDocumentPrefill,
 } from "@/lib/voice-document-prefill";
+
+/** Selezione dell'azione di Step 1: un intent specifico, oppure "auto" (lascia decidere). */
+type SelectedVoiceIntent = SupportedVoiceCommandIntent | "auto";
+
+/** Icona per ciascuna azione selezionabile nello Step 1 della finestra vocale. */
+const VOICE_INTENT_ICONS: Partial<
+    Record<SupportedVoiceCommandIntent, typeof Sparkles>
+> = {
+    create_project: FolderPlus,
+    create_offer: HandCoins,
+    create_client: UserPlus,
+    create_product: PackagePlus,
+    create_document: FileText,
+    schedule_task: CalendarClock,
+    log_time: Clock3,
+    move_card: ArrowRightLeft,
+};
 
 type SpeechProvider = "web-speech" | "whisper";
 
@@ -320,6 +349,9 @@ export function GlobalVoiceAssistant() {
     const [manualClarificationAnswer, setManualClarificationAnswer] = useState("");
     const [manualTranscript, setManualTranscript] = useState("");
     const [runMode, setRunMode] = useState<"analysis" | "execution" | null>(null);
+    const [selectedIntent, setSelectedIntent] = useState<SelectedVoiceIntent | null>(
+        null
+    );
 
     const [whisperRecording, setWhisperRecording] = useState(false);
     const [whisperTranscript, setWhisperTranscript] = useState("");
@@ -511,6 +543,12 @@ export function GlobalVoiceAssistant() {
                   (command) => command.id === clarificationState.commandId
               )
             : -1;
+    const isPinnedIntent = Boolean(selectedIntent && selectedIntent !== "auto");
+    const effectiveAllowedIntents = useMemo(() => {
+        return isPinnedIntent
+            ? [selectedIntent as SupportedVoiceCommandIntent]
+            : currentScreen.allowedIntents;
+    }, [currentScreen.allowedIntents, isPinnedIntent, selectedIntent]);
 
     const resetAssistant = useCallback(() => {
         setCommandResult(null);
@@ -522,9 +560,15 @@ export function GlobalVoiceAssistant() {
         setClarificationState(null);
         setManualClarificationAnswer("");
         setManualTranscript("");
+        setSelectedIntent(null);
         webClearTranscript();
         clearWhisperTranscript();
     }, [clearWhisperTranscript, webClearTranscript]);
+
+    /** Torna alla selezione dell'azione (Step 1), azzerando anche registrazione/analisi correnti. */
+    const changeSelectedIntent = useCallback(() => {
+        resetAssistant();
+    }, [resetAssistant]);
 
     const stopRecording = useCallback(() => {
         if (useWhisper) {
@@ -601,7 +645,12 @@ export function GlobalVoiceAssistant() {
         setExecutionMessage(null);
 
         try {
-            const commandSegments = splitVoiceCommandTranscript(transcriptForAnalysis);
+            // Con un'azione specifica selezionata in Step 1, la registrazione va
+            // trattata come un unico comando: niente concatenazione "poi crea... poi
+            // sposta...", che resta disponibile solo in modalita' "Non so, decidi tu".
+            const commandSegments = isPinnedIntent
+                ? [transcriptForAnalysis]
+                : splitVoiceCommandTranscript(transcriptForAnalysis);
 
             if (commandSegments.length === 0) {
                 throw new Error("Non ho trovato azioni chiare nella trascrizione.");
@@ -622,7 +671,7 @@ export function GlobalVoiceAssistant() {
                             currentModule: currentScreen.module,
                             currentScreen: currentScreen.key,
                             screenLabel: currentScreen.label,
-                            allowedIntents: currentScreen.allowedIntents,
+                            allowedIntents: effectiveAllowedIntents,
                         },
                     }),
                 });
@@ -704,7 +753,9 @@ export function GlobalVoiceAssistant() {
         appendTypedClarification,
         currentKanbanId,
         currentScreen,
+        effectiveAllowedIntents,
         effectiveTranscript,
+        isPinnedIntent,
         manualClarificationAnswer,
         pathname,
         siteId,
@@ -938,91 +989,196 @@ export function GlobalVoiceAssistant() {
                         </div>
                     )}
 
-                    <div className="flex gap-2">
-                        <Button
-                            type="button"
-                            variant={isRecording ? "destructive" : "default"}
-                            className="flex-1"
-                            onClick={isRecording ? stopRecording : startRecording}
-                            disabled={
-                                siteLoading ||
-                                settingsLoading ||
-                                whisperProcessing ||
-                                isRunningCommand
-                            }
-                        >
-                            {isRecording ? (
-                                <>
-                                    <MicOff className="h-4 w-4" />
-                                    Ferma registrazione
-                                </>
-                            ) : (
-                                <>
-                                    <Mic className="h-4 w-4" />
-                                    Avvia registrazione
-                                </>
-                            )}
-                        </Button>
-
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={resetAssistant}
-                            disabled={isRecording || isRunningCommand}
-                        >
-                            <RefreshCw className="h-4 w-4" />
-                            Pulisci
-                        </Button>
-                    </div>
-
-                    {speechError && (
-                        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
-                            <div className="flex items-center gap-2 font-medium">
-                                <AlertCircle className="h-4 w-4" />
-                                Errore microfono
+                    {selectedIntent === null ? (
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-sm font-medium">Cosa vuoi fare?</p>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Scegli l&apos;azione: la registrazione applichera&apos;
+                                    subito le regole giuste per quel comando.
+                                </p>
                             </div>
-                            <p className="mt-1">{speechError}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {currentScreen.allowedIntents.map((intent) => {
+                                    const IntentIcon = VOICE_INTENT_ICONS[intent] || Sparkles;
+                                    return (
+                                        <button
+                                            key={intent}
+                                            type="button"
+                                            onClick={() => setSelectedIntent(intent)}
+                                            className="flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors hover:border-primary hover:bg-primary/5"
+                                        >
+                                            <IntentIcon className="h-5 w-5 text-primary" />
+                                            <span className="text-sm font-medium">
+                                                {getVoiceCommandIntentLabel(intent)}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedIntent("auto")}
+                                className="flex w-full items-center gap-2 rounded-lg border border-dashed p-3 text-left text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+                            >
+                                <Wand2 className="h-4 w-4" />
+                                <span className="text-sm">Non so, decidi tu</span>
+                            </button>
                         </div>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-between gap-2">
+                                <Badge variant="secondary" className="gap-1">
+                                    {isPinnedIntent ? (
+                                        <>
+                                            {(() => {
+                                                const IntentIcon =
+                                                    VOICE_INTENT_ICONS[
+                                                        selectedIntent as SupportedVoiceCommandIntent
+                                                    ] || Sparkles;
+                                                return <IntentIcon className="h-3.5 w-3.5" />;
+                                            })()}
+                                            {getVoiceCommandIntentLabel(
+                                                selectedIntent as SupportedVoiceCommandIntent
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Wand2 className="h-3.5 w-3.5" />
+                                            Decide l&apos;assistente
+                                        </>
+                                    )}
+                                </Badge>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={changeSelectedIntent}
+                                    disabled={isRecording || isRunningCommand}
+                                    className="h-7 gap-1 px-2 text-xs"
+                                >
+                                    <ArrowLeft className="h-3 w-3" />
+                                    Cambia azione
+                                </Button>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant={isRecording ? "destructive" : "default"}
+                                    className="flex-1"
+                                    onClick={isRecording ? stopRecording : startRecording}
+                                    disabled={
+                                        siteLoading ||
+                                        settingsLoading ||
+                                        whisperProcessing ||
+                                        isRunningCommand
+                                    }
+                                >
+                                    {isRecording ? (
+                                        <>
+                                            <MicOff className="h-4 w-4" />
+                                            Ferma registrazione
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mic className="h-4 w-4" />
+                                            Avvia registrazione
+                                        </>
+                                    )}
+                                </Button>
+
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetAssistant}
+                                    disabled={isRecording || isRunningCommand}
+                                >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Pulisci
+                                </Button>
+                            </div>
+
+                            {speechError && (
+                                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+                                    <div className="flex items-center gap-2 font-medium">
+                                        <AlertCircle className="h-4 w-4" />
+                                        Errore microfono
+                                    </div>
+                                    <p className="mt-1">{speechError}</p>
+                                </div>
+                            )}
+
+                            <div className="rounded-lg border bg-muted/30 p-3">
+                                <p className="mb-2 text-xs font-medium text-muted-foreground">
+                                    Trascrizione live
+                                </p>
+                                <p className="min-h-16 text-sm leading-6">
+                                    {effectiveTranscript || liveTranscript || (
+                                        <span className="text-muted-foreground">
+                                            Prova con: &quot;{currentScreen.examples[0]}&quot; oppure
+                                            &quot;{currentScreen.examples[1]}&quot;.
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+
+                            <div className="rounded-lg border p-3 text-sm">
+                                {isPinnedIntent ? (
+                                    <>
+                                        <p className="font-medium">
+                                            {getVoiceCommandIntentLabel(
+                                                selectedIntent as SupportedVoiceCommandIntent
+                                            )}
+                                        </p>
+                                        <p className="mt-2 text-muted-foreground">
+                                            Includi nella registrazione:
+                                        </p>
+                                        <ul className="mt-1 list-disc space-y-1 pl-5 text-muted-foreground">
+                                            {(
+                                                VOICE_INTENT_REQUIREMENTS[
+                                                    selectedIntent as string
+                                                ] || []
+                                            ).map((requirement) => (
+                                                <li key={requirement}>{requirement}</li>
+                                            ))}
+                                        </ul>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="font-medium">
+                                            Comandi supportati nel contesto attuale
+                                        </p>
+                                        <p className="mt-2 text-muted-foreground">
+                                            {currentScreen.description}
+                                        </p>
+                                        <p className="mt-2 text-muted-foreground">
+                                            Puoi anche concatenare piu&apos; azioni nella stessa
+                                            registrazione, per esempio usando &quot;poi
+                                            crea...&quot; o &quot;poi sposta...&quot;.
+                                        </p>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {getVoiceCommandIntentLabels(
+                                                currentScreen.allowedIntents
+                                            ).map((label) => (
+                                                <Badge key={label} variant="secondary">
+                                                    {label}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                        {currentScreen.examples.map((example) => (
+                                            <p
+                                                key={example}
+                                                className="mt-2 text-muted-foreground"
+                                            >
+                                                {example}
+                                            </p>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </>
                     )}
-
-                    <div className="rounded-lg border bg-muted/30 p-3">
-                        <p className="mb-2 text-xs font-medium text-muted-foreground">
-                            Trascrizione live
-                        </p>
-                        <p className="min-h-16 text-sm leading-6">
-                            {effectiveTranscript || liveTranscript || (
-                                <span className="text-muted-foreground">
-                                    Prova con: &quot;{currentScreen.examples[0]}&quot; oppure
-                                    &quot;{currentScreen.examples[1]}&quot;.
-                                </span>
-                            )}
-                        </p>
-                    </div>
-
-                    <div className="rounded-lg border p-3 text-sm">
-                        <p className="font-medium">Comandi supportati nel contesto attuale</p>
-                        <p className="mt-2 text-muted-foreground">
-                            {currentScreen.description}
-                        </p>
-                        <p className="mt-2 text-muted-foreground">
-                            Puoi anche concatenare piu&apos; azioni nella stessa registrazione,
-                            per esempio usando &quot;poi crea...&quot; o &quot;poi sposta...&quot;.
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {getVoiceCommandIntentLabels(currentScreen.allowedIntents).map(
-                                (label) => (
-                                    <Badge key={label} variant="secondary">
-                                        {label}
-                                    </Badge>
-                                )
-                            )}
-                        </div>
-                        {currentScreen.examples.map((example) => (
-                            <p key={example} className="mt-2 text-muted-foreground">
-                                {example}
-                            </p>
-                        ))}
-                    </div>
 
                     {commandResult && (
                         <div className="space-y-3 rounded-lg border p-3">
@@ -1280,6 +1436,7 @@ export function GlobalVoiceAssistant() {
                         type="button"
                         onClick={handleRunCommand}
                         disabled={
+                            selectedIntent === null ||
                             (!effectiveTranscript.trim() &&
                                 !manualClarificationAnswer.trim()) ||
                             isRecording ||
