@@ -475,19 +475,20 @@ export async function POST(request: NextRequest) {
                 }`
             )
             .join("\n");
-        const { object: command } = await generateObject({
-            model,
-            schema: VoiceCommandExtractionSchema,
-            system: SYSTEM_PROMPT,
-            prompt: `Data odierna: ${today}
+        const generateCommandObject = () =>
+            generateObject({
+                model,
+                schema: VoiceCommandExtractionSchema,
+                system: SYSTEM_PROMPT,
+                prompt: `Data odierna: ${today}
 Percorso corrente: ${context.pathname || "sconosciuto"}
 Schermata corrente: ${screenContext.label}
 Modulo corrente: ${currentModule}
 Kanban corrente: ${context.currentKanbanId || "nessuna"}
 Intenti consentiti: ${effectiveAllowedIntents.join(", ")}
 Intenti suggeriti dalle keyword: ${
-                keywordAnalysis.recognizedIntents.join(", ") || "nessuno"
-            }
+                    keywordAnalysis.recognizedIntents.join(", ") || "nessuno"
+                }
 Copertura keyword:
 ${keywordCoverageSummary || "nessuna"}
 
@@ -497,7 +498,37 @@ ${transcript}
 ---
 
 Interpreta il comando e restituisci solo l'oggetto strutturato richiesto.`,
-        });
+            });
+
+        // Il modello puo' occasionalmente restituire un oggetto che non rispetta
+        // lo schema (specie su trascrizioni ricche di dettagli): un solo
+        // ritentativo silenzioso risolve la maggior parte dei casi transitori
+        // senza far ripetere la registrazione alla persona.
+        let command: Awaited<ReturnType<typeof generateCommandObject>>["object"];
+        try {
+            command = (await generateCommandObject()).object;
+        } catch (firstError) {
+            console.warn(
+                "generateObject comando vocale: primo tentativo fallito, riprovo una volta.",
+                firstError
+            );
+            try {
+                command = (await generateCommandObject()).object;
+            } catch (secondError) {
+                console.error(
+                    "generateObject comando vocale: fallito anche il ritentativo.",
+                    secondError
+                );
+                return NextResponse.json(
+                    {
+                        error: "Comando non riconosciuto",
+                        message:
+                            "Non sono riuscito a interpretare la registrazione. Prova a riformulare il comando in modo piu' semplice, con meno dettagli in una volta sola.",
+                    },
+                    { status: 422 }
+                );
+            }
+        }
 
         if (
             command.intent !== "unknown" &&

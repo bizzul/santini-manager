@@ -26,7 +26,15 @@ export const VoiceCommandRequestSchema = z.object({
         .default({}),
 });
 
-const NullableString = z.string().trim().min(1).nullable();
+// Il modello a volte restituisce "" invece di null per un campo assente
+// (piu' probabile su trascrizioni ricche con molti campi plausibili): la
+// preprocess normalizza "" (anche con soli spazi) a null PRIMA della
+// validazione, cosi' generateObject non fallisce con "response did not
+// match schema" per questo motivo, il piu' comune riscontrato in produzione.
+const NullableString = z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? null : value),
+    z.string().trim().min(1).nullable()
+);
 const NullableNumber = z.number().nullable();
 const NullableInteger = z.number().int().nullable();
 
