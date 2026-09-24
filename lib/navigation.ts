@@ -9,9 +9,11 @@
  *   / "direttore"). `user` is treated as collaborator, `admin`/`superadmin`
  *   as space director.
  * - Groups without `minRole` are visible to every role.
- * - `minRole: "admin"` hides Listino e prezzi and Configurazione from `user`.
- * - Anagrafiche stays visible: collaborators need Clienti (and related
- *   records) for daily work.
+ * - `minRole: "admin"` hides Supplementi, Coefficienti and Configurazione
+ *   from `user`. Prodotti and Magazzino sit in Listino e prezzi but keep
+ *   `minRole: "user"`, so collaborators still reach them.
+ * - Anagrafiche stays visible: Clienti, Fornitori, Collaboratori (and
+ *   Produttori / Rivenditori when those modules are enabled).
  * - An item's own `minRole` overrides its group's for that item only — used
  *   for "I miei ticket" (`my-tickets`), which lives inside the admin-only
  *   Configurazione group but stays visible to `user` so every collaborator
@@ -211,60 +213,39 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
     labelKey: "nav.groupAnagrafiche",
     items: [
       {
-        key: "contacts",
-        labelKey: "nav.contacts",
-        icon: "faUsers",
-        children: [
-          {
-            key: "clients",
-            labelKey: "nav.clients",
-            href: "/clients",
-            icon: "faUser",
-            moduleName: "clients",
-          },
-          {
-            key: "suppliers",
-            labelKey: "nav.suppliers",
-            href: "/suppliers",
-            icon: "faHelmetSafety",
-            moduleName: "suppliers",
-          },
-          {
-            key: "manufacturers",
-            labelKey: "nav.manufacturers",
-            href: "/manufacturers",
-            icon: "faIndustry",
-            moduleName: "manufacturers",
-          },
-          {
-            key: "resellers",
-            labelKey: "nav.resellers",
-            href: "/resellers",
-            icon: "faTruckField",
-            moduleName: "resellers",
-          },
-          {
-            key: "collaborators",
-            labelKey: "nav.collaborators",
-            href: "/collaborators",
-            icon: "faUserTie",
-            moduleName: "collaborators",
-          },
-        ],
+        key: "clients",
+        labelKey: "nav.clients",
+        href: "/clients",
+        icon: "faUser",
+        moduleName: "clients",
       },
       {
-        key: "products",
-        labelKey: "nav.products",
-        href: "/products",
-        icon: "faBox",
-        moduleName: "products",
+        key: "suppliers",
+        labelKey: "nav.suppliers",
+        href: "/suppliers",
+        icon: "faHelmetSafety",
+        moduleName: "suppliers",
       },
       {
-        key: "warehouse",
-        labelKey: "nav.warehouse",
-        href: "/inventory",
-        icon: "faWarehouse",
-        moduleName: "inventory",
+        key: "manufacturers",
+        labelKey: "nav.manufacturers",
+        href: "/manufacturers",
+        icon: "faIndustry",
+        moduleName: "manufacturers",
+      },
+      {
+        key: "resellers",
+        labelKey: "nav.resellers",
+        href: "/resellers",
+        icon: "faTruckField",
+        moduleName: "resellers",
+      },
+      {
+        key: "collaborators",
+        labelKey: "nav.collaborators",
+        href: "/collaborators",
+        icon: "faUserTie",
+        moduleName: "collaborators",
       },
     ],
   },
@@ -273,6 +254,14 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
     labelKey: "nav.groupListino",
     minRole: "admin",
     items: [
+      {
+        key: "products",
+        labelKey: "nav.products",
+        href: "/products",
+        icon: "faBox",
+        moduleName: "products",
+        minRole: "user",
+      },
       {
         key: "supplementi",
         label: "Supplementi",
@@ -288,6 +277,14 @@ export const SITE_NAV_GROUPS: NavGroupDef[] = [
         icon: "faListUl",
         lucideIcon: "Ruler",
         moduleName: "products",
+      },
+      {
+        key: "warehouse",
+        labelKey: "nav.warehouse",
+        href: "/inventory",
+        icon: "faWarehouse",
+        moduleName: "inventory",
+        minRole: "user",
       },
     ],
   },

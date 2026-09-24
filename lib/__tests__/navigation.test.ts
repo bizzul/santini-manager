@@ -41,7 +41,6 @@ describe("SITE_NAV_GROUPS", () => {
     expect(SITE_NAV_GROUPS[0].items.map((item) => item.key)).toEqual([
       "overview",
       "forecast",
-      "my-tickets",
     ]);
     expect(SITE_NAV_GROUPS[1].items.map((item) => item.key)).toEqual([
       "projects",
@@ -53,17 +52,22 @@ describe("SITE_NAV_GROUPS", () => {
       "attendance",
     ]);
     expect(SITE_NAV_GROUPS[3].items.map((item) => item.key)).toEqual([
-      "contacts",
-      "products",
-      "warehouse",
+      "clients",
+      "suppliers",
+      "manufacturers",
+      "resellers",
+      "collaborators",
     ]);
     expect(SITE_NAV_GROUPS[4].items.map((item) => item.key)).toEqual([
+      "products",
       "supplementi",
       "coefficienti",
+      "warehouse",
     ]);
     expect(SITE_NAV_GROUPS[5].items.map((item) => item.key)).toEqual([
       "categories",
       "settings",
+      "my-tickets",
       "support",
     ]);
   });
@@ -136,7 +140,7 @@ describe("roleMeetsMin", () => {
 });
 
 describe("buildSiteNavigation", () => {
-  it("hides listino and configurazione from user but keeps anagrafiche", () => {
+  it("keeps anagrafiche and prodotti/magazzino visible to user", () => {
     const groups = buildSiteNavigation({
       basePath: "/sites/santini",
       enabledModules: ALL_MODULES,
@@ -144,11 +148,25 @@ describe("buildSiteNavigation", () => {
       t,
       settingsHref: "/administration/sites/1/edit",
     });
-    expect(groups.map((group) => group.id)).toEqual([
-      "panoramica",
-      "lavoro",
-      "pianificazione",
-      "anagrafiche",
+    const anagrafiche = groups.find((group) => group.id === "anagrafiche");
+    expect(anagrafiche?.items.map((item) => item.key)).toEqual([
+      "clients",
+      "suppliers",
+      "manufacturers",
+      "resellers",
+      "collaborators",
+    ]);
+    expect(anagrafiche?.items.every((item) => !item.children?.length)).toBe(
+      true
+    );
+    const listino = groups.find((group) => group.id === "listino");
+    expect(listino?.items.map((item) => item.key)).toEqual([
+      "products",
+      "warehouse",
+    ]);
+    expect(listino?.items.map((item) => item.href)).toEqual([
+      "/sites/santini/products",
+      "/sites/santini/inventory",
     ]);
   });
 
@@ -172,6 +190,44 @@ describe("buildSiteNavigation", () => {
       "projects",
       "kanban",
       "documents",
+    ]);
+    const anagrafiche = groups.find((group) => group.id === "anagrafiche");
+    expect(anagrafiche?.items.map((item) => item.href)).toEqual([
+      "/sites/santini/clients",
+      "/sites/santini/suppliers",
+      "/sites/santini/manufacturers",
+      "/sites/santini/resellers",
+      "/sites/santini/collaborators",
+    ]);
+    expect(anagrafiche?.items.map((item) => item.icon)).toEqual([
+      "faUser",
+      "faHelmetSafety",
+      "faIndustry",
+      "faTruckField",
+      "faUserTie",
+    ]);
+    const listino = groups.find((group) => group.id === "listino");
+    expect(listino?.items.map((item) => ({ key: item.key, icon: item.icon, href: item.href }))).toEqual([
+      {
+        key: "products",
+        icon: "faBox",
+        href: "/sites/santini/products",
+      },
+      {
+        key: "supplementi",
+        icon: "faListUl",
+        href: "/sites/santini/supplementi",
+      },
+      {
+        key: "coefficienti",
+        icon: "faListUl",
+        href: "/sites/santini/coefficienti",
+      },
+      {
+        key: "warehouse",
+        icon: "faWarehouse",
+        href: "/sites/santini/inventory",
+      },
     ]);
     expect(groups[0].items[0].href).toBe("/sites/santini/dashboard");
     const projects = groups[1].items.find((item) => item.key === "projects");
