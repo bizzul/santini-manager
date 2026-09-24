@@ -319,9 +319,13 @@ export function DocumentCreateForm({
     [siteId, toast],
   );
 
+  // registerSink e' stabile. L'oggetto contesto cambia a ogni setSink:
+  // dipendere da `capture` rilancia l'effetto all'infinito
+  // (Maximum update depth) appena si apre "Nuovo documento".
+  const registerSink = capture?.registerSink;
   useEffect(() => {
-    if (!capture) return;
-    return capture.registerSink({
+    if (!registerSink) return;
+    return registerSink({
       label: "Allegati documento",
       accept: ".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp",
       onFiles: async (files) => {
@@ -330,7 +334,7 @@ export function DocumentCreateForm({
         }
       },
     });
-  }, [capture, uploadAttachment]);
+  }, [registerSink, uploadAttachment]);
 
   const handleGenerate = async () => {
     if (!oggetto.trim() || !testo.trim() || !ragioneSociale.trim()) {

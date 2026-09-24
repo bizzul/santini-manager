@@ -43,6 +43,9 @@ export function MediaCaptureProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // `registerSink` e' stabile. `sink` no: chi registra un sink in useEffect
+  // deve dipendere da registerSink, non dall'intero valore del contesto,
+  // altrimenti setSink rilancia l'effetto all'infinito.
   const value = useMemo(
     () => ({ sink, registerSink, sheetOpen, setSheetOpen }),
     [sink, registerSink, sheetOpen],

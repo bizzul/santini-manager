@@ -103,14 +103,17 @@ export function DocumentUpload({
     [onError, uploadFile],
   );
 
+  // Solo registerSink: l'oggetto contesto cambia a ogni registrazione e
+  // rimetterlo nelle dipendenze crea un loop di render.
+  const registerSink = capture?.registerSink;
   useEffect(() => {
-    if (!capture) return;
-    return capture.registerSink({
+    if (!registerSink) return;
+    return registerSink({
       label: sinkLabel,
       accept,
       onFiles: handleConfirm,
     });
-  }, [accept, capture, handleConfirm, sinkLabel]);
+  }, [accept, handleConfirm, registerSink, sinkLabel]);
 
   const handleRemove = useCallback(() => {
     setUploadedFileName(null);
