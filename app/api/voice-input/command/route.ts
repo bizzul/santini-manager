@@ -101,6 +101,22 @@ Regole:
    - timetracking -> preferisci log_time
    - documenti -> preferisci create_document
    - kanban / projects / offerte -> preferisci create_project, create_offer, move_card
+5bis. REGOLA DI DISAMBIGUAZIONE create_offer vs create_document (quando entrambi sono ammessi
+   nella schermata corrente, es. modulo "general"): il segnale decisivo e' quanto e' STRUTTURATO
+   il contenuto dettato, non la sola presenza della parola "offerta".
+   - create_offer: il comando descrive una TRATTATIVA/OPPORTUNITA' in poche informazioni di sintesi
+     (cliente, luogo, importo complessivo, eventuale data di consegna). NON contiene righe articolo
+     dettagliate, misure multiple o condizioni di pagamento articolate. Risultato: una card in kanban.
+   - create_document: il comando contiene MATERIALE DA METTERE NEL DOCUMENTO VERO E PROPRIO -
+     una o piu' righe articolo con quantita'/misure/prezzo unitario, condizioni di pagamento,
+     termine di fornitura, o un testo/corpo lettera da redigere. Risultato: un documento generato.
+   - Se il comando cita esplicitamente "documento", "genera offerta con...", "prepara offerta con
+     articoli/righe", oppure elenca piu' di una voce/articolo con relativa misura o prezzo, e'
+     SEMPRE create_document, anche nel modulo kanban/offerte.
+   - Se il comando e' solo "crea offerta per <cliente> da <importo>" senza dettagli di articoli,
+     e' SEMPRE create_offer, anche nel modulo documenti (dove pero' create_offer non e' tra gli
+     intenti ammessi: in quel caso usa create_document con testoDocumento minimale e
+     needsClarification=true per chiedere i dettagli articolo mancanti).
 6. Rispetta sempre gli intenti consentiti della schermata corrente.
 7. Se la trascrizione usa "sposta progetto", "sposta offerta" o "sposta lavoro", interpretala come move_card.
 8. Per create_project e create_offer estrai:
@@ -146,8 +162,9 @@ Regole:
 17. Dentro data restituisci sempre TUTTI i campi previsti dallo schema; se un valore manca usa null.
 
 Esempi:
-- "crea offerta per Rossi serramenti a Lugano da 4500 franchi" -> create_offer
-- "crea offerta per cliente Rossi con infissi in alluminio da 12000 franchi" -> create_document
+- "crea offerta per Rossi serramenti a Lugano da 4500 franchi" -> create_offer (nessuna riga articolo, solo sintesi)
+- "crea offerta per cliente Rossi con una finestra PVC 2 ante 120 per 150, un'anta a 850 franchi e condizioni di pagamento 30 giorni" -> create_document (riga articolo con misura e prezzo unitario + condizioni)
+- "genera offerta per Bianchi SA con tre porte interne rovere da 810 franchi ciascuna" -> create_document (piu' voci articolo dettagliate)
 - "crea cliente Bianchi SA via Roma 1 Lugano 6900 svizzera" -> create_client
 - "aggiungi prodotto armadio categoria cucine" -> create_product
 - "programma la card 26-044 il 15 aprile alle 08:00" -> schedule_task
@@ -187,6 +204,47 @@ function getClientDisplayName(client: Partial<ClientRecord>) {
         .join(" ");
 }
 
+/**
+ * Distanza di Levenshtein (numero minimo di inserimenti/cancellazioni/
+ * sostituzioni per trasformare a in b). Usata per tollerare piccoli errori
+ * di trascrizione vocale (es. "bianchi" sentito come "bianco").
+ */
+function levenshteinDistance(a: string, b: string): number {
+    if (a === b) return 0;
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+
+    let previousRow = Array.from({ length: b.length + 1 }, (_, i) => i);
+
+    for (let i = 0; i < a.length; i += 1) {
+        const currentRow = [i + 1];
+        for (let j = 0; j < b.length; j += 1) {
+            const cost = a[i] === b[j] ? 0 : 1;
+            currentRow.push(
+                Math.min(
+                    previousRow[j + 1] + 1, // cancellazione
+                    currentRow[j] + 1, // inserimento
+                    previousRow[j] + cost // sostituzione
+                )
+            );
+        }
+        previousRow = currentRow;
+    }
+
+    return previousRow[b.length];
+}
+
+/** true se due parole sono "quasi uguali" a meno di piccoli errori di trascrizione. */
+function isFuzzyWordMatch(a: string, b: string): boolean {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    // Parole molto corte: tollera al massimo 1 errore, e solo se non e' un'altra parola valida corta.
+    const maxLen = Math.max(a.length, b.length);
+    if (maxLen < 4) return false;
+    const allowedErrors = maxLen <= 6 ? 1 : 2;
+    return levenshteinDistance(a, b) <= allowedErrors;
+}
+
 function scoreTextMatch(candidate: string, query: string) {
     if (!candidate || !query) return 0;
     if (candidate === query) return 120;
@@ -194,11 +252,26 @@ function scoreTextMatch(candidate: string, query: string) {
     if (candidate.includes(query)) return 90;
 
     const queryTokens = query.split(" ").filter(Boolean);
+    const candidateTokens = candidate.split(" ").filter(Boolean);
+
     if (
         queryTokens.length > 0 &&
         queryTokens.every((token) => candidate.includes(token))
     ) {
         return 70;
+    }
+
+    // Tollera piccoli errori di trascrizione: ogni parola della query trova una
+    // parola quasi uguale nel candidato (es. "bianco sa" ~ "bianchi sa").
+    if (
+        queryTokens.length > 0 &&
+        queryTokens.every((token) =>
+            candidateTokens.some((candidateToken) =>
+                isFuzzyWordMatch(candidateToken, token)
+            )
+        )
+    ) {
+        return 55;
     }
 
     return 0;

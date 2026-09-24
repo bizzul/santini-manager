@@ -6,6 +6,7 @@ import {
     WHISPER_SAFE_MAX_FILE_BYTES,
 } from "@/lib/speech/server";
 import { mapSttProviderError } from "@/lib/speech/server/map-stt-error";
+import { CARPENTRY_VOICE_VOCABULARY_HINT } from "@/lib/speech/domain-vocabulary";
 
 /**
  * Server-side transcription endpoint.
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
         const { text } = await provider.transcribe(audioFile, {
             language,
             filename: audioFile.name || "audio.webm",
+            vocabularyHint: CARPENTRY_VOICE_VOCABULARY_HINT,
         });
 
         if (!text) {

@@ -20,6 +20,12 @@ export class WhisperSttProvider implements ServerSttProvider {
         formData.append("file", audio, filename);
         formData.append("model", "whisper-1");
         formData.append("language", language);
+        if (options.vocabularyHint) {
+            // Il campo "prompt" di Whisper non viene trascritto: orienta solo il
+            // riconoscimento su ortografia di marchi/termini tecnici e nomi propri.
+            // Max ~224 token: tenere il vocabolario conciso.
+            formData.append("prompt", options.vocabularyHint);
+        }
 
         const response = await fetch(
             "https://api.openai.com/v1/audio/transcriptions",

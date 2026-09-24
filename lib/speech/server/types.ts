@@ -8,6 +8,12 @@ export type ServerSttProviderType = "whisper" | "assemblyai" | "deepgram";
 export interface ServerSttTranscribeOptions {
     language?: string;
     filename?: string;
+    /**
+     * Testo di orientamento per il provider STT (es. il parametro "prompt" di
+     * Whisper): non viene trascritto, ma aiuta il modello a riconoscere meglio
+     * termini tecnici, marchi e nomi propri ricorrenti nel dominio del sito.
+     */
+    vocabularyHint?: string;
 }
 
 export interface ServerSttTranscribeResult {
