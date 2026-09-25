@@ -91,6 +91,7 @@ import {
 } from "./card-display-config";
 
 import { getTaskCategoryIds } from "@/lib/task-category-ids";
+import { usesProductionEndDate } from "@/lib/kanban-card-date";
 import {
   getFatturazioneInviataAge,
   isFatturazioneInviataColumn,
@@ -409,7 +410,14 @@ const Column = ({
         );
       }
 
-      // Keep all other kanban cards aligned to the visible "Data di posa".
+      // Keep all other kanban cards aligned to the date shown on the card.
+      if (usesProductionEndDate(kanban)) {
+        return compareByDate(a, b, [
+          "produzione_data_fine",
+          "termine_produzione",
+          "termineProduzione",
+        ]);
+      }
       return compareByDate(a, b, [
         "deliveryDate",
         "delivery_date",

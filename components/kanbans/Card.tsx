@@ -97,6 +97,7 @@ import {
   type CardFieldConfig,
 } from "./card-display-config";
 import { formatHours } from "@/lib/project-consuntivo";
+import { getKanbanCardDate } from "@/lib/kanban-card-date";
 
 type Supplier = {
   id: number;
@@ -224,6 +225,9 @@ function Card({
     }
   };
 
+  // Kanban di produzione: fine produzione; altrimenti data di posa.
+  const cardDate = getKanbanCardDate(data, data.kanban);
+
   // Stato temporale a 4 livelli:
   // - "normal": nessuna urgenza (no data, colonna SPEDITO, o consegna > 3 giorni futuri)
   // - "atRisk": consegna tra oggi e +3 giorni
@@ -234,12 +238,12 @@ function Card({
     state: "normal" | "atRisk" | "late" | "critical";
     days: number;
   }>(() => {
-    if (!data.deliveryDate || data.column?.identifier === "SPEDITO") {
+    if (!cardDate || data.column?.identifier === "SPEDITO") {
       return { state: "normal", days: 0 };
     }
     try {
       const today = startOfLocalDay(new Date());
-      const delivery = startOfLocalDay(parseLocalDate(data.deliveryDate));
+      const delivery = startOfLocalDay(parseLocalDate(cardDate));
       const diffDays = Math.round(
         (delivery.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -250,7 +254,7 @@ function Card({
     } catch {
       return { state: "normal", days: 0 };
     }
-  }, [data.deliveryDate, data.column?.identifier]);
+  }, [cardDate, data.column?.identifier]);
 
   const timeState = deliveryTimeInfo.state;
   const daysDelta = deliveryTimeInfo.days;
@@ -902,11 +906,11 @@ function Card({
                   )}
                   <div className="flex shrink-0 items-center gap-1">
                     {renderTimeStatusBadge(false)}
-                    {isFieldVisible("date") && data.deliveryDate && (
+                    {isFieldVisible("date") && cardDate && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                        <span className="whitespace-nowrap">{DateManager.formatEUDate(data.deliveryDate)}</span>
+                        <span className="whitespace-nowrap">{DateManager.formatEUDate(cardDate)}</span>
                         <span className="whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 font-semibold dark:bg-slate-800">
-                          S.{DateManager.getWeekNumber(data.deliveryDate)}
+                          S.{DateManager.getWeekNumber(cardDate)}
                         </span>
                       </div>
                     )}
@@ -1197,11 +1201,11 @@ function Card({
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     {renderTimeStatusBadge(true)}
-                    {isFieldVisible("date") && data.deliveryDate && (
+                    {isFieldVisible("date") && cardDate && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        <span className="whitespace-nowrap">{DateManager.formatEUDate(data.deliveryDate)}</span>
+                        <span className="whitespace-nowrap">{DateManager.formatEUDate(cardDate)}</span>
                         <span className="whitespace-nowrap font-semibold">
-                          S.{DateManager.getWeekNumber(data.deliveryDate)}
+                          S.{DateManager.getWeekNumber(cardDate)}
                         </span>
                       </div>
                     )}
