@@ -60,6 +60,8 @@ interface ProjectSchedulerCalendarProps {
   description?: string;
   emptyStateTitle?: string;
   emptyStateDescription?: string;
+  calendarV2?: boolean;
+  userId?: string | null;
 }
 
 function CalendarViewSwitcher({
@@ -225,8 +227,11 @@ export function ProjectSchedulerCalendar({
   description,
   emptyStateTitle = "Nessun progetto pianificato",
   emptyStateDescription = "Le card compariranno qui quando i progetti avranno date e orari.",
+  calendarV2 = false,
+  userId = null,
 }: ProjectSchedulerCalendarProps) {
   const router = useRouter();
+  const compactWeek = calendarV2 && calendarType !== "service";
   const calendarRef = useRef<{
     getApi: () => { changeView: (view: string) => void; updateSize: () => void };
   } | null>(null);
@@ -303,8 +308,14 @@ export function ProjectSchedulerCalendar({
   const legendItems = useMemo(() => getStatusLegend(calendarItems), [calendarItems]);
 
   const persistSchedule = useCallback(
-    async (item: WeeklyCalendarItem, start: Date, end: Date, revert?: () => void) => {
-      if (!item.sourceId || !start || !end || end <= start) {
+    async (
+      item: WeeklyCalendarItem,
+      start: Date,
+      end: Date,
+      revert?: () => void,
+      allowZeroDuration = false
+    ) => {
+      if (!item.sourceId || !start || !end || end < start || (end <= start && !allowZeroDuration)) {
         revert?.();
         return;
       }
@@ -398,11 +409,31 @@ export function ProjectSchedulerCalendar({
   );
 
   const handleWeekAssignDay = useCallback(
-    (item: WeeklyCalendarItem, day: Date) => {
+    (item: WeeklyCalendarItem, day: Date, target: "unscheduled" | "all-day") => {
       if (isMultiDayItem(item)) return;
+      // Settimana compatta: spostare di giorno una card con orario mantiene
+      // l'orario, scrivendo gli stessi campi del drop su griglia oraria.
+      const keepTime =
+        compactWeek &&
+        target === "all-day" &&
+        !item.allDay &&
+        item.scheduleDisplay === "timed" &&
+        item.timeStart &&
+        item.timeEnd;
+      if (keepTime) {
+        const dayKey = format(day, "yyyy-MM-dd");
+        void persistSchedule(
+          item,
+          new Date(`${dayKey}T${item.timeStart}:00`),
+          new Date(`${dayKey}T${item.timeEnd}:00`),
+          undefined,
+          true
+        );
+        return;
+      }
       void persistDateOnly(item, day);
     },
-    [persistDateOnly]
+    [compactWeek, persistDateOnly, persistSchedule]
   );
 
   const handleEventDrop = useCallback(
@@ -692,6 +723,9 @@ export function ProjectSchedulerCalendar({
               onReschedule={handleWeekReschedule}
               onAssignDay={handleWeekAssignDay}
               onConflictCountChange={setConflictCount}
+              v2={calendarV2}
+              layout={compactWeek ? "compact" : "timed"}
+              pendingPanelStorageKey={userId ?? "anon"}
             />
           ) : isResourceView ? (
             <ResourceView

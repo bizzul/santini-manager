@@ -56,6 +56,18 @@ export const AVAILABLE_MODULES: ModuleConfig[] = [
         category: "management",
     },
     {
+        // Feature flag: nessuna voce di menu (href vuoto), cambia solo la resa
+        // dei calendari Produzione / Posa / Service.
+        name: "calendar_v2",
+        label: "Calendario v2 (beta)",
+        description:
+            "Settimana compatta per Produzione e Posa, weekend stretti, pannello laterale Da definire e colori per categoria",
+        icon: "faClock",
+        href: "",
+        enabledByDefault: false,
+        category: "management",
+    },
+    {
         name: "clients",
         label: "Clienti",
         description: "Anagrafica clienti e contatti commerciali",

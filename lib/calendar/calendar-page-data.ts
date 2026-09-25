@@ -1,6 +1,14 @@
 import type { createClient } from "@/utils/supabase/server";
+import { fetchSiteModules } from "@/lib/server-data";
 
 type ServerSupabase = Awaited<ReturnType<typeof createClient>>;
+
+export const CALENDAR_V2_MODULE = "calendar_v2";
+
+export async function isCalendarV2Enabled(siteId: string): Promise<boolean> {
+  const modules = await fetchSiteModules(siteId);
+  return modules.some((module) => module.name === CALENDAR_V2_MODULE && module.isEnabled);
+}
 
 /**
  * Id delle colonne finali (posizione massima) per ciascun Kanban. Serve al

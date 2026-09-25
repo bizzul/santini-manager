@@ -6,6 +6,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
 import { PageLayout, PageContent } from "@/components/page-layout";
+import { isCalendarV2Enabled } from "@/lib/calendar/calendar-page-data";
 
 export interface KanbanCategory {
   id: number;
@@ -139,6 +140,7 @@ async function Page({
   const siteContext = await requireServerSiteContext(domain);
   const { siteId } = siteContext;
 
+  const calendarV2 = await isCalendarV2Enabled(siteId);
   const data = await getData(siteId);
 
   return (
@@ -148,6 +150,8 @@ async function Page({
           tasks={data as TaskWithKanban[]}
           calendarType="installation"
           domain={domain}
+          calendarV2={calendarV2}
+          userId={userContext.userId ?? null}
         />
       </PageContent>
     </PageLayout>

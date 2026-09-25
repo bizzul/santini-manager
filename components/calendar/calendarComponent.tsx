@@ -121,10 +121,15 @@ export default function CalendarComponent({
   tasks,
   calendarType = "all",
   domain,
+  calendarV2 = false,
+  userId = null,
 }: {
   tasks: TaskWithKanban[];
   calendarType?: CalendarType;
   domain?: string;
+  /** Modulo `calendar_v2` attivo sullo spazio. */
+  calendarV2?: boolean;
+  userId?: string | null;
 }) {
   const params = useParams();
   const router = useRouter();
@@ -208,6 +213,8 @@ export default function CalendarComponent({
           domain={effectiveDomain}
           view={viewMode}
           onViewChange={setViewMode}
+          calendarV2={calendarV2}
+          userId={userId}
           title={`${CALENDAR_TYPE_NAMES[calendarType]} - ${
             viewMode === "week"
               ? "Settimana"
