@@ -6,6 +6,7 @@ import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
 import { PageLayout, PageContent } from "@/components/page-layout";
+import { fetchFinalColumnIds } from "@/lib/calendar/calendar-page-data";
 
 export interface KanbanCategory {
   id: number;
@@ -119,6 +120,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   productionKanbans?.forEach(k => {
     kanbansMap[k.id] = k;
   });
+  const finalColumnIds = await fetchFinalColumnIds(supabase, productionKanbanIds);
 
   // Fetch tasks from production kanbans that have a delivery date or termine_produzione
   // For production calendar, we use deliveryDate OR termine_produzione
@@ -188,6 +190,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
       deliveryDate: task.deliveryDate || task.termine_produzione,
       Kanban: kanbansMap[task.kanban_id] || null,
       projectCollaborators: collaboratorsByTask.get(task.id) || [],
+      isInFinalColumn: finalColumnIds.has(task.kanbanColumnId),
     }));
   }
   
@@ -212,6 +215,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
       ...task,
       Kanban: kanbanId ? kanbansMap[kanbanId] || null : null,
       projectCollaborators: collaboratorsByTask.get(task.id) || [],
+      isInFinalColumn: finalColumnIds.has(task.kanbanColumnId),
     };
   });
 

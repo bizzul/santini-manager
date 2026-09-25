@@ -25,8 +25,15 @@ interface UseCalendarDndArgs {
   daysByKey: Map<string, Date>;
   /** Drop su uno slot orario: data + ora definite. */
   onReschedule: (item: WeeklyCalendarItem, start: Date, end: Date) => void;
-  /** Drop su un giorno senza orario (contenitore "Orario da assegnare"). */
-  onAssignDay: (item: WeeklyCalendarItem, day: Date) => void;
+  /**
+   * Drop su un giorno senza orario: contenitore "Orario da assegnare",
+   * fascia giornaliera o colonna-giorno della settimana compatta.
+   */
+  onAssignDay: (
+    item: WeeklyCalendarItem,
+    day: Date,
+    target: "unscheduled" | "all-day"
+  ) => void;
   disabled?: boolean;
 }
 
@@ -68,8 +75,8 @@ export function useCalendarDnd({
       const day = daysByKey.get(target.dayKey);
       if (!day) return;
 
-      if (target.kind === "unscheduled") {
-        onAssignDay(item, day);
+      if (target.kind === "unscheduled" || target.kind === "all-day") {
+        onAssignDay(item, day, target.kind);
         return;
       }
 
@@ -81,7 +88,7 @@ export function useCalendarDnd({
 
       if (minutes == null) {
         // Fallback (es. tastiera): assegna solo il giorno.
-        onAssignDay(item, day);
+        onAssignDay(item, day, "unscheduled");
         return;
       }
 

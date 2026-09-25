@@ -4,6 +4,7 @@ import React from "react";
 import { BellRing } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import {
   Tooltip,
   TooltipContent,
@@ -40,8 +41,8 @@ export function CalendarProjectCard({
         item.estimatedHours ??
         Math.max(0.5, (end.getTime() - start.getTime()) / 3_600_000)
       : null;
-  const scheduleLabel = getScheduleLabel(scheduleDisplay, start, end);
-  const isTimePending = scheduleDisplay === "time-pending";
+  const scheduleLabel = getScheduleLabel(item, scheduleDisplay, start, end);
+  const isTimePending = scheduleDisplay === "time-pending" && !item.missingDate;
   const collaborators =
     item.collaborators && item.collaborators.length > 0
       ? item.collaborators
@@ -107,6 +108,16 @@ export function CalendarProjectCard({
               <BellRing className="h-3 w-3" />
               {compact ? "Da definire" : "Ora da definire"}
             </span>
+          )}
+          {item.missingDate && (
+            <StatusBadge tone="waiting" className="px-1.5 py-0">
+              Manca data
+            </StatusBadge>
+          )}
+          {item.isLate && (
+            <StatusBadge tone="late" className="px-1.5 py-0">
+              In ritardo
+            </StatusBadge>
           )}
           {item.status && (
             <Badge
@@ -210,7 +221,11 @@ export function CalendarProjectCard({
               compact ? "text-[10px]" : "text-[11px]"
             )}
           >
-            {scheduleDisplay === "date-only" ? "Solo giorno" : "Da pianificare"}
+            {scheduleDisplay === "date-only"
+              ? (item.durationDays ?? 1) > 1
+                ? `${item.durationDays} g`
+                : "Solo giorno"
+              : "Da pianificare"}
           </div>
         )}
       </div>
@@ -273,17 +288,37 @@ export function CalendarProjectCard({
 }
 
 function getScheduleLabel(
+  item: WeeklyCalendarItem,
   scheduleDisplay: "timed" | "time-pending" | "date-only",
   start: Date,
   end: Date
 ): string {
+  const timeRange =
+    item.timeStart && item.timeEnd ? `${item.timeStart}–${item.timeEnd}` : item.timeStart;
+
+  if (item.missingDate) {
+    return timeRange ? `Data da definire · ${timeRange}` : "Data da definire";
+  }
+
   if (scheduleDisplay === "time-pending") {
     return "Orario da definire";
   }
 
   if (scheduleDisplay === "date-only") {
+    if (item.eventKind === "scadenza") {
+      return "Scadenza";
+    }
+    if (item.startDate && item.endDate && item.startDate !== item.endDate) {
+      const range = `${formatDateKeyShort(item.startDate)} – ${formatDateKeyShort(item.endDate)}`;
+      return timeRange ? `${range} · ${timeRange}` : range;
+    }
     return "Entro il giorno pianificato";
   }
 
   return `${formatTimeLabel(start)} - ${formatTimeLabel(end)}`;
+}
+
+function formatDateKeyShort(dateKey: string): string {
+  const [, month, day] = dateKey.split("-");
+  return `${day}.${month}`;
 }

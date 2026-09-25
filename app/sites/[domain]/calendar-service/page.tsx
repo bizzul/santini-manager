@@ -105,6 +105,8 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
       task.deliveryDate ||
       task.service_data_inizio ||
       task.service_data_fine ||
+      task.service_ora_inizio ||
+      task.service_ora_fine ||
       task.ora_inizio ||
       task.ora_fine
   );

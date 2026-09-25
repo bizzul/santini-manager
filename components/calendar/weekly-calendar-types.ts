@@ -1,4 +1,5 @@
 import type { Roles, Task, Timetracking, User } from "@/types/supabase";
+import type { CalendarEventKind } from "@/lib/calendar/mapTaskToEvents";
 
 export type CalendarLinkType = "project" | "site";
 
@@ -41,6 +42,19 @@ export interface WeeklyCalendarItem {
   scheduleDisplay?: CalendarScheduleDisplay;
   notes?: string | null;
   metadata?: Record<string, string | number | boolean | null | undefined>;
+  /** Campi valorizzati solo per i calendari progetto (da `mapTaskToEvents`). */
+  eventKind?: CalendarEventKind;
+  /** Evento da rendere nella fascia giornaliera, mai nella griglia oraria. */
+  allDay?: boolean;
+  /** `yyyy-MM-dd`, estremi inclusi. */
+  startDate?: string | null;
+  endDate?: string | null;
+  durationDays?: number | null;
+  /** `HH:mm` della fase, anche quando l'evento e' all-day. */
+  timeStart?: string | null;
+  timeEnd?: string | null;
+  missingDate?: boolean;
+  isLate?: boolean;
 }
 
 export interface WeeklyCalendarTimetrackingEntry extends Timetracking {

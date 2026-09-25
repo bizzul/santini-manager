@@ -3,13 +3,14 @@ import type { WeekSlotConfig } from "@/components/calendar/week/useOverlapLayout
 
 export const DROPPABLE_GRID_PREFIX = "day-grid:";
 export const DROPPABLE_UNSCHEDULED_PREFIX = "day-unscheduled:";
+export const DROPPABLE_ALL_DAY_PREFIX = "day-allday:";
 
 /** Durata di default (minuti) quando una card non ha ore stimate. */
 export const DEFAULT_EVENT_DURATION_MINUTES = 180;
 /** Snap del drop sulla griglia (minuti). */
 export const DROP_SNAP_MINUTES = 15;
 
-export type DropTargetKind = "grid" | "unscheduled";
+export type DropTargetKind = "grid" | "unscheduled" | "all-day";
 
 export interface ParsedDropTarget {
   kind: DropTargetKind;
@@ -24,8 +25,16 @@ export function makeUnscheduledDroppableId(dayKey: string): string {
   return `${DROPPABLE_UNSCHEDULED_PREFIX}${dayKey}`;
 }
 
+/** Fascia giornaliera o colonna-giorno senza griglia oraria. */
+export function makeAllDayDroppableId(dayKey: string): string {
+  return `${DROPPABLE_ALL_DAY_PREFIX}${dayKey}`;
+}
+
 export function parseDropTarget(droppableId: string | null | undefined): ParsedDropTarget | null {
   if (!droppableId) return null;
+  if (droppableId.startsWith(DROPPABLE_ALL_DAY_PREFIX)) {
+    return { kind: "all-day", dayKey: droppableId.slice(DROPPABLE_ALL_DAY_PREFIX.length) };
+  }
   if (droppableId.startsWith(DROPPABLE_GRID_PREFIX)) {
     return { kind: "grid", dayKey: droppableId.slice(DROPPABLE_GRID_PREFIX.length) };
   }

@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { CalendarProjectCard } from "../CalendarProjectCard";
 import type { WeeklyCalendarItem } from "../weekly-calendar-types";
+import { isMultiDayItem } from "./all-day-layout";
 
 export type EventCardVariant = "full" | "split" | "mini";
 
@@ -31,11 +32,12 @@ export function EventCard({
   onClick,
   className,
 }: EventCardProps) {
+  const canDrag = draggable && !isMultiDayItem(item);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: item.id,
       data: { item },
-      disabled: !draggable,
+      disabled: !canDrag,
     });
 
   const style: React.CSSProperties = {
@@ -52,12 +54,12 @@ export function EventCard({
         className={cn(
           "h-2.5 w-full rounded-sm border-l-4 bg-card shadow-sm transition-colors",
           isConflict && "ring-1 ring-destructive/60",
-          draggable && "cursor-grab active:cursor-grabbing",
+          canDrag && "cursor-grab active:cursor-grabbing",
           className
         )}
         title={`${item.projectNumber || ""} ${item.projectName}`.trim()}
-        {...(draggable ? attributes : {})}
-        {...(draggable ? listeners : {})}
+        {...(canDrag ? attributes : {})}
+        {...(canDrag ? listeners : {})}
       />
     );
   }
@@ -68,7 +70,7 @@ export function EventCard({
       style={style}
       className={cn(
         "h-full min-h-0",
-        draggable && "cursor-grab active:cursor-grabbing",
+        canDrag && "cursor-grab active:cursor-grabbing",
         isConflict && "rounded-xl ring-2 ring-destructive/70",
         className
       )}
@@ -83,9 +85,9 @@ export function EventCard({
             }
           : undefined
       }
-      {...(draggable ? attributes : {})}
-      {...(draggable ? listeners : {})}
-      {...(onClick && !draggable ? { role: "button" as const, tabIndex: 0 } : {})}
+      {...(canDrag ? attributes : {})}
+      {...(canDrag ? listeners : {})}
+      {...(onClick && !canDrag ? { role: "button" as const, tabIndex: 0 } : {})}
     >
       <CalendarProjectCard item={item} compact readOnly />
     </div>

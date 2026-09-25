@@ -22,8 +22,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CalendarProjectCard } from "./CalendarProjectCard";
 import { DayProjectsDialog } from "./DayProjectsDialog";
+import { addDays, format, startOfDay } from "date-fns";
+import { dateKeyToLocalDate } from "@/lib/calendar/mapTaskToEvents";
 import { WeekCalendar } from "./week/WeekCalendar";
 import { ResourceView } from "./week/ResourceView";
+import { AllDayEventBar } from "./week/AllDayEventBar";
+import { isAllDayItem, isMultiDayItem } from "./week/all-day-layout";
 import {
   buildCalendarProjectEditHref,
   buildDateOnlyPayload,
@@ -96,6 +100,22 @@ function itemsToEvents(items: WeeklyCalendarItem[]): EventInput[] {
   const events: EventInput[] = [];
 
   items.forEach((item) => {
+    if (isAllDayItem(item)) {
+      events.push({
+        id: item.id,
+        title: item.projectNumber || item.projectName,
+        start: item.startDate!,
+        end: format(addDays(dateKeyToLocalDate(item.endDate!), 1), "yyyy-MM-dd"),
+        allDay: true,
+        editable: false,
+        extendedProps: { item },
+        backgroundColor: "transparent",
+        borderColor: item.color || "#64748b",
+        textColor: "inherit",
+      });
+      return;
+    }
+
     if (!isTimedCalendarItem(item)) {
       return;
     }
@@ -121,7 +141,21 @@ function itemsToEvents(items: WeeklyCalendarItem[]): EventInput[] {
 }
 
 function isTimedCalendarItem(item: WeeklyCalendarItem): boolean {
-  return (item.scheduleDisplay ?? "timed") !== "time-pending";
+  return (item.scheduleDisplay ?? "timed") !== "time-pending" && !item.allDay;
+}
+
+/** Aggiornamento ottimistico di una scadenza: resta all-day sul nuovo giorno. */
+function moveDeadlineToDay(item: WeeklyCalendarItem, day: Date): WeeklyCalendarItem {
+  const dayKey = format(day, "yyyy-MM-dd");
+  const dayStart = startOfDay(day);
+  return {
+    ...item,
+    startDate: dayKey,
+    endDate: dayKey,
+    startDatetime: dayStart.toISOString(),
+    endDatetime: addDays(dayStart, 1).toISOString(),
+    isLate: false,
+  };
 }
 
 function updateItemSchedule(
@@ -130,16 +164,24 @@ function updateItemSchedule(
   start: Date,
   end: Date
 ): WeeklyCalendarItem[] {
-  return items.map((item) =>
-    item.id === itemId
-      ? {
-          ...item,
-          startDatetime: start.toISOString(),
-          endDatetime: end.toISOString(),
-          scheduleDisplay: "timed" as const,
-        }
-      : item
-  );
+  return items.map((item) => {
+    if (item.id !== itemId) return item;
+    if (item.eventKind === "scadenza") return moveDeadlineToDay(item, start);
+    const dayKey = format(start, "yyyy-MM-dd");
+    return {
+      ...item,
+      startDatetime: start.toISOString(),
+      endDatetime: end.toISOString(),
+      scheduleDisplay: "timed" as const,
+      allDay: false,
+      startDate: dayKey,
+      endDate: dayKey,
+      durationDays: 1,
+      timeStart: format(start, "HH:mm"),
+      timeEnd: format(end, "HH:mm"),
+      missingDate: false,
+    };
+  });
 }
 
 function updateItemToDateOnly(
@@ -151,16 +193,26 @@ function updateItemToDateOnly(
   dayStart.setHours(8, 0, 0, 0);
   const dayEnd = new Date(day);
   dayEnd.setHours(8, 0, 0, 0);
-  return items.map((item) =>
-    item.id === itemId
-      ? {
-          ...item,
-          startDatetime: dayStart.toISOString(),
-          endDatetime: dayEnd.toISOString(),
-          scheduleDisplay: "time-pending" as const,
-        }
-      : item
-  );
+  const dayKey = format(day, "yyyy-MM-dd");
+  return items.map((item) => {
+    if (item.id !== itemId) return item;
+    if (item.eventKind === "scadenza") {
+      return { ...moveDeadlineToDay(item, day), timeStart: null, timeEnd: null };
+    }
+    return {
+      ...item,
+      startDatetime: dayStart.toISOString(),
+      endDatetime: dayEnd.toISOString(),
+      scheduleDisplay: "time-pending" as const,
+      allDay: false,
+      startDate: dayKey,
+      endDate: dayKey,
+      durationDays: 1,
+      timeStart: null,
+      timeEnd: null,
+      missingDate: false,
+    };
+  });
 }
 
 export function ProjectSchedulerCalendar({
@@ -347,6 +399,7 @@ export function ProjectSchedulerCalendar({
 
   const handleWeekAssignDay = useCallback(
     (item: WeeklyCalendarItem, day: Date) => {
+      if (isMultiDayItem(item)) return;
       void persistDateOnly(item, day);
     },
     [persistDateOnly]
@@ -407,6 +460,17 @@ export function ProjectSchedulerCalendar({
     const item = arg.event.extendedProps.item as WeeklyCalendarItem | undefined;
     if (!item) return null;
 
+    if (isAllDayItem(item)) {
+      return (
+        <AllDayEventBar
+          item={item}
+          continuesBefore={!arg.isStart}
+          continuesAfter={!arg.isEnd}
+          showDayProgress={false}
+        />
+      );
+    }
+
     return (
       <div className="h-full min-h-0 overflow-hidden">
         <CalendarProjectCard
@@ -424,7 +488,9 @@ export function ProjectSchedulerCalendar({
 
   const handleEventsSet = useCallback(() => {
     const overlaps = new Set<string>();
-    const timedItems = calendarItems.filter(isTimedCalendarItem);
+    const timedItems = calendarItems.filter(
+      (item) => isTimedCalendarItem(item) && !item.missingDate
+    );
     const sorted = [...timedItems].sort(
       (left, right) =>
         new Date(left.startDatetime).getTime() -

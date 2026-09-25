@@ -14,6 +14,8 @@ import type {
 } from "../weekly-calendar-types";
 import { ConflictBadge } from "./ConflictBadge";
 import { layoutDayEvents } from "./useOverlapLayout";
+import { AllDayEventBar, getItemCollaborators } from "./AllDayEventBar";
+import { isAllDayItem } from "./all-day-layout";
 import {
   GRID_HEIGHT,
   TIME_COL_WIDTH,
@@ -35,16 +37,6 @@ interface ResourceLane {
   items: WeeklyCalendarItem[];
 }
 
-function getItemCollaborators(item: WeeklyCalendarItem): CalendarAssignedUser[] {
-  if (item.collaborators && item.collaborators.length > 0) {
-    return item.collaborators;
-  }
-  if (item.assignedUser) {
-    return [item.assignedUser];
-  }
-  return [];
-}
-
 /**
  * Vista "Per risorsa": una lane (colonna) per collaboratore con asse Y = ore.
  * Ogni evento compare nella lane di ciascun collaboratore assegnato, riducendo
@@ -57,6 +49,7 @@ export function ResourceView({ items, onItemClick, initialDay }: ResourceViewPro
 
   const config = WEEK_SLOT_CONFIG;
   const hourLabels = useMemo(() => buildHourLabels(), []);
+  const selectedDayKey = format(selectedDay, "yyyy-MM-dd");
 
   const lanes = useMemo<ResourceLane[]>(() => {
     const map = new Map<string, ResourceLane>();
@@ -71,7 +64,11 @@ export function ResourceView({ items, onItemClick, initialDay }: ResourceViewPro
     };
 
     items.forEach((item) => {
-      if ((item.scheduleDisplay ?? "timed") !== "timed") return;
+      if (isAllDayItem(item)) {
+        if (item.startDate! > selectedDayKey || item.endDate! < selectedDayKey) return;
+      } else if ((item.scheduleDisplay ?? "timed") !== "timed") {
+        return;
+      }
       const collaborators = getItemCollaborators(item);
       if (collaborators.length === 0) {
         pushItem(UNASSIGNED_KEY, null, item);
@@ -87,16 +84,18 @@ export function ResourceView({ items, onItemClick, initialDay }: ResourceViewPro
         if (b.key === UNASSIGNED_KEY) return -1;
         return (a.user?.name || "").localeCompare(b.user?.name || "", "it");
       });
-  }, [items]);
+  }, [items, selectedDayKey]);
 
   const laneLayouts = useMemo(
     () =>
       lanes.map((lane) => ({
         lane,
         layout: layoutDayEvents(lane.items, selectedDay, config),
+        allDayItems: lane.items.filter(isAllDayItem),
       })),
     [lanes, selectedDay, config]
   );
+  const hasAllDayRow = laneLayouts.some((entry) => entry.allDayItems.length > 0);
 
   const gridTemplateColumns = `${TIME_COL_WIDTH}px repeat(${Math.max(
     laneLayouts.length,
@@ -187,6 +186,32 @@ export function ResourceView({ items, onItemClick, initialDay }: ResourceViewPro
                 )}
               </div>
             ))}
+
+            {/* Fascia giornaliera per risorsa */}
+            {hasAllDayRow && (
+              <>
+                <div className="flex items-start justify-end border-b border-r border-border/60 bg-card px-1 py-1.5 text-right text-caption font-medium text-muted-foreground">
+                  Giorno
+                </div>
+                {laneLayouts.map(({ lane, allDayItems }) => (
+                  <div
+                    key={`allday-${lane.key}`}
+                    className="space-y-1 border-b border-l border-border/60 bg-muted/10 p-1"
+                  >
+                    {allDayItems.map((item) => (
+                      <AllDayEventBar
+                        key={`${lane.key}-${item.id}`}
+                        item={item}
+                        continuesBefore={item.startDate! < selectedDayKey}
+                        continuesAfter={item.endDate! > selectedDayKey}
+                        firstVisibleDayKey={selectedDayKey}
+                        onClick={onItemClick ? () => onItemClick(item) : undefined}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </>
+            )}
 
             {/* Gutter orari */}
             <div

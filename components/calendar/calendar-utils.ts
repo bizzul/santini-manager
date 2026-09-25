@@ -19,6 +19,12 @@ import {
 } from "date-fns";
 import { it } from "date-fns/locale";
 import { getProjectClientName, getProjectObjectName } from "@/lib/project-label";
+import {
+  mapTaskToEvents,
+  taskHasEventsForPhase,
+  type CalendarPhase,
+  type CalendarPhaseEvent,
+} from "@/lib/calendar/mapTaskToEvents";
 import type {
   CalendarAssignedUser,
   CalendarDataMode,
@@ -34,9 +40,6 @@ export const DEFAULT_SLOT_MINUTES = 30;
 export const DEFAULT_SLOT_START_HOUR = 6;
 export const DEFAULT_SLOT_END_HOUR = 21;
 
-const FALLBACK_TASK_START_HOUR = 8;
-const FALLBACK_TASK_START_MINUTE = 0;
-const FALLBACK_TASK_DURATION_MINUTES = 180;
 const FALLBACK_TIMETRACKING_START_HOUR = 7;
 const FALLBACK_ATTENDANCE_START_HOUR = 8;
 const FALLBACK_ATTENDANCE_END_HOUR = 17;
@@ -133,6 +136,7 @@ type ProjectTaskSource = {
   isDraft?: boolean | null;
   display_mode?: string | null;
   displayMode?: string | null;
+  isInFinalColumn?: boolean | null;
   client?: {
     businessName?: string | null;
     individualFirstName?: string | null;
@@ -301,24 +305,6 @@ export function parseDateValue(value?: string | Date | null): Date | null {
 
   const fallback = new Date(normalized);
   return Number.isNaN(fallback.getTime()) ? null : fallback;
-}
-
-function withTime(
-  dateValue: string | Date | null | undefined,
-  timeValue: string | null | undefined,
-  fallbackHour: number,
-  fallbackMinute: number
-): Date | null {
-  const baseDate = parseDateValue(dateValue);
-  if (!baseDate) return null;
-
-  let nextDate = setMinutes(setHours(baseDate, fallbackHour), fallbackMinute);
-  if (timeValue) {
-    const [hours, minutes] = timeValue.split(":").map((part) => Number(part || 0));
-    nextDate = setMinutes(setHours(baseDate, hours || 0), minutes || 0);
-  }
-
-  return nextDate;
 }
 
 function createAssignedUser(
@@ -511,58 +497,15 @@ function splitDurationAcrossWorkday(
   };
 }
 
-type ScheduleWindowFields = {
-  dataInizio?: string | null;
-  dataFine?: string | null;
-  oraInizio?: string | null;
-  oraFine?: string | null;
-};
-
-function getPhaseFieldsForCalendarType(
-  calendarType: ProjectCalendarType,
-  task: ProjectTaskSource
-): ScheduleWindowFields {
-  switch (calendarType) {
-    case "production":
-      return {
-        dataInizio:
-          task.produzione_data_inizio ||
-          task.produzione_data_fine ||
-          task.termine_produzione,
-        dataFine: task.produzione_data_fine || task.termine_produzione,
-        oraInizio: task.produzione_ora_inizio,
-        oraFine: task.produzione_ora_fine,
-      };
-    case "installation":
-      return {
-        dataInizio: task.posa_data_inizio,
-        dataFine: task.posa_data_fine || task.deliveryDate,
-        oraInizio: task.posa_ora_inizio || task.ora_inizio,
-        oraFine: task.posa_ora_fine || task.ora_fine,
-      };
-    case "service":
-      return {
-        dataInizio: task.service_data_inizio,
-        dataFine: task.service_data_fine || task.deliveryDate,
-        oraInizio: task.service_ora_inizio || task.ora_inizio,
-        oraFine: task.service_ora_fine || task.ora_fine,
-      };
-    default:
-      return {
-        dataInizio: task.deliveryDate || task.termine_produzione,
-        dataFine: task.deliveryDate || task.termine_produzione,
-        oraInizio: task.ora_inizio,
-        oraFine: task.ora_fine,
-      };
-  }
+function toCalendarPhase(calendarType: ProjectCalendarType): CalendarPhase {
+  return calendarType === "all" ? "production" : calendarType;
 }
 
 export function taskHasScheduleForCalendarType(
   task: ProjectTaskSource,
   calendarType: ProjectCalendarType
 ): boolean {
-  const fields = getPhaseFieldsForCalendarType(calendarType, task);
-  return Boolean(fields.dataInizio || fields.dataFine);
+  return taskHasEventsForPhase(task, toCalendarPhase(calendarType));
 }
 
 function formatTimeForPayload(date: Date): string {
@@ -687,59 +630,42 @@ function getTaskAccentColor(task: ProjectTaskSource): string {
   return "#64748b";
 }
 
+export interface BuildProjectCalendarItemsOptions {
+  /** Riferimento per il chip "In ritardo"; default: adesso. */
+  today?: Date;
+}
+
+function getItemSchedule(event: CalendarPhaseEvent): {
+  startDatetime: string;
+  endDatetime: string;
+  scheduleDisplay: CalendarScheduleDisplay;
+} {
+  if (event.missingDate) {
+    return { startDatetime: "", endDatetime: "", scheduleDisplay: "time-pending" };
+  }
+  return {
+    startDatetime: event.start.toISOString(),
+    endDatetime: event.end.toISOString(),
+    scheduleDisplay: event.allDay ? "date-only" : event.timePending ? "time-pending" : "timed",
+  };
+}
+
 export function buildProjectCalendarItems(
   tasks: ProjectTaskSource[],
   domain: string,
-  calendarType: ProjectCalendarType = "installation"
+  calendarType: ProjectCalendarType = "installation",
+  options: BuildProjectCalendarItemsOptions = {}
 ): WeeklyCalendarItem[] {
   const items: WeeklyCalendarItem[] = [];
-  const effectiveCalendarType =
-    calendarType === "all" ? "production" : calendarType;
+  const phase = toCalendarPhase(calendarType);
 
   tasks.forEach((task) => {
-    if (!taskHasScheduleForCalendarType(task, effectiveCalendarType)) {
+    const [event] = mapTaskToEvents(task, phase, { today: options.today });
+    if (!event) {
       return;
     }
 
-    const phaseFields = getPhaseFieldsForCalendarType(effectiveCalendarType, task);
-    const dataInizio = phaseFields.dataInizio || phaseFields.dataFine;
-    const dataFine = phaseFields.dataFine || phaseFields.dataInizio;
-
-    if (!dataInizio && !dataFine) {
-      return;
-    }
-
-    const hasExplicitTimeRange = Boolean(
-      phaseFields.oraInizio && phaseFields.oraFine
-    );
-    const scheduleDisplay: CalendarScheduleDisplay = hasExplicitTimeRange
-      ? "timed"
-      : "time-pending";
-
-    const start = withTime(
-      dataInizio || dataFine,
-      hasExplicitTimeRange ? phaseFields.oraInizio : null,
-      FALLBACK_TASK_START_HOUR,
-      FALLBACK_TASK_START_MINUTE
-    );
-
-    if (!start) {
-      return;
-    }
-
-    let end =
-      withTime(
-        dataFine || dataInizio,
-        hasExplicitTimeRange ? phaseFields.oraFine : null,
-        start.getHours() + 3,
-        start.getMinutes()
-      ) ||
-      addMinutesSafe(start, FALLBACK_TASK_DURATION_MINUTES);
-
-    if (!isBefore(start, end)) {
-      end = addMinutesSafe(start, FALLBACK_TASK_DURATION_MINUTES);
-    }
-
+    const { startDatetime, endDatetime, scheduleDisplay } = getItemSchedule(event);
     const clientName = getProjectClientName(task);
     const objectName = getProjectObjectName(task);
     const status = task.column?.title || task.status || "Programmato";
@@ -760,11 +686,11 @@ export function buildProjectCalendarItems(
       status,
       assignedUser,
       collaborators: collaborators.length > 0 ? collaborators : assignedUser ? [assignedUser] : [],
-      startDatetime: start.toISOString(),
-      endDatetime: end.toISOString(),
+      startDatetime,
+      endDatetime,
       estimatedHours:
-        scheduleDisplay === "timed"
-          ? Math.max(1, differenceInMinutes(end, start) / MINUTES_PER_HOUR)
+        scheduleDisplay === "timed" && !event.missingDate
+          ? Math.max(1, differenceInMinutes(event.end, event.start) / MINUTES_PER_HOUR)
           : null,
       category:
         task.SellProduct?.category?.name ||
@@ -784,6 +710,15 @@ export function buildProjectCalendarItems(
         clientName,
         location: task.luogo || null,
       },
+      eventKind: event.kind,
+      allDay: event.allDay,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      durationDays: event.durataGiorni,
+      timeStart: event.oraInizio,
+      timeEnd: event.oraFine,
+      missingDate: event.missingDate,
+      isLate: event.inRitardo,
     });
   });
 
@@ -977,10 +912,6 @@ function getAttendanceColor(status: string): string {
     default:
       return "#16a34a";
   }
-}
-
-function addMinutesSafe(date: Date, minutes: number): Date {
-  return new Date(date.getTime() + minutes * 60_000);
 }
 
 function getItemMode(item: WeeklyCalendarItem): Exclude<CalendarDataMode, "both"> {

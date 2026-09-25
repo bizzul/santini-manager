@@ -41,6 +41,7 @@ export type TaskWithKanban = Task & {
     type?: string | null;
     category?: { id?: number; name?: string | null; color?: string | null } | null;
   } | null;
+  isInFinalColumn?: boolean | null;
 };
 
 export type CalendarType = "production" | "installation" | "service" | "all";

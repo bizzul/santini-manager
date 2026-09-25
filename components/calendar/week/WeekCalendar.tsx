@@ -38,6 +38,8 @@ import { ConflictBadge } from "./ConflictBadge";
 import { DayColumn, type DenseMode } from "./DayColumn";
 import { EventCard } from "./EventCard";
 import { UnscheduledTimeContainer } from "./UnscheduledTimeContainer";
+import { AllDayBand } from "./AllDayBand";
+import { isAllDayItem } from "./all-day-layout";
 import { useCalendarDnd } from "./useCalendarDnd";
 import { useOverlapLayout, type DayLayout } from "./useOverlapLayout";
 import {
@@ -55,7 +57,11 @@ interface WeekCalendarProps {
   readOnly?: boolean;
   onItemClick?: (item: WeeklyCalendarItem) => void;
   onReschedule?: (item: WeeklyCalendarItem, start: Date, end: Date) => void;
-  onAssignDay?: (item: WeeklyCalendarItem, day: Date) => void;
+  onAssignDay?: (
+    item: WeeklyCalendarItem,
+    day: Date,
+    target: "unscheduled" | "all-day"
+  ) => void;
   onConflictCountChange?: (count: number) => void;
   initialWeekStart?: Date;
 }
@@ -81,6 +87,10 @@ export function WeekCalendar({
   const gridHeight = GRID_HEIGHT;
 
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
+  const dayKeys = useMemo(
+    () => weekDays.map((day) => format(day, "yyyy-MM-dd")),
+    [weekDays]
+  );
   const daysByKey = useMemo(() => {
     const map = new Map<string, Date>();
     weekDays.forEach((day) => map.set(format(day, "yyyy-MM-dd"), day));
@@ -146,17 +156,25 @@ export function WeekCalendar({
     setExpandedDayKey(null);
   }, [weekStart]);
 
-  const gridTemplateColumns = useMemo(() => {
+  const allDayItemsInWeek = useMemo(() => {
+    const firstKey = dayKeys[0];
+    const lastKey = dayKeys[dayKeys.length - 1];
+    return items.filter(
+      (item) =>
+        isAllDayItem(item) && item.startDate! <= lastKey && item.endDate! >= firstKey
+    );
+  }, [items, dayKeys]);
+
+  const dayTracks = useMemo(() => {
     if (!expandedDayKey) {
-      return `${TIME_COL_WIDTH}px repeat(7, minmax(0, 1fr))`;
+      return "repeat(7, minmax(0, 1fr))";
     }
-    const tracks = weekDays
-      .map((day) =>
-        format(day, "yyyy-MM-dd") === expandedDayKey ? "2.5fr" : "0.4fr"
-      )
+    return dayKeys
+      .map((dayKey) => (dayKey === expandedDayKey ? "2.5fr" : "0.4fr"))
       .join(" ");
-    return `${TIME_COL_WIDTH}px ${tracks}`;
-  }, [expandedDayKey, weekDays]);
+  }, [expandedDayKey, dayKeys]);
+
+  const gridTemplateColumns = `${TIME_COL_WIDTH}px ${dayTracks}`;
 
   const handleHeaderClick = useCallback((dayKey: string) => {
     setExpandedDayKey((current) => (current === dayKey ? null : dayKey));
@@ -353,6 +371,28 @@ export function WeekCalendar({
                 </button>
               );
             })}
+
+            {/* Fascia giornaliera: intervalli multi-giorno e scadenze */}
+            {allDayItemsInWeek.length > 0 && (
+              <>
+                <div className="flex items-start justify-end border-b border-border/60 bg-card px-1 py-1.5 text-right text-caption font-medium text-muted-foreground">
+                  Giorno
+                </div>
+                <div
+                  className="border-b border-border/60 bg-muted/10"
+                  style={{ gridColumn: "2 / -1" }}
+                >
+                  <AllDayBand
+                    items={allDayItemsInWeek}
+                    dayKeys={dayKeys}
+                    dayTracks={dayTracks}
+                    droppable={!readOnly}
+                    draggable={!readOnly}
+                    onItemClick={onItemClick}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Riga "Orario da assegnare" */}
             <div className="flex items-start justify-end border-b border-border/60 bg-card px-1 py-1 text-right text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
