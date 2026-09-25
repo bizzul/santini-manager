@@ -266,6 +266,11 @@ export function WeekCalendar({
   const gridTemplateColumns = isCompact
     ? dayTracks
     : `${TIME_COL_WIDTH}px ${dayTracks}`;
+  // Settimana compatta: le colonne-giorno riempiono l'altezza visibile, cosi'
+  // tutta l'area sotto le card resta un drop target.
+  const gridTemplateRows = isCompact
+    ? `auto ${allDayItemsInWeek.length > 0 ? "auto " : ""}minmax(24rem, 1fr)`
+    : undefined;
 
   const isMiniDay = useCallback(
     (dayKey: string, index: number) =>
@@ -388,8 +393,11 @@ export function WeekCalendar({
   const weekGrid = (
     <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border/60 bg-card">
       <div
-        className="grid min-w-[760px] motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out"
-        style={{ gridTemplateColumns }}
+        className={cn(
+          "grid min-w-[760px] motion-safe:transition-[grid-template-columns] motion-safe:duration-300 motion-safe:ease-in-out",
+          isCompact && "min-h-full"
+        )}
+        style={{ gridTemplateColumns, gridTemplateRows }}
       >
         {/* Riga header giorni */}
         {!isCompact && (

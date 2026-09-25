@@ -133,11 +133,11 @@ export function AllDayEventBar({
         transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0.4 : undefined,
         touchAction: canDrag ? "none" : undefined,
-        borderLeftColor: continuesBefore ? undefined : item.color || "#64748b",
+        borderLeftColor: item.color || "#64748b",
       }}
       className={cn(
-        "flex h-7 min-w-0 items-center gap-1.5 overflow-hidden border border-border bg-card px-1.5 text-caption text-card-foreground shadow-card",
-        continuesBefore ? "rounded-l-none border-l-0" : "rounded-l-control border-l-[3px]",
+        "flex h-7 min-w-0 items-center gap-1.5 overflow-hidden border border-l-[3px] border-border bg-card px-1.5 text-caption text-card-foreground shadow-card",
+        continuesBefore ? "rounded-l-none" : "rounded-l-control",
         continuesAfter ? "rounded-r-none border-r-0" : "rounded-r-control",
         canDrag ? "cursor-grab active:cursor-grabbing" : onClick && "cursor-pointer",
         className

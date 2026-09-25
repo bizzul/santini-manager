@@ -39,7 +39,7 @@ export function CompactDayColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-96 border-l border-border/60 transition-colors",
+        "border-l border-border/60 transition-colors",
         isMini ? "space-y-1 px-0.5 py-1" : "space-y-1.5 p-1.5",
         isToday && "bg-primary/5",
         isOver && "bg-primary/10 ring-1 ring-inset ring-primary/40"
@@ -57,13 +57,16 @@ export function CompactDayColumn({
             onClick={onItemClick ? () => onItemClick(item) : undefined}
           />
         ) : (
-          <EventCard
-            key={item.id}
-            item={item}
-            variant="split"
-            draggable={draggable}
-            onClick={onItemClick ? () => onItemClick(item) : undefined}
-          />
+          // Wrapper ad altezza naturale: la colonna e' stirata dalla griglia e
+          // `h-full` della card la riempirebbe tutta.
+          <div key={item.id}>
+            <EventCard
+              item={item}
+              variant="split"
+              draggable={draggable}
+              onClick={onItemClick ? () => onItemClick(item) : undefined}
+            />
+          </div>
         )
       )}
     </div>
