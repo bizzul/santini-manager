@@ -462,6 +462,7 @@ export function WeekCalendar({
                 dayTracks={dayTracks}
                 droppable={!readOnly && !isCompact}
                 draggable={!readOnly}
+                showStatus={v2}
                 onItemClick={onItemClick}
               />
             </div>

@@ -8,6 +8,7 @@ import { requireServerSiteContext } from "@/lib/server-data";
 import { PageLayout, PageContent } from "@/components/page-layout";
 import {
   fetchFinalColumnIds,
+  applyAssignedCollaborators,
   isCalendarV2Enabled,
 } from "@/lib/calendar/calendar-page-data";
 
@@ -15,6 +16,7 @@ export interface KanbanCategory {
   id: number;
   name: string;
   identifier: string;
+  color?: string | null;
 }
 
 export type TaskWithKanban = Task & {
@@ -82,7 +84,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   // Use left join (no !) so kanbans without category are still included
   const { data: productionKanbans, error: kanbanError } = await supabase
     .from("Kanban")
-    .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory(id, name, identifier)")
+    .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory(id, name, identifier, color)")
     .eq("site_id", siteId);
   
   if (kanbanError) {
@@ -247,7 +249,10 @@ async function Page({
 
   //get initial data filtered by siteId
   const calendarV2 = await isCalendarV2Enabled(siteId);
-  const data = await getData(siteId);
+  const baseData = await getData(siteId);
+  const data = calendarV2
+    ? await applyAssignedCollaborators(baseData, "production")
+    : baseData;
 
   return (
     <PageLayout width="full">

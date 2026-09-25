@@ -32,6 +32,7 @@ import {
   buildCalendarProjectEditHref,
   buildDateOnlyPayload,
   buildSchedulePayload,
+  getCategoryLegend,
   getStatusLegend,
   parseDateValue,
   type ProjectCalendarType,
@@ -305,7 +306,10 @@ export function ProjectSchedulerCalendar({
   );
 
   const events = useMemo(() => itemsToEvents(calendarItems), [calendarItems]);
-  const legendItems = useMemo(() => getStatusLegend(calendarItems), [calendarItems]);
+  const legendItems = useMemo(
+    () => (calendarV2 ? getCategoryLegend(calendarItems) : getStatusLegend(calendarItems)),
+    [calendarItems, calendarV2]
+  );
 
   const persistSchedule = useCallback(
     async (

@@ -32,6 +32,7 @@ interface AllDayBandProps {
   /** Registra ogni giorno come drop target "giorno intero". */
   droppable?: boolean;
   draggable?: boolean;
+  showStatus?: boolean;
   onItemClick?: (item: WeeklyCalendarItem) => void;
 }
 
@@ -42,6 +43,7 @@ export function AllDayBand({
   dayTracks,
   droppable = false,
   draggable = false,
+  showStatus = false,
   onItemClick,
 }: AllDayBandProps) {
   const { segments, laneCount } = useMemo(
@@ -77,6 +79,7 @@ export function AllDayBand({
             continuesAfter={segment.continuesAfter}
             firstVisibleDayKey={segment.firstVisibleDayKey}
             draggable={draggable}
+            showStatus={showStatus}
             onClick={onItemClick ? () => onItemClick(segment.item) : undefined}
           />
         </div>

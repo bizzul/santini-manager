@@ -6,12 +6,16 @@ import { getUserContext } from "@/lib/auth-utils";
 import { redirect } from "next/navigation";
 import { requireServerSiteContext } from "@/lib/server-data";
 import { PageLayout, PageContent } from "@/components/page-layout";
-import { isCalendarV2Enabled } from "@/lib/calendar/calendar-page-data";
+import {
+  applyAssignedCollaborators,
+  isCalendarV2Enabled,
+} from "@/lib/calendar/calendar-page-data";
 
 export interface KanbanCategory {
   id: number;
   name: string;
   identifier: string;
+  color?: string | null;
 }
 
 export type TaskWithKanban = Task & {
@@ -64,7 +68,7 @@ async function getData(siteId: string): Promise<TaskWithKanban[]> {
   if (kanbanIds.length > 0) {
     const { data: kanbans, error: kanbansError } = await supabase
       .from("Kanban")
-      .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory(id, name, identifier)")
+      .select("id, color, title, identifier, is_production_kanban, category_id, category:KanbanCategory(id, name, identifier, color)")
       .in("id", kanbanIds);
     
     if (!kanbansError && kanbans) {
@@ -143,7 +147,10 @@ async function Page({
   const { siteId } = siteContext;
 
   const calendarV2 = await isCalendarV2Enabled(siteId);
-  const data = await getData(siteId);
+  const baseData = await getData(siteId);
+  const data = calendarV2
+    ? await applyAssignedCollaborators(baseData, "service")
+    : baseData;
 
   return (
     <PageLayout width="full">

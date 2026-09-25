@@ -150,6 +150,10 @@ type ProjectTaskSource = {
   Kanban?: {
     color?: string | null;
     title?: string | null;
+    category?: {
+      name?: string | null;
+      color?: string | null;
+    } | null;
   } | null;
   column?: {
     title?: string | null;
@@ -633,6 +637,16 @@ function getTaskAccentColor(task: ProjectTaskSource): string {
 export interface BuildProjectCalendarItemsOptions {
   /** Riferimento per il chip "In ritardo"; default: adesso. */
   today?: Date;
+  /** Calendario v2: colore del filo = colore della categoria Kanban. */
+  v2?: boolean;
+}
+
+const NEUTRAL_ACCENT_COLOR = "#64748b";
+
+function getKanbanCategory(task: ProjectTaskSource): WeeklyCalendarItem["kanbanCategory"] {
+  const category = task.Kanban?.category;
+  if (!category?.name) return null;
+  return { name: category.name, color: category.color || null };
 }
 
 function getItemSchedule(event: CalendarPhaseEvent): {
@@ -666,6 +680,7 @@ export function buildProjectCalendarItems(
     }
 
     const { startDatetime, endDatetime, scheduleDisplay } = getItemSchedule(event);
+    const kanbanCategory = getKanbanCategory(task);
     const clientName = getProjectClientName(task);
     const objectName = getProjectObjectName(task);
     const status = task.column?.title || task.status || "Programmato";
@@ -698,7 +713,9 @@ export function buildProjectCalendarItems(
         task.Kanban?.title ||
         null,
       activityType: task.Kanban?.title || "Progetto",
-      color: getTaskAccentColor(task),
+      color: options.v2
+        ? kanbanCategory?.color || NEUTRAL_ACCENT_COLOR
+        : getTaskAccentColor(task),
       linkType: "project",
       detailHref: `/sites/${domain}/progetti/${task.id}`,
       secondaryHref: `/sites/${domain}/projects?edit=${task.id}`,
@@ -719,6 +736,7 @@ export function buildProjectCalendarItems(
       timeEnd: event.oraFine,
       missingDate: event.missingDate,
       isLate: event.inRitardo,
+      kanbanCategory,
     });
   });
 
@@ -1379,6 +1397,19 @@ export function getStatusLegend(items: WeeklyCalendarItem[]): Array<{
     label,
     color,
   }));
+}
+
+/** Legenda del calendario v2: una voce per categoria Kanban. */
+export function getCategoryLegend(items: WeeklyCalendarItem[]): Array<{
+  label: string;
+  color: string;
+}> {
+  const legend = new Map<string, string>();
+  items.forEach((item) => {
+    if (!item.kanbanCategory) return;
+    legend.set(item.kanbanCategory.name, item.kanbanCategory.color || NEUTRAL_ACCENT_COLOR);
+  });
+  return Array.from(legend.entries()).map(([label, color]) => ({ label, color }));
 }
 
 export function isTodayInWeek(day: Date): boolean {

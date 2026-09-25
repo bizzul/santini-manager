@@ -22,6 +22,8 @@ interface AllDayEventBarProps {
   firstVisibleDayKey?: string;
   /** False dove il primo giorno visibile non e' noto (vista Mese): mostra "N g". */
   showDayProgress?: boolean;
+  /** Calendario v2: stato (colonna Kanban) come chip neutro. */
+  showStatus?: boolean;
   draggable?: boolean;
   onClick?: () => void;
   className?: string;
@@ -83,6 +85,7 @@ export function AllDayEventBar({
   continuesAfter = false,
   firstVisibleDayKey,
   showDayProgress = true,
+  showStatus = false,
   draggable = false,
   onClick,
   className,
@@ -175,6 +178,11 @@ export function AllDayEventBar({
       {progress && (
         <span className="shrink-0 rounded-sm bg-muted px-1 font-medium tabular-nums text-muted-foreground">
           {progress}
+        </span>
+      )}
+      {showStatus && item.status && !isDeadline && (
+        <span className="max-w-24 shrink-0 truncate rounded-sm bg-muted px-1 font-medium text-muted-foreground">
+          {item.status}
         </span>
       )}
       {item.isLate && (

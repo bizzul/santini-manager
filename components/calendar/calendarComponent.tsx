@@ -15,6 +15,7 @@ export interface KanbanCategory {
   id: number;
   name: string;
   identifier: string;
+  color?: string | null;
 }
 
 export type TaskWithKanban = Task & {
@@ -163,8 +164,10 @@ export default function CalendarComponent({
     if (!effectiveDomain) {
       return [];
     }
-    return buildProjectCalendarItems(filteredTasks, effectiveDomain, displayCalendarType);
-  }, [displayCalendarType, effectiveDomain, filteredTasks]);
+    return buildProjectCalendarItems(filteredTasks, effectiveDomain, displayCalendarType, {
+      v2: calendarV2,
+    });
+  }, [calendarV2, displayCalendarType, effectiveDomain, filteredTasks]);
 
   const taskToEdit = useMemo(() => {
     if (!editTaskId) {

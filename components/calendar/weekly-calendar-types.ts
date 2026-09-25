@@ -55,6 +55,8 @@ export interface WeeklyCalendarItem {
   timeEnd?: string | null;
   missingDate?: boolean;
   isLate?: boolean;
+  /** Categoria Kanban del progetto (fonte del colore nel calendario v2). */
+  kanbanCategory?: { name: string; color: string | null } | null;
 }
 
 export interface WeeklyCalendarTimetrackingEntry extends Timetracking {
