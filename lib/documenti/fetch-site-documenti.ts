@@ -7,7 +7,7 @@ const RIGHE_SELECT_BASE = `
 const OPTIONAL_RIGA_COLUMNS = ["immagine_url", "descrizione_estesa"] as const;
 
 const DOC_SELECT_HEAD = `
-  id, tipo_documento, numero, oggetto, status, totale_chf, created_at,
+  id, tipo_documento, numero, oggetto, status, tot_netto, iva, totale_chf, created_at,
   destinatario, corpo_testo, pdf_url, condizioni_pagamento, termine_fornitura,
   note, cliente_id, task_id, allegati,`;
 

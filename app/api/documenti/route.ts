@@ -101,7 +101,22 @@ export async function POST(req: NextRequest) {
     let offerCode: string | null = null;
     let offerCreated = false;
 
-    if (shouldCreateOfferTaskForDocument(documento, resolvedTaskId)) {
+    // In modifica di un documento esistente non si crea mai una nuova card:
+    // si mantiene il collegamento gia' presente.
+    if (documentoId && resolvedTaskId == null) {
+      const { data: existing } = await serviceClient
+        .from("documenti")
+        .select("task_id")
+        .eq("id", documentoId)
+        .eq("site_id", siteId)
+        .maybeSingle();
+      resolvedTaskId = existing?.task_id ?? null;
+    }
+
+    if (
+      !documentoId &&
+      shouldCreateOfferTaskForDocument(documento, resolvedTaskId)
+    ) {
       const offerTask = await createOfferTaskFromDocument(
         serviceClient,
         siteId,

@@ -5,6 +5,7 @@ import {
   setSequenceCurrentValue,
 } from "@/lib/code-generator";
 import { createProjectFolders } from "@/lib/project-folders";
+import { calcolaTotaliDocumento } from "@/lib/documenti/calcolo-totali";
 import type { DocumentoArricchito } from "@/validation/documenti/extracted-document";
 
 export class OfferKanbanNotConfiguredError extends Error {
@@ -42,6 +43,23 @@ export function offerNameFromDocument(documento: DocumentoArricchito): string {
     return prefixMatch[1].trim();
   }
   return oggetto || "Nuova offerta";
+}
+
+/**
+ * Valore dell'offerta per la card kanban (`Task.sellPrice`).
+ * Usa i totali del documento se presenti; altrimenti li ricalcola dalle righe
+ * (la route di salvataggio scarta `totali` inviati dal client).
+ * Nota: oggi preferisce il totale IVA inclusa (comportamento storico).
+ */
+export function offerSellPriceFromDocument(
+  documento: DocumentoArricchito,
+): number {
+  const totali =
+    documento.totali ??
+    (documento.righe?.length
+      ? calcolaTotaliDocumento(documento.righe, documento.tipoDocumento)
+      : undefined);
+  return totali?.totaleCHF ?? totali?.totNetto ?? 0;
 }
 
 function buildOfferOtherNotes(documento: DocumentoArricchito): string {
@@ -121,8 +139,7 @@ export async function createOfferTaskFromDocument(
   const kanban = await resolveOfferKanban(supabase, siteId);
   const column = await resolveFirstKanbanColumn(supabase, kanban.id);
   const clientId = documento.destinatario.clienteId!;
-  const sellPrice =
-    documento.totali?.totaleCHF ?? documento.totali?.totNetto ?? 0;
+  const sellPrice = offerSellPriceFromDocument(documento);
 
   const maxRetries = 6;
   let retryCount = 0;

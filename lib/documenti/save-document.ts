@@ -102,6 +102,11 @@ export async function saveDocumento(
     status,
   };
 
+  // In aggiornamento senza taskId esplicito non si azzera il collegamento.
+  if (options?.documentoId && options.taskId == null) {
+    delete (payload as { task_id?: number | null }).task_id;
+  }
+
   let savedRow: { id: string; numero: string | null; anno: number | null };
 
   if (options?.documentoId) {

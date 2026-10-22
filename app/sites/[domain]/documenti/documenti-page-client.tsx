@@ -74,6 +74,9 @@ export interface DocumentoListItem {
   numero: string | null;
   oggetto: string | null;
   status: string;
+  task_id?: number | null;
+  tot_netto?: number | null;
+  iva?: number | null;
   totale_chf: number | null;
   created_at: string;
   corpo_testo: string | null;
@@ -132,8 +135,11 @@ function dbToDocumentoArricchito(doc: DocumentoListItem): DocumentoArricchito {
   const totali =
     doc.totale_chf != null && isCommercialType(doc.tipo_documento)
       ? {
-          totNetto: righe.reduce((s, r) => s + (r.totaleRiga ?? 0), 0),
-          iva: 0,
+          totNetto:
+            doc.tot_netto != null
+              ? Number(doc.tot_netto)
+              : righe.reduce((s, r) => s + (r.totaleRiga ?? 0), 0),
+          iva: doc.iva != null ? Number(doc.iva) : 0,
           totaleCHF: Number(doc.totale_chf),
         }
       : undefined;
@@ -233,6 +239,7 @@ export function DocumentiPageClient({
   const handleEdit = (doc: DocumentoListItem) => {
     setDocumentoGenerato(dbToDocumentoArricchito(doc));
     setEditingDocumentoId(doc.id);
+    setLinkedTaskId(doc.task_id ?? null);
     setSourceText("");
     setStep("review");
   };
