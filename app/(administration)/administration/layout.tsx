@@ -8,7 +8,9 @@ import Image from "next/image";
 import { Home, LogOut, Settings } from "lucide-react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { LogoutLink } from "@/components/auth/logout-link";
 import { isManagerOfManagersEnabled } from "@/lib/manager-projects/flag";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 
 // Force dynamic rendering to prevent static generation errors with cookies
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ async function ImpersonationBanner({
   originalSuperadminId: string;
 }) {
   const handleLeave = async () => {
+    markPendingTabAuthChange(window.sessionStorage);
     await fetch("/api/auth/stop-impersonation", { method: "POST" });
     window.location.reload();
   };
@@ -88,12 +91,12 @@ export default async function AdministrationLayout({
                     </span>
                   </div>
                 )}
-                <Link href="/logout">
+                <LogoutLink>
                   <Button variant="outline" size="sm">
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </Button>
-                </Link>
+                </LogoutLink>
               </div>
             </header>
             <div className={isImpersonating ? "pt-12" : ""}>{children}</div>
@@ -149,7 +152,7 @@ export default async function AdministrationLayout({
                 </div>
               )}
 
-              <Link href="/logout">
+              <LogoutLink>
                 <Button
                   variant="outline"
                   className="border-2 border-white/40 text-white hover:bg-red-500/30 hover:border-red-400 hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 font-semibold"
@@ -157,7 +160,7 @@ export default async function AdministrationLayout({
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </Button>
-              </Link>
+              </LogoutLink>
             </div>
           </div>
         </div>

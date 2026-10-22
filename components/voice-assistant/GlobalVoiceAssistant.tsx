@@ -39,6 +39,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
+import { readApiJson } from "@/utils/api/read-api-json";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
@@ -212,20 +213,6 @@ function createExecutionMessage(
     return "Comando eseguito correttamente.";
 }
 
-function formatApiErrorMessage(payload: any, fallback: string) {
-    const details = Array.isArray(payload?.details)
-        ? payload.details
-              .map((detail: { message?: string; path?: Array<string | number> }) => {
-                  const path = Array.isArray(detail?.path) ? detail.path.join(".") : "";
-                  return path ? `${path}: ${detail.message}` : detail?.message;
-              })
-              .filter(Boolean)
-              .join(", ")
-        : null;
-
-    return payload?.message || payload?.error || details || fallback;
-}
-
 function formatIntentLabel(intent: CommandIntent) {
     return intent === "unknown"
         ? "azione non riconosciuta"
@@ -384,7 +371,11 @@ export function GlobalVoiceAssistant() {
         setSettingsLoading(true);
 
         fetch(`/api/sites/${domain}/ai-settings`)
-            .then((response) => response.json())
+            .then((response) => readApiJson<{
+                speechProvider?: "web-speech" | "whisper";
+                hasAiApiKey?: boolean;
+                hasWhisperApiKey?: boolean;
+            }>(response))
             .then((data) => {
                 if (cancelled) return;
 
@@ -467,9 +458,13 @@ export function GlobalVoiceAssistant() {
                         method: "POST",
                         body: formData,
                     });
-                    const data = await response.json();
+                    const data = await readApiJson<{
+                        error?: string;
+                        message?: string;
+                        transcript?: string;
+                    }>(response);
 
-                    if (!response.ok) {
+                    if (data?.error) {
                         throw new Error(
                             data.error || data.message || "Errore di trascrizione"
                         );
@@ -675,16 +670,7 @@ export function GlobalVoiceAssistant() {
                         },
                     }),
                 });
-                const parsed = await parseResponse.json().catch(() => null);
-
-                if (!parseResponse.ok) {
-                    throw new Error(
-                        formatApiErrorMessage(
-                            parsed,
-                            `Errore durante l'analisi dell'azione ${index + 1}.`
-                        )
-                    );
-                }
+                const parsed = await readApiJson<SingleCommandResult>(parseResponse);
 
                 return {
                     id: `command-${index + 1}`,
@@ -828,19 +814,19 @@ export function GlobalVoiceAssistant() {
                     },
                     body: JSON.stringify(command.operation!.body),
                 });
-                const executePayload = await executeResponse.json().catch(() => null);
-
-                if (!executeResponse.ok) {
+                let executePayload: Record<string, any> | null = null;
+                try {
+                    executePayload = await readApiJson<Record<string, any>>(executeResponse);
+                } catch (error) {
                     errorCount += 1;
 
                     setCommandExecutionStates((previous) => ({
                         ...previous,
                         [command.id]: {
                             status: "error",
-                            message: formatApiErrorMessage(
-                                executePayload,
-                                "Errore durante l'esecuzione del comando"
-                            ),
+                            message: error instanceof Error
+                                ? error.message
+                                : "Errore durante l'esecuzione del comando",
                         },
                     }));
                     continue;

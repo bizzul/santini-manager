@@ -38,6 +38,7 @@ import { DebouncedInput } from "@/components/debouncedInput";
 import { DataTableRowActions } from "./data-table-row-actions";
 import { Briefcase, Loader2, Plus, Trash2, Wrench } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { readApiJson } from "@/utils/api/read-api-json";
 import { useRouter } from "next/navigation";
 import { createItem } from "./actions/create-item.action";
 import { SearchSelect } from "@/components/ui/search-select";
@@ -220,9 +221,7 @@ export function DataTable<TData, TValue>({
         body: JSON.stringify({ ids: selectedIds }),
       });
 
-      if (!response.ok) {
-        throw new Error("Errore durante l'eliminazione");
-      }
+      await readApiJson(response);
 
       toast({
         description: `${selectedIds.length} registrazion${
@@ -236,7 +235,9 @@ export function DataTable<TData, TValue>({
     } catch (error) {
       console.error("Error deleting entries:", error);
       toast({
-        description: "Errore durante l'eliminazione. Riprova.",
+        description: error instanceof Error
+          ? error.message
+          : "Errore durante l'eliminazione. Riprova.",
         variant: "destructive",
       });
     } finally {
@@ -622,14 +623,14 @@ function QuickCreateTimetrackingRow({
       setLoadingUserRoles(true);
       try {
         const response = await fetch(`/api/users/${form.userId}/assigned-roles`);
-        const data = await response.json();
+        const data = await readApiJson<{ error?: string; assignedRoles?: Array<{ roleId: string; roleName: string }> }>(response);
 
-        if (data.error) {
+        if (data?.error) {
           throw new Error(data.error);
         }
 
         const assignedRoles =
-          data.assignedRoles?.map((role: any) => ({
+          data?.assignedRoles?.map((role: any) => ({
             id: String(role.roleId),
             name: role.roleName,
           })) || [];

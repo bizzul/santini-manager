@@ -16,6 +16,10 @@ import {
 } from "@/components/ui/dialog";
 import { quickSignIn } from "./actions";
 import type { QuickLoginUser } from "./data";
+import {
+  clearPendingTabAuthChange,
+  markPendingTabAuthChange,
+} from "@/utils/supabase/tab-auth-storage";
 
 const GUIDE_PENDING_LOGIN_KEY = "santini-manager-guide-pending-login";
 
@@ -52,6 +56,7 @@ export function QuickLoginClient({
     e.preventDefault();
     if (!selected) return;
     setError(null);
+    markPendingTabAuthChange(window.sessionStorage);
 
     try {
       window.sessionStorage.setItem(GUIDE_PENDING_LOGIN_KEY, "1");
@@ -63,6 +68,7 @@ export function QuickLoginClient({
       try {
         const result = await quickSignIn(domain, selected.id, password);
         if (result && "error" in result) {
+          clearPendingTabAuthChange(window.sessionStorage);
           try {
             window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
           } catch {
@@ -75,6 +81,7 @@ export function QuickLoginClient({
         if (errorMessage.includes("NEXT_REDIRECT")) {
           throw err; // Re-throw to allow Next.js to handle the redirect
         }
+        clearPendingTabAuthChange(window.sessionStorage);
         try {
           window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
         } catch {

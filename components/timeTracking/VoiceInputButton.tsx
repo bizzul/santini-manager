@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { readApiJson } from "@/utils/api/read-api-json";
 import type { ExtractedTimetracking } from "@/validation/voice-input/extracted-timetracking";
 
 interface InternalActivity {
@@ -71,7 +72,7 @@ export function VoiceInputButton({
   useEffect(() => {
     if (open && domain) {
       fetch(`/api/sites/${domain}/ai-settings`)
-        .then((res) => res.json())
+        .then((res) => readApiJson<SiteAiSettings & { speechProvider?: SpeechProvider }>(res))
         .then((data) => {
           setSiteSettings({
             speechProvider: data.speechProvider || "web-speech",
@@ -135,9 +136,12 @@ export function VoiceInputButton({
           formData.append("audio", blob, "audio.webm");
           formData.append("siteId", siteId);
           const res = await fetch("/api/voice-input/transcribe", { method: "POST", body: formData });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || "Errore trascrizione");
-          if (data.transcript) setTranscript((prev) => (prev ? `${prev} ${data.transcript}` : data.transcript));
+          const data = await readApiJson<{ error?: string; transcript?: string }>(res);
+          if (data?.error) throw new Error(data.error);
+          const transcriptText = data?.transcript;
+          if (transcriptText) {
+            setTranscript((prev) => (prev ? `${prev} ${transcriptText}` : transcriptText));
+          }
         } catch (err) {
           setError(err instanceof Error ? err.message : "Errore trascrizione");
         } finally {
@@ -193,8 +197,8 @@ export function VoiceInputButton({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript, siteId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Errore estrazione");
+      const data = await readApiJson<{ error?: string; registrazione: ExtractedTimetracking }>(res);
+      if (data?.error) throw new Error(data.error);
       const reg: ExtractedTimetracking = data.registrazione;
       const norm = (s: string) => (s || "").replace(/\s+/g, "-").toLowerCase();
       const projectCodeNorm = norm(reg.projectCode || "");

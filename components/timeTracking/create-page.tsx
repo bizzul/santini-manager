@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "../ui/use-toast";
+import { readApiJson } from "@/utils/api/read-api-json";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -233,9 +234,7 @@ const CreatePage = ({
         body: JSON.stringify({ ids: Array.from(selectedEntries) }),
       });
 
-      if (!response.ok) {
-        throw new Error("Errore durante l'eliminazione");
-      }
+      await readApiJson(response);
 
       toast({
         description: `${selectedEntries.size} registrazion${
@@ -635,9 +634,9 @@ const CreatePage = ({
         body: JSON.stringify(cleanedRows),
       });
 
-      const responseData = await response.json();
+      const responseData = await readApiJson<{ error?: string; details?: string }>(response);
 
-      if (!response.ok || responseData.error) {
+      if (responseData?.error) {
         console.error("API Error:", responseData);
         throw new Error(
           responseData.error || responseData.details || "Errore sconosciuto"
@@ -684,9 +683,7 @@ const CreatePage = ({
       body: JSON.stringify({ ids }),
     });
 
-    if (!response.ok) {
-      throw new Error("Errore durante l'eliminazione");
-    }
+    await readApiJson(response);
 
     // Reload page to refresh data
     window.location.reload();

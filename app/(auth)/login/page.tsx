@@ -9,6 +9,10 @@ import Image from "next/image";
 import { LogIn, UserX } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { sanitizeInternalNextPath } from "@/lib/pwa/home-mode";
+import {
+  clearPendingTabAuthChange,
+  markPendingTabAuthChange,
+} from "@/utils/supabase/tab-auth-storage";
 
 const GUIDE_PENDING_LOGIN_KEY = "santini-manager-guide-pending-login";
 
@@ -30,6 +34,7 @@ function LoginContent() {
 
   const handleSubmit = async (formData: FormData) => {
     setError(null);
+    markPendingTabAuthChange(window.sessionStorage);
     try {
       window.sessionStorage.setItem(GUIDE_PENDING_LOGIN_KEY, "1");
     } catch {
@@ -40,6 +45,7 @@ function LoginContent() {
       try {
         const result = await signIn(formData);
         if (result && "error" in result) {
+          clearPendingTabAuthChange(window.sessionStorage);
           try {
             window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
           } catch {
@@ -53,6 +59,7 @@ function LoginContent() {
         if (errorMessage.includes("NEXT_REDIRECT")) {
           throw err; // Re-throw to allow Next.js to handle the redirect
         }
+        clearPendingTabAuthChange(window.sessionStorage);
         try {
           window.sessionStorage.removeItem(GUIDE_PENDING_LOGIN_KEY);
         } catch {

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE_OPTIONS } from "./cookie";
+import { isApiClientRequest } from "./api-client-request";
 import { sanitizeInternalNextPath } from "@/lib/pwa/home-mode";
 
 // Use consistent environment variables with fallback
@@ -126,11 +127,20 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (!resolvedUser && !isPublic) {
-    // Log for debugging
-    console.log("[Middleware] No user found, redirecting to login. Path:", pathname);
+    console.log("[Middleware] No user found. Path:", pathname);
     console.log("[Middleware] Cookies present:", request.cookies.getAll().map(c => c.name).join(", "));
-    
-    // no user, redirect to login page
+
+    // Fetch callers need JSON. A document navigation still goes to /login.
+    if (isApiClientRequest(pathname, request.headers)) {
+      const response = NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        response.cookies.set(cookie.name, cookie.value, {
+          ...cookie,
+        });
+      });
+      return response;
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

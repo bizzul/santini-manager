@@ -1,10 +1,53 @@
 import { createChunks, stringFromBase64URL, stringToBase64URL } from "@supabase/ssr";
+
+if (typeof globalThis.Response === "undefined") {
+  class TestResponse {
+    status: number;
+    ok: boolean;
+    redirected = false;
+    url = "";
+    private body: string;
+    private headerMap: Map<string, string>;
+
+    constructor(body?: BodyInit | null, init?: { status?: number; headers?: Record<string, string> }) {
+      this.body = typeof body === "string" ? body : "";
+      this.status = init?.status ?? 200;
+      this.ok = this.status >= 200 && this.status < 300;
+      this.headerMap = new Map(
+        Object.entries(init?.headers ?? {}).map(([key, value]) => [key.toLowerCase(), value]),
+      );
+    }
+
+    get headers() {
+      return { get: (name: string) => this.headerMap.get(name.toLowerCase()) ?? null };
+    }
+
+    text() {
+      return Promise.resolve(this.body);
+    }
+
+    json() {
+      return Promise.resolve(JSON.parse(this.body));
+    }
+
+    clone() {
+      return new TestResponse(this.body, {
+        status: this.status,
+        headers: Object.fromEntries(this.headerMap),
+      });
+    }
+  }
+
+  (globalThis as unknown as { Response: typeof TestResponse }).Response = TestResponse;
+}
 import {
   TAB_AUTH_JAR_STORAGE_KEY,
+  TAB_AUTH_PENDING_KEY,
   authStorageKeyFromSupabaseUrl,
   parseCookieHeader,
   planDocumentCookieWrites,
   planExpiredAuthCookies,
+  markPendingTabAuthChange,
   readTabAuthJar,
   reconcileDuringSession,
   reconcileTabAuthJar,
@@ -102,13 +145,14 @@ describe("tab auth storage", () => {
     });
     writeTabAuthJar(tabB, seededB);
 
-    // Tab B logs in as someone else. The server action overwrites the shared cookies.
+    // Tab B logs in as someone else. Only B's own login marker may adopt the new cookies.
     sharedCookies = cookiesForUser("user-b", "b1");
     const afterLoginB = reconcileTabAuthJar({
       jar: readTabAuthJar(tabB),
       documentCookies: sharedCookies,
       navType: "navigate",
       storageKey: STORAGE_KEY,
+      pendingOwnAuth: true,
     });
     writeTabAuthJar(tabB, afterLoginB);
 
@@ -143,13 +187,35 @@ describe("tab auth storage", () => {
     expect(tabA.snapshot()).not.toBe(tabB.snapshot());
   });
 
-  it("adopts a same-tab login and a same-tab logout", () => {
+  it("keeps tab A when an internal navigate sees another user's cookies", () => {
+    const jar = cookiesForUser("user-a");
+    const kept = reconcileTabAuthJar({
+      jar,
+      documentCookies: cookiesForUser("user-b"),
+      navType: "navigate",
+      storageKey: STORAGE_KEY,
+    });
+    const republish = planDocumentCookieWrites(
+      kept,
+      cookiesForUser("user-b"),
+      STORAGE_KEY,
+      ATTRIBUTES,
+    );
+
+    expect(userId(kept)).toBe("user-a");
+    expect(userId(parseCookieHeader(republish.map((write) => write.split(";")[0]).join("; ")))).toBe(
+      "user-a",
+    );
+  });
+
+  it("adopts a same-tab login and a same-tab logout only when this tab asked for it", () => {
     const jar = cookiesForUser("user-a");
     const loggedInAsB = reconcileTabAuthJar({
       jar,
       documentCookies: cookiesForUser("user-b"),
       navType: "navigate",
       storageKey: STORAGE_KEY,
+      pendingOwnAuth: true,
     });
     expect(userId(loggedInAsB)).toBe("user-b");
 
@@ -158,8 +224,17 @@ describe("tab auth storage", () => {
       documentCookies: [],
       navType: "navigate",
       storageKey: STORAGE_KEY,
+      pendingOwnAuth: true,
     });
     expect(loggedOut).toEqual([]);
+
+    const keptAfterOtherTabLogout = reconcileTabAuthJar({
+      jar: cookiesForUser("user-a"),
+      documentCookies: [],
+      navType: "navigate",
+      storageKey: STORAGE_KEY,
+    });
+    expect(userId(keptAfterOtherTabLogout)).toBe("user-a");
   });
 
   it("keeps the tab session when another tab clears cookies and this tab reloads", () => {
@@ -183,6 +258,37 @@ describe("tab auth storage", () => {
     expect(sessionJson(refreshed)).not.toContain("refresh-user-a-old");
   });
 
+  it("never clears the tab session while republishing over another user's cookies", () => {
+    const jar = cookiesForUser("user-a");
+    const documentCookies = cookiesForUser("user-b", "b1", 24);
+    expect(documentCookies.length).toBeGreaterThan(1);
+    expect(userId(documentCookies)).toBe("user-b");
+
+    const writes = planDocumentCookieWrites(jar, documentCookies, STORAGE_KEY, ATTRIBUTES);
+    const jarMap = new Map(documentCookies.map((cookie) => [cookie.name, cookie.value]));
+    let sawUserA = false;
+
+    for (const write of writes) {
+      const pair = write.split(";")[0];
+      const separator = pair.indexOf("=");
+      const name = decodeURIComponent(pair.slice(0, separator));
+      const value = decodeURIComponent(pair.slice(separator + 1));
+      if (/Max-Age=0/.test(write) || value.length === 0) jarMap.delete(name);
+      else jarMap.set(name, value);
+
+      const current = Array.from(jarMap, ([cookieName, cookieValue]) => ({
+        name: cookieName,
+        value: cookieValue,
+      }));
+      const id = userId(current);
+      expect(id).not.toBeNull();
+      if (sawUserA) expect(id).toBe("user-a");
+      if (id === "user-a") sawUserA = true;
+    }
+
+    expect(sawUserA).toBe(true);
+  });
+
   it("drops stale auth chunks and ignores unrelated cookies when republishing", () => {
     const jar = cookiesForUser("user-a");
     const documentCookies = [
@@ -204,6 +310,14 @@ describe("browser client tab session", () => {
   const supabaseUrl = "https://project.supabase.co";
   const storageKey = authStorageKeyFromSupabaseUrl(supabaseUrl);
   let duringFetch: (url: string) => void = () => {};
+  const trackedListeners: Array<{
+    target: EventTarget;
+    type: string;
+    listener: EventListenerOrEventListenerObject;
+    options?: boolean | AddEventListenerOptions;
+  }> = [];
+  const documentAdd = document.addEventListener.bind(document);
+  const windowAdd = window.addEventListener.bind(window);
 
   function namedCookies(userId: string, tokenSuffix: string): AuthCookie[] {
     return cookiesForUser(userId, tokenSuffix).map((cookie) => ({
@@ -225,6 +339,26 @@ describe("browser client tab session", () => {
   }
 
   beforeEach(() => {
+    for (const entry of trackedListeners) {
+      entry.target.removeEventListener(entry.type, entry.listener, entry.options);
+    }
+    trackedListeners.length = 0;
+    document.addEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
+      trackedListeners.push({ target: document, type, listener, options });
+      documentAdd(type, listener, options);
+    }) as typeof document.addEventListener;
+    window.addEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
+      trackedListeners.push({ target: window, type, listener, options });
+      windowAdd(type, listener, options);
+    }) as typeof window.addEventListener;
     sessionStorage.clear();
     localStorage.clear();
     clearCookies();
@@ -305,6 +439,93 @@ describe("browser client tab session", () => {
     await window.fetch("/logout");
     expect(readTabAuthJar(sessionStorage)).toEqual([]);
     expect(userIdFromAuthCookies(parseCookieHeader(document.cookie), storageKey)).toBeNull();
+
+    await supabase.auth.stopAutoRefresh();
+  });
+
+  it("an internal page load keeps user A and asks the server to render A again", async () => {
+    writeTabAuthJar(sessionStorage, namedCookies("user-a", "a1"));
+    assignCookies(namedCookies("user-b", "b1"));
+    const reload = jest.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { reload, href: realLocation.href },
+    });
+
+    const { createClient } = await import("@/utils/supabase/client");
+    const supabase = createClient();
+
+    expect(userIdFromAuthCookies(parseCookieHeader(document.cookie), storageKey)).toBe("user-a");
+    expect(userIdFromAuthCookies(readTabAuthJar(sessionStorage), storageKey)).toBe("user-a");
+    expect((await supabase.auth.getSession()).data.session?.user.id).toBe("user-a");
+    expect(reload).toHaveBeenCalledTimes(1);
+
+    Object.defineProperty(window, "location", { configurable: true, value: realLocation });
+    await supabase.auth.stopAutoRefresh();
+  });
+
+  it("adopts the document user on page load when this tab started the login", async () => {
+    writeTabAuthJar(sessionStorage, namedCookies("user-a", "a1"));
+    assignCookies(namedCookies("user-b", "b1"));
+    markPendingTabAuthChange(sessionStorage);
+    const reload = jest.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { reload, href: realLocation.href },
+    });
+
+    const { createClient } = await import("@/utils/supabase/client");
+    const supabase = createClient();
+
+    expect((await supabase.auth.getSession()).data.session?.user.id).toBe("user-b");
+    expect(sessionStorage.getItem(TAB_AUTH_PENDING_KEY)).toBeNull();
+    expect(reload).not.toHaveBeenCalled();
+
+    Object.defineProperty(window, "location", { configurable: true, value: realLocation });
+    await supabase.auth.stopAutoRefresh();
+  });
+
+  it("does not republish cookies while a request is in flight", async () => {
+    assignCookies(namedCookies("user-a", "a1"));
+    let release: (response: Response) => void = () => {};
+    const pending = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    window.fetch = jest.fn(() => pending) as typeof window.fetch;
+
+    const { createClient } = await import("@/utils/supabase/client");
+    const supabase = createClient();
+    const inflight = window.fetch("/api/time-tracking/create", { method: "POST" });
+
+    assignCookies(namedCookies("user-b", "b1"));
+    document.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(userIdFromAuthCookies(parseCookieHeader(document.cookie), storageKey)).toBe("user-b");
+
+    release(new Response("{}", { status: 200, headers: { "content-type": "application/json" } }));
+    await inflight;
+    expect(userIdFromAuthCookies(parseCookieHeader(document.cookie), storageKey)).toBe("user-a");
+    expect(userIdFromAuthCookies(readTabAuthJar(sessionStorage), storageKey)).toBe("user-a");
+
+    await supabase.auth.stopAutoRefresh();
+  });
+
+  it("turns an empty API redirect into a readable session error", async () => {
+    assignCookies(namedCookies("user-a", "a1"));
+    window.fetch = jest.fn(
+      async () => new Response(null, { status: 307, headers: { location: "/login" } }),
+    ) as typeof window.fetch;
+
+    const { createClient } = await import("@/utils/supabase/client");
+    const supabase = createClient();
+    const response = await window.fetch("/api/time-tracking/create", { method: "POST" });
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "Sessione scaduta, ricarica la pagina",
+      code: "unauthorized",
+    });
 
     await supabase.auth.stopAutoRefresh();
   });

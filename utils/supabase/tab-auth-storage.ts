@@ -10,6 +10,9 @@ import { stringFromBase64URL } from "@supabase/ssr";
  */
 export const TAB_AUTH_JAR_STORAGE_KEY = "fdm-tab-auth-jar";
 
+/** Set by this tab before login, logout, quick-login, or impersonation. */
+export const TAB_AUTH_PENDING_KEY = "fdm-tab-auth-pending-login";
+
 const BASE64_PREFIX = "base64-";
 
 export type AuthCookie = { name: string; value: string };
@@ -94,6 +97,33 @@ export function writeTabAuthJar(storage: TabAuthStorage, cookies: AuthCookie[]):
   storage.setItem(TAB_AUTH_JAR_STORAGE_KEY, JSON.stringify(cookies));
 }
 
+export function markPendingTabAuthChange(storage: TabAuthStorage): void {
+  try {
+    storage.setItem(TAB_AUTH_PENDING_KEY, "1");
+  } catch {
+    // sessionStorage can throw in private mode; login still has the fetch path.
+  }
+}
+
+export function clearPendingTabAuthChange(storage: TabAuthStorage): void {
+  try {
+    storage.removeItem(TAB_AUTH_PENDING_KEY);
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+/** Reads and removes the marker so a later internal navigation cannot reuse it. */
+export function consumePendingTabAuthChange(storage: TabAuthStorage): boolean {
+  try {
+    const pending = storage.getItem(TAB_AUTH_PENDING_KEY) === "1";
+    if (pending) storage.removeItem(TAB_AUTH_PENDING_KEY);
+    return pending;
+  } catch {
+    return false;
+  }
+}
+
 export function userIdFromAuthCookies(
   cookies: AuthCookie[],
   storageKey: string,
@@ -123,16 +153,20 @@ export function userIdFromAuthCookies(
  * Decide which session this tab keeps when the document loads.
  *
  * - Empty tab (new tab, or the process was killed): take the cookies. This is
- *   how a server-action login and a PWA cold start become a tab session.
+ *   how a PWA cold start becomes a tab session.
  * - Reload / back-forward: keep this tab's user even if another tab overwrote
  *   the shared cookies. Same-user cookie updates (token refresh) are kept.
- * - Navigate: a login or logout in THIS tab changed the cookies, so adopt them.
+ * - Navigate: keep this tab's user too. A click inside the app cannot be told
+ *   apart from another tab's login by the navigation type alone. Adopt the
+ *   document cookies only when this tab set the pending-auth marker before
+ *   starting login, logout, quick-login, or impersonation.
  */
 export function reconcileTabAuthJar(input: {
   jar: AuthCookie[];
   documentCookies: AuthCookie[];
   navType: TabNavigationType;
   storageKey: string;
+  pendingOwnAuth?: boolean;
 }): AuthCookie[] {
   const jarAuth = authCookies(input.jar, input.storageKey);
   const docAuth = authCookies(input.documentCookies, input.storageKey);
@@ -140,11 +174,13 @@ export function reconcileTabAuthJar(input: {
   const docUser = userIdFromAuthCookies(docAuth, input.storageKey);
   const tabKeepsSession =
     input.navType === "reload" || input.navType === "back_forward";
+  const adoptDocument =
+    input.pendingOwnAuth === true && !tabKeepsSession;
 
   if (!jarUser) return docAuth;
-  if (!docUser) return tabKeepsSession ? jarAuth : [];
+  if (!docUser) return adoptDocument ? [] : jarAuth;
   if (docUser === jarUser) return mergeSameUser(jarAuth, docAuth, input.storageKey);
-  return tabKeepsSession ? jarAuth : docAuth;
+  return adoptDocument ? docAuth : jarAuth;
 }
 
 /**
@@ -196,17 +232,27 @@ export function planDocumentCookieWrites(
   const jarNames = new Set(jarAuth.map((cookie) => cookie.name));
   const writes: string[] = [];
 
+  // Write this tab's cookies before expiring stale names. Deleting first leaves
+  // document.cookie with no readable session while sessionStorage still has
+  // the user, and an in-flight request can be sent in that gap.
+  for (const cookie of jarAuth) {
+    const current = docAuth.find((entry) => entry.name === cookie.name);
+    if (!current || current.value !== cookie.value) {
+      writes.push(serializeCookie(cookie.name, cookie.value, attributes));
+    }
+  }
+
   for (const cookie of docAuth) {
     if (!jarNames.has(cookie.name)) {
       writes.push(serializeCookie(cookie.name, "", { ...attributes, maxAge: 0 }));
     }
   }
 
-  for (const cookie of jarAuth) {
-    const current = docAuth.find((entry) => entry.name === cookie.name);
-    if (!current || current.value !== cookie.value) {
-      writes.push(serializeCookie(cookie.name, cookie.value, attributes));
-    }
+  const baseKeyWrite = `${storageKey}=`;
+  const baseIndex = writes.findIndex((write) => write.startsWith(baseKeyWrite));
+  if (baseIndex > 0) {
+    const [baseWrite] = writes.splice(baseIndex, 1);
+    writes.unshift(baseWrite);
   }
 
   return writes;

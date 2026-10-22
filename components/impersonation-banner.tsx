@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 
 export function ImpersonationBanner({
   impersonatedUser,
@@ -13,6 +14,7 @@ export function ImpersonationBanner({
   const handleLeave = async () => {
     try {
       setIsLeaving(true);
+      markPendingTabAuthChange(window.sessionStorage);
       await fetch("/api/auth/stop-impersonation", { method: "POST" });
       window.location.reload();
     } finally {

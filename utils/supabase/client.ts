@@ -1,6 +1,7 @@
 import { createBrowserClient, type CookieOptions } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { COOKIE_OPTIONS } from "./cookie";
+import { normalizeApiResponse } from "@/utils/api/read-api-json";
 import {
   authStorageKeyFromSupabaseUrl,
   parseCookieHeader,
@@ -10,6 +11,7 @@ import {
   readNavigationType,
   readTabAuthJar,
   reconcileDuringSession,
+  consumePendingTabAuthChange,
   reconcileTabAuthJar,
   serializeCookie,
   userIdFromAuthCookies,
@@ -22,6 +24,11 @@ import {
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null;
 
 const TAB_AUTH_SYNC_FLAG = "__fdmTabAuthSyncInstalled";
+const TAB_AUTH_REALIGN_RELOAD_KEY = "fdm-tab-auth-realign-reload";
+
+let inflightFetches = 0;
+let documentCookiesDirty = false;
+let pendingAdopt = false;
 
 /**
  * Browser Supabase client.
@@ -81,29 +88,54 @@ function tabCookieMethods() {
       const jar = new Map(
         readTabAuthJar(window.sessionStorage).map((cookie) => [cookie.name, cookie.value]),
       );
+      const fresh = cookiesToSet.filter(
+        (cookie) => cookie.value && cookie.options?.maxAge !== 0,
+      );
+      const expired = cookiesToSet.filter(
+        (cookie) => !cookie.value || cookie.options?.maxAge === 0,
+      );
+      const replaced = new Set(fresh.map((cookie) => cookie.name));
 
-      for (const cookie of cookiesToSet) {
-        const expired = !cookie.value || cookie.options?.maxAge === 0;
-        if (expired) jar.delete(cookie.name);
-        else jar.set(cookie.name, cookie.value);
-
-        document.cookie = serializeCookie(cookie.name, expired ? "" : cookie.value, {
-          path: cookie.options?.path || attributes.path,
-          sameSite: normalizeSameSite(cookie.options?.sameSite) ?? attributes.sameSite,
-          secure: cookie.options?.secure ?? attributes.secure,
-          domain: cookie.options?.domain || attributes.domain,
-          maxAge: expired
-            ? 0
-            : typeof cookie.options?.maxAge === "number"
-              ? cookie.options.maxAge
-              : attributes.maxAge,
-        });
+      for (const cookie of fresh) jar.set(cookie.name, cookie.value);
+      for (const cookie of expired) {
+        if (!replaced.has(cookie.name)) jar.delete(cookie.name);
       }
 
       writeTabAuthJar(
         window.sessionStorage,
         Array.from(jar, ([name, value]) => ({ name, value })),
       );
+
+      const writes: string[] = [];
+      for (const cookie of fresh) {
+        writes.push(serializeCookie(cookie.name, cookie.value, {
+          path: cookie.options?.path || attributes.path,
+          sameSite: normalizeSameSite(cookie.options?.sameSite) ?? attributes.sameSite,
+          secure: cookie.options?.secure ?? attributes.secure,
+          domain: cookie.options?.domain || attributes.domain,
+          maxAge: typeof cookie.options?.maxAge === "number"
+            ? cookie.options.maxAge
+            : attributes.maxAge,
+        }));
+      }
+      for (const cookie of expired) {
+        if (replaced.has(cookie.name)) continue;
+        writes.push(serializeCookie(cookie.name, "", {
+          path: cookie.options?.path || attributes.path,
+          sameSite: normalizeSameSite(cookie.options?.sameSite) ?? attributes.sameSite,
+          secure: cookie.options?.secure ?? attributes.secure,
+          domain: cookie.options?.domain || attributes.domain,
+          maxAge: 0,
+        }));
+      }
+
+      // A request already in flight reads document.cookie asynchronously.
+      // Keep the jar current and publish the document only when nothing is out.
+      if (inflightFetches > 0) {
+        documentCookiesDirty = true;
+        return;
+      }
+      applyCookieWrites(writes);
     },
   };
 }
@@ -113,11 +145,13 @@ function bootstrapTabAuth() {
   const attributes = cookieAttributes();
   const previous = readTabAuthJar(window.sessionStorage);
   const documentCookies = parseCookieHeader(document.cookie);
+  const pendingOwnAuth = consumePendingTabAuthChange(window.sessionStorage);
   const next = reconcileTabAuthJar({
     jar: previous,
     documentCookies,
     navType: readNavigationType(),
     storageKey,
+    pendingOwnAuth,
   });
   writeTabAuthJar(window.sessionStorage, next);
 
@@ -126,6 +160,22 @@ function bootstrapTabAuth() {
       ? planExpiredAuthCookies(documentCookies, storageKey, attributes)
       : planDocumentCookieWrites(next, documentCookies, storageKey, attributes);
   applyCookieWrites(writes);
+
+  // The document was already rendered with whatever cookies the navigation
+  // sent. If those belonged to another tab, the server props are wrong until
+  // this tab requests the page again with its own cookies.
+  const keptUser = userIdFromAuthCookies(next, storageKey);
+  const documentUser = userIdFromAuthCookies(documentCookies, storageKey);
+  if (!keptUser || !documentUser || keptUser === documentUser) {
+    window.sessionStorage.removeItem(TAB_AUTH_REALIGN_RELOAD_KEY);
+    return;
+  }
+  if (window.sessionStorage.getItem(TAB_AUTH_REALIGN_RELOAD_KEY) === "1") {
+    window.sessionStorage.removeItem(TAB_AUTH_REALIGN_RELOAD_KEY);
+    return;
+  }
+  window.sessionStorage.setItem(TAB_AUTH_REALIGN_RELOAD_KEY, "1");
+  window.location.reload();
 }
 
 function installTabAuthSync() {
@@ -134,15 +184,21 @@ function installTabAuthSync() {
   browserWindow[TAB_AUTH_SYNC_FLAG] = true;
 
   const originalFetch = window.fetch.bind(window);
-  window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    syncTabAuthCookies();
-    try {
-      return await originalFetch(input, init);
-    } finally {
-      // A login or impersonation response in this tab replaces the jar.
-      // Any other response keeps this tab's user if the cookie jar was overwritten.
-      syncTabAuthCookies(adoptsForeignSession(requestPath(input)));
-    }
+  window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    const path = requestPath(input);
+    if (inflightFetches === 0) syncTabAuthCookies(false);
+    inflightFetches += 1;
+    return originalFetch(input, init)
+      .then((response) => normalizeApiResponse(path, response))
+      .finally(() => {
+        if (adoptsForeignSession(path)) pendingAdopt = true;
+        inflightFetches -= 1;
+        if (inflightFetches === 0) {
+          const adopt = pendingAdopt;
+          pendingAdopt = false;
+          syncTabAuthCookies(adopt);
+        }
+      });
   }) as typeof window.fetch;
 
   const restoreThisTab = () => syncTabAuthCookies(false);
@@ -156,12 +212,18 @@ function installTabAuthSync() {
 }
 
 function syncTabAuthCookies(adoptForeign = false) {
+  if (inflightFetches > 0) {
+    if (adoptForeign) pendingAdopt = true;
+    return;
+  }
+
   const storageKey = currentStorageKey();
   const attributes = cookieAttributes();
   const jar = readTabAuthJar(window.sessionStorage);
   const documentCookies = parseCookieHeader(document.cookie);
 
   if (adoptForeign) {
+    documentCookiesDirty = false;
     const foreign = foreignDocumentSession(jar, documentCookies, storageKey);
     if (foreign) {
       writeTabAuthJar(window.sessionStorage, foreign);
@@ -176,6 +238,14 @@ function syncTabAuthCookies(adoptForeign = false) {
       applyCookieWrites(planExpiredAuthCookies(documentCookies, storageKey, attributes));
       return;
     }
+  }
+
+  if (documentCookiesDirty) {
+    documentCookiesDirty = false;
+    applyCookieWrites(
+      planDocumentCookieWrites(jar, documentCookies, storageKey, attributes),
+    );
+    return;
   }
 
   const next = reconcileDuringSession(jar, documentCookies, storageKey);

@@ -28,6 +28,7 @@ import {
 import Image from "next/image";
 import Logo from "../../../public/logo_short.svg";
 import { UserDrawerType } from "../navbar/navbar";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 import { ChevronFirst, ChevronLast, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
@@ -385,7 +386,8 @@ export const Drawer: FC<Props> = ({ slim = false, setSlim, user }) => {
                     {" "}
                     <div className="w-full">
                       <a
-                        href="api/auth/logout"
+                        href="/logout"
+                        onClick={() => markPendingTabAuthChange(window.sessionStorage)}
                         className="w-full py-3 pl-4  hover:bg-slate-100 hover:cursor-pointer flex h-full justify-center items-center"
                       >
                         <FontAwesomeIcon icon={faSignOut} className="mr-2" />

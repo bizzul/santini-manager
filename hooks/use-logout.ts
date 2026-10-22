@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { clearPersistentCache } from "@/lib/cache-utils";
 import { createClient } from "@/utils/supabase/client";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 
 const QUICK_LOGIN_COOKIE = "ql-domain";
 
@@ -41,7 +42,7 @@ export function useLogout() {
     // Clear persistent cache (localStorage)
     clearPersistentCache();
 
-    // Sign out from Supabase
+    markPendingTabAuthChange(window.sessionStorage);
     const supabase = createClient();
     await supabase.auth.signOut();
 

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { logger } from "@/lib/logger";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 
 const log = logger.scope("SessionMonitor");
 
@@ -45,6 +46,7 @@ export function useUserSessionMonitor(userId: string | null | undefined) {
                         log.info("User deactivated, forcing logout");
                         
                         // Sign out and redirect to login
+                        markPendingTabAuthChange(window.sessionStorage);
                         await supabase.auth.signOut();
                         
                         // Redirect to login with a message

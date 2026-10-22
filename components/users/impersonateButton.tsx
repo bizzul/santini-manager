@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { VenetianMask } from "lucide-react";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 
 export default function ImpersonateButton({
   userId,
@@ -11,6 +12,7 @@ export default function ImpersonateButton({
   compact?: boolean;
 }) {
   const handleImpersonate = async () => {
+    markPendingTabAuthChange(window.sessionStorage);
     await fetch("/api/auth/impersonate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, Rows3 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { readApiJson } from "@/utils/api/read-api-json";
 import { AttendanceMonthlyView } from "./AttendanceMonthlyView";
 import { AttendanceAnnualView } from "./AttendanceAnnualView";
 import { AttendanceStats } from "./AttendanceStats";
@@ -48,14 +49,15 @@ async function fetchAttendance(domain: string, year: number, month: number | nul
     if (month !== null) params.set("month", month.toString());
 
     const response = await fetch(`/api/sites/${domain}/attendance?${params}`);
-    if (!response.ok) throw new Error("Failed to fetch attendance");
-    return response.json();
+    return readApiJson<{
+        users?: AttendanceUser[];
+        attendance?: Record<string, Record<string, AttendanceEntry>>;
+    }>(response);
 }
 
 async function fetchLeaveRequests(domain: string) {
     const response = await fetch(`/api/sites/${domain}/leave-requests`);
-    if (!response.ok) throw new Error("Failed to fetch leave requests");
-    return response.json();
+    return readApiJson<{ requests?: LeaveRequest[] }>(response);
 }
 
 export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGridProps) {
@@ -96,11 +98,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user_id: userId, date, status }),
             });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Errore");
-            }
-            return response.json();
+            return readApiJson(response);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["attendance", domain] });
@@ -126,11 +124,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user_id: userId, date }),
             });
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Errore");
-            }
-            return response.json();
+            return readApiJson(response);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["attendance", domain] });
@@ -160,11 +154,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
                     body: JSON.stringify({ status }),
                 }
             );
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || "Errore");
-            }
-            return response.json();
+            return readApiJson(response);
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: ["leave-requests", domain] });

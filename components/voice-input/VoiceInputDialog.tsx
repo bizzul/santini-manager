@@ -10,6 +10,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { readApiJson } from "@/utils/api/read-api-json";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -82,7 +83,11 @@ export function VoiceInputDialog({
         if (open && domain) {
             setSettingsLoading(true);
             fetch(`/api/sites/${domain}/ai-settings`)
-                .then((res) => res.json())
+                .then((res) => readApiJson<{
+                    speechProvider?: "web-speech" | "whisper";
+                    hasAiApiKey?: boolean;
+                    hasWhisperApiKey?: boolean;
+                }>(res))
                 .then((data) => {
                     setSiteSettings({
                         speechProvider: data.speechProvider || "web-speech",
@@ -162,15 +167,20 @@ export function VoiceInputDialog({
                         body: formData,
                     });
                     
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
+                    const data = await readApiJson<{
+                        error?: string;
+                        message?: string;
+                        transcript?: string;
+                    }>(response);
+
+                    if (data?.error) {
                         throw new Error(data.error || data.message || "Errore trascrizione");
                     }
                     
-                    if (data.transcript) {
-                        setWhisperTranscript((prev) => 
-                            prev ? `${prev} ${data.transcript}` : data.transcript
+                    const transcriptText = data?.transcript;
+                    if (transcriptText) {
+                        setWhisperTranscript((prev) =>
+                            prev ? `${prev} ${transcriptText}` : transcriptText
                         );
                     }
                 } catch (err) {
@@ -264,9 +274,13 @@ export function VoiceInputDialog({
                 }),
             });
 
-            const data = await response.json();
+            const data = await readApiJson<{
+                error?: string;
+                message?: string;
+                progetti?: ExtractedProject[];
+            }>(response);
 
-            if (!response.ok) {
+            if (data?.error) {
                 throw new Error(data.error || data.message || "Errore estrazione");
             }
 

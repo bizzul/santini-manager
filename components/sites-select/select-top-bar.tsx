@@ -1,7 +1,8 @@
 import { requireAuth } from "@/lib/auth-utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Home, Settings, LogOut } from "lucide-react";
+import { Home, LogOut, Settings } from "lucide-react";
+import { LogoutLink } from "@/components/auth/logout-link";
 
 export async function SelectTopBar() {
   const userContext = await requireAuth();
@@ -34,7 +35,7 @@ export async function SelectTopBar() {
               </Link>
             )}
 
-            <Link href="/logout">
+            <LogoutLink>
               <Button
                 variant="outline"
                 className="border-2 border-white/40 text-white hover:bg-red-500/30 hover:border-red-400 hover:scale-105 shadow-lg hover:shadow-2xl transition-all duration-300 font-semibold"
@@ -42,7 +43,7 @@ export async function SelectTopBar() {
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
               </Button>
-            </Link>
+            </LogoutLink>
           </div>
         </div>
       </div>

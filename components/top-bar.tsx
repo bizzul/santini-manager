@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { markPendingTabAuthChange } from "@/utils/supabase/tab-auth-storage";
 
 export default function TopBar({ user }: { user: any }) {
   const [loading, setLoading] = useState(true);
@@ -12,6 +13,7 @@ export default function TopBar({ user }: { user: any }) {
   }, []);
 
   const handleLogout = () => {
+    markPendingTabAuthChange(window.sessionStorage);
     window.location.href = "/logout";
   };
 
