@@ -29,6 +29,8 @@ import {
   SITE_THEME_SETTING_KEY,
 } from "@/lib/site-theme";
 import { SiteThemeStyle } from "@/components/site-theme-style";
+import { SiteUiVersion, SiteUiVersionScript } from "@/components/site-ui-version";
+import { getUiV2EnabledForSite } from "@/lib/ui-version-settings.server";
 import { getCommandDeckEnabledForSite } from "@/lib/command-deck-settings.server";
 import { getSupportBotEnabledForSite } from "@/lib/support/settings.server";
 import { getSiteLocale } from "@/lib/i18n/server";
@@ -186,6 +188,9 @@ export default async function SiteLayout({
     // server component is free.
     const commandDeckEnabled = await getCommandDeckEnabledForSite(data.id);
     const supportBotEnabled = await getSupportBotEnabledForSite(data.id);
+    // Restyling UI v2: attivo solo negli spazi con `ui_v2_enabled` in
+    // site_settings. Flag assente = interfaccia attuale invariata.
+    const uiV2Enabled = await getUiV2EnabledForSite(data.id);
 
     // Per-site interface language (default `it`). Drives the shell + any
     // translated page through the client I18nProvider.
@@ -241,6 +246,8 @@ export default async function SiteLayout({
         <QuickActionsProvider>
           <SidebarProvider defaultOpen={defaultOpen}>
             <SiteThemeStyle themeSettings={siteThemeSettings} />
+            {uiV2Enabled && <SiteUiVersionScript />}
+            <SiteUiVersion enabled={uiV2Enabled} />
             {hydration}
 
             {isImpersonating && impersonatedUser && originalSuperadminId && (
