@@ -1,7 +1,9 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import { UserContext } from "@/lib/auth-utils";
 import { validateCacheForUser } from "@/lib/cache-utils";
 
@@ -39,7 +41,9 @@ interface HydrationData {
  */
 export function QueryHydration({ data }: { data: HydrationData }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const hydrated = useRef(false);
+  const autocorrectedRef = useRef(false);
 
   // Hydrate only once on initial mount (before any effects run)
   // This uses a ref instead of useEffect to hydrate synchronously
@@ -85,6 +89,43 @@ export function QueryHydration({ data }: { data: HydrationData }) {
       }
     }
   }
+
+  // After mount, self-correct an SSR identity flash. On a shared PC every window
+  // of the origin shares the cookie jar, so the server may have rendered as a
+  // different operaio than the one who owns THIS tab. getSession() reads the
+  // per-tab session (sessionStorage), which is the real identity of this window.
+  // When it disagrees with the SSR-rendered user, we trust the tab token: drop
+  // the stale user-context (client consumers refetch it with the Bearer token)
+  // and re-render the server tree once with this tab's (already republished)
+  // cookie. Impersonation deliberately uses a shared cookie, so it is exempt.
+  const ssrUserId: string | null = data.userContext?.user?.id ?? null;
+  const isImpersonating = Boolean(data.userContext?.isImpersonating);
+
+  useEffect(() => {
+    if (autocorrectedRef.current) return;
+    if (isImpersonating || !ssrUserId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: sessionData } = await supabase.auth.getSession();
+        const tabUserId = sessionData.session?.user?.id ?? null;
+        // Only act when both identities are known and genuinely differ.
+        if (cancelled || !tabUserId || tabUserId === ssrUserId) return;
+
+        autocorrectedRef.current = true; // guard: refresh at most once per mount
+        queryClient.removeQueries({ queryKey: ["user-context"] });
+        router.refresh();
+      } catch {
+        // Non-fatal: leave the existing SSR/cookie behaviour untouched.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ssrUserId, isImpersonating, queryClient, router]);
 
   return null;
 }
