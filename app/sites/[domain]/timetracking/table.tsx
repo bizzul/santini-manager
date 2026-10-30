@@ -39,6 +39,7 @@ import { DataTableRowActions } from "./data-table-row-actions";
 import { Briefcase, Loader2, Plus, Trash2, Wrench } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { readApiJson } from "@/utils/api/read-api-json";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { useRouter } from "next/navigation";
 import { createItem } from "./actions/create-item.action";
 import { SearchSelect } from "@/components/ui/search-select";
@@ -107,6 +108,7 @@ export function DataTable<TData, TValue>({
   currentEmployeeId,
 }: DataTableProps<TData, TValue>) {
   const { toast } = useToast();
+  const router = useRouter();
   // Sorting State
   const [sorting, setSorting] = useState<SortingState>([]);
   // Filter state
@@ -215,7 +217,7 @@ export function DataTable<TData, TValue>({
 
     setIsDeleting(true);
     try {
-      const response = await fetch("/api/time-tracking/delete", {
+      const response = await apiFetch("/api/time-tracking/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedIds }),
@@ -230,8 +232,11 @@ export function DataTable<TData, TValue>({
       });
 
       setRowSelection({});
-      // Reload page to refresh data
-      window.location.reload();
+      // Refresh server data without a full reload so client table state (filters,
+      // sorting) survives. router.refresh() re-renders on the server; the visible
+      // identity stays correct via the per-tab cookie sync and post-hydration
+      // self-correction rather than depending on a lucky cookie read.
+      router.refresh();
     } catch (error) {
       console.error("Error deleting entries:", error);
       toast({

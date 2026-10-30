@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useToast } from "../ui/use-toast";
 import { readApiJson } from "@/utils/api/read-api-json";
 import { apiFetch } from "@/utils/supabase/api-fetch";
+import { startOfLocalDay, endOfLocalDay } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -110,6 +111,25 @@ interface AllUserEntry extends TodayEntry {
   task_id?: number;
 }
 
+// Raw row shape returned by GET /api/time-tracking/my-entries, before the
+// nested role relation is flattened to match AllUserEntry.
+interface MyEntryApiRow {
+  id: number;
+  task_id?: number;
+  hours: number;
+  minutes: number;
+  totalTime: number;
+  description?: string;
+  description_type?: string;
+  activity_type?: string;
+  internal_activity?: string;
+  startTime?: string;
+  endTime?: string;
+  created_at: string;
+  task?: TodayEntry["task"];
+  roles?: { role?: { id?: number; name?: string } | null }[];
+}
+
 interface Session {
   user: {
     id: string;
@@ -175,7 +195,17 @@ const CreatePage = ({
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("create");
   const rolesOptions = data.roles;
-  const todayEntries = data.todayEntries || [];
+  // Entries are seeded from the SSR props, then kept fresh on the client via
+  // apiFetch (which carries this tab's Bearer token). We deliberately avoid
+  // window.location.reload(): a full reload would re-run SSR, which re-reads the
+  // shared cookie and — on a shared PC with multiple windows — could briefly
+  // render another operaio's data. Refetching with the tab token keeps the list
+  // bound to this window's identity.
+  const [todayEntries, setTodayEntries] = useState<TodayEntry[]>(
+    data.todayEntries || []
+  );
+  const [userEntries, setUserEntries] =
+    useState<AllUserEntry[]>(allUserEntries);
   const prefilledTaskId = searchParams.get("taskId");
   const prefilledTask =
     data.tasks.find((task) => task.id.toString() === prefilledTaskId) || null;
@@ -192,6 +222,53 @@ const CreatePage = ({
     new Set()
   );
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Refresh "today" and "all" entry lists from the server using this tab's
+  // Bearer token (via apiFetch), so the view never depends on a fresh SSR pass
+  // that would re-read the shared cookie.
+  const refreshEntries = useCallback(async () => {
+    try {
+      const response = await apiFetch("/api/time-tracking/my-entries", {
+        headers: siteId ? { "x-site-id": siteId } : undefined,
+      });
+      const payload = await readApiJson<{ entries?: MyEntryApiRow[] }>(response);
+      const rawEntries = Array.isArray(payload?.entries) ? payload.entries : [];
+      const mapped: AllUserEntry[] = rawEntries.map((entry) => ({
+        id: entry.id,
+        hours: entry.hours,
+        minutes: entry.minutes,
+        totalTime: entry.totalTime,
+        description: entry.description,
+        description_type: entry.description_type,
+        activity_type: entry.activity_type,
+        internal_activity: entry.internal_activity,
+        start_time: entry.startTime,
+        end_time: entry.endTime,
+        task_id: entry.task_id,
+        created_at: entry.created_at,
+        task: entry.task,
+        roles: Array.isArray(entry.roles)
+          ? entry.roles
+              .map((r) => r.role)
+              .filter((role): role is { id?: number; name?: string } =>
+                Boolean(role)
+              )
+          : [],
+      }));
+      setUserEntries(mapped);
+
+      const todayStart = startOfLocalDay(new Date()).getTime();
+      const todayEnd = endOfLocalDay(new Date()).getTime();
+      setTodayEntries(
+        mapped.filter((entry) => {
+          const created = new Date(entry.created_at).getTime();
+          return created >= todayStart && created <= todayEnd;
+        })
+      );
+    } catch (error) {
+      logger.error("Error refreshing time tracking entries:", error);
+    }
+  }, [siteId]);
 
   // Toggle selection for a single entry
   const toggleEntrySelection = (entryId: number) => {
@@ -244,8 +321,7 @@ const CreatePage = ({
       });
 
       setSelectedEntries(new Set());
-      // Reload page to refresh data
-      window.location.reload();
+      await refreshEntries();
     } catch (error) {
       logger.error("Error deleting entries:", error);
       toast({
@@ -293,7 +369,7 @@ const CreatePage = ({
     "Collaboratore";
 
   const calendarItems = buildTimetrackingCalendarItems(
-    allUserEntries.map((entry) => ({
+    userEntries.map((entry) => ({
       ...entry,
       user: {
         authId: session.user.id,
@@ -651,7 +727,12 @@ const CreatePage = ({
 
       setTimeout(() => {
         localStorage.removeItem(`timetracking-${session.user.id}`);
-        window.location.reload();
+        // Reset the form to a single empty row and refetch the lists with this
+        // tab's token instead of reloading (which would re-run SSR on the cookie).
+        setRows([createEmptyRow()]);
+        setIsSaved(false);
+        setIsSuccess(false);
+        void refreshEntries();
       }, 3000);
     } catch (error) {
       logger.error("Error saving time tracking:", error);
@@ -686,8 +767,7 @@ const CreatePage = ({
 
     await readApiJson(response);
 
-    // Reload page to refresh data
-    window.location.reload();
+    await refreshEntries();
   };
 
   return (
@@ -718,9 +798,9 @@ const CreatePage = ({
                 <TabsTrigger value="my-hours" className="gap-2">
                   <List className="h-4 w-4" />
                   Le mie ore
-                  {allUserEntries.length > 0 && (
+                  {userEntries.length > 0 && (
                     <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                      {allUserEntries.length}
+                      {userEntries.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -1271,7 +1351,7 @@ const CreatePage = ({
       {/* My Hours Tab Content */}
       <TabsContent value="my-hours" className="mt-4">
         <MyHoursList
-          entries={allUserEntries}
+          entries={userEntries}
           internalActivities={internalActivities}
           onDelete={handleDeleteEntries}
         />

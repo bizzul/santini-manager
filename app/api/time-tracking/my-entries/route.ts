@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       .from("Timetracking")
       .select(`
         id,
+        task_id,
         hours,
         minutes,
         totalTime,
@@ -60,8 +61,10 @@ export async function GET(req: NextRequest) {
         description_type,
         activity_type,
         internal_activity,
+        startTime,
+        endTime,
         created_at,
-        task:task_id(unique_code, client:Client(businessName)),
+        task:task_id(unique_code, title, name, client:Client(businessName)),
         roles:_RolesToTimetracking(role:Roles(id, name))
       `)
       .eq("employee_id", employeeId)
