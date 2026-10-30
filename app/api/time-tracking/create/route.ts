@@ -1,7 +1,7 @@
 import { validation } from "../../../../validation/timeTracking/create";
-import { createClient } from "../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "@/lib/fetchers";
+import { resolveApiAuth } from "@/utils/supabase/api-auth";
 
 // Helper function to calculate total hours
 function calculateTotalHours(hours: number, minutes: number): number {
@@ -11,7 +11,11 @@ function calculateTotalHours(hours: number, minutes: number): number {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { supabase, user, source } = await resolveApiAuth(req);
+    // With the per-tab token present, the authenticated user is authoritative:
+    // every entry is attributed to them, never to the client-sent userId. This
+    // is what stops a save on a shared PC from landing on another window's user.
+    const authoritativeAuthId = source === "token" ? user?.id ?? null : null;
 
     // Extract site_id from headers (x-site-domain = subdomain from URL, e.g. "santini")
     let siteId: string | null = null;
@@ -75,7 +79,7 @@ export async function POST(req: NextRequest) {
 
       // Get internal user ID from auth ID
       let employeeId: number;
-      const authUserId = data.userId;
+      const authUserId = authoritativeAuthId ?? data.userId;
 
       if (userIdCache.has(authUserId)) {
         employeeId = userIdCache.get(authUserId)!;

@@ -76,3 +76,33 @@ export function createServiceClient() {
     },
   );
 }
+
+/**
+ * Anon client authenticated by an explicit access token instead of cookies.
+ *
+ * The token is sent as the `Authorization` header on every PostgREST call, so
+ * RLS runs as that user (`auth.uid()` matches) and `auth.getUser(token)`
+ * validates the same identity. This is how `/api/*` routes trust the per-tab
+ * token sent by the browser rather than the shared cookie jar on a shared PC.
+ * Never log the token.
+ */
+export function createTokenClient(accessToken: string) {
+  return createServerClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    {
+      cookieOptions: COOKIE_OPTIONS,
+      global: {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {
+          // No-op: this client is stateless and token-scoped.
+        },
+      },
+    },
+  );
+}

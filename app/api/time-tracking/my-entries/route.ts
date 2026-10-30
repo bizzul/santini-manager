@@ -1,15 +1,13 @@
-import { createClient } from "@/utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getSiteData } from "@/lib/fetchers";
+import { resolveApiAuth } from "@/utils/supabase/api-auth";
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    
-    // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !user) {
+    // Resolve the identity from this tab's token when present, else the cookie.
+    const { supabase, user } = await resolveApiAuth(req);
+
+    if (!user) {
       return NextResponse.json(
         { error: "Unauthorized", status: 401 },
         { status: 401 }

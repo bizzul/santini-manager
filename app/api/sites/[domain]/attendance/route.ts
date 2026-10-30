@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceClient } from "@/utils/supabase/server";
+import { createServiceClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { getUserContext } from "@/lib/auth-utils";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
+import {
+    bearerTokenFromRequest,
+    resolveApiAuth,
+} from "@/utils/supabase/api-auth";
 
 export async function GET(
     request: NextRequest,
@@ -16,7 +20,11 @@ export async function GET(
         }
 
         const siteId = siteResponse.data.id;
-        const userContext = await getUserContext();
+        // Identity from this tab's token when present, else the cookie.
+        const token = bearerTokenFromRequest(request);
+        const userContext = token
+            ? await getUserContext(token)
+            : await getUserContext();
         if (!userContext) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -316,8 +324,13 @@ export async function POST(
         }
 
         const siteId = siteResponse.data.id;
-        const supabase = await createClient();
-        const userContext = await getUserContext();
+        const { supabase, user, accessToken } = await resolveApiAuth(request);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userContext = accessToken
+            ? await getUserContext(accessToken)
+            : await getUserContext();
         if (!userContext || !isAdminOrSuperadmin(userContext.role)) {
             return NextResponse.json({ error: "Solo admin possono modificare le presenze" }, { status: 403 });
         }
@@ -378,8 +391,13 @@ export async function DELETE(
         }
 
         const siteId = siteResponse.data.id;
-        const supabase = await createClient();
-        const userContext = await getUserContext();
+        const { supabase, user, accessToken } = await resolveApiAuth(request);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userContext = accessToken
+            ? await getUserContext(accessToken)
+            : await getUserContext();
         if (!userContext || !isAdminOrSuperadmin(userContext.role)) {
             return NextResponse.json({ error: "Solo admin possono modificare le presenze" }, { status: 403 });
         }

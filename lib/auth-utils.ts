@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { createClient, createTokenClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -50,7 +50,9 @@ function isRetryableAuthNetworkError(error: any): boolean {
  * OPTIMIZED: Uses Promise.all to run queries in parallel instead of sequential
  * Also uses React cache() to deduplicate calls within the same request
  */
-async function fetchUserContext(): Promise<UserContext | null> {
+async function fetchUserContext(
+    accessToken?: string,
+): Promise<UserContext | null> {
     try {
         const cookieStore = await cookies();
         const impersonationCookie = cookieStore.get("impersonation");
@@ -59,11 +61,18 @@ async function fetchUserContext(): Promise<UserContext | null> {
         let isImpersonating = false;
         let impersonatedUser: any = undefined;
 
-        const supabase = await createClient();
+        // When an access token is supplied (per-tab Bearer token from an /api
+        // route), resolve the identity and run all DB reads as that token user
+        // instead of the shared cookie session. Falls back to cookies otherwise.
+        const supabase = accessToken
+            ? createTokenClient(accessToken)
+            : await createClient();
         const {
             data: { user },
             error,
-        } = await supabase.auth.getUser();
+        } = accessToken
+            ? await supabase.auth.getUser(accessToken)
+            : await supabase.auth.getUser();
         let resolvedUser = user;
 
         if (

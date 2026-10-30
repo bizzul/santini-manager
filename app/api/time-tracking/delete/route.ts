@@ -1,9 +1,17 @@
-import { createClient } from "../../../../utils/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { resolveApiAuth } from "@/utils/supabase/api-auth";
 
 export async function DELETE(req: NextRequest) {
   try {
-    const supabase = await createClient();
+    // Resolve identity from this tab's token when present, else the cookie.
+    // RLS on the resulting client keeps a user scoped to their own rows.
+    const { supabase, user } = await resolveApiAuth(req);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Unauthorized", status: 401 },
+        { status: 401 },
+      );
+    }
 
     // Parse request body
     const { ids } = await req.json();

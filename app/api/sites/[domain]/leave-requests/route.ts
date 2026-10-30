@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/utils/supabase/server";
 import { getSiteData } from "@/lib/fetchers";
 import { getUserContext } from "@/lib/auth-utils";
 import { isAdminOrSuperadmin } from "@/lib/permissions";
+import { resolveApiAuth } from "@/utils/supabase/api-auth";
 
 export async function GET(
     request: NextRequest,
@@ -16,8 +16,14 @@ export async function GET(
         }
 
         const siteId = siteResponse.data.id;
-        const supabase = await createClient();
-        const userContext = await getUserContext();
+        // Identity from this tab's token when present, else the cookie.
+        const { supabase, user, accessToken } = await resolveApiAuth(request);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userContext = accessToken
+            ? await getUserContext(accessToken)
+            : await getUserContext();
         if (!userContext) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -97,8 +103,17 @@ export async function POST(
         }
 
         const siteId = siteResponse.data.id;
-        const supabase = await createClient();
-        const userContext = await getUserContext();
+        // Identity from this tab's token when present, else the cookie. The
+        // request is attributed to this user, and the token-scoped client makes
+        // RLS agree, so an operaio's leave can never be filed under another
+        // window's user on a shared PC.
+        const { supabase, user, accessToken } = await resolveApiAuth(request);
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const userContext = accessToken
+            ? await getUserContext(accessToken)
+            : await getUserContext();
         if (!userContext) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }

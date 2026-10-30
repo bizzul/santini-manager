@@ -3,7 +3,7 @@ import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { z } from "zod";
-import { createClient } from "@/utils/supabase/server";
+import { resolveApiAuth } from "@/utils/supabase/api-auth";
 import { getSiteAiConfig } from "@/lib/ai/get-site-ai-config";
 import { ExtractedTimetrackingSchema } from "@/validation/voice-input/extracted-timetracking";
 
@@ -39,8 +39,8 @@ function createModelFromConfig(config: {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    // Identity from this tab's token when present, else the cookie.
+    const { user } = await resolveApiAuth(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
