@@ -1,0 +1,134 @@
+/* ==========================================================================
+   FDM — Restyling UI v2 (ottobre 2026)
+
+   Regola d'oro: tutto ciò che cambia l'aspetto sta sotto html[data-ui="v2"].
+   L'attributo è impostato solo negli spazi con site_settings
+   ui_v2_enabled = true (vedi components/site-ui-version.tsx).
+   Flag spento = interfaccia attuale identica.
+
+   Decisioni (30.10.2026):
+   - Tema chiaro: palette Matris Tera.
+   - Tema scuro: colori FDM attuali (per spazio) invariati; cambiano solo
+     forme, spaziature, badge.
+   - Tema adaptive: invariato.
+   - Testi: +1px su tutta la scala.
+   - Card Fatturazione: piena arancio/verde (invariata).
+   - Menù laterale, icone, colori categoria (da DB): invariati.
+
+   Questo file NON è in un @layer: le regole battono le utility Tailwind
+   (che stanno in @layer utilities) senza bisogno di !important. Gli stili
+   inline (es. bordo sinistro colore categoria) restano comunque prioritari.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Token di stato soft / fg (additivi: nomi nuovi, nessun effetto finché
+      non vengono usati dagli stili v2). Contrasto testo ≥ 4.5:1 verificato
+      fg su soft in entrambi i temi.
+   -------------------------------------------------------------------------- */
+:root {
+  --status-late-soft: 0 93% 94.1%;
+  --status-late-fg: 0 74% 41.8%;
+  --status-waiting-soft: 48 96% 88.8%;
+  --status-waiting-fg: 23 83% 31%;
+  --status-done-soft: 149 80% 90%;
+  --status-done-fg: 163 94% 24.3%;
+  --status-progress-soft: 210 75% 92.2%;
+  --status-progress-fg: 213 71% 39.8%;
+  --status-draft-soft: 210 31% 94.9%;
+  --status-draft-fg: 215 19% 34.5%;
+  --status-invoiced-soft: 251 91% 95.5%;
+  --status-invoiced-fg: 263 70% 50.4%;
+}
+
+.dark {
+  --status-late-soft: 0 84% 60.2% / 0.16;
+  --status-late-fg: 0 94% 81.8%;
+  --status-waiting-soft: 38 92% 50.2% / 0.16;
+  --status-waiting-fg: 46 97% 64.5%;
+  --status-done-soft: 160 84% 39.4% / 0.16;
+  --status-done-fg: 156 72% 66.9%;
+  --status-progress-soft: 217 91% 59.8% / 0.16;
+  --status-progress-fg: 212 96% 78.4%;
+  --status-draft-soft: 215 16% 46.9% / 0.16;
+  --status-draft-fg: 213 27% 83.9%;
+  --status-invoiced-soft: 258 90% 66.3% / 0.16;
+  --status-invoiced-fg: 252 95% 85.1%;
+}
+
+/* --------------------------------------------------------------------------
+   2. v2 — tutti i temi: tipografia +1px, raggi, ombre.
+      Le variabili sono dichiarate su <body> perché <html> riceve i colori
+      dello spazio come stile inline (SiteThemeStyle): una dichiarazione su
+      body vince sul valore ereditato e copre anche i portali (dialog,
+      popover), che vengono montati dentro body.
+   -------------------------------------------------------------------------- */
+html[data-ui="v2"] body {
+  /* Scala Tailwind +1px (12→13, 14→15, 16→17) */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  /* Scala FDM +1px */
+  --text-caption: 0.8125rem;
+  --text-body-sm: 0.875rem;
+  --text-body: 0.9375rem;
+
+  --radius-card: 0.75rem;
+}
+
+/* Dimensioni arbitrarie text-[Npx]: generano px letterali che non seguono i
+   token, le alziamo di 1px (stesso meccanismo usato in Matris Tera). */
+html[data-ui="v2"] [class*="text-[9px]"] { font-size: 10px; }
+html[data-ui="v2"] [class*="text-[10px]"] { font-size: 11px; }
+html[data-ui="v2"] [class*="text-[11px]"] { font-size: 12px; }
+html[data-ui="v2"] [class*="text-[12px]"] { font-size: 13px; }
+html[data-ui="v2"] [class*="text-[13px]"] { font-size: 14px; }
+
+/* --------------------------------------------------------------------------
+   3. v2 — tema chiaro: palette Matris Tera.
+      Sostituisce i colori di superficie dello spazio solo con flag attivo.
+      Le variabili --sidebar* non vengono toccate (menù approvato).
+   -------------------------------------------------------------------------- */
+html[data-ui="v2"][data-site-theme-mode="light"] body {
+  --page: 206 54% 97.5%;          /* #F5F9FC */
+  --page-soft: 207 48% 95.5%;     /* #EEF4F9 */
+  --page-glow: 210 67% 98.8%;     /* #FAFCFE */
+  --page-shadow: 207 47% 92.5%;   /* #E3EDF5 */
+
+  --background: 0 0% 100%;
+  --card: 0 0% 100%;
+  --popover: 0 0% 100%;
+
+  --foreground: 214 68% 13.5%;    /* #0B1F3A navy */
+  --card-foreground: 214 68% 13.5%;
+  --popover-foreground: 214 68% 13.5%;
+  --page-foreground: 214 68% 13.5%;
+  --muted-foreground: 214 17% 40.6%;      /* #566579 — 5.9:1 su bianco */
+  --page-muted-foreground: 214 17% 40.6%;
+
+  --secondary: 206 53% 94.1%;     /* #E8F1F8 */
+  --secondary-foreground: 214 68% 13.5%;
+  --muted: 207 48% 95.5%;         /* #EEF4F9 */
+  --accent: 210 75% 92.2%;        /* #DCEBFA */
+  --accent-foreground: 213 74% 31.2%;     /* #154A8A */
+
+  --border: 209 35% 87.3%;        /* #D3DFEA */
+  --input: 209 37% 84.5%;         /* #C9D8E6 */
+
+  --primary: 213 71% 39.8%;       /* #1D5FAE — bianco sopra: 6.4:1 */
+  --primary-foreground: 0 0% 100%;
+  --ring: 213 71% 39.8%;
+  --destructive: 0 61% 48%;       /* #C53030 */
+  --destructive-foreground: 0 0% 100%;
+
+  --shadow-card: 0 1px 2px rgb(11 31 58 / 0.04), 0 10px 28px -16px rgb(11 31 58 / 0.18);
+  --shadow-raised: 0 2px 4px rgb(11 31 58 / 0.06), 0 16px 32px -14px rgb(11 31 58 / 0.24);
+}
+
+/* --------------------------------------------------------------------------
+   4. v2 — tema scuro: colori dello spazio invariati, solo ombre più
+      leggibili su fondo scuro.
+   -------------------------------------------------------------------------- */
+html[data-ui="v2"].dark body {
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px -14px rgb(0 0 0 / 0.6);
+  --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.4), 0 16px 32px -12px rgb(0 0 0 / 0.65);
+}
