@@ -19,9 +19,15 @@ import { QUERY_CACHE_PERSIST_KEY } from "@/lib/cache-keys";
 // DO NOT persist: site-modules, kanbans-list, kanban-tasks, tasks,
 // kanban-categories, inventory
 // These need to be always fresh for multi-user collaboration
+//
+// DO NOT persist "user-context": localStorage is shared across ALL windows
+// of the same browser (it is NOT isolated per tab). On a shared PC this lets
+// the logged-in identity written by one window leak into another after a
+// reload or PWA reopen (the async restore can race past the QueryHydration
+// user-change check). It now lives only in React Query's in-memory cache and
+// each tab refetches it from /api/auth/me on mount. Keep it out of this list.
 const PERSISTABLE_QUERY_KEYS = [
-  "site-data", // Site info changes rarely
-  "user-context", // User info changes rarely
+  "site-data", // Site/tenant info keyed by domain — no per-user fields
   // NOTE: kanban-categories is NOT persisted because it can be created/modified
   // and all users need to see updates immediately
 ];
