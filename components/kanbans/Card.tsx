@@ -776,7 +776,8 @@ function Card({
       return (
         <Badge
           title={tooltip}
-          className={`inline-flex shrink-0 items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+          className={`fdm-kanban-badge inline-flex shrink-0 items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+          data-tone={fattureBadgeInfo.state === "late" ? "late" : fattureBadgeInfo.state === "ok" ? "done" : "neutral"}
         >
           <Icon className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
           {label}
@@ -812,7 +813,8 @@ function Card({
     return (
       <Badge
         title={tooltip}
-        className={`inline-flex shrink-0 items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+        className={`fdm-kanban-badge inline-flex shrink-0 items-center font-bold rounded ${baseClasses} ${colorClasses}`}
+        data-tone={timeState === "atRisk" ? "waiting" : "late"}
       >
         <AlertTriangle className={compact ? "h-2.5 w-2.5" : "h-3 w-3"} />
         {label}
@@ -838,7 +840,7 @@ function Card({
     <ContextMenu>
       <div
         className={`
-          relative w-full mb-2 rounded-r-xl rounded-l-sm select-none overflow-clip
+          fdm-kanban-card relative w-full mb-2 rounded-r-xl rounded-l-sm select-none overflow-clip
           ${invoicingFillClass || criticalBgClass}
           ${cardSizeClass}
           ${invoicingTone ? "border border-y border-r" : "border-y border-r border-slate-700/70"}
@@ -854,6 +856,9 @@ function Card({
               ? t("kanbanCard.waitingDirectorReview")
               : undefined
         }
+        data-time-state={timeState}
+        data-invoicing={invoicingTone ? invoicingTone : undefined}
+        data-draft={isDraft ? "true" : undefined}
         ref={data.isPreview ? undefined : setNodeRef}
         style={{
           ...dragStyle,
@@ -881,7 +886,7 @@ function Card({
             >
               <div className="flex min-h-0 flex-1 flex-col gap-[3px] px-3 pt-3 pb-5">
                 {/* Header: N°, Data, Settimana */}
-                <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
+                <div className="fdm-kanban-card-head flex items-center justify-between gap-2 border-b border-slate-200 pb-2 dark:border-slate-700/60">
                   {isFieldVisible("projectCode") ? (
                     <div className="flex min-w-0 items-center gap-1.5">
                       {isFieldVisible("countryFlag") && renderCountryFlag()}
@@ -1148,7 +1153,7 @@ function Card({
 
               {/* Progress bar integrata nella base */}
               <div className={cn(
-                "absolute bottom-0 left-0 right-0 h-1.5 rounded-br-xl overflow-hidden",
+                "fdm-kanban-progress absolute bottom-0 left-0 right-0 h-1.5 rounded-br-xl overflow-hidden",
                 invoicingTone ? "bg-black/20" : "bg-slate-200 dark:bg-slate-700",
               )}>
                 <div
@@ -1178,7 +1183,7 @@ function Card({
             >
               <div className="flex min-h-0 flex-1 flex-col gap-[3px] px-3 pt-3 pb-4">
                 {/* Riga 1: N°, Data, Settimana */}
-                <div className="flex items-center justify-between gap-2">
+                <div className="fdm-kanban-card-head flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-1.5">
                     {isFieldVisible("projectCode") &&
                       isFieldVisible("countryFlag") &&

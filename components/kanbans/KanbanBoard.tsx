@@ -433,7 +433,7 @@ const Column = ({
       .filter((id: number) => Number.isFinite(id) && id > 0);
 
   const renderStat = (label: string, value: any) => (
-    <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
+    <div className="fdm-kanban-stat rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
       <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
@@ -446,7 +446,7 @@ const Column = ({
       key={column.id}
       className="dashboard-panel flex h-full min-h-0 w-72 shrink-0 flex-col overflow-hidden p-0"
     >
-      <div className="shrink-0 border-b border-slate-700/70 bg-slate-900/40 px-4 py-3 backdrop-blur">
+      <div className="fdm-kanban-col-head shrink-0 border-b border-slate-700/70 bg-slate-900/40 px-4 py-3 backdrop-blur">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-lg font-semibold leading-tight">
@@ -658,7 +658,7 @@ const Column = ({
           ) : (
             <>
               {isFattureToDoColumn ? (
-                <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
+                <div className="fdm-kanban-stat rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     Progetti
                   </p>
@@ -710,7 +710,7 @@ const Column = ({
                   </div>
                 </div>
               ) : isFattureInviataColumn ? (
-                <div className="rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
+                <div className="fdm-kanban-stat rounded-md border border-slate-700/70 bg-slate-900/40 px-2 py-1.5">
                   <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                     Progetti
                   </p>

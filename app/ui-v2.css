@@ -132,3 +132,99 @@ html[data-ui="v2"].dark body {
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 24px -14px rgb(0 0 0 / 0.6);
   --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.4), 0 16px 32px -12px rgb(0 0 0 / 0.65);
 }
+
+/* --------------------------------------------------------------------------
+   5. Kanban (commit 3): colonne e card.
+      Hook: .fdm-kanban-col-head, .fdm-kanban-stat (KanbanBoard.tsx);
+      .fdm-kanban-card [data-time-state|data-invoicing|data-draft],
+      .fdm-kanban-card-head, .fdm-kanban-badge[data-tone],
+      .fdm-kanban-progress (Card.tsx).
+      Invariati per decisione: bordo sinistro (colore categoria da DB /
+      stato offerta, stile inline), card Fatturazione piena arancio/verde,
+      barra progresso verde, bordo tratteggiato delle bozze.
+   -------------------------------------------------------------------------- */
+
+/* Intestazione colonna: superficie card invece del grigio slate fisso */
+html[data-ui="v2"] .fdm-kanban-col-head {
+  background-color: hsl(var(--card) / 0.85);
+  border-bottom-color: hsl(var(--border));
+}
+
+/* Riquadri statistiche (Offerte / Valore / Progetti) */
+html[data-ui="v2"] .fdm-kanban-stat {
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--border));
+  border-radius: var(--radius-control);
+}
+html[data-ui="v2"] .fdm-kanban-stat p:first-child {
+  color: hsl(var(--muted-foreground));
+}
+html[data-ui="v2"] .fdm-kanban-stat p:last-child {
+  color: hsl(var(--foreground));
+}
+
+/* Card: superficie dello spazio, bordo sottile, ombra morbida.
+   Le card Fatturazione (sfondo inline) e le bozze restano come sono. */
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) {
+  background-color: hsl(var(--card));
+  box-shadow: var(--shadow-card);
+  transition: box-shadow var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]):not([data-draft]) {
+  border-top-color: hsl(var(--border));
+  border-right-color: hsl(var(--border));
+  border-bottom-color: hsl(var(--border));
+}
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]):hover {
+  box-shadow: var(--shadow-raised);
+}
+
+/* Ritardo critico: velatura rossa leggera (era rosso pieno al 70%) */
+html[data-ui="v2"] .fdm-kanban-card[data-time-state="critical"]:not([data-invoicing]) {
+  background-color: color-mix(in srgb, hsl(var(--status-late-soft)) 55%, hsl(var(--card)));
+}
+
+/* Header card: se codice + badge + data non stanno su una riga, vanno a capo
+   invece di sovrapporsi (testi +1px). */
+html[data-ui="v2"] .fdm-kanban-card-head {
+  flex-wrap: wrap;
+  row-gap: 0.25rem;
+}
+
+/* Badge stato: versione soft (sfondo tenue + testo scuro leggibile).
+   Sulle card Fatturazione piene restano i badge attuali. */
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) .fdm-kanban-badge {
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+}
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) .fdm-kanban-badge[data-tone="late"] {
+  background-color: hsl(var(--status-late-soft));
+  color: hsl(var(--status-late-fg));
+  border-color: hsl(var(--status-late-fg) / 0.25);
+}
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) .fdm-kanban-badge[data-tone="waiting"] {
+  background-color: hsl(var(--status-waiting-soft));
+  color: hsl(var(--status-waiting-fg));
+  border-color: hsl(var(--status-waiting-fg) / 0.25);
+}
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) .fdm-kanban-badge[data-tone="done"] {
+  background-color: hsl(var(--status-done-soft));
+  color: hsl(var(--status-done-fg));
+  border-color: hsl(var(--status-done-fg) / 0.25);
+}
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) .fdm-kanban-badge[data-tone="neutral"] {
+  background-color: hsl(var(--status-draft-soft));
+  color: hsl(var(--status-draft-fg));
+  border-color: hsl(var(--status-draft-fg) / 0.2);
+}
+/* Il lampeggio resta solo per il critico, ma più discreto */
+html[data-ui="v2"] .fdm-kanban-card[data-time-state="critical"] .fdm-kanban-badge {
+  animation-duration: 2.4s;
+}
+
+/* Barra progresso: binario neutro del tema, riempimento verde invariato */
+html[data-ui="v2"] .fdm-kanban-card:not([data-invoicing]) .fdm-kanban-progress {
+  background-color: hsl(var(--muted));
+}
