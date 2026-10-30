@@ -43,6 +43,7 @@ if (typeof globalThis.Response === "undefined") {
 import {
   TAB_AUTH_JAR_STORAGE_KEY,
   TAB_AUTH_PENDING_KEY,
+  accessTokenFromAuthCookies,
   authStorageKeyFromSupabaseUrl,
   parseCookieHeader,
   planDocumentCookieWrites,
@@ -121,6 +122,18 @@ describe("tab auth storage", () => {
     const cookies = cookiesForUser("user-a", "1", 24);
     expect(cookies.length).toBeGreaterThan(1);
     expect(userId(cookies)).toBe("user-a");
+  });
+
+  it("reads this tab's access token from chunked auth cookies", () => {
+    const cookies = cookiesForUser("user-a", "1", 24);
+    expect(cookies.length).toBeGreaterThan(1);
+    expect(accessTokenFromAuthCookies(cookies, STORAGE_KEY)).toBe(
+      fakeJwt("user-a", "1"),
+    );
+  });
+
+  it("returns null for the access token when the tab has no session", () => {
+    expect(accessTokenFromAuthCookies([], STORAGE_KEY)).toBeNull();
   });
 
   it("keeps tab A on user A after tab B logs in, and republishes A before a save", () => {

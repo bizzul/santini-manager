@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "../ui/use-toast";
 import { readApiJson } from "@/utils/api/read-api-json";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -228,7 +229,7 @@ const CreatePage = ({
 
     setIsDeleting(true);
     try {
-      const response = await fetch("/api/time-tracking/delete", {
+      const response = await apiFetch("/api/time-tracking/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: Array.from(selectedEntries) }),
@@ -625,7 +626,7 @@ const CreatePage = ({
 
       console.log("Sending timetracking data:", cleanedRows);
 
-      const response = await fetch("/api/time-tracking/create", {
+      const response = await apiFetch("/api/time-tracking/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -677,7 +678,7 @@ const CreatePage = ({
 
   // Handle delete from MyHoursList
   const handleDeleteEntries = async (ids: number[]) => {
-    const response = await fetch("/api/time-tracking/delete", {
+    const response = await apiFetch("/api/time-tracking/delete", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids }),

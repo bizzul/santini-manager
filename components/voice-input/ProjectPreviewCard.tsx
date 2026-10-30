@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import {
     Select,
     SelectContent,
@@ -62,7 +63,7 @@ export function ProjectPreviewCard({
         setIsSearching(true);
 
         try {
-            const response = await fetch(
+            const response = await apiFetch(
                 `/api/clients/search?name=${encodeURIComponent(trimmedName)}&siteId=${siteId}`
             );
             const data = await response.json();

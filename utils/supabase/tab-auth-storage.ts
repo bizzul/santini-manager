@@ -124,20 +124,35 @@ export function consumePendingTabAuthChange(storage: TabAuthStorage): boolean {
   }
 }
 
-export function userIdFromAuthCookies(
+type DecodedAuthSession = {
+  access_token?: string;
+  user?: { id?: string };
+};
+
+/** Parse the Supabase session object stored across the auth cookie chunks. */
+function decodeAuthSession(
   cookies: AuthCookie[],
   storageKey: string,
-): string | null {
+): DecodedAuthSession | null {
   const combined = combineCookieChunks(storageKey, cookies);
   if (!combined) return null;
   try {
     const raw = combined.startsWith(BASE64_PREFIX)
       ? stringFromBase64URL(combined.slice(BASE64_PREFIX.length))
       : combined;
-    const session = JSON.parse(raw) as {
-      access_token?: string;
-      user?: { id?: string };
-    };
+    return JSON.parse(raw) as DecodedAuthSession;
+  } catch {
+    return null;
+  }
+}
+
+export function userIdFromAuthCookies(
+  cookies: AuthCookie[],
+  storageKey: string,
+): string | null {
+  const session = decodeAuthSession(cookies, storageKey);
+  if (!session) return null;
+  try {
     if (session.user?.id) return session.user.id;
     if (!session.access_token) return null;
     const payload = session.access_token.split(".")[1];
@@ -147,6 +162,22 @@ export function userIdFromAuthCookies(
   } catch {
     return null;
   }
+}
+
+/**
+ * Access token of this tab's stored session, read from the per-tab jar.
+ *
+ * This is the identity the tab sends as `Authorization: Bearer <token>` on
+ * `/api/*` requests, so the server can trust the tab's own user instead of the
+ * shared cookie jar. Returns null when the tab has no session.
+ */
+export function accessTokenFromAuthCookies(
+  cookies: AuthCookie[],
+  storageKey: string,
+): string | null {
+  const session = decodeAuthSession(cookies, storageKey);
+  const token = session?.access_token;
+  return typeof token === "string" && token.length > 0 ? token : null;
 }
 
 /**

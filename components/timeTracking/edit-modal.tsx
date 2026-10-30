@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FC, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/timeTracking/editManual";
 import TasksFilter from "./filterTaskWhite";
@@ -66,7 +67,7 @@ export const EditModal: FC<Props> = ({
   const [selectedRoles, setSelectedRoles] = useState<Roles[]>([]);
 
   const get = async (id: number) => {
-    await fetch(`/api/time-tracking/${id}`)
+    await apiFetch(`/api/time-tracking/${id}`)
       .then((r) => r.json())
       .then((d: any) => {
         setResource(d);
@@ -119,7 +120,7 @@ export const EditModal: FC<Props> = ({
     setLoading(true);
     // include selectedRoles in the data
     data.roles = selectedRoles;
-    fetch(`/api/time-tracking/${resource.id}`, {
+    apiFetch(`/api/time-tracking/${resource.id}`, {
       method: "PATCH",
       headers: new Headers({
         "Content-Type": "application/json",

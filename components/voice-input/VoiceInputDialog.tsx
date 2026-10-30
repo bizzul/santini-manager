@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { readApiJson } from "@/utils/api/read-api-json";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -82,7 +83,7 @@ export function VoiceInputDialog({
     useEffect(() => {
         if (open && domain) {
             setSettingsLoading(true);
-            fetch(`/api/sites/${domain}/ai-settings`)
+            apiFetch(`/api/sites/${domain}/ai-settings`)
                 .then((res) => readApiJson<{
                     speechProvider?: "web-speech" | "whisper";
                     hasAiApiKey?: boolean;
@@ -162,7 +163,7 @@ export function VoiceInputDialog({
                     formData.append("siteId", siteId);
                     formData.append("language", "it");
                     
-                    const response = await fetch("/api/voice-input/transcribe", {
+                    const response = await apiFetch("/api/voice-input/transcribe", {
                         method: "POST",
                         body: formData,
                     });
@@ -265,7 +266,7 @@ export function VoiceInputDialog({
         setStep("extract");
 
         try {
-            const response = await fetch("/api/voice-input/extract", {
+            const response = await apiFetch("/api/voice-input/extract", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

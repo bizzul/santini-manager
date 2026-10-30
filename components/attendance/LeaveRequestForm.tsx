@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +44,7 @@ interface LeaveRequestFormProps {
 }
 
 async function fetchMyLeaveRequests(domain: string): Promise<{ requests: LeaveRequest[] }> {
-    const response = await fetch(`/api/sites/${domain}/leave-requests`);
+    const response = await apiFetch(`/api/sites/${domain}/leave-requests`);
     if (!response.ok) throw new Error("Failed to fetch leave requests");
     return response.json();
 }
@@ -64,7 +65,7 @@ export function LeaveRequestForm({ domain }: LeaveRequestFormProps) {
 
     const submitRequest = useMutation({
         mutationFn: async () => {
-            const response = await fetch(`/api/sites/${domain}/leave-requests`, {
+            const response = await apiFetch(`/api/sites/${domain}/leave-requests`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

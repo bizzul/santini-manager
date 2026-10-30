@@ -2,10 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { UserContext } from "@/lib/auth-utils";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 
 // Fetch function for user context
 async function fetchUserContext(): Promise<UserContext | null> {
-  const response = await fetch("/api/auth/me");
+  // apiFetch sends this tab's token so /api/auth/me resolves the identity of
+  // THIS tab, not whatever the shared cookie currently holds.
+  const response = await apiFetch("/api/auth/me");
   if (!response.ok) {
     if (response.status === 401) {
       return null;

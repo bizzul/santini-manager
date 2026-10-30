@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Dispatch, FC, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Modal } from "../../package/components/modal";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { validation } from "../../validation/timeTracking/createManual";
 import TasksFilter from "./filterTasksBlack";
@@ -63,7 +64,7 @@ export const CreateModal: FC<Props> = ({
   const onSubmit = (data: any) => {
     setError(null);
     setLoading(true);
-    fetch("/api/time-tracking/createSingle", {
+    apiFetch("/api/time-tracking/createSingle", {
       method: "post",
       headers: new Headers({
         "Content-Type": "application/json",

@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { COOKIE_OPTIONS } from "./cookie";
 import { normalizeApiResponse } from "@/utils/api/read-api-json";
 import {
+  accessTokenFromAuthCookies,
   authStorageKeyFromSupabaseUrl,
   parseCookieHeader,
   planDocumentCookieWrites,
@@ -187,8 +188,9 @@ function installTabAuthSync() {
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
     const path = requestPath(input);
     if (inflightFetches === 0) syncTabAuthCookies(false);
+    const nextInit = withTabAuthHeader(input, init);
     inflightFetches += 1;
-    return originalFetch(input, init)
+    return originalFetch(input, nextInit)
       .then((response) => normalizeApiResponse(path, response))
       .finally(() => {
         if (adoptsForeignSession(path)) pendingAdopt = true;
@@ -263,6 +265,58 @@ function requestPath(input: RequestInfo | URL): string {
   } catch {
     return "";
   }
+}
+
+/**
+ * Attach this tab's access token as `Authorization: Bearer <token>` to every
+ * same-origin `/api/*` request. The token is read synchronously from the
+ * per-tab jar (sessionStorage), so each data call carries the identity of THIS
+ * tab instead of relying on the shared cookie jar. This is the chokepoint that
+ * guarantees no `/api/*` call is left without the tab token, even ones that do
+ * not go through `apiFetch`.
+ *
+ * Cross-origin requests (e.g. the Supabase token refresh) and requests that
+ * already set an Authorization header are left untouched. The token is never
+ * logged.
+ */
+function withTabAuthHeader(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): RequestInit | undefined {
+  const raw =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url;
+  let isSameOriginApi = false;
+  try {
+    const url = new URL(raw, window.location.origin);
+    isSameOriginApi =
+      url.origin === window.location.origin && url.pathname.startsWith("/api/");
+  } catch {
+    isSameOriginApi = false;
+  }
+  if (!isSameOriginApi) return init;
+  // Guard for non-browser/test runtimes that lack the fetch primitives.
+  if (typeof Headers === "undefined") return init;
+
+  const existingHeaders =
+    init?.headers ??
+    (typeof Request !== "undefined" && input instanceof Request
+      ? input.headers
+      : undefined);
+  const headers = new Headers(existingHeaders);
+  if (headers.has("Authorization")) return init;
+
+  const token = accessTokenFromAuthCookies(
+    readTabAuthJar(window.sessionStorage),
+    currentStorageKey(),
+  );
+  if (!token) return init;
+
+  headers.set("Authorization", `Bearer ${token}`);
+  return { ...init, headers };
 }
 
 function adoptsForeignSession(pathname: string): boolean {

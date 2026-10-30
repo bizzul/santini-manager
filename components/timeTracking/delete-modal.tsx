@@ -6,6 +6,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Dispatch, FC, SetStateAction, useState } from "react";
 import { Modal } from "../../package/components/modal";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 
 type Props = {
   open: boolean;
@@ -34,7 +35,7 @@ export const DeleteModal: FC<Props> = ({
   const remove = () => {
     setError(null);
     setLoading(true);
-    fetch(`/api/time-tracking/${resourceId}`, {
+    apiFetch(`/api/time-tracking/${resourceId}`, {
       method: "DELETE",
       headers: new Headers({
         "Content-Type": "application/json",

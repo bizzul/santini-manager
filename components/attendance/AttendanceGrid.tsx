@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Calendar, LayoutGrid, Rows3 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { readApiJson } from "@/utils/api/read-api-json";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { AttendanceMonthlyView } from "./AttendanceMonthlyView";
 import { AttendanceAnnualView } from "./AttendanceAnnualView";
 import { AttendanceStats } from "./AttendanceStats";
@@ -48,7 +49,7 @@ async function fetchAttendance(domain: string, year: number, month: number | nul
     const params = new URLSearchParams({ year: year.toString() });
     if (month !== null) params.set("month", month.toString());
 
-    const response = await fetch(`/api/sites/${domain}/attendance?${params}`);
+    const response = await apiFetch(`/api/sites/${domain}/attendance?${params}`);
     return readApiJson<{
         users?: AttendanceUser[];
         attendance?: Record<string, Record<string, AttendanceEntry>>;
@@ -56,7 +57,7 @@ async function fetchAttendance(domain: string, year: number, month: number | nul
 }
 
 async function fetchLeaveRequests(domain: string) {
-    const response = await fetch(`/api/sites/${domain}/leave-requests`);
+    const response = await apiFetch(`/api/sites/${domain}/leave-requests`);
     return readApiJson<{ requests?: LeaveRequest[] }>(response);
 }
 
@@ -93,7 +94,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
             date: string;
             status: AttendanceStatus;
         }) => {
-            const response = await fetch(`/api/sites/${domain}/attendance`, {
+            const response = await apiFetch(`/api/sites/${domain}/attendance`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user_id: userId, date, status }),
@@ -119,7 +120,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
             userId: string;
             date: string;
         }) => {
-            const response = await fetch(`/api/sites/${domain}/attendance`, {
+            const response = await apiFetch(`/api/sites/${domain}/attendance`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user_id: userId, date }),
@@ -146,7 +147,7 @@ export function AttendanceGrid({ domain, isAdmin, currentUserId }: AttendanceGri
             id: string;
             status: "approved" | "rejected";
         }) => {
-            const response = await fetch(
+            const response = await apiFetch(
                 `/api/sites/${domain}/leave-requests/${id}`,
                 {
                     method: "PATCH",

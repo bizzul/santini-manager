@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { readApiJson } from "@/utils/api/read-api-json";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import type { ExtractedTimetracking } from "@/validation/voice-input/extracted-timetracking";
 
 interface InternalActivity {
@@ -71,7 +72,7 @@ export function VoiceInputButton({
 
   useEffect(() => {
     if (open && domain) {
-      fetch(`/api/sites/${domain}/ai-settings`)
+      apiFetch(`/api/sites/${domain}/ai-settings`)
         .then((res) => readApiJson<SiteAiSettings & { speechProvider?: SpeechProvider }>(res))
         .then((data) => {
           setSiteSettings({
@@ -135,7 +136,7 @@ export function VoiceInputButton({
           const formData = new FormData();
           formData.append("audio", blob, "audio.webm");
           formData.append("siteId", siteId);
-          const res = await fetch("/api/voice-input/transcribe", { method: "POST", body: formData });
+          const res = await apiFetch("/api/voice-input/transcribe", { method: "POST", body: formData });
           const data = await readApiJson<{ error?: string; transcript?: string }>(res);
           if (data?.error) throw new Error(data.error);
           const transcriptText = data?.transcript;
@@ -192,7 +193,7 @@ export function VoiceInputButton({
     setIsExtracting(true);
     setError(null);
     try {
-      const res = await fetch("/api/voice-input/extract-timetracking", {
+      const res = await apiFetch("/api/voice-input/extract-timetracking", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcript, siteId }),

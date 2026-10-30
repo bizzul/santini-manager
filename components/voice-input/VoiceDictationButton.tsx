@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { WHISPER_SAFE_MAX_FILE_BYTES } from "@/lib/speech/server/types";
 
 type SpeechProvider = "web-speech" | "whisper";
@@ -81,7 +82,7 @@ export function VoiceDictationButton({
 
   useEffect(() => {
     if (open && domain) {
-      fetch(`/api/sites/${domain}/ai-settings`)
+      apiFetch(`/api/sites/${domain}/ai-settings`)
         .then((res) => res.json())
         .then((data) => {
           setSiteSettings({
@@ -204,7 +205,7 @@ export function VoiceDictationButton({
           formData.append("siteId", siteId);
           formData.append("language", "it");
 
-          const res = await fetch("/api/voice-input/transcribe", {
+          const res = await apiFetch("/api/voice-input/transcribe", {
             method: "POST",
             body: formData,
           });

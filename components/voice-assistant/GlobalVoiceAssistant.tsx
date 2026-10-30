@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/use-toast";
 import { readApiJson } from "@/utils/api/read-api-json";
+import { apiFetch } from "@/utils/supabase/api-fetch";
 import { useSiteId } from "@/hooks/use-site-id";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import {
@@ -370,7 +371,7 @@ export function GlobalVoiceAssistant() {
         let cancelled = false;
         setSettingsLoading(true);
 
-        fetch(`/api/sites/${domain}/ai-settings`)
+        apiFetch(`/api/sites/${domain}/ai-settings`)
             .then((response) => readApiJson<{
                 speechProvider?: "web-speech" | "whisper";
                 hasAiApiKey?: boolean;
@@ -454,7 +455,7 @@ export function GlobalVoiceAssistant() {
                     formData.append("siteId", siteId);
                     formData.append("language", "it");
 
-                    const response = await fetch("/api/voice-input/transcribe", {
+                    const response = await apiFetch("/api/voice-input/transcribe", {
                         method: "POST",
                         body: formData,
                     });
@@ -652,7 +653,7 @@ export function GlobalVoiceAssistant() {
             }
 
             const analysisRequests = commandSegments.map(async (segment, index) => {
-                const parseResponse = await fetch("/api/voice-input/command", {
+                const parseResponse = await apiFetch("/api/voice-input/command", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -806,7 +807,7 @@ export function GlobalVoiceAssistant() {
                     continue;
                 }
 
-                const executeResponse = await fetch(command.operation!.endpoint, {
+                const executeResponse = await apiFetch(command.operation!.endpoint, {
                     method: command.operation!.method,
                     headers: {
                         "Content-Type": "application/json",
