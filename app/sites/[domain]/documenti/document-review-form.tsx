@@ -55,6 +55,7 @@ import {
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
 import { CatalogLineConfigurator } from "./catalog-line-configurator";
+import { TemplateCategoriaPicker } from "./template-categoria-picker";
 import {
   RigaCalcolo,
   riepilogaCalcoli,
@@ -89,6 +90,7 @@ export function DocumentReviewForm({
   const router = useRouter();
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [bloccantiConfermati, setBloccantiConfermati] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(
     null,
   );
@@ -126,6 +128,11 @@ export function DocumentReviewForm({
 
   const addCatalogLine = (riga: RigaArricchita) => {
     append(riga, { shouldFocus: false });
+  };
+
+  const addTemplateLines = (righe: RigaArricchita[]) => {
+    if (righe.length === 0) return;
+    append(righe, { shouldFocus: false });
   };
 
   const uploadRigaImage = async (index: number, file: File) => {
@@ -590,6 +597,16 @@ export function DocumentReviewForm({
                       variant="outline"
                       size="sm"
                       className="h-8"
+                      onClick={() => setTemplateOpen(true)}
+                    >
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Da categoria
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
                       onClick={addRiga}
                     >
                       <Plus className="mr-1.5 h-4 w-4" />
@@ -932,6 +949,16 @@ export function DocumentReviewForm({
                     variant="ghost"
                     size="sm"
                     className="h-8 w-full border border-dashed border-border/80"
+                    onClick={() => setTemplateOpen(true)}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Aggiungi righe da categoria
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full border border-dashed border-border/80"
                     onClick={addRiga}
                   >
                     <Plus className="mr-1.5 h-4 w-4" />
@@ -1058,6 +1085,13 @@ export function DocumentReviewForm({
         open={catalogOpen}
         onOpenChange={setCatalogOpen}
         onAdd={addCatalogLine}
+      />
+
+      <TemplateCategoriaPicker
+        domain={domain}
+        open={templateOpen}
+        onOpenChange={setTemplateOpen}
+        onAdd={addTemplateLines}
       />
     </Form>
   );
