@@ -78,6 +78,27 @@ export async function saveGrigliaRowAction(
     attivo: input.attivo ?? true,
   };
 
+  // listino_griglia_base ha una FK verso listino_famiglie. Una famiglia
+  // impostata su un prodotto dopo il popolamento iniziale dell'anagrafica non
+  // esisterebbe ancora e l'inserimento fallirebbe, rompendo una schermata che
+  // funziona. La si registra al volo; resta "Da classificare" finche' qualcuno
+  // non le da' un nome. La FK continua cosi' a proteggere l'import massivo,
+  // che e' il punto in cui un refuso passa inosservato.
+  const { error: famigliaError } = await supabase
+    .from("listino_famiglie")
+    .upsert(
+      {
+        site_id: siteId,
+        codice: famiglia,
+        nome: famiglia,
+        categoria: "Da classificare",
+      },
+      { onConflict: "site_id,codice", ignoreDuplicates: true },
+    );
+  if (famigliaError) {
+    console.error("Error ensuring listino_famiglie row:", famigliaError);
+  }
+
   const query = input.id
     ? supabase
         .from("listino_griglia_base")
