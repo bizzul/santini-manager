@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import {
@@ -54,10 +54,18 @@ import {
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
 import { RigheEditor } from "./righe-editor";
+import { CondizioniStep } from "./condizioni-step";
 import { riepilogaCalcoli } from "@/components/documenti/riga-calcolo";
 
 interface DocumentReviewFormProps {
   domain: string;
+  /**
+   * Istanza react-hook-form del documento. Passata dall'esterno quando la
+   * bozza attraversa piu' schermate (wizard a quattro passi): finche' il form
+   * nasce qui dentro, nessun altro passo puo' leggerla o scriverla.
+   * Se assente il componente ne crea una propria e si comporta come prima.
+   */
+  form?: UseFormReturn<DocumentoArricchito>;
   siteId: string;
   initialDocumento: DocumentoArricchito;
   templatesByType: Record<DocumentTypeId, DocumentTemplate>;
@@ -70,6 +78,7 @@ interface DocumentReviewFormProps {
 
 export function DocumentReviewForm({
   domain,
+  form: formEsterno,
   initialDocumento,
   templatesByType,
   sourceText,
@@ -83,10 +92,13 @@ export function DocumentReviewForm({
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [bloccantiConfermati, setBloccantiConfermati] = useState(false);
 
-  const form = useForm<DocumentoArricchito>({
+  // Gli hook vanno chiamati sempre: si crea comunque l'istanza interna e si
+  // usa quella esterna quando c'e'.
+  const formInterno = useForm<DocumentoArricchito>({
     resolver: zodResolver(DocumentoArricchitoSchema),
     defaultValues: initialDocumento,
   });
+  const form = formEsterno ?? formInterno;
 
 
 
@@ -467,71 +479,7 @@ export function DocumentReviewForm({
                 showDiscount={showDiscount}
               />
 
-              <div className="grid gap-2 rounded-md border border-border/70 bg-muted/10 p-2 md:grid-cols-2">
-                <p className="text-sm font-medium md:col-span-2">Condizioni e note</p>
-                <FormField
-                  control={form.control}
-                  name="condizioniPagamento"
-                  render={({ field }) => (
-                    <FormItem className="space-y-0 md:col-span-2">
-                      <FormLabel className="text-[11px]">
-                        Condizioni di pagamento
-                      </FormLabel>
-                      <FormControl>
-                        <Textarea
-                          rows={2}
-                          className="text-sm"
-                          value={(field.value ?? []).join("\n")}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value
-                                .split("\n")
-                                .map((line) => line.trim())
-                                .filter(Boolean),
-                            )
-                          }
-                          placeholder="Una condizione per riga"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="termineFornitura"
-                  render={({ field }) => (
-                    <FormItem className="space-y-0">
-                      <FormLabel className="text-[11px]">Termine di fornitura</FormLabel>
-                      <FormControl>
-                        <Input
-                          className="h-8 text-sm"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="note"
-                  render={({ field }) => (
-                    <FormItem className="space-y-0">
-                      <FormLabel className="text-[11px]">Note / trasporto</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          rows={2}
-                          className="min-h-[2.25rem] resize-y text-sm"
-                          {...field}
-                          value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.value || null)}
-                          placeholder="Note aggiuntive…"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
+                <CondizioniStep form={form} />
             </>
             )}
 
