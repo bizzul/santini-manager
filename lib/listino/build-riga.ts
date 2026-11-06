@@ -4,6 +4,12 @@ import type { ModalitaPrezzo } from "@/types/supabase";
 export interface BuildCatalogRigaParams {
   productId: number;
   productName: string;
+  /**
+   * Testo descrittivo base del prodotto a catalogo (SellProduct.description).
+   * Viene COPIATO nella riga, non referenziato: se il catalogo cambia, le
+   * offerte gia' inviate devono restare come sono state mandate al cliente.
+   */
+  testoBase?: string | null;
   imageUrl?: string | null;
   modalita: ModalitaPrezzo | null;
   larghezzaMm?: number | null;
@@ -46,27 +52,48 @@ export function buildMisureLabel(
   return `${dims} mm`;
 }
 
+export interface DescrizioneEstesaParams {
+  /** Testo descrittivo base del prodotto. Va in testa, su riga propria. */
+  testoBase?: string | null;
+  misureLabel?: string | null;
+  codMateriale?: string | null;
+  codVetroTelaio?: string | null;
+  codEsecuzioneAnte?: string | null;
+  supplementiNomi?: string[];
+}
+
 /**
- * Descrizione estesa multi-riga. Include anche le misure (con etichetta) cosi'
- * restano visibili nel PDF anche quando sono presenti materiale/supplementi
- * (il template mostra la descrizioneEstesa in luogo del campo `misure`).
+ * Descrizione estesa su due livelli, come le offerte Santini reali:
+ *
+ *   <testo descrittivo base del prodotto>
+ *   Misure: 1400x1600 mm · Materiale: PVC · Vetro/telaio: VC3
+ *
+ * Le misure restano QUI oltre che nel campo `misure`, perche' il template PDF
+ * mostra la descrizioneEstesa in luogo del campo misure quando e' presente:
+ * toglierle da qui le farebbe sparire dal documento.
  */
 export function buildDescrizioneEstesa(
-  misureLabel?: string | null,
-  codMateriale?: string | null,
-  codVetroTelaio?: string | null,
-  supplementiNomi?: string[],
-  codEsecuzioneAnte?: string | null,
+  params: DescrizioneEstesaParams,
 ): string | null {
-  const parts: string[] = [];
-  if (misureLabel) parts.push(`Misure: ${misureLabel}`);
-  if (codMateriale) parts.push(`Materiale: ${codMateriale}`);
-  if (codVetroTelaio) parts.push(`Vetro/telaio: ${codVetroTelaio}`);
-  if (codEsecuzioneAnte) parts.push(`Esecuzione ante: ${codEsecuzioneAnte}`);
-  if (supplementiNomi && supplementiNomi.length > 0) {
-    parts.push(`Supplementi: ${supplementiNomi.join(", ")}`);
+  const attributi: string[] = [];
+  if (params.misureLabel) attributi.push(`Misure: ${params.misureLabel}`);
+  if (params.codMateriale) attributi.push(`Materiale: ${params.codMateriale}`);
+  if (params.codVetroTelaio) {
+    attributi.push(`Vetro/telaio: ${params.codVetroTelaio}`);
   }
-  return parts.length > 0 ? parts.join(" \u00b7 ") : null;
+  if (params.codEsecuzioneAnte) {
+    attributi.push(`Esecuzione ante: ${params.codEsecuzioneAnte}`);
+  }
+  if (params.supplementiNomi && params.supplementiNomi.length > 0) {
+    attributi.push(`Supplementi: ${params.supplementiNomi.join(", ")}`);
+  }
+
+  const testoBase = params.testoBase?.trim() || null;
+  const rigaAttributi =
+    attributi.length > 0 ? attributi.join(" · ") : null;
+
+  if (testoBase && rigaAttributi) return `${testoBase}\n${rigaAttributi}`;
+  return testoBase ?? rigaAttributi;
 }
 
 /**
@@ -88,13 +115,14 @@ export function buildCatalogRiga(
 
   return {
     descrizione: params.productName,
-    descrizioneEstesa: buildDescrizioneEstesa(
+    descrizioneEstesa: buildDescrizioneEstesa({
+      testoBase: params.testoBase,
       misureLabel,
-      params.codMateriale,
-      params.codVetroTelaio,
-      params.supplementiNomi,
-      params.codEsecuzioneAnte,
-    ),
+      codMateriale: params.codMateriale,
+      codVetroTelaio: params.codVetroTelaio,
+      codEsecuzioneAnte: params.codEsecuzioneAnte,
+      supplementiNomi: params.supplementiNomi,
+    }),
     misure: misureLabel,
     unita: "Pz.",
     quantita,

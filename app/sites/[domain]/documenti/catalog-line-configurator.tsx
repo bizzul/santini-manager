@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ interface ProdottoConfig {
   prodotto: {
     id: number;
     name: string;
+    descrizione: string | null;
     internalCode: string | null;
     modalitaPrezzo: ModalitaPrezzo | null;
     famigliaAperturaCod: string | null;
@@ -151,6 +153,7 @@ export function CatalogLineConfigurator({
   const [codEsecuzioneAnte, setCodEsecuzioneAnte] = useState<string>("");
   const [supplementoIds, setSupplementoIds] = useState<string[]>([]);
   const [quantita, setQuantita] = useState("1");
+  const [testoBase, setTestoBase] = useState("");
 
   const [breakdown, setBreakdown] = useState<Breakdown | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
@@ -174,6 +177,7 @@ export function CatalogLineConfigurator({
     setCodEsecuzioneAnte("");
     setSupplementoIds([]);
     setQuantita("1");
+    setTestoBase("");
     setBreakdown(null);
     setCalcError(null);
     setPrezzoUnitario("");
@@ -228,6 +232,7 @@ export function CatalogLineConfigurator({
       if (!res.ok) throw new Error("Config non disponibile");
       const data: ProdottoConfig = await res.json();
       setConfig(data);
+      setTestoBase(data.prodotto.descrizione ?? "");
       setCodMateriale(data.prodotto.codMateriale ?? "");
       setCodVetroTelaio(data.prodotto.codVetroTelaio ?? "");
       // Pre-compila le misure con i default del prodotto (se presenti).
@@ -342,6 +347,7 @@ export function CatalogLineConfigurator({
     const riga = buildCatalogRiga({
       productId: config.prodotto.id,
       productName: config.prodotto.name,
+      testoBase: testoBase || config.prodotto.descrizione,
       imageUrl: config.prodotto.imageUrl,
       modalita,
       larghezzaMm: larghezzaMm ? Number(larghezzaMm) : null,
@@ -462,6 +468,20 @@ export function CatalogLineConfigurator({
                 la modalita nel catalogo per calcolarne il prezzo.
               </p>
             ) : null}
+
+            <div className="space-y-1">
+              <Label className="text-xs">Testo descrittivo base</Label>
+              <Textarea
+                rows={3}
+                value={testoBase}
+                onChange={(e) => setTestoBase(e.target.value)}
+                placeholder="Testo descrittivo del prodotto a catalogo"
+              />
+              <p className="text-xs text-muted-foreground">
+                Arriva dal prodotto a catalogo e viene copiato nella riga:
+                modificarlo qui non cambia il catalogo.
+              </p>
+            </div>
 
             {needsMisure(modalita) ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

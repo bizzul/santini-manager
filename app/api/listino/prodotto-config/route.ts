@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     const { data: prodotto, error: prodErr } = await supabase
       .from("SellProduct")
       .select(
-        "id, name, internal_code, modalita_prezzo, famiglia_apertura_cod, cod_materiale, cod_vetro_telaio, cod_tipo_cassone, image_url, width_mm, height_mm, depth_mm, category:sellproduct_categories(name)",
+        "id, name, description, internal_code, modalita_prezzo, famiglia_apertura_cod, cod_materiale, cod_vetro_telaio, cod_tipo_cassone, image_url, width_mm, height_mm, depth_mm, category:sellproduct_categories(name)",
       )
       .eq("site_id", siteId)
       .eq("id", sellProductId)
@@ -133,6 +133,7 @@ export async function GET(req: NextRequest) {
       prodotto: {
         id: prodotto.id,
         name: prodotto.name,
+        descrizione: prodotto.description ?? null,
         internalCode: prodotto.internal_code ?? null,
         modalitaPrezzo: prodotto.modalita_prezzo ?? null,
         famigliaAperturaCod: prodotto.famiglia_apertura_cod ?? null,
