@@ -175,9 +175,9 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
   return (
     <>
       <div className="overflow-hidden rounded-md border border-border/70">
-        <div className="flex items-center justify-between gap-2 border-b border-border/70 bg-muted/20 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 bg-muted/20 px-3 py-2">
           <p className="text-sm font-medium">Righe articolo</p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -242,7 +242,7 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-border/60">
+          <div className="space-y-2 p-2">
             {fields.map((field, index) => {
               const riga = watched.righe?.[index];
               const importoRiga = calcolaTotaleRiga(
@@ -255,7 +255,7 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
               return (
                 <div
                   key={field.id}
-                  className="space-y-1.5 bg-muted/5 p-2"
+                  className="space-y-1.5 overflow-hidden rounded-lg border border-border/60 bg-muted/5 p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
@@ -370,8 +370,8 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                           </FormLabel>
                           <FormControl>
                             <Textarea
-                              rows={1}
-                              className="min-h-[2.25rem] resize-y py-1 text-sm leading-snug"
+                              rows={2}
+                              className="min-h-[2.75rem] resize-y break-words py-1 text-sm leading-snug"
                               {...f}
                             />
                           </FormControl>
@@ -390,9 +390,9 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                         </FormLabel>
                         <FormControl>
                           <Textarea
-                            rows={1}
-                            placeholder="Note tecniche, dettagli…"
-                            className="min-h-[2rem] resize-y py-1 text-sm leading-snug"
+                            rows={4}
+                            placeholder="Testo descrittivo del prodotto, note tecniche…"
+                            className="min-h-[5rem] resize-y break-words py-1 text-sm leading-snug"
                             {...f}
                             value={f.value ?? ""}
                             onChange={(e) =>

@@ -44,7 +44,7 @@ export function RigaCalcolo({ calcolo }: { calcolo?: CalcoloRiga | null }) {
   return (
     <div className="space-y-1.5">
       {calcolo.stato === "da_quotare" ? (
-        <p className="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-[11px] font-semibold text-destructive">
+        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] font-semibold text-destructive">
           Posizione non quotata dal motore: prezzo a zero finche&apos; non viene
           inserito a mano.
         </p>
@@ -53,19 +53,19 @@ export function RigaCalcolo({ calcolo }: { calcolo?: CalcoloRiga | null }) {
       {avvisi.map((a, i) => (
         <p
           key={`${a.codice}-${i}`}
-          className={`flex gap-1.5 rounded border px-2 py-1 text-[11px] ${
+          className={`flex gap-1.5 rounded-md border px-2 py-1.5 text-[11px] ${
             STILE_AVVISO[a.severita] ?? STILE_AVVISO.bassa
           }`}
         >
           <span className="shrink-0 font-semibold uppercase">
             {ETICHETTA_AVVISO[a.severita] ?? "Nota"}
           </span>
-          <span>{a.messaggio}</span>
+          <span className="min-w-0 break-words">{a.messaggio}</span>
         </p>
       ))}
 
       {breakdown ? (
-        <details className="rounded border bg-muted/10 px-2 py-1">
+        <details className="overflow-hidden rounded-md border bg-muted/10 px-2 py-1.5">
           <summary className="cursor-pointer text-[11px] text-muted-foreground">
             Come e&apos; stato calcolato
           </summary>
@@ -128,12 +128,12 @@ function Voce({
 }) {
   return (
     <div
-      className={`flex justify-between gap-3 ${
+      className={`flex items-baseline justify-between gap-3 ${
         forte ? "font-semibold" : "text-muted-foreground"
       }`}
     >
-      <span>{etichetta}</span>
-      <span>{valore}</span>
+      <span className="min-w-0 break-words">{etichetta}</span>
+      <span className="shrink-0 tabular-nums">{valore}</span>
     </div>
   );
 }
