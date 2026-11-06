@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import type { RigaArricchita } from "@/validation/documenti/extracted-document";
+import {
+  fetchOffertaTemplates,
+  templateToRighe,
+  type OffertaTemplate,
+} from "@/lib/documenti/offerta-template";
 
 /**
  * Scelta delle categorie da offrire: ogni categoria porta nel documento le
@@ -23,24 +28,6 @@ import type { RigaArricchita } from "@/validation/documenti/extracted-document";
  * template non e' quotabile finche' non ha le misure, e deve vedersi.
  */
 
-interface TemplateRiga {
-  id: string;
-  sellProductId: number | null;
-  descrizione: string;
-  testoBase: string | null;
-  unita: string;
-  quantitaDefault: number;
-  richiedeMisure: boolean;
-}
-
-interface Template {
-  id: string;
-  categoria: string;
-  nome: string;
-  descrizione: string | null;
-  righe: TemplateRiga[];
-}
-
 type Props = {
   domain: string;
   open: boolean;
@@ -48,51 +35,16 @@ type Props = {
   onAdd: (righe: RigaArricchita[]) => void;
 };
 
-function templateToRighe(t: Template): RigaArricchita[] {
-  return t.righe.map((r) => ({
-    descrizione: r.descrizione,
-    descrizioneEstesa: r.testoBase,
-    misure: null,
-    unita: r.unita as RigaArricchita["unita"],
-    quantita: r.quantitaDefault,
-    prezzoUnitario: 0,
-    sconto: null,
-    isTrasporto: false,
-    articoloId: r.sellProductId,
-    articoloSource: r.sellProductId ? ("sell_product" as const) : ("none" as const),
-    isNuovo: !r.sellProductId,
-    configurazione: r.sellProductId ? { sellProductId: r.sellProductId } : null,
-    calcolo: {
-      stato: "da_quotare" as const,
-      prezzoUnitario: 0,
-      codiceErrore: null,
-      avvisi: [
-        {
-          codice: "PREZZO_NON_DISPONIBILE",
-          severita: "alta" as const,
-          messaggio: r.richiedeMisure
-            ? "Posizione da template: inserire le misure e calcolare il prezzo."
-            : "Posizione da template: inserire il prezzo.",
-        },
-      ],
-      breakdown: null,
-      calcolatoIl: null,
-    },
-  }));
-}
-
 export function TemplateCategoriaPicker({
   domain,
   open,
   onOpenChange,
   onAdd,
 }: Props) {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<OffertaTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
   const [scelti, setScelti] = useState<string[]>([]);
-
-  const headers = useMemo(() => ({ "x-site-domain": domain }), [domain]);
 
   useEffect(() => {
     if (!open) return;
@@ -101,16 +53,13 @@ export function TemplateCategoriaPicker({
     setErrore(null);
     (async () => {
       try {
-        const res = await fetch("/api/listino/offerta-template", { headers });
-        const data = await res.json();
+        const t = await fetchOffertaTemplates(domain);
         if (!active) return;
-        if (!res.ok) {
-          setErrore(data.error ?? "Impossibile caricare i template.");
-          return;
+        setTemplates(t);
+      } catch (e) {
+        if (active) {
+          setErrore(e instanceof Error ? e.message : "Errore di caricamento.");
         }
-        setTemplates(data.templates ?? []);
-      } catch {
-        if (active) setErrore("Impossibile caricare i template.");
       } finally {
         if (active) setLoading(false);
       }
@@ -118,7 +67,7 @@ export function TemplateCategoriaPicker({
     return () => {
       active = false;
     };
-  }, [open, headers]);
+  }, [open, domain]);
 
   const toggle = useCallback((id: string) => {
     setScelti((prev) =>

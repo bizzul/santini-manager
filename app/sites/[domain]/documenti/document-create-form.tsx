@@ -16,7 +16,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { LoadingState } from "@/components/layout/loading-state";
 import { DOCUMENT_TYPES } from "@/lib/documenti/document-types";
 import {
-  validateDocumentAttachment,
   DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES,
 } from "@/lib/documenti/attachment-validation";
 import type {
@@ -31,11 +30,10 @@ import {
   errorsFromGenerateApiPayload,
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
-import { createClient } from "@/utils/supabase/client";
 import { X } from "lucide-react";
 import { VoiceDictationButton } from "@/components/voice-input/VoiceDictationButton";
 import { MobileMediaCapture } from "@/components/media/mobile-media-capture";
-import { useMediaCaptureOptional } from "@/components/media/media-capture-context";
+import { useDocumentAllegati } from "@/hooks/use-document-allegati";
 
 export interface ClienteOption {
   id: number;
@@ -94,6 +92,24 @@ interface DocumentCreateFormProps {
     taskId?: number | null,
   ) => void;
   onCancel: () => void;
+  /**
+   * "classic" e' il flusso storico: una schermata sola che raccoglie tutto e
+   * chiama l'AI. "wizard" e' il passo 1 dei quattro: raccoglie solo
+   * destinatario e oggetto, mentre testo descrittivo e allegati scendono al
+   * passo 3, dove arrivano dopo che la struttura dell'offerta esiste gia'.
+   */
+  mode?: "classic" | "wizard";
+  /** Solo in modalita wizard: consegna la bozza al passo successivo. */
+  onNext?: (bozza: BozzaPasso1) => void;
+  /** Contenuto extra mostrato prima dei pulsanti (es. scelta categorie). */
+  extra?: React.ReactNode;
+}
+
+export interface BozzaPasso1 {
+  tipoDocumento: TipoDocumento;
+  destinatario: DestinatarioInput;
+  oggetto: string;
+  taskId: number | null;
 }
 
 type DestinatarioMode = "cliente" | "fornitore" | "manuale";
@@ -133,7 +149,11 @@ export function DocumentCreateForm({
   initialValues,
   onGenerated,
   onCancel,
+  mode = "classic",
+  onNext,
+  extra,
 }: DocumentCreateFormProps) {
+  const isWizard = mode === "wizard";
   const { toast } = useToast();
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>(
     initialValues?.tipoDocumento ?? "OFFERTA",
@@ -159,13 +179,10 @@ export function DocumentCreateForm({
   );
   const [oggetto, setOggetto] = useState(initialValues?.oggetto ?? "");
   const [testo, setTesto] = useState(initialValues?.testo ?? "");
-  const [allegati, setAllegati] = useState<Allegato[]>(
-    initialValues?.allegati ?? [],
-  );
-  const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateErrors, setGenerateErrors] = useState<string[]>([]);
-  const capture = useMediaCaptureOptional();
+  const { allegati, setAllegati, isUploading, uploadAttachment } =
+    useDocumentAllegati(siteId, initialValues?.allegati ?? []);
 
   const showGenerateErrors = (errors: string[]) => {
     const list = errors.length > 0 ? errors : ["Errore sconosciuto durante la generazione"];
@@ -264,77 +281,40 @@ export function DocumentCreateForm({
     applyCliente(id);
   }, [destMode, selectedEntityId, clients, applyCliente]);
 
-  const uploadAttachment = useCallback(
-    async (file: File) => {
-      const validation = validateDocumentAttachment({
-        name: file.name,
-        size: file.size,
-        type: file.type,
+
+
+  const buildDestinatario = (): DestinatarioInput => ({
+    tipo: destMode,
+    entityId:
+      destMode !== "manuale" && selectedEntityId
+        ? Number(selectedEntityId)
+        : null,
+    ragioneSociale: ragioneSociale.trim(),
+    aca: aca.trim() || null,
+    via: via.trim() || null,
+    cap: cap.trim() || null,
+    citta: citta.trim() || null,
+    email: email.trim() || null,
+  });
+
+  const taskIdCorrente = () =>
+    selectedOfferId && showOfferPicker ? Number(selectedOfferId) : null;
+
+  const handleNext = () => {
+    if (!oggetto.trim() || !ragioneSociale.trim()) {
+      toast({
+        variant: "destructive",
+        description: "Compila tipo documento, destinatario e oggetto",
       });
-      if (!validation.valid) {
-        toast({ variant: "destructive", description: validation.message });
-        return;
-      }
-
-      setIsUploading(true);
-      try {
-        const supabase = createClient();
-        const ext = file.name.split(".").pop();
-        const safeName = file.name
-          .replace(/\.[^/.]+$/, "")
-          .replace(/[^a-zA-Z0-9-_]/g, "_")
-          .substring(0, 50);
-        const fileName = `${safeName}-${Date.now()}.${ext}`;
-        const filePath = `${siteId}/documenti/temp/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("documents")
-          .upload(filePath, file, { upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("documents").getPublicUrl(filePath);
-
-        setAllegati((prev) => [
-          ...prev,
-          {
-            name: file.name,
-            url: publicUrl,
-            storagePath: filePath,
-            size: file.size,
-            mimeType: file.type,
-          },
-        ]);
-      } catch {
-        toast({
-          variant: "destructive",
-          description: "Errore nel caricamento dell'allegato",
-        });
-      } finally {
-        setIsUploading(false);
-      }
-    },
-    [siteId, toast],
-  );
-
-  // registerSink e' stabile. L'oggetto contesto cambia a ogni setSink:
-  // dipendere da `capture` rilancia l'effetto all'infinito
-  // (Maximum update depth) appena si apre "Nuovo documento".
-  const registerSink = capture?.registerSink;
-  useEffect(() => {
-    if (!registerSink) return;
-    return registerSink({
-      label: "Allegati documento",
-      accept: ".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp",
-      onFiles: async (files) => {
-        for (const file of files) {
-          await uploadAttachment(file);
-        }
-      },
+      return;
+    }
+    onNext?.({
+      tipoDocumento,
+      destinatario: buildDestinatario(),
+      oggetto: oggetto.trim(),
+      taskId: taskIdCorrente(),
     });
-  }, [registerSink, uploadAttachment]);
+  };
 
   const handleGenerate = async () => {
     if (!oggetto.trim() || !testo.trim() || !ragioneSociale.trim()) {
@@ -589,73 +569,79 @@ export function DocumentCreateForm({
         />
       </div>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <Label>Testo descrittivo</Label>
-          <VoiceDictationButton
-            siteId={siteId}
-            domain={domain}
-            title="Dettatura testo documento"
-            description="Parla per dettare il testo descrittivo. Potrai rivederlo prima di inserirlo nel campo."
-            buttonTitle="Dettatura vocale"
-            onTranscript={(text) =>
-              setTesto((prev) => (prev ? `${prev} ${text}` : text))
+      {isWizard ? null : (
+        <>
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <Label>Testo descrittivo</Label>
+            <VoiceDictationButton
+              siteId={siteId}
+              domain={domain}
+              title="Dettatura testo documento"
+              description="Parla per dettare il testo descrittivo. Potrai rivederlo prima di inserirlo nel campo."
+              buttonTitle="Dettatura vocale"
+              onTranscript={(text) =>
+                setTesto((prev) => (prev ? `${prev} ${text}` : text))
+              }
+            />
+          </div>
+          <Textarea
+            rows={10}
+            placeholder={
+              typeConfig?.hasLineItems
+                ? "Descrivi articoli, quantità, prezzi, condizioni di pagamento, termini di fornitura..."
+                : "Descrivi il contenuto della lettera: contesto, tono, punti da trattare, riferimenti..."
             }
+            value={testo}
+            onChange={(e) => setTesto(e.target.value)}
           />
         </div>
-        <Textarea
-          rows={10}
-          placeholder={
-            typeConfig?.hasLineItems
-              ? "Descrivi articoli, quantità, prezzi, condizioni di pagamento, termini di fornitura..."
-              : "Descrivi il contenuto della lettera: contesto, tono, punti da trattare, riferimenti..."
-          }
-          value={testo}
-          onChange={(e) => setTesto(e.target.value)}
-        />
-      </div>
 
-      <div className="space-y-2">
-        <Label>Allegati (opzionale)</Label>
-        <p className="text-xs text-muted-foreground">
-          Max {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB. PDF, Word,
-          Excel, testo o immagini. Scatta una foto o scegli un file.
-        </p>
-        <MobileMediaCapture
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,image/*"
-          multiple
-          busy={isUploading}
-          confirmLabel="Aggiungi allegato"
-          onConfirm={async (files) => {
-            for (const file of files) {
-              await uploadAttachment(file);
-            }
-          }}
-        />
-        {allegati.length > 0 ? (
-          <ul className="space-y-1">
-            {allegati.map((a, i) => (
-              <li
-                key={a.storagePath}
-                className="flex items-center justify-between rounded border px-3 py-2 text-sm"
-              >
-                <span className="truncate">{a.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-11 w-11 md:h-7 md:w-7"
-                  onClick={() =>
-                    setAllegati((prev) => prev.filter((_, idx) => idx !== i))
-                  }
+        <div className="space-y-2">
+          <Label>Allegati (opzionale)</Label>
+          <p className="text-xs text-muted-foreground">
+            Max {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB. PDF, Word,
+            Excel, testo o immagini. Scatta una foto o scegli un file.
+          </p>
+          <MobileMediaCapture
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.webp,image/*"
+            multiple
+            busy={isUploading}
+            confirmLabel="Aggiungi allegato"
+            onConfirm={async (files) => {
+              for (const file of files) {
+                await uploadAttachment(file);
+              }
+            }}
+          />
+          {allegati.length > 0 ? (
+            <ul className="space-y-1">
+              {allegati.map((a, i) => (
+                <li
+                  key={a.storagePath}
+                  className="flex items-center justify-between rounded border px-3 py-2 text-sm"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+                  <span className="truncate">{a.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 md:h-7 md:w-7"
+                    onClick={() =>
+                      setAllegati((prev) => prev.filter((_, idx) => idx !== i))
+                    }
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+        </>
+      )}
+
+      {extra}
 
       <GenerateErrorsAlert errors={generateErrors} />
 
@@ -663,12 +649,16 @@ export function DocumentCreateForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           Annulla
         </Button>
-        <Button
-          onClick={handleGenerate}
-          disabled={isGenerating || isUploading}
-        >
-          {isGenerating ? "Generazione in corso..." : "Genera documento"}
-        </Button>
+        {isWizard ? (
+          <Button onClick={handleNext}>Avanti &mdash; Posizioni</Button>
+        ) : (
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || isUploading}
+          >
+            {isGenerating ? "Generazione in corso..." : "Genera documento"}
+          </Button>
+        )}
       </div>
 
       {isGenerating ? <LoadingState variant="form" /> : null}

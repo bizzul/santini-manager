@@ -29,6 +29,7 @@ import {
 import type { DocumentTemplate } from "@/lib/documenti/template-types";
 import type { DocumentTypeId } from "@/lib/documenti/document-types";
 import { DocumentReviewForm } from "./document-review-form";
+import { OffertaWizard } from "./offerta-wizard";
 import {
   DocumentCreateForm,
   type ClienteOption,
@@ -362,7 +363,11 @@ export function DocumentiPageClient({
       <PageLayout>
         <PageHeader
           title="Generatore documenti"
-          subtitle="Compila il form: l'AI genererà il contenuto strutturato"
+          subtitle={
+            voicePrefill
+              ? "Compila il form: l'AI genererà il contenuto strutturato"
+              : "Cliente e oggetto, poi le posizioni, poi il contesto"
+          }
           actions={
             <Button variant="outline" onClick={() => setStep("list")}>
               Torna all&apos;elenco
@@ -370,6 +375,25 @@ export function DocumentiPageClient({
           }
         />
         <PageContent variant="narrow">
+          {/* Il comando vocale detta il documento intero: resta sul flusso
+              storico, dove il testo libero e' il punto di partenza. Senza
+              prefill si passa dal wizard, che costruisce prima la struttura
+              e porta la nota vocale al passo 3. */}
+          {!voicePrefill ? (
+            <OffertaWizard
+              domain={domain}
+              siteId={siteId}
+              clients={clients}
+              suppliers={suppliers}
+              offers={offers}
+              templatesByType={templatesByType}
+              onCancel={() => setStep("list")}
+              onSaved={() => {
+                refreshDocumenti();
+                setStep("list");
+              }}
+            />
+          ) : (
           <DocumentCreateForm
             domain={domain}
             siteId={siteId}
@@ -394,6 +418,7 @@ export function DocumentiPageClient({
               setStep("list");
             }}
           />
+          )}
         </PageContent>
       </PageLayout>
     );
