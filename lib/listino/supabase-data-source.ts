@@ -8,6 +8,10 @@ import type {
   ListinoDataSource,
   ProdottoListino,
 } from "@/lib/listino/calcola-prezzo";
+import {
+  scegliCellaPiuSpecifica,
+  type CellaGriglia,
+} from "@/lib/listino/scegli-cella";
 
 /**
  * Implementazione Supabase di {@link ListinoDataSource}, scoping-ata per site_id.
@@ -45,25 +49,32 @@ export function createSupabaseListinoDataSource(
     },
 
     async getPrezzoGriglia(famigliaAperturaCod, larghezzaMm, altezzaMm) {
+      // Le fasce dovrebbero essere disgiunte. Se non lo sono, la scelta non
+      // puo' dipendere dall'ordine di ritorno del database: vedi
+      // scegliCellaPiuSpecifica.
       const { data, error } = await supabase
         .from("listino_griglia_base")
-        .select("prezzo_base_chf")
+        .select(
+          "larghezza_min_mm, larghezza_max_mm, altezza_min_mm, altezza_max_mm, prezzo_base_chf",
+        )
         .eq("site_id", siteId)
         .eq("famiglia_apertura_cod", famigliaAperturaCod)
         .eq("attivo", true)
         .lte("larghezza_min_mm", larghezzaMm)
         .gte("larghezza_max_mm", larghezzaMm)
         .lte("altezza_min_mm", altezzaMm)
-        .gte("altezza_max_mm", altezzaMm)
-        .order("prezzo_base_chf", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .gte("altezza_max_mm", altezzaMm);
 
       if (error) {
         console.error("getPrezzoGriglia error:", error);
         return null;
       }
-      return data ? Number(data.prezzo_base_chf) : null;
+      const cella = scegliCellaPiuSpecifica(
+        (data ?? []) as CellaGriglia[],
+        larghezzaMm,
+        altezzaMm,
+      );
+      return cella ? Number(cella.prezzo_base_chf) : null;
     },
 
     async getPrezzoMisuraStandard(sellProductId, larghezzaMm, altezzaMm) {
