@@ -442,8 +442,9 @@ export function DocumentCreateForm({
         ) : null}
       </div>
 
-      <div className="space-y-3 rounded-lg border p-4">
-        <Label>Destinatario</Label>
+      <div className="space-y-3 rounded-xl border border-border/70 bg-muted/5 p-4">
+        <p className="text-sm font-semibold">Cliente</p>
+        <Label className="text-xs text-muted-foreground">Destinatario</Label>
         <Select
           value={destMode}
           onValueChange={(v) => handleDestModeChange(v as DestinatarioMode)}
@@ -529,44 +530,51 @@ export function DocumentCreateForm({
         </div>
       </div>
 
-      {showOfferPicker && offers.length > 0 ? (
-        <div>
-          <Label className="mb-2 block">Offerta collegata</Label>
-          <Select
-            value={selectedOfferId || undefined}
-            onValueChange={handleOfferChange}
-          >
-            <SelectTrigger className="w-full max-w-md">
-              <SelectValue placeholder="Seleziona offerta esistente (opzionale)" />
-            </SelectTrigger>
-            <SelectContent>
-              {offers.map((o) => (
-                <SelectItem key={o.id} value={String(o.id)}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Opzionale: collega un&apos;offerta esistente per riutilizzare codice
-            e cliente. Se non ne selezioni una, al salvataggio verrà creata
-            automaticamente una nuova offerta in kanban per il cliente scelto.
+      <div className="space-y-4 rounded-xl border border-border/70 bg-muted/5 p-4">
+        <p className="text-sm font-semibold">Oggetto</p>
+        {showOfferPicker && offers.length > 0 ? (
+          <div>
+            <Label className="mb-2 block text-xs text-muted-foreground">
+              Offerta collegata
+            </Label>
+            <Select
+              value={selectedOfferId || undefined}
+              onValueChange={handleOfferChange}
+            >
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Seleziona offerta esistente (opzionale)" />
+              </SelectTrigger>
+              <SelectContent>
+                {offers.map((o) => (
+                  <SelectItem key={o.id} value={String(o.id)}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Opzionale: collega un&apos;offerta esistente per riutilizzare codice
+              e cliente. Se non ne selezioni una, al salvataggio verrà creata
+              automaticamente una nuova offerta in kanban per il cliente scelto.
+            </p>
+          </div>
+        ) : showOfferPicker ? (
+          <p className="text-xs text-muted-foreground">
+            Al salvataggio verrà creata automaticamente una nuova offerta in kanban
+            per il cliente selezionato.
           </p>
-        </div>
-      ) : showOfferPicker ? (
-        <p className="text-xs text-muted-foreground">
-          Al salvataggio verrà creata automaticamente una nuova offerta in kanban
-          per il cliente selezionato.
-        </p>
-      ) : null}
+        ) : null}
 
-      <div>
-        <Label className="mb-2 block">Oggetto</Label>
-        <Input
-          placeholder="Breve oggetto del documento"
-          value={oggetto}
-          onChange={(e) => setOggetto(e.target.value)}
-        />
+        <div>
+          <Label className="mb-2 block text-xs text-muted-foreground">
+            Nome oggetto
+          </Label>
+          <Input
+            placeholder="Breve oggetto del documento"
+            value={oggetto}
+            onChange={(e) => setOggetto(e.target.value)}
+          />
+        </div>
       </div>
 
       {isWizard ? null : (

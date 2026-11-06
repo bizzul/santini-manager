@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import {
@@ -75,9 +74,9 @@ export function CategorieSelector({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/5 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <Label>Categorie da offrire</Label>
+        <p className="text-sm font-semibold">Categorie da offrire</p>
         <span className="text-xs text-muted-foreground">
           {value.length === 0
             ? "Nessuna selezionata"
