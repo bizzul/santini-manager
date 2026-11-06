@@ -97,15 +97,55 @@ function buildOggettoLineCombined(
   return `${tipo}: ${trimmed}`;
 }
 
+/**
+ * Nelle offerte Santini reali il blocco descrittivo di un prodotto compare
+ * UNA volta e sotto stanno le posizioni con le loro misure. Ripeterlo su
+ * ogni riga gonfia il documento di pagine identiche: su nove serramenti
+ * dello stesso tipo sarebbe lo stesso paragrafo nove volte.
+ *
+ * Quindi il testo base si stampa alla prima posizione che lo usa; dalla
+ * seconda in poi restano descrizione e attributi. Nell'editor resta
+ * visibile su tutte le righe, perche' li' serve a controllarlo e correggerlo.
+ */
+function separaTestoBase(descrizioneEstesa: string | null | undefined): {
+  base: string | null;
+  attributi: string | null;
+} {
+  const testo = descrizioneEstesa?.trim();
+  if (!testo) return { base: null, attributi: null };
+  const righe = testo.split("\n");
+  if (righe.length === 1) {
+    // Una riga sola: e' la riga attributi del vecchio formato.
+    return righe[0].startsWith("Misure:") || righe[0].includes(" \u00b7 ")
+      ? { base: null, attributi: righe[0] }
+      : { base: righe[0], attributi: null };
+  }
+  return {
+    base: righe.slice(0, -1).join("\n").trim() || null,
+    attributi: righe[righe.length - 1].trim() || null,
+  };
+}
+
 function buildTableRows(documento: DocumentoArricchito): string {
   const showDiscount = documento.tipoDocumento !== "FATTURA";
+  const basiGiaStampate = new Set<string>();
+
   const rows = (documento.righe ?? []).map((riga) => {
-    const desc =
-      riga.descrizioneEstesa?.trim()
-        ? `${riga.descrizione}\n${riga.descrizioneEstesa}`
-        : riga.misure?.trim()
-          ? `${riga.descrizione}\nMisure: ${riga.misure}`
-          : riga.descrizione;
+    const { base: testoBase, attributi } = separaTestoBase(
+      riga.descrizioneEstesa,
+    );
+
+    const parti: string[] = [riga.descrizione];
+    if (testoBase && !basiGiaStampate.has(testoBase)) {
+      basiGiaStampate.add(testoBase);
+      parti.push(testoBase);
+    }
+    if (attributi) {
+      parti.push(attributi);
+    } else if (!testoBase && riga.misure?.trim()) {
+      parti.push(`Misure: ${riga.misure}`);
+    }
+    const desc = parti.join("\n");
 
     const base = [
       riga.art ?? "—",
