@@ -107,6 +107,12 @@ interface Breakdown {
   totale: number;
 }
 
+interface AvvisoRiga {
+  codice: string;
+  severita: "alta" | "media" | "bassa";
+  messaggio: string;
+}
+
 const CHF = (n: number) => `CHF ${n.toFixed(2)}`;
 
 const TIPO_CALCOLO_SHORT: Record<SupplementoOpt["tipoCalcolo"], string> = {
@@ -154,6 +160,10 @@ export function CatalogLineConfigurator({
   const [supplementoIds, setSupplementoIds] = useState<string[]>([]);
   const [quantita, setQuantita] = useState("1");
   const [testoBase, setTestoBase] = useState("");
+  const [avvisi, setAvvisi] = useState<AvvisoRiga[]>([]);
+  const [statoRiga, setStatoRiga] = useState<
+    "quotata" | "manuale" | "da_quotare" | null
+  >(null);
 
   const [breakdown, setBreakdown] = useState<Breakdown | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
@@ -178,6 +188,8 @@ export function CatalogLineConfigurator({
     setSupplementoIds([]);
     setQuantita("1");
     setTestoBase("");
+    setAvvisi([]);
+    setStatoRiga(null);
     setBreakdown(null);
     setCalcError(null);
     setPrezzoUnitario("");
@@ -276,7 +288,7 @@ export function CatalogLineConfigurator({
     setCalcError(null);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/listino/calcola-prezzo`, {
+        const res = await fetch(`/api/listino/valuta-riga`, {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -295,12 +307,24 @@ export function CatalogLineConfigurator({
         if (!active) return;
         if (!res.ok) {
           setBreakdown(null);
+          setAvvisi([]);
+          setStatoRiga(null);
           setCalcError(data.error ?? "Errore nel calcolo del prezzo.");
           return;
         }
-        setBreakdown(data.breakdown);
+        const riga = data.riga as {
+          stato: "quotata" | "manuale" | "da_quotare";
+          prezzoUnitario: number;
+          breakdown: Breakdown | null;
+          avvisi: AvvisoRiga[];
+        };
+        setBreakdown(riga.breakdown);
+        setAvvisi(riga.avvisi ?? []);
+        setStatoRiga(riga.stato);
         if (!override) {
-          setPrezzoUnitario(String(data.breakdown.prezzoUnitario));
+          setPrezzoUnitario(
+            riga.stato === "da_quotare" ? "" : String(riga.prezzoUnitario),
+          );
         }
       } catch {
         if (active) setCalcError("Errore nel calcolo del prezzo.");
@@ -359,6 +383,28 @@ export function CatalogLineConfigurator({
       supplementiNomi,
       quantita: Number(quantita) || 1,
       prezzoUnitario: Number(prezzoUnitario),
+      configurazione: {
+        sellProductId: config.prodotto.id,
+        internalCode: config.prodotto.internalCode,
+        larghezzaMm: larghezzaMm ? Number(larghezzaMm) : null,
+        altezzaMm: altezzaMm ? Number(altezzaMm) : null,
+        profonditaMm: profonditaMm ? Number(profonditaMm) : null,
+        codMateriale: codMateriale || null,
+        codVetroTelaio: codVetroTelaio || null,
+        codEsecuzioneAnte: codEsecuzioneAnte || null,
+        codTipoCassone: config.prodotto.codTipoCassone,
+        supplementoIds,
+      },
+      calcolo: {
+        stato: override ? "manuale" : (statoRiga ?? "da_quotare"),
+        prezzoUnitario: Number(prezzoUnitario) || 0,
+        codiceErrore: null,
+        avvisi,
+        breakdown: breakdown
+          ? (breakdown as unknown as Record<string, unknown>)
+          : null,
+        calcolatoIl: new Date().toISOString(),
+      },
     });
     onAdd(riga);
     resetAll();
@@ -675,6 +721,39 @@ export function CatalogLineConfigurator({
               <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {calcError}
               </p>
+            ) : null}
+
+            {statoRiga === "da_quotare" && !calcError ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                Il motore non ha un prezzo per questa configurazione. La
+                posizione resta da quotare: inserisci un importo a mano.
+              </p>
+            ) : null}
+
+            {avvisi.length > 0 ? (
+              <ul className="space-y-1">
+                {avvisi.map((a, i) => (
+                  <li
+                    key={`${a.codice}-${i}`}
+                    className={
+                      a.severita === "alta"
+                        ? "flex gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                        : a.severita === "media"
+                          ? "flex gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
+                          : "flex gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground"
+                    }
+                  >
+                    <span className="shrink-0 font-semibold uppercase">
+                      {a.severita === "alta"
+                        ? "Da quotare"
+                        : a.severita === "media"
+                          ? "Verifica"
+                          : "Nota"}
+                    </span>
+                    <span>{a.messaggio}</span>
+                  </li>
+                ))}
+              </ul>
             ) : null}
 
             {breakdown && !calcError ? (

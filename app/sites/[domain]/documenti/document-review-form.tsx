@@ -55,6 +55,10 @@ import {
   type GenerateApiErrorPayload,
 } from "@/lib/documenti/parse-generate-api-response";
 import { CatalogLineConfigurator } from "./catalog-line-configurator";
+import {
+  RigaCalcolo,
+  riepilogaCalcoli,
+} from "@/components/documenti/riga-calcolo";
 import type { RigaArricchita } from "@/validation/documenti/extracted-document";
 
 const UNITA_OPTIONS = UnitaEnum.options;
@@ -84,6 +88,7 @@ export function DocumentReviewForm({
   const { toast } = useToast();
   const router = useRouter();
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [bloccantiConfermati, setBloccantiConfermati] = useState(false);
   const [uploadingImageIndex, setUploadingImageIndex] = useState<number | null>(
     null,
   );
@@ -177,6 +182,9 @@ export function DocumentReviewForm({
 
   const watched = form.watch();
   const isLetter = isLetterType(watched.tipoDocumento);
+  const riepilogo = riepilogaCalcoli(watched.righe ?? []);
+  const exportBloccato = riepilogo.bloccanti > 0 && !bloccantiConfermati;
+
   const typeConfig = getDocumentTypeConfig(watched.tipoDocumento);
   const showDiscount = typeConfig?.showDiscount ?? true;
 
@@ -590,6 +598,28 @@ export function DocumentReviewForm({
                   </div>
                 </div>
 
+                {riepilogo.bloccanti > 0 ||
+                riepilogo.alta > 0 ||
+                riepilogo.media > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-muted/20 px-3 py-2 text-xs">
+                    {riepilogo.bloccanti > 0 ? (
+                      <span className="rounded bg-destructive px-2 py-0.5 font-semibold text-destructive-foreground">
+                        {riepilogo.bloccanti} da quotare
+                      </span>
+                    ) : null}
+                    {riepilogo.media > 0 ? (
+                      <span className="rounded border border-warning/40 bg-warning/10 px-2 py-0.5 font-semibold text-warning">
+                        {riepilogo.media} da verificare
+                      </span>
+                    ) : null}
+                    <span className="text-muted-foreground">
+                      {riepilogo.bloccanti > 0
+                        ? "Una o piu' posizioni non sono state quotate dal motore: vanno risolte o confermate a mano prima dell'invio."
+                        : "Controlla gli avvisi sulle posizioni prima di generare il PDF."}
+                    </span>
+                  </div>
+                ) : null}
+
                 {fields.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted-foreground">
                     <p>Nessuna riga articolo.</p>
@@ -637,6 +667,8 @@ export function DocumentReviewForm({
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
+
+                          <RigaCalcolo calcolo={riga?.calcolo} />
 
                           {(riga?.articoliSuggeriti?.length ?? 0) > 0 ? (
                             <Select
@@ -976,15 +1008,27 @@ export function DocumentReviewForm({
             </>
             )}
 
-            <div className="sticky bottom-0 flex gap-2 border-t border-border/50 bg-background/95 py-2 backdrop-blur-sm">
+            <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/95 py-2 backdrop-blur-sm">
               <Button type="button" variant="outline" size="sm" onClick={onBack}>
                 Indietro
               </Button>
+              {riepilogo.bloccanti > 0 ? (
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-warning">
+                  <input
+                    type="checkbox"
+                    checked={bloccantiConfermati}
+                    onChange={(e) => setBloccantiConfermati(e.target.checked)}
+                    className="h-4 w-4 accent-current"
+                  />
+                  Ho quotato a mano le posizioni segnalate
+                </label>
+              ) : null}
               <Button
                 type="submit"
                 size="sm"
                 disabled={
                   form.formState.isSubmitting ||
+                  exportBloccato ||
                   !isDocumentTemplateConfigured(template)
                 }
               >

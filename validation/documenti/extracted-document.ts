@@ -128,6 +128,46 @@ export const ArticoloSuggeritoSchema = z.object({
   score: z.number().optional(),
 });
 
+export const AvvisoRigaSchema = z.object({
+  codice: z.string(),
+  severita: z.enum(["alta", "media", "bassa"]),
+  messaggio: z.string(),
+});
+
+/**
+ * Input che hanno prodotto il prezzo. Senza questi, riaprendo il documento
+ * non si puo' ne' ricalcolare ne' spiegare la cifra.
+ */
+export const ConfigurazioneRigaSchema = z.object({
+  sellProductId: z.number().nullable().optional(),
+  internalCode: z.string().nullable().optional(),
+  larghezzaMm: z.number().nullable().optional(),
+  altezzaMm: z.number().nullable().optional(),
+  profonditaMm: z.number().nullable().optional(),
+  codMateriale: z.string().nullable().optional(),
+  codVetroTelaio: z.string().nullable().optional(),
+  codEsecuzioneAnte: z.string().nullable().optional(),
+  codTipoCassone: z.string().nullable().optional(),
+  supplementoIds: z.array(z.string()).optional(),
+});
+
+/**
+ * Esito del motore congelato al momento del calcolo: il PDF che il cliente
+ * riceve deve restare spiegabile anche dopo un aggiornamento di listino.
+ */
+export const CalcoloRigaSchema = z.object({
+  stato: z.enum(["quotata", "manuale", "da_quotare"]),
+  prezzoUnitario: z.number(),
+  codiceErrore: z.string().nullable().optional(),
+  avvisi: z.array(AvvisoRigaSchema).default([]),
+  breakdown: z.record(z.unknown()).nullable().optional(),
+  calcolatoIl: z.string().nullable().optional(),
+});
+
+export type AvvisoRigaPersistito = z.infer<typeof AvvisoRigaSchema>;
+export type ConfigurazioneRiga = z.infer<typeof ConfigurazioneRigaSchema>;
+export type CalcoloRiga = z.infer<typeof CalcoloRigaSchema>;
+
 export const RigaArricchitaSchema = AIRigaSchema.extend({
   descrizioneEstesa: z
     .string()
@@ -141,6 +181,8 @@ export const RigaArricchitaSchema = AIRigaSchema.extend({
   totaleRiga: z.number().optional(),
   immagineUrl: z.string().nullable().optional(),
   articoliSuggeriti: z.array(ArticoloSuggeritoSchema).optional(),
+  configurazione: ConfigurazioneRigaSchema.nullable().optional(),
+  calcolo: CalcoloRigaSchema.nullable().optional(),
 });
 
 export type RigaArricchita = z.infer<typeof RigaArricchitaSchema>;

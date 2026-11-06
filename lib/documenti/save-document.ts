@@ -142,7 +142,12 @@ export async function saveDocumento(
   }
 
   if (isCommercial && righeConTotali.length > 0) {
-    const OPTIONAL_RIGA_COLUMNS = ["immagine_url", "descrizione_estesa"] as const;
+    const OPTIONAL_RIGA_COLUMNS = [
+      "immagine_url",
+      "descrizione_estesa",
+      "configurazione",
+      "calcolo",
+    ] as const;
 
     const righePayload = righeConTotali.map((riga, index) => ({
       documento_id: savedRow.id,
@@ -164,6 +169,8 @@ export async function saveDocumento(
           : null,
       is_trasporto: riga.isTrasporto,
       immagine_url: riga.immagineUrl ?? null,
+      configurazione: riga.configurazione ?? null,
+      calcolo: riga.calcolo ?? null,
     }));
 
     let righeError: { message: string } | null = null;

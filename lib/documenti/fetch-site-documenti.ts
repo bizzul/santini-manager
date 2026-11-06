@@ -4,7 +4,12 @@ const RIGHE_SELECT_BASE = `
     descrizione, misure, unita, quantita, prezzo_unitario, sconto,
     is_trasporto, articolo_id, art, totale_riga`;
 
-const OPTIONAL_RIGA_COLUMNS = ["immagine_url", "descrizione_estesa"] as const;
+const OPTIONAL_RIGA_COLUMNS = [
+  "immagine_url",
+  "descrizione_estesa",
+  "configurazione",
+  "calcolo",
+] as const;
 
 const DOC_SELECT_HEAD = `
   id, tipo_documento, numero, oggetto, status, tot_netto, iva, totale_chf, created_at,

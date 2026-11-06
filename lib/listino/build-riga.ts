@@ -1,4 +1,8 @@
-import type { RigaArricchita } from "@/validation/documenti/extracted-document";
+import type {
+  CalcoloRiga,
+  ConfigurazioneRiga,
+  RigaArricchita,
+} from "@/validation/documenti/extracted-document";
 import type { ModalitaPrezzo } from "@/types/supabase";
 
 export interface BuildCatalogRigaParams {
@@ -22,6 +26,10 @@ export interface BuildCatalogRigaParams {
   supplementiNomi?: string[];
   quantita: number;
   prezzoUnitario: number;
+  /** Input che hanno prodotto il prezzo, congelati sulla riga. */
+  configurazione?: ConfigurazioneRiga | null;
+  /** Esito del motore al momento del calcolo: stato, avvisi, catena. */
+  calcolo?: CalcoloRiga | null;
 }
 
 function modalitaRichiedeMisure(modalita: ModalitaPrezzo | null): boolean {
@@ -133,5 +141,7 @@ export function buildCatalogRiga(
     articoloSource: "sell_product",
     isNuovo: false,
     immagineUrl: params.imageUrl ?? null,
+    configurazione: params.configurazione ?? null,
+    calcolo: params.calcolo ?? null,
   };
 }

@@ -89,7 +89,18 @@ beforeEach(() => {
     const url = String(input);
     if (url.includes("/api/listino/prodotti")) return jsonRes({ prodotti: [PROD] });
     if (url.includes("/api/listino/prodotto-config")) return jsonRes(CONFIG);
-    if (url.includes("/api/listino/calcola-prezzo")) return jsonRes({ breakdown: BREAKDOWN });
+    if (url.includes("/api/listino/valuta-riga"))
+      return jsonRes({
+        riga: {
+          stato: "quotata",
+          prezzoUnitario: 450,
+          quantita: 1,
+          totale: 450,
+          breakdown: BREAKDOWN,
+          codiceErrore: null,
+          avvisi: [],
+        },
+      });
     return jsonRes({}, false);
   }) as jest.Mock;
 });
@@ -157,16 +168,29 @@ describe("CatalogLineConfigurator - override manuale prezzo", () => {
     expect(screen.getAllByText("CHF 450.00").length).toBeGreaterThan(0);
   });
 
-  it("in caso di errore fuori fascia mostra il messaggio e disabilita 'Aggiungi al documento'", async () => {
+  it("fuori fascia: mostra l'avviso, non inventa un prezzo e disabilita 'Aggiungi al documento'", async () => {
     (global.fetch as jest.Mock).mockImplementation(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/listino/prodotti")) return jsonRes({ prodotti: [PROD] });
       if (url.includes("/api/listino/prodotto-config")) return jsonRes(CONFIG);
-      if (url.includes("/api/listino/calcola-prezzo")) {
-        return jsonRes(
-          { error: "Nessuna fascia in listino per queste misure." },
-          false,
-        );
+      if (url.includes("/api/listino/valuta-riga")) {
+        return jsonRes({
+          riga: {
+            stato: "da_quotare",
+            prezzoUnitario: 0,
+            quantita: 1,
+            totale: 0,
+            breakdown: null,
+            codiceErrore: "FASCIA_NON_TROVATA",
+            avvisi: [
+              {
+                codice: "FUORI_GRIGLIA",
+                severita: "alta",
+                messaggio: "Nessuna fascia in listino per queste misure.",
+              },
+            ],
+          },
+        });
       }
       return jsonRes({}, false);
     });
