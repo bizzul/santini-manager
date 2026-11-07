@@ -55,6 +55,7 @@ import {
 } from "@/lib/documenti/parse-generate-api-response";
 import { RigheEditor } from "./righe-editor";
 import { CondizioniStep } from "./condizioni-step";
+import { OW } from "./wizard-ui";
 import { riepilogaCalcoli } from "@/components/documenti/riga-calcolo";
 
 interface DocumentReviewFormProps {
@@ -260,9 +261,7 @@ export function DocumentReviewForm({
           </Alert>
         ) : null}
 
-        <h2 className="text-sm font-semibold tracking-tight">
-          Verifica e correggi
-        </h2>
+        <h2 className={OW.cardTitle}>Verifica e correggi</h2>
 
         {/* Due colonne fisse 50/50 (stile inline: bypassa Tailwind) */}
         <div
@@ -276,11 +275,9 @@ export function DocumentReviewForm({
         >
           {/* Colonna sinistra */}
           <div className="min-w-0 space-y-3" style={{ minWidth: 0 }}>
-          <div className="rounded-md border border-border/70 bg-muted/15 p-2">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Destinatario
-              </p>
+          <div className={OW.card}>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className={OW.cardTitle}>Destinatario</h3>
               <MatchBadge
                 isNuovo={watched.destinatario?.isNuovo ?? true}
                 label={
@@ -288,15 +285,15 @@ export function DocumentReviewForm({
                 }
               />
             </div>
-            <div className="grid grid-cols-6 gap-x-2 gap-y-1">
+            <div className="grid grid-cols-6 gap-x-3 gap-y-2.5">
                 <FormField
                   control={form.control}
                   name="destinatario.ragioneSociale"
                   render={({ field }) => (
                     <FormItem className="col-span-6 space-y-0">
-                      <FormLabel className="text-[11px]">Ragione sociale</FormLabel>
+                      <FormLabel className={OW.label}>Ragione sociale</FormLabel>
                       <FormControl>
-                        <Input className="h-8 text-sm" {...field} />
+                        <Input className={OW.input} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -307,10 +304,10 @@ export function DocumentReviewForm({
                   name="destinatario.aca"
                   render={({ field }) => (
                     <FormItem className="col-span-3 space-y-0">
-                      <FormLabel className="text-[11px]">a.c.a</FormLabel>
+                      <FormLabel className={OW.label}>a.c.a</FormLabel>
                       <FormControl>
                         <Input
-                          className="h-8 text-sm"
+                          className={OW.input}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -324,11 +321,11 @@ export function DocumentReviewForm({
                   name="destinatario.email"
                   render={({ field }) => (
                     <FormItem className="col-span-3 space-y-0">
-                      <FormLabel className="text-[11px]">Email</FormLabel>
+                      <FormLabel className={OW.label}>Email</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          className="h-8 text-sm"
+                          className={OW.input}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -341,10 +338,10 @@ export function DocumentReviewForm({
                   name="destinatario.via"
                   render={({ field }) => (
                     <FormItem className="col-span-6 space-y-0">
-                      <FormLabel className="text-[11px]">Via</FormLabel>
+                      <FormLabel className={OW.label}>Via</FormLabel>
                       <FormControl>
                         <Input
-                          className="h-8 text-sm"
+                          className={OW.input}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -357,10 +354,10 @@ export function DocumentReviewForm({
                   name="destinatario.cap"
                   render={({ field }) => (
                     <FormItem className="col-span-2 space-y-0">
-                      <FormLabel className="text-[11px]">CAP</FormLabel>
+                      <FormLabel className={OW.label}>CAP</FormLabel>
                       <FormControl>
                         <Input
-                          className="h-8 text-sm"
+                          className={OW.input}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -373,10 +370,10 @@ export function DocumentReviewForm({
                   name="destinatario.citta"
                   render={({ field }) => (
                     <FormItem className="col-span-4 space-y-0">
-                      <FormLabel className="text-[11px]">Città</FormLabel>
+                      <FormLabel className={OW.label}>Città</FormLabel>
                       <FormControl>
                         <Input
-                          className="h-8 text-sm"
+                          className={OW.input}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -387,17 +384,17 @@ export function DocumentReviewForm({
               </div>
           </div>
 
-          <div className="grid gap-2 @md:grid-cols-[11rem_minmax(0,1fr)]">
-          <div className="rounded-md border border-border/70 bg-muted/15 p-2">
+          <div className="grid gap-3 @md:grid-cols-[12rem_minmax(0,1fr)]">
+          <div className={OW.card}>
             <FormField
               control={form.control}
               name="tipoDocumento"
               render={({ field }) => (
                 <FormItem className="space-y-0">
-                  <FormLabel className="text-[11px]">Tipo documento</FormLabel>
+                  <FormLabel className={OW.label}>Tipo documento</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
-                      <SelectTrigger className="h-8 text-sm">
+                      <SelectTrigger className={OW.input}>
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -415,15 +412,15 @@ export function DocumentReviewForm({
             />
           </div>
 
-          <div className="rounded-md border border-border/70 bg-muted/15 p-2">
+          <div className={OW.card}>
             <FormField
               control={form.control}
               name="oggetto"
               render={({ field }) => (
                 <FormItem className="space-y-0">
-                  <FormLabel className="text-[11px]">Oggetto</FormLabel>
+                  <FormLabel className={OW.label}>Oggetto</FormLabel>
                   <FormControl>
-                    <Input className="h-8 text-sm" {...field} />
+                    <Input className={OW.input} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -439,11 +436,11 @@ export function DocumentReviewForm({
                   name="corpoTesto"
                   render={({ field }) => (
                     <FormItem className="space-y-0.5">
-                      <FormLabel className="text-xs">Corpo lettera</FormLabel>
+                      <FormLabel className={OW.label}>Corpo lettera</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={12}
-                          className="text-sm"
+                          className={`text-sm ${OW.input}`}
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -457,11 +454,11 @@ export function DocumentReviewForm({
                   name="note"
                   render={({ field }) => (
                     <FormItem className="space-y-0.5">
-                      <FormLabel className="text-xs">Note</FormLabel>
+                      <FormLabel className={OW.label}>Note</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={2}
-                          className="text-sm"
+                          className={`text-sm ${OW.input}`}
                           {...field}
                           value={field.value ?? ""}
                           onChange={(e) => field.onChange(e.target.value || null)}
@@ -483,12 +480,17 @@ export function DocumentReviewForm({
             </>
             )}
 
-            <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-border/50 bg-background/95 py-2 backdrop-blur-sm">
-              <Button type="button" variant="outline" size="sm" onClick={onBack}>
+            <div className="sticky bottom-0 flex flex-wrap items-center gap-3 border-t border-[var(--ow-border)] bg-[var(--ow-page)]/95 py-3 backdrop-blur-sm">
+              <Button
+                type="button"
+                variant="outline"
+                className={OW.btnSecondary}
+                onClick={onBack}
+              >
                 Indietro
               </Button>
               {riepilogo.bloccanti > 0 ? (
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-warning">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-[var(--ow-warn-text)]">
                   <input
                     type="checkbox"
                     checked={bloccantiConfermati}
@@ -500,7 +502,7 @@ export function DocumentReviewForm({
               ) : null}
               <Button
                 type="submit"
-                size="sm"
+                className={`ml-auto ${OW.btnPrimary}`}
                 disabled={
                   form.formState.isSubmitting ||
                   exportBloccato ||
@@ -518,9 +520,7 @@ export function DocumentReviewForm({
             className="w-full"
             style={{ minWidth: 0, position: "sticky", top: "1rem" }}
           >
-            <p className="mb-2 text-sm font-medium text-muted-foreground">
-              Anteprima
-            </p>
+            <p className={`mb-2 ${OW.cardTitle}`}>Anteprima</p>
             <DocumentPreview
               documento={previewDocumento}
               template={template}

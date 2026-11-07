@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { OW } from "./wizard-ui";
 
 /**
  * Condizioni commerciali del documento.
@@ -25,20 +26,18 @@ interface CondizioniStepProps {
 
 export function CondizioniStep({ form }: CondizioniStepProps) {
   return (
-              <div className="grid gap-2 rounded-md border border-border/70 bg-muted/10 p-2 md:grid-cols-2">
-    <p className="text-sm font-medium md:col-span-2">Condizioni e note</p>
+    <div className={`${OW.card} grid gap-3 md:grid-cols-2`}>
+      <h2 className={`${OW.cardTitle} md:col-span-2`}>Condizioni e note</h2>
     <FormField
       control={form.control}
       name="condizioniPagamento"
       render={({ field }) => (
         <FormItem className="space-y-0 md:col-span-2">
-          <FormLabel className="text-[11px]">
-            Condizioni di pagamento
-          </FormLabel>
+          <FormLabel className={OW.label}>Condizioni di pagamento</FormLabel>
           <FormControl>
             <Textarea
               rows={2}
-              className="text-sm"
+              className={`text-sm ${OW.input}`}
               value={(field.value ?? []).join("\n")}
               onChange={(e) =>
                 field.onChange(
@@ -59,10 +58,10 @@ export function CondizioniStep({ form }: CondizioniStepProps) {
       name="termineFornitura"
       render={({ field }) => (
         <FormItem className="space-y-0">
-          <FormLabel className="text-[11px]">Termine di fornitura</FormLabel>
+          <FormLabel className={OW.label}>Termine di fornitura</FormLabel>
           <FormControl>
             <Input
-              className="h-8 text-sm"
+              className={`text-sm ${OW.input}`}
               {...field}
               value={field.value ?? ""}
             />
@@ -75,11 +74,11 @@ export function CondizioniStep({ form }: CondizioniStepProps) {
       name="note"
       render={({ field }) => (
         <FormItem className="space-y-0">
-          <FormLabel className="text-[11px]">Note / trasporto</FormLabel>
+          <FormLabel className={OW.label}>Note / trasporto</FormLabel>
           <FormControl>
             <Textarea
               rows={2}
-              className="min-h-[2.25rem] resize-y text-sm"
+              className={`min-h-[2.5rem] resize-y text-sm ${OW.input}`}
               {...field}
               value={field.value ?? ""}
               onChange={(e) => field.onChange(e.target.value || null)}
@@ -89,6 +88,6 @@ export function CondizioniStep({ form }: CondizioniStepProps) {
         </FormItem>
       )}
     />
-              </div>
+    </div>
   );
 }

@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { MatchBadge } from "@/components/documenti/match-badge";
 import { ImagePlus, Loader2, Plus, Trash2, X } from "lucide-react";
 import { calcolaTotaleRiga } from "@/lib/documenti/calcolo-totali";
 import {
@@ -33,6 +32,7 @@ import {
   RigaCalcolo,
   riepilogaCalcoli,
 } from "@/components/documenti/riga-calcolo";
+import { OW } from "./wizard-ui";
 
 const UNITA_OPTIONS = UnitaEnum.options;
 
@@ -65,7 +65,25 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
   });
 
   const watched = form.watch();
-  const riepilogo = riepilogaCalcoli(watched.righe ?? []);
+  // Prima che il motore giri, una riga da template e' "da compilare", non
+  // "da quotare": il conteggio rosso ha senso solo dopo un calcolo vero.
+  const riepilogo = riepilogaCalcoli(
+    (watched.righe ?? []).filter((r) => r.calcolo?.calcolatoIl),
+  );
+
+  const setMisura = (
+    index: number,
+    campo: "larghezzaMm" | "altezzaMm" | "profonditaMm",
+    valore: string,
+  ) => {
+    const conf = form.getValues(`righe.${index}.configurazione`) ?? {};
+    const n = valore === "" ? null : parseFloat(valore);
+    form.setValue(
+      `righe.${index}.configurazione`,
+      { ...conf, [campo]: n != null && Number.isFinite(n) ? n : null },
+      { shouldDirty: true },
+    );
+  };
 
   const addRiga = () => {
     const newIndex = fields.length;
@@ -174,39 +192,47 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-md border border-border/70">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 bg-muted/20 px-3 py-2">
-          <p className="text-sm font-medium">Righe articolo</p>
+      <div className={OW.cardFlush}>
+        <div className={OW.cardHead}>
+          <div className="flex items-center gap-2.5">
+            <h2 className={OW.cardTitle}>Righe articolo</h2>
+            {fields.length > 0 ? (
+              <span className={OW.cardHint}>
+                {fields.length}{" "}
+                {fields.length === 1 ? "posizione" : "posizioni"}
+              </span>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8"
+              className={OW.btnSmall}
               onClick={() => setCatalogOpen(true)}
             >
-              <Plus className="mr-1.5 h-4 w-4" />
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
               Da catalogo
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8"
+              className={OW.btnSmall}
               onClick={() => setTemplateOpen(true)}
             >
-              <Plus className="mr-1.5 h-4 w-4" />
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
               Da categoria
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-8"
+              className={OW.btnSmall}
               onClick={addRiga}
             >
-              <Plus className="mr-1.5 h-4 w-4" />
-              Nuova riga
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Riga libera
             </Button>
           </div>
         </div>
@@ -214,18 +240,18 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
         {riepilogo.bloccanti > 0 ||
         riepilogo.alta > 0 ||
         riepilogo.media > 0 ? (
-          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-muted/20 px-3 py-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 border-b border-[var(--ow-border)] px-5 py-2.5 text-xs text-[var(--ow-text-3)]">
             {riepilogo.bloccanti > 0 ? (
-              <span className="rounded bg-destructive px-2 py-0.5 font-semibold text-destructive-foreground">
+              <span className={OW.pillDanger}>
                 {riepilogo.bloccanti} da quotare
               </span>
             ) : null}
             {riepilogo.media > 0 ? (
-              <span className="rounded border border-warning/40 bg-warning/10 px-2 py-0.5 font-semibold text-warning">
+              <span className={OW.pillWarn}>
                 {riepilogo.media} da verificare
               </span>
             ) : null}
-            <span className="text-muted-foreground">
+            <span className="min-w-0">
               {riepilogo.bloccanti > 0
                 ? "Una o piu' posizioni non sono state quotate dal motore: vanno risolte o confermate a mano prima dell'invio."
                 : "Controlla gli avvisi sulle posizioni prima di generare il PDF."}
@@ -234,17 +260,42 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
         ) : null}
 
         {fields.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-sm text-muted-foreground">
-            <p>Nessuna riga articolo.</p>
-            <Button type="button" variant="outline" size="sm" onClick={addRiga}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Aggiungi la prima riga
-            </Button>
+          <div className="flex flex-col items-center gap-3 px-5 py-10 text-center text-sm text-[var(--ow-text-3)]">
+            <p>Nessuna posizione ancora.</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={OW.btnSmall}
+                onClick={() => setTemplateOpen(true)}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Da categoria
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={OW.btnSmall}
+                onClick={addRiga}
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Riga libera
+              </Button>
+            </div>
           </div>
         ) : (
-          <div className="space-y-2 p-2">
+          <div className="space-y-3.5 p-5">
             {fields.map((field, index) => {
               const riga = watched.righe?.[index];
+              const conf = riga?.configurazione ?? null;
+              const strutturata = Boolean(conf?.sellProductId);
+              const calcolata = Boolean(riga?.calcolo?.calcolatoIl);
+              const misureMancanti =
+                strutturata &&
+                !(conf?.larghezzaMm && conf?.altezzaMm) &&
+                !calcolata;
               const importoRiga = calcolaTotaleRiga(
                 riga?.quantita ?? 0,
                 riga?.prezzoUnitario ?? 0,
@@ -253,73 +304,18 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
               );
 
               return (
-                <div
-                  key={field.id}
-                  className="space-y-1.5 overflow-hidden rounded-lg border border-border/60 bg-muted/5 p-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
-                        {index + 1}
-                      </span>
-                      <MatchBadge
-                        isNuovo={riga?.isNuovo ?? true}
-                        label={
-                          riga?.isNuovo ? "Nuovo articolo" : "Da catalogo"
-                        }
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                      onClick={() => remove(index)}
-                      aria-label={`Rimuovi riga ${index + 1}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-
-                  <RigaCalcolo calcolo={riga?.calcolo} />
-
-                  {(riga?.articoliSuggeriti?.length ?? 0) > 0 ? (
-                    <Select
-                      onValueChange={(value) => {
-                        const candidate = riga?.articoliSuggeriti?.find(
-                          (item) => String(item.id) === value,
-                        );
-                        if (candidate) {
-                          applySuggestedArticolo(index, candidate);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs">
-                        <SelectValue placeholder="Corrispondenze catalogo…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {riga?.articoliSuggeriti?.map((item) => (
-                          <SelectItem
-                            key={String(item.id)}
-                            value={String(item.id)}
-                          >
-                            {item.codice ? `${item.codice} — ` : ""}
-                            {item.descrizione}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : null}
-
-                  <div className="grid gap-1.5 sm:grid-cols-[2.75rem_minmax(0,1fr)]">
-                    <div>
+                <div key={field.id} className={`${OW.posCard} space-y-3`}>
+                  {/* Riga 1: numero, descrizione, quantita', prezzo, sconto, totale */}
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex items-center gap-1.5 pb-2">
+                      <span className={OW.posIndex}>{index + 1}</span>
                       {riga?.immagineUrl ? (
-                        <div className="group relative h-11 w-11">
+                        <div className="group relative h-7 w-7">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={riga.immagineUrl}
                             alt=""
-                            className="h-11 w-11 rounded border object-cover"
+                            className="h-7 w-7 rounded-md border border-[var(--ow-border)] object-cover"
                           />
                           <button
                             type="button"
@@ -330,7 +326,7 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                                 { shouldDirty: true },
                               )
                             }
-                            className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow"
+                            className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--ow-danger-text)] text-[var(--ow-card)] shadow"
                             aria-label="Rimuovi immagine"
                           >
                             <X className="h-2.5 w-2.5" />
@@ -338,7 +334,7 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                         </div>
                       ) : (
                         <label
-                          className="flex h-11 w-11 cursor-pointer flex-col items-center justify-center rounded border border-dashed border-border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-dashed border-[var(--ow-base-border)] text-[var(--ow-text-3)] transition-colors hover:border-[var(--ow-accent)] hover:text-[var(--ow-accent-text)]"
                           title="Carica immagine"
                         >
                           {uploadingImageIndex === index ? (
@@ -360,71 +356,35 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                         </label>
                       )}
                     </div>
+
                     <FormField
                       control={form.control}
                       name={`righe.${index}.descrizione`}
                       render={({ field: f }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <FormItem className="min-w-[14rem] flex-[999_1_14rem] space-y-0">
+                          <FormLabel className={OW.miniLabel}>
                             Descrizione
                           </FormLabel>
                           <FormControl>
                             <Textarea
-                              rows={2}
-                              className="min-h-[2.75rem] resize-y break-words py-1 text-sm leading-snug"
+                              rows={1}
+                              className={`min-h-[2rem] resize-y break-words py-1.5 leading-snug ${OW.inputSm} h-auto`}
                               {...f}
                             />
                           </FormControl>
                         </FormItem>
                       )}
                     />
-                  </div>
 
-                  <FormField
-                    control={form.control}
-                    name={`righe.${index}.descrizioneEstesa`}
-                    render={({ field: f }) => (
-                      <FormItem className="space-y-0">
-                        <FormLabel className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Dettaglio (opz.)
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            rows={4}
-                            placeholder="Testo descrittivo del prodotto, note tecniche…"
-                            className="min-h-[5rem] resize-y break-words py-1 text-sm leading-snug"
-                            {...f}
-                            value={f.value ?? ""}
-                            onChange={(e) =>
-                              f.onChange(e.target.value || null)
-                            }
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div
-                    className={`grid gap-1 ${
-                      showDiscount
-                        ? "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.2fr)]"
-                        : "grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.2fr)]"
-                    }`}
-                  >
                     <FormField
                       control={form.control}
                       name={`righe.${index}.unita`}
                       render={({ field: f }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
-                            U
-                          </FormLabel>
-                          <Select
-                            value={f.value}
-                            onValueChange={f.onChange}
-                          >
+                        <FormItem className="w-[4.5rem] space-y-0">
+                          <FormLabel className={OW.miniLabel}>U</FormLabel>
+                          <Select value={f.value} onValueChange={f.onChange}>
                             <FormControl>
-                              <SelectTrigger className="h-7 px-1 text-xs">
+                              <SelectTrigger className={OW.inputSm}>
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -443,15 +403,13 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                       control={form.control}
                       name={`righe.${index}.quantita`}
                       render={({ field: f }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
-                            Q
-                          </FormLabel>
+                        <FormItem className="w-[3.9rem] space-y-0">
+                          <FormLabel className={OW.miniLabel}>Q</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="any"
-                              className="h-7 px-1 text-center text-xs"
+                              className={`${OW.inputSm} text-right`}
                               {...f}
                               onChange={(e) =>
                                 f.onChange(parseFloat(e.target.value) || 0)
@@ -465,16 +423,18 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                       control={form.control}
                       name={`righe.${index}.prezzoUnitario`}
                       render={({ field: f }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
+                        <FormItem className="w-[6.5rem] space-y-0">
+                          <FormLabel className={OW.miniLabel}>
                             Prezzo
                           </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="any"
-                              className="h-7 px-1 text-right text-xs"
+                              placeholder="da listino"
+                              className={`${OW.inputSm} text-right`}
                               {...f}
+                              value={f.value === 0 ? "" : f.value}
                               onChange={(e) =>
                                 f.onChange(parseFloat(e.target.value) || 0)
                               }
@@ -488,15 +448,16 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                         control={form.control}
                         name={`righe.${index}.sconto`}
                         render={({ field: f }) => (
-                          <FormItem className="space-y-0">
-                            <FormLabel className="text-[10px] font-medium uppercase text-muted-foreground">
-                              % Sc
+                          <FormItem className="w-[4.4rem] space-y-0">
+                            <FormLabel className={OW.miniLabel}>
+                              % sc
                             </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="any"
-                                className="h-7 px-1 text-center text-xs"
+                                placeholder="—"
+                                className={`${OW.inputSm} text-right`}
                                 value={f.value ?? ""}
                                 onChange={(e) =>
                                   f.onChange(
@@ -511,56 +472,192 @@ export function RigheEditor({ form, domain, showDiscount }: RigheEditorProps) {
                         )}
                       />
                     ) : null}
-                    <div className="space-y-0">
-                      <p className="text-[10px] font-medium uppercase text-muted-foreground">
-                        Importo
-                      </p>
+                    <div className="w-[6.5rem] space-y-0">
+                      <p className={OW.miniLabel}>Totale</p>
                       <Input
                         readOnly
                         tabIndex={-1}
-                        className="h-7 bg-muted/40 px-1 text-right text-xs font-medium"
-                        value={importoRiga.toFixed(2)}
+                        className={`${OW.inputReadonly} ${
+                          importoRiga > 0 ? "" : "text-[var(--ow-text-3)]"
+                        }`}
+                        value={importoRiga > 0 ? importoRiga.toFixed(2) : "—"}
                       />
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={`${OW.btnGhostIcon} mb-0.5`}
+                      onClick={() => remove(index)}
+                      aria-label={`Rimuovi riga ${index + 1}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
+
+                  {(riga?.articoliSuggeriti?.length ?? 0) > 0 ? (
+                    <Select
+                      onValueChange={(value) => {
+                        const candidate = riga?.articoliSuggeriti?.find(
+                          (item) => String(item.id) === value,
+                        );
+                        if (candidate) {
+                          applySuggestedArticolo(index, candidate);
+                        }
+                      }}
+                    >
+                      <SelectTrigger className={`${OW.inputSm} h-7 text-xs`}>
+                        <SelectValue placeholder="Corrispondenze catalogo…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {riga?.articoliSuggeriti?.map((item) => (
+                          <SelectItem
+                            key={String(item.id)}
+                            value={String(item.id)}
+                          >
+                            {item.codice ? `${item.codice} — ` : ""}
+                            {item.descrizione}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+
+                  {/* Testo descrittivo base, legato al prodotto a catalogo */}
+                  <FormField
+                    control={form.control}
+                    name={`righe.${index}.descrizioneEstesa`}
+                    render={({ field: f }) => (
+                      <FormItem className="space-y-0">
+                        <FormLabel className={OW.miniLabel}>
+                          Testo descrittivo base
+                          {strutturata ? " — dal prodotto a catalogo" : ""}
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            rows={3}
+                            placeholder="Testo descrittivo del prodotto, note tecniche…"
+                            className={OW.baseArea}
+                            {...f}
+                            value={f.value ?? ""}
+                            onChange={(e) =>
+                              f.onChange(e.target.value || null)
+                            }
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={OW.tag}>
+                      {riga?.isNuovo ? "Nuovo articolo" : "Da catalogo"}
+                    </span>
+                    {conf?.internalCode ? (
+                      <span className={OW.code}>{conf.internalCode}</span>
+                    ) : null}
+                  </div>
+
+                  {/* Misure */}
+                  {strutturata ? (
+                    <div className="flex flex-wrap items-end gap-3">
+                      <div className="w-[7rem] space-y-0">
+                        <label
+                          htmlFor={`riga-${index}-larghezza`}
+                          className={OW.miniLabel}
+                        >
+                          Larghezza mm
+                        </label>
+                        <Input
+                          id={`riga-${index}-larghezza`}
+                          type="number"
+                          inputMode="numeric"
+                          step="1"
+                          className={`${OW.inputSm} text-right`}
+                          value={conf?.larghezzaMm ?? ""}
+                          onChange={(e) =>
+                            setMisura(index, "larghezzaMm", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="w-[7rem] space-y-0">
+                        <label
+                          htmlFor={`riga-${index}-altezza`}
+                          className={OW.miniLabel}
+                        >
+                          Altezza mm
+                        </label>
+                        <Input
+                          id={`riga-${index}-altezza`}
+                          type="number"
+                          inputMode="numeric"
+                          step="1"
+                          className={`${OW.inputSm} text-right`}
+                          value={conf?.altezzaMm ?? ""}
+                          onChange={(e) =>
+                            setMisura(index, "altezzaMm", e.target.value)
+                          }
+                        />
+                      </div>
+                      {conf?.profonditaMm != null ? (
+                        <div className="w-[7rem] space-y-0">
+                          <label
+                            htmlFor={`riga-${index}-profondita`}
+                            className={OW.miniLabel}
+                          >
+                            Profondita&apos; mm
+                          </label>
+                          <Input
+                            id={`riga-${index}-profondita`}
+                            type="number"
+                            inputMode="numeric"
+                            step="1"
+                            className={`${OW.inputSm} text-right`}
+                            value={conf?.profonditaMm ?? ""}
+                            onChange={(e) =>
+                              setMisura(index, "profonditaMm", e.target.value)
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      <p className="min-w-0 flex-1 pb-2 text-[11px] text-[var(--ow-text-3)]">
+                        {misureMancanti
+                          ? "Inserisci larghezza e altezza: il prezzo arriva dal listino quando elabori l'offerta."
+                          : calcolata
+                            ? "Prezzo calcolato dal listino su queste misure."
+                            : "Il prezzo si calcola dal listino quando elabori l'offerta."}
+                      </p>
+                    </div>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name={`righe.${index}.misure`}
+                      render={({ field: f }) => (
+                        <FormItem className="max-w-xs space-y-0">
+                          <FormLabel className={OW.miniLabel}>
+                            Misure
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="es. 1400x1600 mm"
+                              className={OW.inputSm}
+                              {...f}
+                              value={f.value ?? ""}
+                              onChange={(e) =>
+                                f.onChange(e.target.value || null)
+                              }
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {calcolata ? <RigaCalcolo calcolo={riga?.calcolo} /> : null}
                 </div>
               );
             })}
           </div>
         )}
-
-        <div className="grid grid-cols-1 gap-2 border-t border-border/70 bg-muted/10 px-3 py-2 sm:grid-cols-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full border border-dashed border-border/80"
-            onClick={() => setCatalogOpen(true)}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Aggiungi da catalogo
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full border border-dashed border-border/80"
-            onClick={() => setTemplateOpen(true)}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Aggiungi righe da categoria
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 w-full border border-dashed border-border/80"
-            onClick={addRiga}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Aggiungi riga libera
-          </Button>
-        </div>
       </div>
 
       <CatalogLineConfigurator

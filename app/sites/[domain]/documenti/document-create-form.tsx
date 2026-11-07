@@ -24,6 +24,7 @@ import type {
   DocumentoArricchito,
   TipoDocumento,
 } from "@/validation/documenti/extracted-document";
+import { OW } from "./wizard-ui";
 import { GenerateErrorsAlert } from "@/components/documenti/generate-errors-alert";
 import {
   errorsFromFetchFailure,
@@ -415,14 +416,14 @@ export function DocumentCreateForm({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
-        <Label className="mb-2 block">Tipo documento</Label>
+        <Label className={OW.label}>Tipo documento</Label>
         <Select
           value={tipoDocumento}
           onValueChange={(v) => setTipoDocumento(v as TipoDocumento)}
         >
-          <SelectTrigger className="w-full max-w-md">
+          <SelectTrigger className={`w-full max-w-md ${OW.input}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -434,7 +435,7 @@ export function DocumentCreateForm({
           </SelectContent>
         </Select>
         {typeConfig ? (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className={`mt-1.5 ${OW.cardHint}`}>
             {typeConfig.category === "commercial"
               ? "Documento commerciale con righe articolo e totali"
               : "Lettera in prosa senza tabella articoli"}
@@ -442,14 +443,14 @@ export function DocumentCreateForm({
         ) : null}
       </div>
 
-      <div className="space-y-3 rounded-xl border border-border/70 bg-muted/5 p-4">
-        <p className="text-sm font-semibold">Cliente</p>
-        <Label className="text-xs text-muted-foreground">Destinatario</Label>
+      <div className={`${OW.card} space-y-3`}>
+        <h2 className={OW.cardTitle}>Cliente</h2>
+        <Label className={OW.label}>Destinatario</Label>
         <Select
           value={destMode}
           onValueChange={(v) => handleDestModeChange(v as DestinatarioMode)}
         >
-          <SelectTrigger className="w-full max-w-xs">
+          <SelectTrigger className={`w-full max-w-xs ${OW.input}`}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -464,7 +465,7 @@ export function DocumentCreateForm({
             value={selectedEntityId || undefined}
             onValueChange={handleEntityChange}
           >
-            <SelectTrigger>
+            <SelectTrigger className={OW.input}>
               <SelectValue placeholder="Seleziona cliente" />
             </SelectTrigger>
             <SelectContent>
@@ -482,7 +483,7 @@ export function DocumentCreateForm({
             value={selectedEntityId || undefined}
             onValueChange={handleEntityChange}
           >
-            <SelectTrigger>
+            <SelectTrigger className={OW.input}>
               <SelectValue placeholder="Seleziona fornitore" />
             </SelectTrigger>
             <SelectContent>
@@ -495,53 +496,69 @@ export function DocumentCreateForm({
           </Select>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className={`grid gap-3 pt-3 sm:grid-cols-2 ${OW.divider}`}>
           <div className="sm:col-span-2">
-            <Label>Ragione sociale / Nome</Label>
+            <Label className={OW.label}>Ragione sociale / Nome</Label>
             <Input
+              className={OW.input}
               value={ragioneSociale}
               onChange={(e) => setRagioneSociale(e.target.value)}
             />
           </div>
           <div>
-            <Label>a.c.a / Riferimento</Label>
-            <Input value={aca} onChange={(e) => setAca(e.target.value)} />
+            <Label className={OW.label}>a.c.a / Riferimento</Label>
+            <Input
+              className={OW.input}
+              value={aca}
+              onChange={(e) => setAca(e.target.value)}
+            />
           </div>
           <div>
-            <Label>Email</Label>
+            <Label className={OW.label}>Email</Label>
             <Input
+              className={OW.input}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="sm:col-span-2">
-            <Label>Via</Label>
-            <Input value={via} onChange={(e) => setVia(e.target.value)} />
+            <Label className={OW.label}>Via</Label>
+            <Input
+              className={OW.input}
+              value={via}
+              onChange={(e) => setVia(e.target.value)}
+            />
           </div>
           <div>
-            <Label>CAP</Label>
-            <Input value={cap} onChange={(e) => setCap(e.target.value)} />
+            <Label className={OW.label}>CAP</Label>
+            <Input
+              className={OW.input}
+              value={cap}
+              onChange={(e) => setCap(e.target.value)}
+            />
           </div>
           <div>
-            <Label>Città</Label>
-            <Input value={citta} onChange={(e) => setCitta(e.target.value)} />
+            <Label className={OW.label}>Città</Label>
+            <Input
+              className={OW.input}
+              value={citta}
+              onChange={(e) => setCitta(e.target.value)}
+            />
           </div>
         </div>
       </div>
 
-      <div className="space-y-4 rounded-xl border border-border/70 bg-muted/5 p-4">
-        <p className="text-sm font-semibold">Oggetto</p>
+      <div className={`${OW.card} space-y-4`}>
+        <h2 className={OW.cardTitle}>Oggetto</h2>
         {showOfferPicker && offers.length > 0 ? (
           <div>
-            <Label className="mb-2 block text-xs text-muted-foreground">
-              Offerta collegata
-            </Label>
+            <Label className={OW.label}>Offerta collegata</Label>
             <Select
               value={selectedOfferId || undefined}
               onValueChange={handleOfferChange}
             >
-              <SelectTrigger className="w-full max-w-md">
+              <SelectTrigger className={`w-full max-w-md ${OW.input}`}>
                 <SelectValue placeholder="Seleziona offerta esistente (opzionale)" />
               </SelectTrigger>
               <SelectContent>
@@ -552,24 +569,23 @@ export function DocumentCreateForm({
                 ))}
               </SelectContent>
             </Select>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className={`mt-1.5 ${OW.cardHint}`}>
               Opzionale: collega un&apos;offerta esistente per riutilizzare codice
               e cliente. Se non ne selezioni una, al salvataggio verrà creata
               automaticamente una nuova offerta in kanban per il cliente scelto.
             </p>
           </div>
         ) : showOfferPicker ? (
-          <p className="text-xs text-muted-foreground">
+          <p className={OW.cardHint}>
             Al salvataggio verrà creata automaticamente una nuova offerta in kanban
             per il cliente selezionato.
           </p>
         ) : null}
 
         <div>
-          <Label className="mb-2 block text-xs text-muted-foreground">
-            Nome oggetto
-          </Label>
+          <Label className={OW.label}>Nome oggetto</Label>
           <Input
+            className={OW.input}
             placeholder="Breve oggetto del documento"
             value={oggetto}
             onChange={(e) => setOggetto(e.target.value)}
@@ -653,12 +669,22 @@ export function DocumentCreateForm({
 
       <GenerateErrorsAlert errors={generateErrors} />
 
-      <div className="flex gap-3">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className={isWizard ? OW.footer : "flex gap-3"}>
+        <Button
+          type="button"
+          variant="outline"
+          className={isWizard ? OW.btnSecondary : undefined}
+          onClick={onCancel}
+        >
           Annulla
         </Button>
         {isWizard ? (
-          <Button onClick={handleNext}>Avanti &mdash; Posizioni</Button>
+          <div className="flex items-center gap-4">
+            <span className={OW.footerStep}>Passo 1 di 4</span>
+            <Button className={OW.btnPrimary} onClick={handleNext}>
+              Avanti &mdash; Posizioni
+            </Button>
+          </div>
         ) : (
           <Button
             onClick={handleGenerate}

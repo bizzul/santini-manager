@@ -7,6 +7,7 @@ import {
   fetchOffertaTemplates,
   type OffertaTemplate,
 } from "@/lib/documenti/offerta-template";
+import { OW } from "./wizard-ui";
 
 /**
  * Scelta delle categorie da offrire, nel passo 1.
@@ -62,7 +63,7 @@ export function CategorieSelector({
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm text-[var(--ow-text-3)]">
         <Loader2 className="h-4 w-4 animate-spin" />
         Caricamento categorie...
       </div>
@@ -74,16 +75,16 @@ export function CategorieSelector({
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border/70 bg-muted/5 p-4">
+    <div className={`${OW.card} space-y-3`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold">Categorie da offrire</p>
-        <span className="text-xs text-muted-foreground">
+        <h2 className={OW.cardTitle}>Categorie da offrire</h2>
+        <span className={OW.cardHint}>
           {value.length === 0
             ? "Nessuna selezionata"
             : `${value.length} selezionate · ${nRighe} righe base`}
         </span>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className={OW.cardHint}>
         Ogni categoria porta al passo successivo le sue posizioni ricorrenti,
         gia&apos; scritte. Restano da compilare misure e quantita&apos;.
       </p>
@@ -94,14 +95,11 @@ export function CategorieSelector({
             <label
               key={t.id}
               htmlFor={`cat-${t.id}`}
-              className={`flex cursor-pointer gap-3 rounded-lg border p-3 transition-colors ${
-                attivo
-                  ? "border-primary bg-primary/5"
-                  : "bg-muted/10 hover:bg-muted/20"
-              }`}
+              className={attivo ? OW.tileActive : OW.tile}
             >
               <Checkbox
                 id={`cat-${t.id}`}
+                className="mt-0.5 border-[var(--ow-input-border)] data-[state=checked]:border-[var(--ow-accent)] data-[state=checked]:bg-[var(--ow-accent)] data-[state=checked]:text-[var(--ow-accent-fg)]"
                 checked={attivo}
                 onCheckedChange={() =>
                   onChange(
@@ -112,8 +110,14 @@ export function CategorieSelector({
                 }
               />
               <span className="min-w-0">
-                <span className="block text-sm font-medium">{t.categoria}</span>
-                <span className="block text-xs text-muted-foreground">
+                <span
+                  className={`block text-sm font-semibold ${
+                    attivo ? "text-[var(--ow-text)]" : "text-[var(--ow-text-2)]"
+                  }`}
+                >
+                  {t.categoria}
+                </span>
+                <span className="mt-0.5 block text-[11px] text-[var(--ow-text-3)]">
                   {t.righe.length}{" "}
                   {t.righe.length === 1 ? "riga base" : "righe base"}
                 </span>

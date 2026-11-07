@@ -5,7 +5,6 @@ import type {
   Allegato,
   DocumentoArricchito,
 } from "@/validation/documenti/extracted-document";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
@@ -14,6 +13,7 @@ import { MobileMediaCapture } from "@/components/media/mobile-media-capture";
 import { DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES } from "@/lib/documenti/attachment-validation";
 import { GenerateErrorsAlert } from "@/components/documenti/generate-errors-alert";
 import { CondizioniStep } from "./condizioni-step";
+import { OW } from "./wizard-ui";
 
 /**
  * Passo 3: contesto e condizioni.
@@ -58,16 +58,16 @@ export function ContestoStep({
   const nPosizioni = (form.watch("righe") ?? []).length;
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border border-border/70 bg-muted/10 p-3 text-sm text-muted-foreground">
+    <div className="space-y-5">
+      <div className={OW.banner}>
         {nPosizioni === 0
           ? "Nessuna posizione inserita: l'elaborazione costruira' l'offerta dal testo qui sotto."
           : `${nPosizioni} ${nPosizioni === 1 ? "posizione" : "posizioni"} gia' inserite. Quello che scrivi o detti qui le arricchisce, non le sostituisce.`}
       </div>
 
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <Label>Nota vocale o testo descrittivo</Label>
+      <div className={OW.card}>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className={OW.cardTitle}>Nota vocale o testo descrittivo</h2>
           <VoiceDictationButton
             siteId={siteId}
             domain={domain}
@@ -80,16 +80,17 @@ export function ContestoStep({
           />
         </div>
         <Textarea
-          rows={8}
+          rows={7}
+          className={OW.input}
           placeholder="Quello che diresti al collega: vincoli di cantiere, accordi presi col cliente, dettagli che non stanno in una riga..."
           value={testo}
           onChange={(e) => onTestoChange(e.target.value)}
         />
       </div>
 
-      <div className="space-y-2">
-        <Label>Allegati (opzionale)</Label>
-        <p className="text-xs text-muted-foreground">
+      <div className={`${OW.card} space-y-3`}>
+        <h2 className={OW.cardTitle}>Allegati (opzionale)</h2>
+        <p className={OW.cardHint}>
           Foto, disegni, piani di cantiere, capitolati. Max{" "}
           {DOCUMENT_ATTACHMENT_MAX_SIZE_BYTES / 1024 / 1024} MB per file.
         </p>
@@ -109,7 +110,7 @@ export function ContestoStep({
             {allegati.map((a, i) => (
               <li
                 key={a.storagePath}
-                className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-[9px] border border-[var(--ow-border)] bg-[var(--ow-pos-bg)] px-3 py-2 text-sm"
               >
                 <span className="truncate">{a.name}</span>
                 <Button
@@ -134,17 +135,26 @@ export function ContestoStep({
 
       <GenerateErrorsAlert errors={elaborazioneErrori} />
 
-      <div className="flex flex-wrap gap-3">
-        <Button type="button" variant="outline" onClick={onIndietro}>
-          Indietro
-        </Button>
+      <div className={OW.footer}>
         <Button
           type="button"
-          onClick={onElabora}
-          disabled={isElaborando || isUploading}
+          variant="outline"
+          className={OW.btnSecondary}
+          onClick={onIndietro}
         >
-          {isElaborando ? "Elaborazione in corso..." : "Elabora offerta"}
+          Indietro
         </Button>
+        <div className="flex items-center gap-4">
+          <span className={OW.footerStep}>Passo 3 di 4</span>
+          <Button
+            type="button"
+            className={OW.btnPrimary}
+            onClick={onElabora}
+            disabled={isElaborando || isUploading}
+          >
+            {isElaborando ? "Elaborazione in corso..." : "Elabora offerta"}
+          </Button>
+        </div>
       </div>
     </div>
   );

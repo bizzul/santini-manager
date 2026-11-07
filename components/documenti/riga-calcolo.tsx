@@ -1,6 +1,7 @@
 "use client";
 
 import type { CalcoloRiga } from "@/validation/documenti/extracted-document";
+import { OW } from "@/app/sites/[domain]/documenti/wizard-ui";
 
 /**
  * Avvisi e catena di calcolo di una posizione d'offerta.
@@ -13,9 +14,9 @@ import type { CalcoloRiga } from "@/validation/documenti/extracted-document";
 const CHF = (n: number) => n.toFixed(2);
 
 const STILE_AVVISO: Record<string, string> = {
-  alta: "border-destructive/40 bg-destructive/10 text-destructive",
-  media: "border-warning/40 bg-warning/10 text-warning",
-  bassa: "border-border bg-muted/20 text-muted-foreground",
+  alta: OW.stopBox,
+  media: OW.warnBox,
+  bassa: OW.noteBox,
 };
 
 const ETICHETTA_AVVISO: Record<string, string> = {
@@ -44,7 +45,7 @@ export function RigaCalcolo({ calcolo }: { calcolo?: CalcoloRiga | null }) {
   return (
     <div className="space-y-1.5">
       {calcolo.stato === "da_quotare" ? (
-        <p className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-[11px] font-semibold text-destructive">
+        <p className={`${OW.stopBox} font-semibold`}>
           Posizione non quotata dal motore: prezzo a zero finche&apos; non viene
           inserito a mano.
         </p>
@@ -53,7 +54,7 @@ export function RigaCalcolo({ calcolo }: { calcolo?: CalcoloRiga | null }) {
       {avvisi.map((a, i) => (
         <p
           key={`${a.codice}-${i}`}
-          className={`flex gap-1.5 rounded-md border px-2 py-1.5 text-[11px] ${
+          className={`flex gap-1.5 ${
             STILE_AVVISO[a.severita] ?? STILE_AVVISO.bassa
           }`}
         >
@@ -65,11 +66,11 @@ export function RigaCalcolo({ calcolo }: { calcolo?: CalcoloRiga | null }) {
       ))}
 
       {breakdown ? (
-        <details className="overflow-hidden rounded-md border bg-muted/10 px-2 py-1.5">
-          <summary className="cursor-pointer text-[11px] text-muted-foreground">
+        <details className="overflow-hidden rounded-[7px] border border-[var(--ow-border)] bg-[var(--ow-mono-bg)] px-2.5 py-1.5">
+          <summary className="cursor-pointer text-[11px] text-[var(--ow-text-3)]">
             Come e&apos; stato calcolato
           </summary>
-          <div className="mt-1 space-y-0.5 font-mono text-[11px]">
+          <div className="mt-1 space-y-0.5 font-mono text-[11px] text-[var(--ow-text)]">
             {breakdown.prezzoBase != null ? (
               <Voce etichetta="Prezzo base" valore={CHF(breakdown.prezzoBase)} />
             ) : null}
@@ -102,7 +103,7 @@ export function RigaCalcolo({ calcolo }: { calcolo?: CalcoloRiga | null }) {
               />
             ))}
             {breakdown.totale != null ? (
-              <div className="mt-1 border-t pt-1">
+              <div className="mt-1 border-t border-[var(--ow-border)] pt-1">
                 <Voce
                   etichetta={`x Quantita ${breakdown.quantita ?? 1}`}
                   valore={CHF(breakdown.totale)}
@@ -129,7 +130,7 @@ function Voce({
   return (
     <div
       className={`flex items-baseline justify-between gap-3 ${
-        forte ? "font-semibold" : "text-muted-foreground"
+        forte ? "font-semibold" : "text-[var(--ow-text-2)]"
       }`}
     >
       <span className="min-w-0 break-words">{etichetta}</span>

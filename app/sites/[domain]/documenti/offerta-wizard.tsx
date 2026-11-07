@@ -35,6 +35,7 @@ import {
 } from "@/lib/documenti/offerta-template";
 import { ContestoStep } from "./contesto-step";
 import { DocumentReviewForm } from "./document-review-form";
+import { OW } from "./wizard-ui";
 
 /**
  * Wizard di creazione offerta in quattro passi.
@@ -78,6 +79,17 @@ function documentoVuoto(bozza: BozzaPasso1): DocumentoArricchito {
     corpoTesto: null,
     allegati: [],
   } as DocumentoArricchito;
+}
+
+/** "1400x1600 mm" dalle misure inserite, o null se mancano. */
+function etichettaMisure(
+  conf: NonNullable<RigaArricchita["configurazione"]>,
+): string | null {
+  const l = conf.larghezzaMm ?? 0;
+  const h = conf.altezzaMm ?? 0;
+  if (!(l > 0 && h > 0)) return null;
+  const p = conf.profonditaMm ?? 0;
+  return p > 0 ? `${l}x${h}x${p} mm` : `${l}x${h} mm`;
 }
 
 /** Chiave per capire se una riga dell'AI duplica una gia' presente. */
@@ -269,6 +281,21 @@ export function OffertaWizard({
         if (!res.ok) continue;
         const { riga } = await res.json();
         form.setValue(`righe.${i}.prezzoUnitario`, riga.prezzoUnitario ?? 0);
+        // Le misure vanno nel testo della posizione: il PDF stampa
+        // descrizioneEstesa al posto del campo misure.
+        const misureLabel = etichettaMisure(conf);
+        if (misureLabel) {
+          form.setValue(`righe.${i}.misure`, misureLabel);
+          const estesa = righe[i].descrizioneEstesa ?? "";
+          if (!/Misure:/i.test(estesa)) {
+            form.setValue(
+              `righe.${i}.descrizioneEstesa`,
+              estesa.trim()
+                ? `${estesa.trim()}\nMisure: ${misureLabel}`
+                : `Misure: ${misureLabel}`,
+            );
+          }
+        }
         form.setValue(`righe.${i}.calcolo`, {
           stato: riga.stato,
           prezzoUnitario: riga.prezzoUnitario ?? 0,
@@ -296,7 +323,7 @@ export function OffertaWizard({
 
   const stepper = useMemo(
     () => (
-      <nav className="mb-4 flex flex-wrap gap-2" aria-label="Passi">
+      <nav className="mb-5 flex flex-wrap gap-2" aria-label="Passi">
         {passiVisibili.map((p, i) => {
           const attivo = p.id === passo;
           const fatto = i < indiceCorrente;
@@ -307,24 +334,24 @@ export function OffertaWizard({
               onClick={() => (fatto ? vaiA(p.id) : undefined)}
               disabled={!fatto && !attivo}
               aria-current={attivo ? "step" : undefined}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              className={`flex items-center gap-2.5 rounded-[10px] border px-4 py-2.5 text-sm transition-colors ${
                 attivo
-                  ? "border-primary bg-primary/10 font-medium"
+                  ? "border-[var(--ow-tile-active-border)] bg-[var(--ow-tile-active-bg)] font-semibold text-[var(--ow-text)]"
                   : fatto
-                    ? "cursor-pointer border-border text-muted-foreground hover:bg-muted/40"
-                    : "border-border/60 text-muted-foreground/60"
+                    ? "cursor-pointer border-[var(--ow-border)] text-[var(--ow-text-2)] hover:bg-[var(--ow-card-head)]"
+                    : "border-[var(--ow-border)] text-[var(--ow-text-3)]"
               }`}
             >
               <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold ${
+                className={`flex h-[22px] w-[22px] items-center justify-center rounded-full text-[12px] font-bold ${
                   fatto
-                    ? "bg-success text-success-foreground"
+                    ? "bg-[var(--ow-success)] text-[var(--ow-success-fg)]"
                     : attivo
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-[var(--ow-accent)] text-[var(--ow-accent-fg)]"
+                      : "bg-[var(--ow-card-head)] text-[var(--ow-text-3)]"
                 }`}
               >
-                {fatto ? "✓" : i + 1}
+                {fatto ? "\u2713" : i + 1}
               </span>
               {p.etichetta}
             </button>
@@ -336,7 +363,7 @@ export function OffertaWizard({
   );
 
   return (
-    <div>
+    <div className="offerta-wizard text-[var(--ow-text)]">
       {stepper}
 
       {passo === "impostazione" ? (
@@ -363,29 +390,40 @@ export function OffertaWizard({
 
       {passo === "posizioni" ? (
         <Form {...form}>
-        <div className="space-y-4">
-          <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+        <div className="space-y-5">
+          <div className={OW.banner}>
             Le posizioni delle categorie scelte sono gia&apos; qui con il loro
             testo descrittivo: tocca solo misure e quantita&apos;.{" "}
-            <strong>Lascia il prezzo vuoto</strong> per farlo calcolare dal
-            listino quando elabori l&apos;offerta; scrivilo solo per forzarlo.
+            <strong className="text-[var(--ow-text)]">
+              Lascia il prezzo vuoto
+            </strong>{" "}
+            per farlo calcolare dal listino quando elabori l&apos;offerta;
+            scrivilo solo per forzarlo.
           </div>
           <RigheEditor
             form={form}
             domain={domain}
             showDiscount={showDiscount}
           />
-          <div className="flex flex-wrap gap-3">
+          <div className={OW.footer}>
             <Button
               type="button"
               variant="outline"
+              className={OW.btnSecondary}
               onClick={() => vaiA("impostazione")}
             >
               Indietro
             </Button>
-            <Button type="button" onClick={() => vaiA("contesto")}>
-              Avanti &mdash; Contesto
-            </Button>
+            <div className="flex items-center gap-4">
+              <span className={OW.footerStep}>Passo 2 di 4</span>
+              <Button
+                type="button"
+                className={OW.btnPrimary}
+                onClick={() => vaiA("contesto")}
+              >
+                Avanti &mdash; Contesto
+              </Button>
+            </div>
           </div>
         </div>
         </Form>

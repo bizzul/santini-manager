@@ -1098,3 +1098,87 @@ body:has(.home-gradient-bg) {
     padding-right: env(safe-area-inset-right, 0px);
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Wizard offerta (modulo Documenti): palette del mockup approvato.    */
+/* Variabili --ow-* lette dai token in documenti/wizard-ui.ts.         */
+/* ------------------------------------------------------------------ */
+:root {
+  --ow-page: #f4f5f8;
+  --ow-card: #ffffff;
+  --ow-card-head: #f3f4f7;
+  --ow-border: #d9dde5;
+  --ow-border-soft: #e6e9ef;
+  --ow-pos-bg: #fafbfc;
+  --ow-pos-border: #e3e6ec;
+  --ow-input-bg: #ffffff;
+  --ow-input-border: #c9cfd9;
+  --ow-text: #171a21;
+  --ow-text-2: #4f5868;
+  --ow-text-3: #6b7486;
+  --ow-base-bg: #f7f8fa;
+  --ow-base-border: #ccd2dc;
+  --ow-tile-bg: #f7f8fa;
+  --ow-tile-border: #d9dde5;
+  --ow-tile-active-bg: #e8f0f9;
+  --ow-tile-active-border: #9dbfe4;
+  --ow-accent: #4a7db5;
+  --ow-accent-hover: #3f6c9d;
+  --ow-accent-fg: #ffffff;
+  --ow-accent-text: #2f5f8f;
+  --ow-banner-bg: #e8f0f9;
+  --ow-banner-border: #bbd2ea;
+  --ow-banner-text: #1e3a5a;
+  --ow-success: #2e9e62;
+  --ow-success-fg: #ffffff;
+  --ow-warn-bg: #fdf6e7;
+  --ow-warn-border: #e6c98a;
+  --ow-warn-text: #7a5212;
+  --ow-danger-bg: #fbedec;
+  --ow-danger-border: #e8b4b0;
+  --ow-danger-text: #8f2d27;
+  --ow-mono-bg: #eef2f7;
+  --ow-dot-serramenti: #c9c42f;
+  --ow-dot-posa: #45b56b;
+  --ow-dot-porte: #4a7db5;
+}
+
+.dark {
+  --ow-page: #0e1014;
+  --ow-card: #171a21;
+  --ow-card-head: #1c212b;
+  --ow-border: #2a303c;
+  --ow-border-soft: #242a35;
+  --ow-pos-bg: #13161c;
+  --ow-pos-border: #262c38;
+  --ow-input-bg: #0f1218;
+  --ow-input-border: #39414f;
+  --ow-text: #e6e9ef;
+  --ow-text-2: #9aa4b6;
+  --ow-text-3: #8a93a5;
+  --ow-base-bg: #11141a;
+  --ow-base-border: #333b49;
+  --ow-tile-bg: #141820;
+  --ow-tile-border: #2a303c;
+  --ow-tile-active-bg: #1a2430;
+  --ow-tile-active-border: #3a5876;
+  --ow-accent: #7fa8d4;
+  --ow-accent-hover: #93b8de;
+  --ow-accent-fg: #0e1014;
+  --ow-accent-text: #9dbfe4;
+  --ow-banner-bg: #1a2430;
+  --ow-banner-border: #2e4256;
+  --ow-banner-text: #c2d8ef;
+  --ow-success: #58c08a;
+  --ow-success-fg: #0e1014;
+  --ow-warn-bg: #2a2415;
+  --ow-warn-border: #6b5524;
+  --ow-warn-text: #ebd9a8;
+  --ow-danger-bg: #2a1a18;
+  --ow-danger-border: #6b3330;
+  --ow-danger-text: #f0c9c5;
+  --ow-mono-bg: #1a2430;
+  --ow-dot-serramenti: #d8d33c;
+  --ow-dot-posa: #5bc97a;
+  --ow-dot-porte: #7fa8d4;
+}
